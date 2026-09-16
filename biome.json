@@ -1,0 +1,80 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.13/schema.json",
+  "files": {
+    "includes": ["**", "!**/dist", "!**/node_modules", "!**/.vscode-test", "!.notes"]
+  },
+  "formatter": { "enabled": true, "indentStyle": "space", "lineWidth": 100 },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "javascript": { "formatter": { "quoteStyle": "double", "trailingCommas": "all" } },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "suspicious": {
+        "noExplicitAny": "error",
+        "noTsIgnore": "error"
+      },
+      "style": {
+        "noEnum": "off",
+        "useConsistentArrayType": { "level": "error", "options": { "syntax": "shorthand" } }
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["packages/shared/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "vscode": "shared 必须保持中立：不得依赖 VSCode API（CLAUDE.md §A）。",
+                  "react": "shared 必须保持中立：不得依赖 UI 框架（CLAUDE.md §A）。",
+                  "react-dom": "shared 必须保持中立：不得依赖 UI 框架（CLAUDE.md §A）。"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/extension/src/git/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "vscode": "git/ 层必须能在纯 node 下裸测，不得 import vscode（CLAUDE.md §A）。"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/extension/src/features/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/git/*", "**/git/**"]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

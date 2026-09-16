@@ -1,0 +1,36 @@
+{
+  "name": "dummy-git",
+  "displayName": "Dummy Git",
+  "description": "不用记命令的 Git：JetBrains 式图形化操作，点两下就完事。",
+  "version": "0.0.0",
+  "publisher": "zjqtzzc",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "SCM Providers"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "dummyGit.hello",
+        "title": "Hello",
+        "category": "Dummy Git"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && pnpm -w run build",
+    "typecheck": "tsc --noEmit",
+    "build": "node esbuild.mjs --production",
+    "watch": "node esbuild.mjs --watch"
+  },
+  "devDependencies": {
+    "@dummy-git/shared": "workspace:*",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.27.2"
+  }
+}

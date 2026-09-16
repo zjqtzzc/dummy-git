@@ -1,0 +1,10 @@
+node_modules/
+dist/
+out/
+*.vsix
+.vscode-test/
+coverage/
+*.tsbuildinfo
+
+# 本地笔记，不进版本库
+/.notes/

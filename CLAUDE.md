@@ -1,0 +1,66 @@
+# 项目纪律
+
+> 本文是 **dummy-git 的强制约定**，人和 AI 会话都以此为准。
+> 「为什么」在 `.notes/DECISIONS.md`，「做什么/什么时候做」在 `.notes/PLAN.md`，本文只写 **规则**。
+> `.notes/` 不进版本库，是过程产物，项目成型后删除。
+> 修改本文 = 修改项目纪律，必须同时更新 `.notes/DECISIONS.md`。
+
+## A. 架构边界（机器强制，见 biome.json）
+
+```
+extension ──→ shared ←── webview      # 唯一合法依赖方向
+```
+
+| 规则 | 强制方式 |
+|---|---|
+| `packages/shared/**` 不得 import `vscode` / `react` | lint |
+| `packages/extension/src/git/**` 不得 import `vscode` | lint |
+| `packages/extension/src/features/**` 不得直接 import `**/git/**`，必须经 `core/repository` | lint |
+
+`git/` 层不依赖 `vscode`，是为了**分层干净**：它只和 git 进程打交道，
+换个宿主（CLI、测试脚本、将来的 language server）都能直接用。
+本项目不写测试（见 `.notes/DECISIONS.md`），但这条边界保留——它让「以后想测」始终是可能的。
+
+## B. 类型纪律
+
+1. 闭集一律 **string enum**，值用简单字符（`Mixed = 'mixed'`），不加前缀、不做修饰。
+2. **enum 值只承担身份，不承担内容。** 允许用法仅三种：`===`、`switch`、对象 key。
+   ❌ 禁止拼接进路径 / 命令行 / CSS 类名 / 文件名 / 模板串，禁止 `startsWith` 之类的内容判断。
+   **理由：读取字面量值 = 与它签一份没人声明的契约。** 改个值编译全绿、运行时挂，
+   编译器保护不到，因为契约从未被表达成类型。
+   判据是**值有没有离开这次构建**：`extension ↔ webview` 同一份源码同一次发布，不算；
+   写进 `globalState` / 配置 / 磁盘 / URI scheme / CSS 类名，算——对面不跟着你重新编译。
+   后者一旦出现，必须显式定义一张「内部值 → 外部字符串」的映射表并集中管理，
+   不许让 enum 值**顺带**成为外部格式。
+3. **映射表放在消费方**，不放 enum 旁边。`shared/enums.ts` 只有声明与类型守卫，零数据表。
+   同一 enum 的多个投影（CLI flag / 图标 / 文案 / 排序）各归各的模块。
+   仅当第二个消费方需要**完全相同**的表时才上提，只提到最近共同 owner，**永不提到 `shared/`**。
+4. 禁止 enum 计算成员（会使 enum 退化为宽松 string）。
+5. **所有 `switch` 以 `assertNever(x)` 收尾。** tagged union 的安全性完全建立在穷尽性检查上。
+6. 多形态领域概念用 **tagged union**，enum 做 tag。目标是让错误状态无法被表达。
+7. 开放标识符（SHA / 路径 / 分支名）就是 `string`，不做 branded type。
+8. 禁 `any`。禁类型断言 `as`，**唯一豁免**：parser 与类型守卫的边界目录。
+
+> **B.2 是本文唯一不由机器保障的规则**——隐形契约按定义就是机器看不见的。
+> 落地靠：所有内容需求走 C.3 的映射表 + 审阅时见 enum 参与拼接一律打回。
+
+## C. 边界与信任
+
+1. **运行时校验只在两个边界**：`git stdout → parser`、`postMessage → router`。
+   跨边界的类型标注在运行时是谎言（类型被擦除），必须过 validator。
+2. **边界之内完全信任类型**，不写防御性检查。验证在入口做一次。
+3. git 的 wire format（status 字符、`%aN` 字段序）**不得渗入我们自己定义的类型**。
+   `enum FileStatus { Added = 'A' }` 是禁止的——那等于把 git 输出格式焊进类型定义。
+
+## D. 开发流程
+
+1. **地基期（M1–M7）按层自底向上，之后一律按端到端垂直切片。** 护栏见 `.notes/DECISIONS.md`：
+   地基只到 M7，到 M7 必须打通最小端到端链路，不许继续堆层。
+2. **契约先于实现**：M7 完成前不写任何 feature 代码。
+3. **旧仓库 `~/Projects/jetbrains-git-graph` 只读**。禁止整块 copy-paste。
+   唯一例外：parser 的解析细节与 `domains.ts` 的域划分概念，且必须补测试。
+4. **实现按「一步一件小事」推进**：每步只改一个概念，说明为什么这么做，
+   用户确认后才进下一步。禁止一次性铺开整个模块——本项目的目标包含用户理解每一行代码。
+5. 每条实现关联 `.notes/FEATURES.md` 的条目 ID，commit message 带 ID。
+6. 每个重要选择记入 `.notes/DECISIONS.md`（5 行即可），重点记**否决过什么**。
+7. 审阅**必须自己抽查事实**（跑命令、读代码），不接受「看起来合理」。结论记入 `.notes/REVIEW-LOG.md`。

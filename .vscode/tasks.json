@@ -1,0 +1,70 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "type": "shell",
+      "command": "pnpm run build",
+      "problemMatcher": []
+    },
+    {
+      "label": "watch:extension",
+      "type": "shell",
+      "command": "pnpm --filter dummy-git run watch",
+      "isBackground": true,
+      // 内联而非用 $esbuild-watch：那个名字背后是第三方扩展
+      // connor4312.esbuild-problem-matchers，没装的人 F5 直接解析失败。
+      // 这里认的文本就是 esbuild.mjs 的 esbuildProblemMatcherPlugin 打印的那两行，改一边要改另一边。
+      "problemMatcher": {
+        "owner": "esbuild",
+        "fileLocation": ["relative", "${workspaceFolder}/packages/extension"],
+        "pattern": [
+          { "regexp": "^..(?:ERROR|WARNING)\\]\\s+(.*)$", "message": 1 },
+          { "regexp": "^\\s+(\\S+):(\\d+):(\\d+):$", "file": 1, "line": 2, "column": 3 }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^\\[watch\\] build started$",
+          "endsPattern": "^\\[watch\\] build finished$"
+        }
+      }
+    },
+    {
+      "label": "watch:webview",
+      "type": "shell",
+      "command": "pnpm --filter @dummy-git/webview run watch",
+      "isBackground": true,
+      // vite watch 原生日志本身首轮/重建轮文案一致，不需要额外插件打标记。
+      "problemMatcher": {
+        "owner": "vite",
+        "fileLocation": ["relative", "${workspaceFolder}/packages/webview"],
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^build started\\.\\.\\.$",
+          "endsPattern": "^built in .*ms\\.$"
+        }
+      }
+    },
+    {
+      // 手动在终端跑用这个（Command Palette › Run Task），两路日志交叉不需要各自可辨识。
+      "label": "watch",
+      "type": "shell",
+      "command": "pnpm run watch",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      // preLaunchTask 用这个：build 阻塞到退出（保证 dist/ 已生成），
+      // 再依次起两个后台 watcher，各自的 matcher 负责标记「首轮编译完成」。
+      "label": "dev",
+      "dependsOn": ["build", "watch:extension", "watch:webview"],
+      "dependsOrder": "sequence",
+      "problemMatcher": [],
+      "group": { "kind": "build", "isDefault": true }
+    }
+  ]
+}
