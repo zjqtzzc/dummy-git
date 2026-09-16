@@ -58,9 +58,9 @@ extension ──→ shared ←── webview      # 唯一合法依赖方向
    地基只到 M7，到 M7 必须打通最小端到端链路，不许继续堆层。
 2. **契约先于实现**：M7 完成前不写任何 feature 代码。
 3. **旧仓库 `~/Projects/jetbrains-git-graph` 只读**。禁止整块 copy-paste。
-   唯一例外：parser 的解析细节与 `domains.ts` 的域划分概念，且必须补测试。
+   唯一例外：parser 的解析细节与 `domains.ts` 的域划分概念，
+   且必须手工验证五种输入：merge / 冲突 / detached HEAD / 中文文件名 / 根提交。
 4. **实现按「一步一件小事」推进**：每步只改一个概念，说明为什么这么做，
    用户确认后才进下一步。禁止一次性铺开整个模块——本项目的目标包含用户理解每一行代码。
-5. 每条实现关联 `.notes/FEATURES.md` 的条目 ID，commit message 带 ID。
-6. 每个重要选择记入 `.notes/DECISIONS.md`（5 行即可），重点记**否决过什么**。
-7. 审阅**必须自己抽查事实**（跑命令、读代码），不接受「看起来合理」。结论记入 `.notes/REVIEW-LOG.md`。
+5. 每个重要选择记入 `.notes/DECISIONS.md`（5 行即可），重点记**否决过什么**。
+6. 审阅**必须自己抽查事实**（跑命令、读代码），不接受「看起来合理」。结论记入 `.notes/REVIEW-LOG.md`。
