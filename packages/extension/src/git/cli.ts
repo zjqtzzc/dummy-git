@@ -5,9 +5,6 @@ import {
   type GitLogger,
   NOOP_LOGGER,
   type RawExecResult,
-  type StreamEnd,
-  StreamEndKind,
-  type StreamResult,
 } from "./types.js";
 
 export interface ExecOptions {
@@ -29,10 +26,7 @@ export interface ExecOptions {
    * 读 stdin 的命令，其包装函数的 input 参数必填。
    */
   readonly input?: string;
-  /**
-   * 取消信号。abort 时杀掉子进程。
-   * `execRaw`/`exec` 会抛 `GitCancelledError`；`stream` 的 `end` 落到 `Killed`。
-   */
+  /** 取消信号。abort 时杀掉子进程，`execRaw`/`exec` 抛 `GitCancelledError`。 */
   readonly signal?: AbortSignal;
 }
 
@@ -54,12 +48,6 @@ const FORCED_ENV = {
   // 非 ASCII 路径原样输出，不转义成 \344\275\240。
   GIT_CONFIG_PARAMETERS: "'core.quotepath=false'",
 } as const;
-
-/** 预先取消时交给消费回调的空流——回调照常运行，只是一个字节都读不到。 */
-const EMPTY_CHUNKS: AsyncIterable<Buffer> = {
-  // eslint 风格的空异步生成器：立即结束。
-  async *[Symbol.asyncIterator]() {},
-};
 
 /** git 进程层。`gitPath` 由外部注入——探测它需要读 VSCode 配置，不属于这一层。 */
 export class GitCli {
@@ -174,70 +162,6 @@ export class GitCli {
         });
       });
     });
-  }
-
-  /**
-   * 流式读取 stdout，把字节流交给 `consume` 回调。
-   *
-   * 存在理由是**提前终止**，不是省内存：回调里 `break` 即可停止，子进程随之被杀。
-   * 只要完整输出时用 `execRaw()`。
-   *
-   * 用回调而不是返回一个可迭代对象：后者允许「拿到了但不迭代」，
-   * 那样没人读 stdout，管道写满后 git 永远阻塞——一个从类型上看不出来的泄漏。
-   * 回调形式让这种用法在结构上不存在。
-   */
-  async stream<T>(
-    args: readonly string[],
-    options: ExecOptions,
-    consume: (chunks: AsyncIterable<Buffer>) => Promise<T>,
-  ): Promise<StreamResult<T>> {
-    const logOnce = this.makeLogOnce(args);
-    // 与 execRaw 同理。注意：对已 abort 的 signal 调 addEventListener 不会触发监听器
-    // （abort 事件早已派发），所以只靠 spawnChild 里的监听是拦不住的。
-    if (options.signal?.aborted === true) {
-      logOnce("cancelled before start");
-      return { value: await consume(EMPTY_CHUNKS), end: { kind: StreamEndKind.Cancelled } };
-    }
-    const child = this.spawnChild(args, options);
-    const { stdout, stderr } = child;
-    if (stdout === null || stderr === null) {
-      throw new Error("spawn 未能建立 stdout/stderr 管道");
-    }
-
-    // stderr 始终全量收集：它是给人看的消息，不会大到需要流式。
-    const stderrChunks: Buffer[] = [];
-    stderr.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
-
-    // 永不 reject：进程起不来是 Failed 这个值，不是异常。
-    const ended = new Promise<StreamEnd>((resolve) => {
-      child.on("error", (error) => {
-        logOnce(`failed: ${error.message}`);
-        resolve({ kind: StreamEndKind.Failed, error });
-      });
-      child.on("close", (code, signal) => {
-        const text = Buffer.concat(stderrChunks).toString("utf8");
-        logOnce(code === null ? `killed by ${signal}` : `exit ${code}`);
-        resolve(
-          code === null
-            ? { kind: StreamEndKind.Killed, signal: signal ?? "unknown", stderr: text }
-            : { kind: StreamEndKind.Exited, exitCode: code, stderr: text },
-        );
-      });
-    });
-
-    let value: T;
-    try {
-      value = await consume(stdout);
-    } finally {
-      // 判据是「stdout 有没有自然读完」，不是「进程有没有退出」。
-      // 后者有竞态：stdout 读完的瞬间进程往往还没来得及退出，
-      // 那时 kill 会把一次正常结束误报成 Killed。
-      if (!stdout.readableEnded) {
-        child.kill();
-      }
-    }
-
-    return { value, end: await ended };
   }
 
   /** 日常入口：`execRaw()` 加一层 UTF-8 解码。 */
