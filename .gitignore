@@ -5,6 +5,10 @@ out/
 .vscode-test/
 coverage/
 *.tsbuildinfo
+.claude/
 
 # 本地笔记，不进版本库
 /.notes/
+
+# parser 验证用的临时仓库，跑 scripts/fixture.mjs 生成
+/.fixtures/

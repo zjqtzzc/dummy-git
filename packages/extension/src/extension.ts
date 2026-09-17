@@ -20,7 +20,8 @@ function refLabel(ref: Ref): string {
 export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("dummyGit.hello", () => {
-      const ref: Ref = { kind: RefKind.Head };
+      // M1 留下的占位示例，等 M7 打通端到端后换成真实数据。
+      const ref: Ref = { kind: RefKind.Head, target: "0".repeat(40), branch: "main" };
       void vscode.window.showInformationMessage(
         `Dummy Git is alive. Current ref: ${refLabel(ref)}`,
       );

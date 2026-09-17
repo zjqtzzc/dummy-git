@@ -1,0 +1,86 @@
+/**
+ * 工作区里一个有改动的文件。`git status --porcelain=v1 -z` 的解析结果。
+ *
+ * 服务 Commit 面板与 M6 的状态机。设计依据见 `.notes/design/M3-parsers.md` §2.3。
+ */
+
+export enum ChangeKind {
+  Tracked = "tracked",
+  Untracked = "untracked",
+  Conflict = "conflict",
+}
+
+/**
+ * 单个位置（暂存区或工作区）上的改动类型。
+ *
+ * **值是 `"modified"` 而不是 `"M"`。** 写成 `Modified = "M"` 就等于把 git 的输出格式
+ * 焊进了我们的类型定义：git 的 porcelain v1 与 v2 状态字符不同，换格式时前者要改
+ * 类型定义和所有用到它的地方，后者只改一张映射表。
+ *
+ * git-graph 正是反面例子（`types.ts:76`）：它的 `Untracked = "U"` 与 git 自己的
+ * `U`（unmerged，即冲突）撞车，加上 `<GitFileStatus>output[i][0]` 的类型断言，
+ * 冲突文件会被静默归类成「未跟踪」。
+ */
+export enum FileStatus {
+  Unchanged = "unchanged",
+  Modified = "modified",
+  Added = "added",
+  Deleted = "deleted",
+  Renamed = "renamed",
+  Copied = "copied",
+  TypeChanged = "typeChanged",
+}
+
+/**
+ * 七种未合并状态。
+ *
+ * 命名按 git 的语义直译，但要注意它们的**真实含义不是字面意思**：
+ * `AddedByUs` 不是「我们新建了个文件」，而是「这个路径只存在于未解决冲突的我方」；
+ * `BothDeleted` 不是「两边都主动删了」，而是「原路径在两边都消失了」。
+ *
+ * 一次改名冲突（两边把同一文件改成不同名字）会同时产出三条记录：
+ * 原路径 `BothDeleted` + 我方新名字 `AddedByUs` + 对方新名字 `AddedByThem`。
+ */
+export enum ConflictKind {
+  BothModified = "bothModified",
+  BothAdded = "bothAdded",
+  BothDeleted = "bothDeleted",
+  AddedByUs = "addedByUs",
+  AddedByThem = "addedByThem",
+  DeletedByUs = "deletedByUs",
+  DeletedByThem = "deletedByThem",
+}
+
+/**
+ * 三种改动，分开是为了让不可能的状态写不出来。
+ *
+ * - **冲突单独一支**：平时 `XY` 两个字符是两个独立维度（X=暂存区、Y=工作区），
+ *   冲突时它们变成「我方/对方」的一对，是不可分割的整体。塞进同一个结构就会出
+ *   vscode 那种事故——`AA` 在 X 和 Y 两个 switch 里各命中一次，同一文件出现两条记录。
+ * - **未跟踪单独一支**：未跟踪文件在 index 里根本没有条目。分开之后，
+ *   「一个未跟踪文件同时有已暂存的修改」这种不可能的状态在类型上就写不出来。
+ *
+ * 注意 `index` 与 `worktree` 两个状态都保留，尽管 IDEA 风格的 Commit 面板
+ * 不显示暂存区概念、一个文件只出现一条。**合并显示是界面的决定，不是数据的决定**——
+ * 数据丢了找不回来，界面合并随时可以改。
+ */
+export type FileChange =
+  | {
+      readonly kind: ChangeKind.Tracked;
+      readonly path: string;
+      /** 仅 `Renamed` / `Copied` 时存在，是改名前的路径。 */
+      readonly oldPath?: string;
+      /** 暂存区相对 HEAD 的改动。 */
+      readonly index: FileStatus;
+      /** 工作区相对暂存区的改动。 */
+      readonly worktree: FileStatus;
+    }
+  | {
+      readonly kind: ChangeKind.Untracked;
+      readonly path: string;
+    }
+  | {
+      readonly kind: ChangeKind.Conflict;
+      readonly path: string;
+      readonly conflict: ConflictKind;
+    };

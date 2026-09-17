@@ -32,12 +32,13 @@ extension ──→ shared ←── webview      # 唯一合法依赖方向
    写进 `globalState` / 配置 / 磁盘 / URI scheme / CSS 类名，算——对面不跟着你重新编译。
    后者一旦出现，必须显式定义一张「内部值 → 外部字符串」的映射表并集中管理，
    不许让 enum 值**顺带**成为外部格式。
-3. **映射表放在消费方**，不放 enum 旁边。`shared/enums.ts` 只有声明与类型守卫，零数据表。
+3. **映射表放在用它的那个模块里**，不放 enum 旁边。enum 的声明处只有声明与类型守卫，零数据表。
    同一 enum 的多个投影（CLI flag / 图标 / 文案 / 排序）各归各的模块。
-   仅当第二个消费方需要**完全相同**的表时才上提，只提到最近共同 owner，**永不提到 `shared/`**。
+   仅当第二个模块需要**完全相同**的表时才上提，只提到最近共同 owner，**永不提到 `shared/`**。
 4. 禁止 enum 计算成员（会使 enum 退化为宽松 string）。
 5. **所有 `switch` 以 `assertNever(x)` 收尾。** tagged union 的安全性完全建立在穷尽性检查上。
-6. 多形态领域概念用 **tagged union**，enum 做 tag。目标是让错误状态无法被表达。
+6. 一个东西有多种形态时用 **tagged union**（带 `kind` 字段区分的联合类型），enum 做 `kind`。
+   目标是让错误状态无法被表达。
 7. 开放标识符（SHA / 路径 / 分支名）就是 `string`，不做 branded type。
 8. 禁 `any`。禁类型断言 `as`，**唯一豁免**：parser 与类型守卫的边界目录。
 
@@ -49,7 +50,7 @@ extension ──→ shared ←── webview      # 唯一合法依赖方向
 1. **运行时校验只在两个边界**：`git stdout → parser`、`postMessage → router`。
    跨边界的类型标注在运行时是谎言（类型被擦除），必须过 validator。
 2. **边界之内完全信任类型**，不写防御性检查。验证在入口做一次。
-3. git 的 wire format（status 字符、`%aN` 字段序）**不得渗入我们自己定义的类型**。
+3. git 输出的原始格式（status 的 `XY` 字符、`%aN` 字段序）**不得渗入我们自己定义的类型**。
    `enum FileStatus { Added = 'A' }` 是禁止的——那等于把 git 输出格式焊进类型定义。
 
 ## D. 开发流程
