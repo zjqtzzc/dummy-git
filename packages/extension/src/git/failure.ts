@@ -24,7 +24,7 @@
  */
 import { GitErrorCode } from "@dummy-git/shared";
 import type { ExecOptions, GitCli } from "./cli.js";
-import type { ExecResult } from "./types.js";
+import type { ExecResult, RawExecResult } from "./types.js";
 
 /**
  * 认得出的失败，各配一条正则。认不出返回 `undefined`——那是常态，不是故障。
@@ -130,8 +130,8 @@ export class GitFailureError extends Error {
  * 界限清楚。vscode 的 `ignoreExitCode` 开关是反例：默认仍是抛、只开个逃生口，
  * 结果调用方写出了三处永不可达的分支（`git.ts:1503/1852/1877`）。
  *
- * 这里也是「`exitCode === 0` 永不产出失败」的**唯一保证点**——
- * `classifyError` 本身不看退出码（见文件头），全靠这一个调用点收口。
+ * 「`exitCode === 0` 永不产出失败」的保证点已收口到 `throwIfFailed()`，
+ * `run()` 与 `runRaw()` 共用。
  */
 export async function run(
   cli: GitCli,
@@ -139,8 +139,37 @@ export async function run(
   options: ExecOptions,
 ): Promise<ExecResult> {
   const result = await cli.exec(args, options);
-  if (result.exitCode !== 0) {
-    throw new GitFailureError(args, result.exitCode, result.stderr, classifyError(result.stderr));
-  }
+  throwIfFailed(args, result.exitCode, result.stderr);
   return result;
+}
+
+/**
+ * `run()` 的字节版：stdout 保持 `Buffer`，不解码。
+ *
+ * **M3 的 parser 全部吃 `Buffer`**（`parseStatus(stdout: Buffer)`），理由见
+ * `.notes/design/M3-parsers.md` §5：在字节层切分才不会拖住大缓冲区、
+ * 也不会切坏多字节字符。所以凡是「跑完要解析」的命令都走这里，不走 `run()`。
+ *
+ * 将来读任意 revision 的文件内容（`git show HEAD:image.png`）也用它。
+ */
+export async function runRaw(
+  cli: GitCli,
+  args: readonly string[],
+  options: ExecOptions,
+): Promise<RawExecResult> {
+  const result = await cli.execRaw(args, options);
+  throwIfFailed(args, result.exitCode, result.stderr);
+  return result;
+}
+
+/**
+ * 「`exitCode === 0` 永不产出失败」的**唯一保证点**。
+ *
+ * `run()` 与 `runRaw()` 都收口到这里，不各写一份——否则改分类逻辑时会漏掉一个。
+ * `classifyError` 本身不看退出码（见文件头），全靠这一处收口。
+ */
+function throwIfFailed(args: readonly string[], exitCode: number, stderr: string): void {
+  if (exitCode !== 0) {
+    throw new GitFailureError(args, exitCode, stderr, classifyError(stderr));
+  }
 }
