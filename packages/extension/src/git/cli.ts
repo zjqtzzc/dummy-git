@@ -41,7 +41,8 @@ const FORCED_ENV = {
   GIT_TERMINAL_PROMPT: "0",
   // 防 less 挂住。git 本来就检测 isatty 自动关分页器，这条是零成本的冗余保险。
   GIT_PAGER: "cat",
-  // 错误消息锁定英文，M4 才能可靠匹配。用 en_US.UTF-8 而非 C：C locale 字符集是 ASCII。
+  // 错误消息锁定英文。⚠️ `failure.ts` 的两条分类正则是英文的，删掉这三行会让分类
+  // **静默失效**——不报错，只是永远返回 undefined。用 en_US.UTF-8 而非 C：C locale 字符集是 ASCII。
   LANGUAGE: "en_US.UTF-8",
   LC_ALL: "en_US.UTF-8",
   LANG: "en_US.UTF-8",

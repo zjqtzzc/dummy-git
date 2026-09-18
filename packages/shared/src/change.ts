@@ -1,5 +1,5 @@
 /**
- * 工作区里一个有改动的文件。`git status --porcelain=v1 -z` 的解析结果。
+ * 工作区里一个有改动的文件。`git status --porcelain=v2 -z -uall` 的解析结果。
  *
  * 服务 Commit 面板与 M6 的状态机。设计依据见 `.notes/design/M3-parsers.md` §2.3。
  */
