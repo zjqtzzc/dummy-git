@@ -70,6 +70,39 @@ describe("split：多字节分隔符", () => {
   });
 });
 
+describe("split：子区间 [from, to) 是硬边界", () => {
+  /**
+   * 审阅期用变异测试抓到的缺口：去掉 `split` 里的右界保护
+   * （`hit + sepLength > to ? to : hit`），93 个测试全绿。
+   *
+   * `buf.indexOf()` 不认识 `to`，会一路搜到缓冲区末尾。
+   * 少了那道保护，**子区间之外的分隔符会被当成本段的终点**，
+   * 于是这一段越过 `to`、吃进后面的内容。
+   *
+   * 现在碰巧不可达——log 的记录分隔符 `\0\0\x01` 以字段分隔符 `\0` 开头，
+   * 所以命中位置总是恰好等于 `to`，有没有保护结果都一样。
+   * 但那是分隔符选得巧，不是设计保证：换一组分隔符、或新增一个按子区间切的调用方，
+   * 立刻就会让相邻记录串数据。
+   */
+  it("分隔符在 to 之后时，段仍然止于 to", () => {
+    const buf = Buffer.from("abcdef\x00xyz", "utf8");
+    // [0,3) 内没有分隔符；最近的 \0 在下标 6，已越过右界。
+    expect(split(buf, 0x00, 0, 3).map((r) => decode(buf, r))).toEqual(["abc"]);
+  });
+
+  it("分隔符恰好落在 to 上时，段止于 to", () => {
+    const buf = Buffer.from("abc\x00xyz", "utf8");
+    expect(split(buf, 0x00, 0, 3).map((r) => decode(buf, r))).toEqual(["abc"]);
+  });
+
+  it("多字节分隔符跨越右界时不算命中", () => {
+    // 记录分隔符 \0\0\x01 从下标 3 开始，但 to=4 把它劈开了。
+    const buf = Buffer.from("abc\x00\x00\x01def", "utf8");
+    const sep = Buffer.from("\x00\x00\x01", "utf8");
+    expect(split(buf, sep, 0, 4).map((r) => decode(buf, r))).toEqual(["abc\x00"]);
+  });
+});
+
 describe("decode：产出独立字符串", () => {
   /**
    * 不能返回 `buf.subarray()`——它与原 Buffer **共享内存**，

@@ -95,7 +95,7 @@ try {
   });
 } catch (err) {
   console.error("fs.watch 递归监听不可用：", err.message);
-  console.error("（Linux 上需要 Node 20+；本机 " + process.version + "）");
+  console.error(`（Linux 上需要 Node 20+；本机 ${process.version}）`);
   process.exit(1);
 }
 
