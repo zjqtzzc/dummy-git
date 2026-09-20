@@ -78,8 +78,52 @@ describe("classifyGitPath：其余 refs", () => {
 
 describe("classifyGitPath：认不出就丢弃，不兜底刷新", () => {
   it("陌生路径", () => {
-    for (const p of ["description", "shallow", "hooks/pre-commit", "info/exclude"]) {
+    // 注意 `shallow` 不在这里——它改的是祖先关系，归 Refs，见下面那组。
+    for (const p of ["description", "hooks/pre-commit", "info/exclude", "COMMIT_EDITMSG.swp"]) {
       expect([p, classifyGitPath(p)]).toEqual([p, []]);
     }
+  });
+});
+
+describe("classifyGitPath：GitLens 考古补上的缺口（M6 第 3a 步）", () => {
+  it("sequencer/** → operation——漏了是功能漏判，不是性能问题", () => {
+    // 多提交的 cherry-pick / revert 用 .git/sequencer/ 记录序列进度。
+    // 不认它，界面上看不出「正在 cherry-pick，还剩 3 个」。
+    for (const p of ["sequencer/todo", "sequencer/opts", "sequencer/head"]) {
+      expect([p, classifyGitPath(p)]).toEqual([
+        p,
+        [GitDomain.Operation, GitDomain.Refs, GitDomain.Worktree],
+      ]);
+    }
+  });
+
+  it("shallow / refs/replace → refs：ref 指向没动，但祖先关系变了", () => {
+    // shallow 是浅克隆的截断点，refs/replace 让 git 遍历时替换某个提交。
+    // 所有分支的指向可以完全没变，而提交图的形状已经不同。
+    expect(classifyGitPath("shallow")).toEqual([GitDomain.Refs]);
+    expect(classifyGitPath("refs/replace/abc123")).toEqual([GitDomain.Refs]);
+  });
+
+  it("fsmonitor--daemon/** 是噪声——.lock 规则挡不住它", () => {
+    for (const p of ["fsmonitor--daemon/ipc", "fsmonitor--daemon/cookies/x"]) {
+      expect([p, classifyGitPath(p)]).toEqual([p, []]);
+    }
+  });
+
+  it("git-rebase-todo 是噪声——用户每存一次盘就是一个事件", () => {
+    // 它是用户在编辑器里改的文件，rebase 的真实进展由 rebase-merge/ 下的
+    // 兄弟文件反映。不挡的话，编辑 todo 的整个过程都在刷界面。
+    expect(classifyGitPath("rebase-merge/git-rebase-todo")).toEqual([]);
+    expect(classifyGitPath("rebase-merge/git-rebase-todo.backup")).toEqual([]);
+  });
+
+  it("但 rebase-merge/ 下的其他文件仍然要认", () => {
+    // 上一条挡的是 todo 本身，不能把整个 rebase-merge/ 一起挡掉——
+    // 那会让 rebase 的进展完全不可见。
+    expect(classifyGitPath("rebase-merge/done")).toEqual([
+      GitDomain.Operation,
+      GitDomain.Refs,
+      GitDomain.Worktree,
+    ]);
   });
 });
