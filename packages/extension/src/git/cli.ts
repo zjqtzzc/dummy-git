@@ -83,6 +83,9 @@ export class GitCli {
 
   /** 所有 spawn 配置的唯一出处（stdio、取消信号后续都加在这里）。 */
   private spawnChild(args: readonly string[], options: ExecOptions): ChildProcess {
+    // POSIX 下独立成一个进程组，为的是取消时能连子孙一起杀（见下面 onAbort 的注释）。
+    // Windows 上 `detached` 不提供同等的组信号语义，这里置 false，保持原行为。
+    const detached = process.platform !== "win32";
     const child = spawn(this.gitPath, args, {
       cwd: options.cwd,
       // 不走 shell：参数以数组传递，没有引号转义问题。
@@ -92,6 +95,7 @@ export class GitCli {
       env: { ...process.env, ...options.env, ...FORCED_ENV },
       // 不给 stdin 管道，git 就无法停下来等输入。
       stdio: [options.input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
+      detached,
     });
 
     if (options.input !== undefined) {
@@ -102,6 +106,23 @@ export class GitCli {
     const { signal } = options;
     if (signal !== undefined) {
       const onAbort = (): void => {
+        // 只杀 git 自己是不够的：它可能起了子进程（pre-commit 钩子、
+        // 将来的 askpass 凭据助手），且那些子进程继承了 stdout/stderr 管道。
+        // 我们监听的是 `close`（见下方注释），而 `close` 要等**所有持有管道的
+        // 进程**都退出才触发——单杀 git 本身，孤儿子进程会继续跑到自然结束，
+        // 取消形同虚设（实测：pre-commit 钩子 sleep 3 秒，单杀 git 时 `close`
+        // 仍然要等满 3 秒；杀整个进程组后降到 ~300ms）。
+        //
+        // 用负 pid 给整个进程组发信号是 POSIX 语义，Windows 没有对应物，
+        // 那边退回单杀 git——已知的不完整取消，记入 `.notes/NFR.md`。
+        if (detached && child.pid !== undefined) {
+          try {
+            process.kill(-child.pid, "SIGTERM");
+            return;
+          } catch {
+            // 进程组已经不存在（比如子进程已经自己退出了），退到单杀兜底。
+          }
+        }
         child.kill();
       };
       signal.addEventListener("abort", onAbort, { once: true });

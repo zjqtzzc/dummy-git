@@ -12,3 +12,6 @@ coverage/
 
 # parser 验证用的临时仓库，跑 scripts/fixture.mjs 生成
 /.fixtures/
+
+# 测试用 fixture 仓库，由 vitest.globalSetup.ts 生成
+/.fixtures-test/

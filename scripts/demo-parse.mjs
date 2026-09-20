@@ -6,9 +6,9 @@
  *   node scripts/demo-parse.mjs log          只跑 log
  *   node scripts/demo-parse.mjs log base     只跑 base 仓库的 log
  *
- * **这不是测试**：没有断言，不会失败，不进 `pnpm check`。
- * 它存在的理由是让「跑一次看输出」这件事的成本从十分钟降到一条命令——
- * 手工验证如果每次都要现敲命令、现对照字节，第二次就没人做了。
+ * **这不是测试**——正确性由 `git/parsers/__tests__/{scan,log,refs,status}.test.ts`
+ * 断言，这个脚本不重复那件事。它存在的理由是测试给不了的东西：
+ * **把原始字节摆在人眼前**，用于调试或理解 parser 到底在做什么。
  *
  * 每个 parser 打三段：
  *   ① 实际执行的 git 命令（可以直接复制到终端重跑）

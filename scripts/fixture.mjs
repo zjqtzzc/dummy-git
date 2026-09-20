@@ -10,6 +10,8 @@
  *   base/      历史形态齐全 + 工作区有未提交改动（给 status 用）
  *   conflict/  停在 merge 冲突中
  *   detached/  HEAD 游离
+ *   tracking/  配了上游（含跟踪本地分支、[gone]）
+ *   signed/    带真实 ssh 签名的提交（给 log.showSignature 用）
  *
  * 为什么是三个而不是一个：五种验证输入分两类。
  *   - 历史形态（根提交 / merge / 中文文件名 / 多行消息）是提交图里的对象，能共存；
@@ -307,6 +309,39 @@ function buildDetached() {
   return repo;
 }
 
+/**
+ * 带**真实签名**的提交。
+ *
+ * 为什么必须真签名：M3 期间第一次测 `log.showSignature` 是无效的——
+ * 只把配置设成 true 然后跑，输出毫无变化，因为**未签名的提交不产生额外输出**。
+ * 「跑了等于没跑」在输出上和「通过」长得一模一样。
+ *
+ * 用 ssh 签名（git ≥ 2.34）而不是 GPG：不需要密钥环、不需要交互、
+ * `ssh-keygen` 到处都有。故意**不配** `gpg.ssh.allowedSignersFile`——
+ * 验证失败反而让 git 多吐两行，正是我们要复现的破坏形态：
+ *
+ *   error: gpg.ssh.allowedSignersFile needs to be configured ...
+ *   No signature
+ *   <hash>...        ← 记录被顶到第三行，hash 字段整个错位
+ */
+function buildSigned() {
+  const repo = initRepo("signed");
+  const key = join(repo, "signing-key");
+  execFileSync("ssh-keygen", ["-q", "-t", "ed25519", "-N", "", "-f", key, "-C", "fixture"], {
+    stdio: "pipe",
+  });
+  run(repo, ["config", "gpg.format", "ssh"]);
+  run(repo, ["config", "user.signingkey", `${key}.pub`]);
+  run(repo, ["config", "commit.gpgsign", "true"]);
+  // 密钥本身不能进历史，否则 status 里会多出两个文件
+  writeFileSync(join(repo, ".gitignore"), "signing-key\nsigning-key.pub\n");
+  write(repo, "a.txt", "one\n");
+  commit(repo, "signed commit\n");
+  write(repo, "b.txt", "two\n");
+  commit(repo, "second signed\n");
+  return repo;
+}
+
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
 
@@ -314,9 +349,10 @@ const base = buildBase();
 const conflict = buildConflict();
 const detached = buildDetached();
 const tracking = buildTracking();
+const signed = buildSigned();
 
 console.log(`fixture 仓库已生成于 ${outDir}\n`);
-for (const repo of [base, conflict, detached, tracking]) {
+for (const repo of [base, conflict, detached, tracking, signed]) {
   console.log(`  ${repo}`);
 }
 

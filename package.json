@@ -9,10 +9,10 @@
     "typecheck": "pnpm -r --workspace-concurrency=1 run typecheck",
     "lint": "biome check . && node scripts/check-assertions.mjs",
     "lint:fix": "biome check --write .",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "build": "pnpm -r run build",
     "watch": "pnpm -r --parallel run watch",
-    "check": "pnpm run typecheck && pnpm run lint && pnpm run build"
+    "check": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.15",

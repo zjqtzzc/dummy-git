@@ -5,8 +5,9 @@
  *   node scripts/demo-errors.mjs              跑全部
  *   node scripts/demo-errors.mjs lock         只跑名字含 lock 的
  *
- * **这不是测试**：没有断言，不会失败，不进 `pnpm check`。
- * 它存在的理由和 `demo-parse.mjs` 一样——让「跑一次看输出」的成本降到一条命令。
+ * **这不是测试**——正确性由 `git/__tests__/failure.test.ts` 断言，
+ * 这个脚本不重复那件事。它存在的理由是测试给不了的东西：
+ * 把原始 stderr **带行号**摆在人眼前，用于调试或理解分类依据。
  *
  * 每条打三段：
  *   ① 实际执行的 git 命令（可以直接复制到终端重跑）
