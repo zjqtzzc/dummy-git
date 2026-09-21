@@ -5,10 +5,6 @@
 
 !dist/**
 !package.json
-!README.md
-!CHANGELOG.md
-!LICENSE*
-!resources/**
 
 # ── 两条容易踩的规则 ───────────────────────────────────────────────
 # 1. vsce 的否定模式优先于所有排除模式，与 .gitignore 的「后者覆盖」不同。

@@ -10,6 +10,9 @@ coverage/
 # 本地笔记，不进版本库
 /.notes/
 
+# 项目纪律，与 .notes/ 同为过程产物
+/CLAUDE.md
+
 # parser 验证用的临时仓库，跑 scripts/fixture.mjs 生成
 /.fixtures/
 

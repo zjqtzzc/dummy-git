@@ -1,7 +1,7 @@
 /**
  * `git log` 的命令与解析。**两个查询**，对应取数模型 B（见 `.notes/design/M3-parsers.md` §4.2）：
  *
- *   骨架  git log --all --date-order --format=<3 字段>   跑遍整个历史，画图用
+ *   骨架  git log HEAD --branches --remotes --tags --date-order --format=<3 字段>
  *   详情  git log --no-walk --stdin --format=<9 字段>    按 hash 取，显示用
  *
  * 命令行与解析代码**必须放在同一个文件里**：`--format` 声明有几个字段、
@@ -130,14 +130,40 @@ const SK_FIELD_COUNT = 3;
 /**
  * 全量骨架：跑遍整个历史，只取画图必需的三个字段。
  *
- * `--all`：所有引用，不只当前分支——图要显示全部分支。
+ * ## 为什么不是 `--all`（2026-09-21 修，这是个已发布的缺陷）
+ *
+ * `--all` 会把 **stash 及其内部实现提交**一并列进来。实测（两条提交 + 一次 stash）：
+ *
+ * ```
+ * $ git log --all --oneline
+ * a311794 正常提交2
+ * af844da WIP on master: a311794 正常提交2      ← stash 提交
+ * bc1cc64 正常提交1
+ * a3baced index on master: a311794 正常提交2    ← stash 的**内部 index 提交**
+ * ```
+ *
+ * 用户只要 stash 过一次，提交列表就凭空多两条，其中 `index on master`
+ * 是 git stash 的内部实现细节，完全不该出现在界面上。
+ *
+ * IntelliJ 用的是显式三件套（`GitLogUtil.java:75`），注释写得很直白：
+ * *"equivalent to `--all`, but doesn't show the stuff from index or stash"*。
+ *
  * `--date-order`：按提交时间排，与 `CommitSkeleton.at` 一致。
  *
  * 实测代价（vscode 仓库 188,163 条提交）：1.6 秒 / 18 MB 输出。
  * 带上作者与消息的话是 46 MB，而画图用不到那 28 MB。
  */
 export function skeletonArgs(): string[] {
-  return [...LOG_PREFIX, `--format=${SKELETON_FORMAT}`, "--all", "--date-order"];
+  // 顺序对齐 IntelliJ 的 LOG_ALL：HEAD / 分支 / 远程 / 标签。
+  return [
+    ...LOG_PREFIX,
+    `--format=${SKELETON_FORMAT}`,
+    "HEAD",
+    "--branches",
+    "--remotes",
+    "--tags",
+    "--date-order",
+  ];
 }
 
 export function parseSkeleton(stdout: Buffer): CommitSkeleton[] {

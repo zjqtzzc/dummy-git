@@ -112,3 +112,57 @@ describe("parseLog：log.showSignature=true 不崩", () => {
     }
   });
 });
+
+describe("skeletonArgs 不用 --all", () => {
+  /**
+   * `--all` 会把 stash 及其内部 `index on ...` 提交列进来（实测），
+   * 用户 stash 过一次，界面就凭空多两条。IntelliJ 为此用显式三件套
+   * （`GitLogUtil.java:75`，注释：equivalent to --all, but doesn't show
+   * the stuff from index or stash）。
+   */
+  it("参数里不出现 --all", () => {
+    expect(skeletonArgs()).not.toContain("--all");
+  });
+
+  it("用 HEAD / --branches / --remotes / --tags 四件套代替", () => {
+    const args = skeletonArgs();
+    expect(args).toContain("HEAD");
+    expect(args).toContain("--branches");
+    expect(args).toContain("--remotes");
+    expect(args).toContain("--tags");
+  });
+
+  it("stash 过之后，骨架里不出现 stash 提交，也不出现 index on ...", async () => {
+    const { execFileSync } = await import("node:child_process");
+    const { mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const repo = mkdtempSync(join(tmpdir(), "stash-"));
+    const git = (...a: string[]): void => {
+      execFileSync("git", a, {
+        cwd: repo,
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "a",
+          GIT_AUTHOR_EMAIL: "a@b.c",
+          GIT_COMMITTER_NAME: "a",
+          GIT_COMMITTER_EMAIL: "a@b.c",
+        },
+      });
+    };
+    try {
+      git("init", "-q", ".");
+      writeFileSync(join(repo, "f"), "1");
+      git("add", "-A");
+      git("commit", "-qm", "c1");
+      writeFileSync(join(repo, "f"), "wip");
+      git("stash", "-q");
+
+      // `--all` 下这里会是 3 条：c1 + "WIP on master" + "index on master"。
+      const raw = await cli.execRaw(skeletonArgs(), { cwd: repo });
+      expect(parseSkeleton(raw.stdout)).toHaveLength(1);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+});
