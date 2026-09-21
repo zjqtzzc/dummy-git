@@ -1,10 +1,9 @@
-import { GitErrorCode } from "@dummy-git/shared";
+import { GitDomain, GitErrorCode } from "@dummy-git/shared";
 import type { GitCli } from "../git/cli.js";
 import type { GitCommand } from "../git/commands/command.js";
 import { GitFailureError } from "../git/failure.js";
 import { classifyGitPath } from "./classify.js";
 import { DEBOUNCE_MS, DebouncedSet, MAX_WAIT_MS } from "./debounce.js";
-import { GitDomain } from "./domains.js";
 import { runCommand } from "./executor.js";
 import { IgnoreCache } from "./ignoreCache.js";
 import { CommandQueue } from "./operation.js";

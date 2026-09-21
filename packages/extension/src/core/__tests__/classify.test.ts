@@ -1,6 +1,6 @@
+import { GitDomain } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
 import { classifyGitPath } from "../classify.js";
-import { GitDomain } from "../domains.js";
 
 describe("classifyGitPath：M6 第 1 步实测抓到的真实路径", () => {
   // 这份路径清单来自 scripts/demo-watch-timing.mjs 对一次真实 `commit` 的抓取

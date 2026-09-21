@@ -105,7 +105,18 @@ function parseTimestamp(record: LogRecord, raw: string, label: string): number {
  * hash 字段整个错位）。vscode 与旧仓库都没防这一条（各搜 0 处）——
  * 这种 bug 只在特定用户机器上出现，本地永远复现不了。
  */
-const PREFIX = ["-c", "log.showSignature=false", "log"];
+/**
+ * 所有 `git log` 查询共用的前缀。
+ *
+ * `-c log.showSignature=false`：用户在 `~/.gitconfig` 里设了
+ * `log.showSignature = true`（用 GPG/SSH 签名的人常设），git 会在**每条**提交前
+ * 插入一行签名验证结果，把 `--format` 的输出整个顶歪。实测（空 format 也照样污染）：
+ * `Good "git" signature for a@b.c with ED25519 key SHA256:…`
+ * 这种 bug 只在特定用户机器上出现，本地永远复现不了。两个参照实现都没有这条防护。
+ *
+ * 由 `nameStatus.ts` 一并引用——它也是一条 `git log` 查询，同样会被污染。
+ */
+export const LOG_PREFIX = ["-c", "log.showSignature=false", "log"];
 
 // ────────────────────────────── 骨架 ──────────────────────────────
 
@@ -126,7 +137,7 @@ const SK_FIELD_COUNT = 3;
  * 带上作者与消息的话是 46 MB，而画图用不到那 28 MB。
  */
 export function skeletonArgs(): string[] {
-  return [...PREFIX, `--format=${SKELETON_FORMAT}`, "--all", "--date-order"];
+  return [...LOG_PREFIX, `--format=${SKELETON_FORMAT}`, "--all", "--date-order"];
 }
 
 export function parseSkeleton(stdout: Buffer): CommitSkeleton[] {
@@ -175,7 +186,7 @@ export interface StdinCommand {
  */
 export function detailsArgs(hashes: readonly string[]): StdinCommand {
   return {
-    args: [...PREFIX, `--format=${LOG_FORMAT}`, "--no-walk", "--stdin"],
+    args: [...LOG_PREFIX, `--format=${LOG_FORMAT}`, "--no-walk", "--stdin"],
     input: hashes.length === 0 ? "" : `${hashes.join("\n")}\n`,
   };
 }

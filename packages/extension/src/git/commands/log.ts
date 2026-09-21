@@ -1,6 +1,7 @@
-import type { Commit, CommitSkeleton } from "@dummy-git/shared";
+import type { Commit, CommitFileChange, CommitSkeleton } from "@dummy-git/shared";
 import { runRaw } from "../failure.js";
 import { detailsArgs, parseLog, parseSkeleton, skeletonArgs } from "../parsers/log.js";
+import { commitFilesArgs, parseNameStatus } from "../parsers/nameStatus.js";
 import type { GitCommand } from "./command.js";
 import { LockPolicy } from "./lock.js";
 
@@ -54,5 +55,25 @@ export const getCommitDetails: GitCommand<
     const { args, input } = detailsArgs(hashes);
     const result = await runRaw(cli, args, { cwd: repository, input });
     return parseLog(result.stdout);
+  },
+};
+
+/**
+ * 一条提交改了哪些文件。界面上「点一条提交」那一下。
+ *
+ * 一次只取一条：用户一次只能点开一个。批量取没有消费者（`CLAUDE.md` D.5.1(a)），
+ * 真需要时加一条命令，不要现在把参数改成数组。
+ *
+ * 返回 `CommitFileChange` 而不是 `FileChange`：后者带 `index`/`worktree`
+ * 两个维度（暂存区、工作区），而一条**已经存在的**提交没有这两个维度，
+ * 复用就得给那两个字段编造值（见 `shared/change.ts`）。
+ */
+export const getCommitFiles: GitCommand<[repository: string, hash: string], CommitFileChange[]> = {
+  // 只读一条提交的 diff，不碰 index、不碰工作区。
+  lock: LockPolicy.None,
+
+  execute: async (cli, repository, hash) => {
+    const result = await runRaw(cli, commitFilesArgs(hash), { cwd: repository });
+    return parseNameStatus(result.stdout, hash);
   },
 };

@@ -84,3 +84,29 @@ export type FileChange =
       readonly path: string;
       readonly conflict: ConflictKind;
     };
+
+/**
+ * **一条提交里**改动的一个文件。`git log --name-status` 的解析结果。
+ *
+ * ## 为什么不复用上面的 `FileChange`
+ *
+ * `FileChange` 是为 `git status` 建的，它的核心是 `index` / `worktree` **两个维度**——
+ * 「暂存区相对 HEAD」与「工作区相对暂存区」。
+ *
+ * 一条已经存在的提交没有这两个维度：文件相对父提交只有**一个**状态。
+ * 复用 `FileChange` 就得给那两个字段编造值（比如都填 `Modified`，或一个填
+ * `Unchanged`），而编造出来的值会被下游当真。
+ *
+ * 这正是旧仓库那类问题的来源——**为了省一个类型，把两件不同的事塞进同一个形状**。
+ * 多定义一个接口的成本是十行；混用的成本是每个消费者都要知道「这里的 worktree
+ * 字段是假的」，而没有任何地方写着这句话。
+ *
+ * 复用的是 `FileStatus`（枚举本身），因为「改了/加了/删了/改名了」确实是同一组概念。
+ */
+export interface CommitFileChange {
+  readonly path: string;
+  /** 仅 `Renamed` / `Copied` 时存在，是改名前的路径。 */
+  readonly oldPath?: string;
+  /** 相对父提交的改动。merge 提交默认不输出文件列表，见 name-status 解析器。 */
+  readonly status: FileStatus;
+}

@@ -1,4 +1,4 @@
-import { GitDomain } from "./domains.js";
+import { GitDomain } from "@dummy-git/shared";
 
 /**
  * 把 `.git` 目录内的一次文件变化，翻译成「哪几类数据过期了」。

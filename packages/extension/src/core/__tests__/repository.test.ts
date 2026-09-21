@@ -1,5 +1,6 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { GitDomain } from "@dummy-git/shared";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   cleanupTempRepos,
@@ -12,7 +13,6 @@ import { commit } from "../../git/commands/commit.js";
 import { getRepositoryRoot } from "../../git/commands/root.js";
 import { getStatus } from "../../git/commands/status.js";
 import { GitFailureError } from "../../git/failure.js";
-import { GitDomain } from "../domains.js";
 import { Repository, RepositoryState } from "../repository.js";
 
 afterEach(cleanupTempRepos);
@@ -89,10 +89,10 @@ describe("Repository：NotAGitRepository → Disposed（兑现 M4 的唯一消�
     const repo = new Repository(path, cli);
     // 分支不存在：exit 1，classifyError 认不出，code 缺席
     await expect(
-      repo.run(
-        { lock: getStatus.lock, execute: (c) => c.exec(["checkout", "nosuch"], { cwd: path }) },
-        // biome-ignore lint/suspicious/noExplicitAny: 测试里临时造一条命令
-      ),
+      repo.run({
+        lock: getStatus.lock,
+        execute: (c) => c.exec(["checkout", "nosuch"], { cwd: path }),
+      }),
     ).resolves.toBeDefined();
     expect(repo.state).toBe(RepositoryState.Active);
   });

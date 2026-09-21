@@ -147,6 +147,20 @@ function buildHistory(repo) {
     GIT_COMMITTER_DATE: tagDate,
   });
   run(repo, ["tag", "lightweight"]);
+
+  // ⑦ 改名，给 parseNameStatus 用。改名是它唯一的新逻辑：
+  //    `R100\0旧路径\0新路径`，比别的状态多带一个路径。
+  //
+  //    放在 tag 之后，v1.0 / lightweight 仍指向 merge 提交，refs 的测试不受影响。
+  //    **不动 `你好世界.txt`**——buildBase 后面要拿它造「未提交的改名」状态。
+  write(repo, "中文原名.txt", "zh\n");
+  run(repo, ["mv", "m.txt", "renamed.txt"]);
+  commit(repo, "rename m.txt and add 中文原名\n");
+
+  // 两侧都是非 ASCII，且新名字里有空格与中点——证明路径是原始 UTF-8 字节、
+  // 不转义、也不能按空格切。
+  run(repo, ["mv", "中文原名.txt", "中文 新名·改.txt"]);
+  commit(repo, "rename 中文文件名\n");
 }
 
 /** base：在共享历史之上留下各种未提交状态，给 parseStatus 用。 */
