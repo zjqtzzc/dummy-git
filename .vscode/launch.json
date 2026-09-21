@@ -5,7 +5,14 @@
       "name": "Run Extension",
       "type": "extensionHost",
       "request": "launch",
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}/packages/extension"],
+      // 第二个参数让扩展宿主**直接打开本项目**——它自己就是个 git 仓库，
+      // 历史、merge、改名、中文文件名都有，正好当测试对象。
+      // 不给的话宿主窗口默认不开文件夹，扩展会报「没有打开文件夹」。
+      // 想换别的仓库改这一行即可。
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/packages/extension",
+        "${workspaceFolder}"
+      ],
       "outFiles": ["${workspaceFolder}/packages/extension/dist/**/*.js"],
       "preLaunchTask": "${defaultBuildTask}"
     }

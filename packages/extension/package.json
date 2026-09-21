@@ -13,11 +13,14 @@
     "SCM Providers"
   ],
   "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
     "commands": [
       {
-        "command": "dummyGit.hello",
-        "title": "Hello",
+        "command": "dummyGit.showLog",
+        "title": "Show Log",
         "category": "Dummy Git"
       }
     ]

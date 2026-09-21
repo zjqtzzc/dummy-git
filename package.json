@@ -10,6 +10,7 @@
     "lint": "biome check . && node scripts/check-assertions.mjs",
     "lint:fix": "biome check --write .",
     "test": "vitest run",
+    "demo:protocol": "vite-node scripts/demo-protocol.ts",
     "build": "pnpm -r run build",
     "watch": "pnpm -r --parallel run watch",
     "check": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build"
@@ -19,6 +20,7 @@
     "@types/node": "^22.10.0",
     "esbuild": "^0.27.2",
     "typescript": "^5.9.3",
+    "vite-node": "3.2.4",
     "vitest": "^3.2.4"
   }
 }

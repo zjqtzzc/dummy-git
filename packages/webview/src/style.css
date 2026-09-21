@@ -1,0 +1,78 @@
+/* 全部用 VSCode 的主题变量，不写死颜色——否则换个主题就看不见了。 */
+body {
+  margin: 0;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+}
+.layout {
+  display: flex;
+  height: 100vh;
+}
+.panel {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 0 12px 12px;
+  border-right: 1px solid var(--vscode-panel-border);
+}
+.panel:last-child {
+  border-right: none;
+}
+h2 {
+  font-size: 1em;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  background: var(--vscode-editor-background);
+  margin: 0;
+  padding: 12px 0 8px;
+}
+.dim {
+  color: var(--vscode-descriptionForeground);
+  font-weight: normal;
+}
+.error {
+  color: var(--vscode-errorForeground);
+  white-space: pre-wrap;
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.row {
+  display: grid;
+  grid-template-columns: 7em 1fr auto auto;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  align-items: baseline;
+  padding: 3px 6px;
+  border: none;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+li.row {
+  grid-template-columns: 2em 1fr;
+  cursor: default;
+}
+.row:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+.row.selected {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+.subject {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+code {
+  font-family: var(--vscode-editor-font-family);
+}

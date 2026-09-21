@@ -43,7 +43,8 @@ import type { GitErrorCode } from "./error.js";
 /**
  * 每条命令声明「要什么参数」「返回什么」。
  *
- * **每条都带 `repo`。** MVP 只支持一个仓库，这个值永远相同——
+ * **除 `getRepositories` 外每条都带 `repo`**（它就是用来问「有哪些 repo」的，
+ * 带一个自己要去查的东西没有意义）。MVP 只支持一个仓库，这个值永远相同——
  * 但**现在加是一个字段，将来加是重写契约**：协议的封闭性意味着改它会让编译全线报错
  * （`PLAN.md`「M7 追加两条」）。
  *
@@ -52,6 +53,22 @@ import type { GitErrorCode } from "./error.js";
  * （188,163 条）上是 1,937 ms vs 11 ms（`NFR.md` §5.3）。
  */
 export interface Commands {
+  /**
+   * 有哪些仓库。**唯一不带 `repo` 的命令**，因为它就是用来回答「有哪些 repo」的。
+   *
+   * webview 启动时先问这一句，再拿着答案去请求别的。
+   *
+   * 否决过「把仓库路径写进 HTML 的 `data-repo`」：那样等于把「有哪些仓库」这个答案
+   * **烤进页面**，而且是由扩展替用户选好的那一个。多仓库时面板不该由扩展替用户挑，
+   * 该是 webview 列出来让人选——那时改的只有这里的返回值从一条变多条，
+   * 面板与协议都不用动。
+   *
+   * 第一版永远只返回一条。
+   */
+  getRepositories: {
+    params: Record<string, never>;
+    result: readonly string[];
+  };
   /** 全量骨架：每条只有 hash / parents / at，用来排图和定位。 */
   getSkeleton: {
     params: { repo: string };

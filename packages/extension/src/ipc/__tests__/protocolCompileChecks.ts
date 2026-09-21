@@ -39,9 +39,11 @@ import { defineHandlers } from "../router.js";
 const skeletonStub = async (): Promise<CommitSkeleton[]> => [];
 const detailsStub = async (): Promise<Commit[]> => [];
 const filesStub = async (): Promise<CommitFileChange[]> => [];
+const reposStub = async (): Promise<readonly string[]> => [];
 
 /** 基线：三条齐全、类型正确 —— 必须编译通过，否则下面两条的对照失去意义。 */
 export const _baseline = defineHandlers({
+  getRepositories: reposStub,
   getSkeleton: skeletonStub,
   getCommitDetails: detailsStub,
   getCommitFiles: filesStub,
@@ -74,6 +76,7 @@ export const _missing = defineHandlers(
  * （handler 由各个 feature 提供，最后汇总）。所以这里必须传变量。
  */
 const extraHandlers = {
+  getRepositories: reposStub,
   getSkeleton: skeletonStub,
   getCommitDetails: detailsStub,
   getCommitFiles: filesStub,

@@ -123,6 +123,25 @@ describe("Repository：域通知", () => {
     expect(seen).toEqual([]);
   });
 
+  it("退订之后那个监听器不再收到，别人照收", () => {
+    // 订阅者（面板的 Router）生命周期比仓库短：面板关了要退订，
+    // 否则监听器只增不减，关掉的面板还在收广播。
+    const repo = new Repository("/r", cli);
+    const gone: ReadonlySet<GitDomain>[] = [];
+    const stays: ReadonlySet<GitDomain>[] = [];
+
+    const unsubscribe = repo.onDidChange((d) => void gone.push(d));
+    repo.onDidChange((d) => void stays.push(d));
+
+    unsubscribe();
+    repo.notifyGitPath("HEAD");
+    repo.flushPending();
+
+    expect(gone).toHaveLength(0);
+    expect(stays).toHaveLength(1);
+    repo.dispose();
+  });
+
   it("dispose 之后不再发通知", () => {
     const repo = new Repository(makeTempRepo("repo-dispose"), cli);
     const seen = collect(repo);

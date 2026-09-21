@@ -102,14 +102,22 @@ export class Repository {
    * 在 vscode 仓库上是 1.9 秒、360 MB（`NFR.md` §5.3），而此刻可能根本
    * 没人在看那个面板。让消费者自己决定要不要拉，是唯一不浪费的做法。
    *
-   * **不返回退订函数。** 曾返回过一个 `Unsubscribe`，但没有任何调用点接住它，
-   * 也没有任何测试覆盖它——按 `CLAUDE.md` D.5.1(b)，把返回值改成 `void`
-   * 不会让任何测试失败，所以它不该存在。
-   * `dispose()` 负责整体销毁；单个监听器退订等 M7 的 router 真正需要时再加，
-   * 那时才知道它该长什么样（一个 router 持有多个订阅，形态与现在的猜测未必一致）。
+   * 返回退订函数。
+   *
+   * M6 收尾时删过它一次（没有任何调用点接住、没有任何测试覆盖），
+   * 当时记下的条件是「等 M7 的 router 真正需要时再加」。条件在 M7-8 到期：
+   * **每开一个面板就有一个 `Router` 订阅这里，面板关了必须退订**，
+   * 否则监听器只增不减，已经关掉的面板还在收广播。
+   *
+   * 当时也猜过它「形态与现在的猜测未必一致」——确实不一致：
+   * 真正的需求不是「某个监听器想取消」，而是**订阅者的生命周期比仓库短**。
+   * `Repository` 跟着 workspace 走，面板来来去去。
    */
-  onDidChange(listener: (domains: ReadonlySet<GitDomain>) => void): void {
+  onDidChange(listener: (domains: ReadonlySet<GitDomain>) => void): () => void {
     this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 
   /**
