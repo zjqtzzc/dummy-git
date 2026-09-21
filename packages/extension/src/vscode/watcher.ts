@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import type { Repository } from "../core/repository.js";
 import { DOT_GIT_GLOB } from "../core/watchPatterns.js";
+import { relativeTo } from "./relativePath.js";
 
 /**
  * 文件变化 → `Repository`。闭环的最后一段。
@@ -35,20 +36,13 @@ export function watchRepository(repository: Repository): vscode.Disposable {
   );
   const worktree = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, "**"));
 
-  const relativeTo = (base: vscode.Uri, uri: vscode.Uri): string | undefined => {
-    const prefix = `${base.fsPath}/`;
-    if (!uri.fsPath.startsWith(prefix)) return undefined;
-    // 统一成 `/` 分隔：M6 的分类表按 `/` 写，Windows 上 fsPath 是 `\`。
-    return uri.fsPath.slice(prefix.length).replaceAll("\\", "/");
-  };
-
   const dotGitPath = vscode.Uri.joinPath(root, ".git");
   const feedGit = (uri: vscode.Uri): void => {
-    const rel = relativeTo(dotGitPath, uri);
+    const rel = relativeTo(dotGitPath.fsPath, uri.fsPath);
     if (rel !== undefined) repository.notifyGitPath(rel);
   };
   const feedWorktree = (uri: vscode.Uri): void => {
-    const rel = relativeTo(root, uri);
+    const rel = relativeTo(root.fsPath, uri.fsPath);
     // `.git` 下的事情由上面那个 watcher 管，别喂两遍。
     if (rel !== undefined && !rel.startsWith(".git/")) repository.notifyWorkspacePath(rel);
   };
