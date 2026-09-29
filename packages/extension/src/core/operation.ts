@@ -1,5 +1,5 @@
 import { assertNever } from "@dummy-git/shared";
-import { LockPolicy } from "../git/commands/lock.js";
+import { LockPolicy } from "../git/commands/index.js";
 
 /**
  * 命令调度：**写命令互斥排队，读命令直接跑。**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LockPolicy } from "../../git/commands/lock.js";
+import { LockPolicy } from "../../git/commands/index.js";
 import { CommandQueue } from "../operation.js";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

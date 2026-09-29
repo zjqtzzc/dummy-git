@@ -1,5 +1,5 @@
 import type { GitCli } from "../git/cli.js";
-import { checkIgnore } from "../git/commands/checkIgnore.js";
+import { checkIgnore } from "../git/commands/index.js";
 
 /**
  * 记住「工作区的哪些路径是被 git 忽略的」，让日志/构建产物的写入不再刷界面。

@@ -1,7 +1,7 @@
 import { GitErrorCode } from "@dummy-git/shared";
 import { Repository } from "../core/repository.js";
 import type { GitCli } from "../git/cli.js";
-import { getRepositoryRoot } from "../git/commands/root.js";
+import { getRepositoryLocation } from "../git/commands/index.js";
 import { GitFailureError } from "../git/failure.js";
 
 /**
@@ -16,7 +16,7 @@ import { GitFailureError } from "../git/failure.js";
  *
  * 队列由 `Repository` 私有持有（M6），而此刻 `Repository` **还不存在**——
  * 要先知道根目录才能造它。这是唯一一处合理的绕过，且是安全的：
- * `getRepositoryRoot` 是 `LockPolicy.None`，本来就不进队列
+ * `getRepositoryLocation` 是 `LockPolicy.None`，本来就不进队列
  * （`CommandQueue.run` 对 `None` 直接 `return action()`）。
  *
  * 此后一切命令都必须走 `repo.run()`。
@@ -32,8 +32,8 @@ import { GitFailureError } from "../git/failure.js";
 export async function openRepository(cli: GitCli, directory: string): Promise<Repository> {
   // 传进来的可能是仓库里的任意子目录，`--show-toplevel` 会往上找到根。
   // 不自己找 `.git`：worktree 与 submodule 的 `.git` 是**文件**不是目录，
-  // 且可能在更上层。这个判断交给 git（见 `commands/root.ts`）。
-  const root = await getRepositoryRoot.execute(cli, directory);
+  // 且可能在更上层。这个判断交给 git（见 `commands/location.ts`）。
+  const { root } = await getRepositoryLocation.execute(cli, directory);
   return new Repository(root, cli);
 }
 

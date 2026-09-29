@@ -61,6 +61,31 @@
       }
     },
     {
+      "includes": [
+        "packages/extension/src/core/**",
+        "packages/extension/src/ipc/**",
+        "packages/extension/src/vscode/**",
+        "packages/extension/src/extension.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/git/commands/*", "!**/git/commands/index.js"],
+                    "message": "git 命令只从 git/commands/index.js 引入：那里是全部 git 命令与最低版本的唯一清单。"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": ["packages/extension/src/features/**"],
       "linter": {
         "rules": {

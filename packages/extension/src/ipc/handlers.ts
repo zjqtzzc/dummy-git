@@ -1,5 +1,5 @@
 import type { Repository } from "../core/repository.js";
-import { getCommitDetails, getCommitFiles, getSkeleton } from "../git/commands/log.js";
+import { getCommitDetails, getCommitFiles, getSkeleton } from "../git/commands/index.js";
 import { defineHandlers, type HandlerMap } from "./router.js";
 
 /**

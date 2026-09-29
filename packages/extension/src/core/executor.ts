@@ -1,5 +1,5 @@
 import type { GitCli } from "../git/cli.js";
-import type { GitCommand } from "../git/commands/command.js";
+import type { GitCommand } from "../git/commands/index.js";
 import type { CommandQueue } from "./operation.js";
 
 /**

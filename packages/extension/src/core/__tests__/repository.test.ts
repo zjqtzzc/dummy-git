@@ -9,9 +9,7 @@ import {
   installSlowCommitHook,
   makeTempRepo,
 } from "../../__tests__/support.js";
-import { commit } from "../../git/commands/commit.js";
-import { getRepositoryRoot } from "../../git/commands/root.js";
-import { getStatus } from "../../git/commands/status.js";
+import { commit, getRepositoryLocation, getStatus } from "../../git/commands/index.js";
 import { GitFailureError } from "../../git/failure.js";
 import { Repository, RepositoryState } from "../repository.js";
 
@@ -70,7 +68,7 @@ describe("Repository：NotAGitRepository → Disposed（兑现 M4 的唯一消�
     // 把 .git 删掉：此后任何命令都会得到 NotAGitRepository
     rmSync(join(path, ".git"), { recursive: true, force: true });
 
-    await expect(repo.run(getRepositoryRoot, path)).rejects.toBeInstanceOf(GitFailureError);
+    await expect(repo.run(getRepositoryLocation, path)).rejects.toBeInstanceOf(GitFailureError);
     expect(repo.state).toBe(RepositoryState.Disposed);
   });
 
@@ -78,10 +76,10 @@ describe("Repository：NotAGitRepository → Disposed（兑现 M4 的唯一消�
     const path = makeTempRepo("repo-disposed");
     const repo = new Repository(path, cli);
     rmSync(join(path, ".git"), { recursive: true, force: true });
-    await expect(repo.run(getRepositoryRoot, path)).rejects.toThrow();
+    await expect(repo.run(getRepositoryLocation, path)).rejects.toThrow();
 
     // 第二次：错误消息来自我们自己，不是 git
-    await expect(repo.run(getRepositoryRoot, path)).rejects.toThrow(/仓库已失效/);
+    await expect(repo.run(getRepositoryLocation, path)).rejects.toThrow(/仓库已失效/);
   });
 
   it("认不出的失败不会误伤——仓库还在就不该 Disposed", async () => {

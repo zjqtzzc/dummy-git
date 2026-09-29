@@ -1,6 +1,6 @@
 import { GitDomain, GitErrorCode } from "@dummy-git/shared";
 import type { GitCli } from "../git/cli.js";
-import type { GitCommand } from "../git/commands/command.js";
+import type { GitCommand } from "../git/commands/index.js";
 import { GitFailureError } from "../git/failure.js";
 import { classifyGitPath } from "./classify.js";
 import { DEBOUNCE_MS, DebouncedSet, MAX_WAIT_MS } from "./debounce.js";
@@ -57,7 +57,7 @@ export class Repository {
   private readonly pending: DebouncedSet<GitDomain>;
 
   constructor(
-    /** 仓库根目录，由 `getRepositoryRoot` 命令产出。同时是这个仓库的标识。 */
+    /** 仓库根目录，由 `getRepositoryLocation` 命令产出。同时是这个仓库的标识。 */
     readonly root: string,
     private readonly cli: GitCli,
   ) {
