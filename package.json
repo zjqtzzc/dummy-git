@@ -9,7 +9,7 @@
     "typecheck": "pnpm -r --workspace-concurrency=1 run typecheck",
     "lint": "biome check . && node scripts/check-assertions.mjs",
     "lint:fix": "biome check --write .",
-    "test": "vitest run",
+    "test": "node scripts/test.mjs",
     "demo:protocol": "vite-node scripts/demo-protocol.ts",
     "debug:setup": "node scripts/debug-setup.mjs",
     "build": "pnpm -r run build",

@@ -18,3 +18,6 @@ coverage/
 
 # 测试用 fixture 仓库，由 vitest.globalSetup.ts 生成
 /.fixtures-test/
+
+# 最近一次测试的完整输出，由 scripts/test.mjs 写入
+/.test-results/
