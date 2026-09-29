@@ -1,5 +1,11 @@
 import type { Repository } from "../core/repository.js";
-import { getCommitDetails, getCommitFiles, getSkeleton } from "../git/commands/index.js";
+import {
+  getCommitDetails,
+  getCommitFiles,
+  getHead,
+  getRefs,
+  getSkeleton,
+} from "../git/commands/index.js";
 import { defineHandlers, type HandlerMap } from "./router.js";
 
 /**
@@ -34,6 +40,14 @@ export function createHandlers(repository: Repository): HandlerMap {
     getSkeleton: () => repository.run(getSkeleton, repository.location.root),
     getCommitDetails: ({ hashes }) =>
       repository.run(getCommitDetails, repository.location.root, hashes),
+    getRefs: async () => {
+      const root = repository.location.root;
+      const [head, refs] = await Promise.all([
+        repository.run(getHead, root),
+        repository.run(getRefs, root),
+      ]);
+      return [head, ...refs];
+    },
     getCommitFiles: ({ hash }) => repository.run(getCommitFiles, repository.location.root, hash),
   });
 }

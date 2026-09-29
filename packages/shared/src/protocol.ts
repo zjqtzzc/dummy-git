@@ -2,6 +2,7 @@ import type { CommitFileChange } from "./change.js";
 import type { Commit, CommitSkeleton } from "./commit.js";
 import type { GitDomain } from "./domain.js";
 import type { GitErrorCode } from "./error.js";
+import type { Ref } from "./ref.js";
 
 /**
  * extension ↔ webview 的全部对话内容。**这张表是唯一来源。**
@@ -78,6 +79,14 @@ export interface Commands {
   getCommitDetails: {
     params: { repo: string; hashes: readonly string[] };
     result: Commit[];
+  };
+  /**
+   * 分支、tag，外加一条 HEAD（`RefKind.Head`，detached 时没有 `branch`）。
+   * 左栏分支树用。HEAD 不在 `refs/` 下，扩展侧额外问一次合进来，webview 一次拿全。
+   */
+  getRefs: {
+    params: { repo: string };
+    result: Ref[];
   };
   /** 一条提交改了哪些文件。端到端验收里「点一条」那一下。 */
   getCommitFiles: {

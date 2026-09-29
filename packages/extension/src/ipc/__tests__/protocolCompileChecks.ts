@@ -32,7 +32,7 @@
  * 上次变异确认结果见文件末尾。
  */
 
-import type { Commit, CommitFileChange, CommitSkeleton } from "@dummy-git/shared";
+import type { Commit, CommitFileChange, CommitSkeleton, Ref } from "@dummy-git/shared";
 import { defineHandlers } from "../router.js";
 
 /** 类型正确的空实现。用它们把「参数/返回值写错」这个错误来源排除掉。 */
@@ -40,12 +40,14 @@ const skeletonStub = async (): Promise<CommitSkeleton[]> => [];
 const detailsStub = async (): Promise<Commit[]> => [];
 const filesStub = async (): Promise<CommitFileChange[]> => [];
 const reposStub = async (): Promise<readonly string[]> => [];
+const refsStub = async (): Promise<Ref[]> => [];
 
 /** 基线：三条齐全、类型正确 —— 必须编译通过，否则下面两条的对照失去意义。 */
 export const _baseline = defineHandlers({
   getRepositories: reposStub,
   getSkeleton: skeletonStub,
   getCommitDetails: detailsStub,
+  getRefs: refsStub,
   getCommitFiles: filesStub,
 });
 
@@ -79,6 +81,7 @@ const extraHandlers = {
   getRepositories: reposStub,
   getSkeleton: skeletonStub,
   getCommitDetails: detailsStub,
+  getRefs: refsStub,
   getCommitFiles: filesStub,
   cherryPick: async (): Promise<CommitFileChange[]> => [],
 };

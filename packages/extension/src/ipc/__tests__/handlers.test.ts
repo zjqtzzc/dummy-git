@@ -1,4 +1,4 @@
-import { GitDomain, MessageKind, ResponseKind } from "@dummy-git/shared";
+import { GitDomain, MessageKind, RefKind, ResponseKind } from "@dummy-git/shared";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { cli, fixtures } from "../../__tests__/support.js";
 import { Repository } from "../../core/repository.js";
@@ -54,6 +54,28 @@ describe("handlers：协议接到真仓库上", () => {
       hash: hash ?? "",
     });
     expect(files.length).toBeGreaterThan(0);
+  });
+
+  it("getRefs：第一条是 HEAD，其后是分支与 tag——左栏一次拿全", async () => {
+    const refs = await createHandlers(repository).getRefs({ repo: repository.location.root });
+    expect(refs[0]).toMatchObject({ kind: RefKind.Head, branch: "main" });
+    expect(refs).toContainEqual(
+      expect.objectContaining({ kind: RefKind.LocalBranch, name: "feat" }),
+    );
+  });
+
+  it("getRefs：detached 时 HEAD 没有 branch 字段", async () => {
+    const detached = new Repository(
+      await getRepositoryLocation.execute(cli, fixtures.detached),
+      cli,
+    );
+    try {
+      const [head] = await createHandlers(detached).getRefs({ repo: detached.location.root });
+      expect(head?.kind).toBe(RefKind.Head);
+      expect(head).not.toHaveProperty("branch");
+    } finally {
+      detached.dispose();
+    }
   });
 
   it("经 Router 走一遍：请求进去，Ok 响应出来", async () => {

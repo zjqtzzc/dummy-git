@@ -66,6 +66,10 @@ const PARAM_GUARDS = {
     const hashes = asStringArray(raw["hashes"]);
     return typeof repo === "string" && hashes !== undefined ? { repo, hashes } : undefined;
   },
+  getRefs: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    return typeof repo === "string" ? { repo } : undefined;
+  },
   getCommitFiles: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const hash = raw["hash"];

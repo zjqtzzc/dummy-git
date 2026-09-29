@@ -6,6 +6,7 @@ import {
   GitErrorCode,
   MessageKind,
   type OutboundMessage,
+  type Ref,
   ResponseKind,
 } from "@dummy-git/shared";
 import { describe, expect, it, vi } from "vitest";
@@ -25,6 +26,7 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     getRepositories: async (): Promise<readonly string[]> => [],
     getSkeleton: async (): Promise<CommitSkeleton[]> => [],
     getCommitDetails: async (): Promise<Commit[]> => [],
+    getRefs: async (): Promise<Ref[]> => [],
     getCommitFiles: async (): Promise<CommitFileChange[]> => [],
     ...overrides,
   });
@@ -256,6 +258,10 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
           return [];
         },
         getCommitDetails: async () => {
+          ran = true;
+          return [];
+        },
+        getRefs: async () => {
           ran = true;
           return [];
         },
