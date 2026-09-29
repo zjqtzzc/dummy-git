@@ -2,40 +2,25 @@
 import {
   type Commit,
   type CommitFileChange,
-  DiffOpenMode,
-  FileStatus,
+  type DiffOpenMode,
   GitDomain,
   type Ref,
   RefKind,
 } from "@dummy-git/shared";
+import type { VscodeSplitLayout } from "@vscode-elements/elements/dist/vscode-split-layout/vscode-split-layout.js";
 import { nextTick, onMounted, onUnmounted, ref } from "vue";
 import BranchTree from "./BranchTree.vue";
 import CommitList from "./CommitList.vue";
+import FileTree from "./FileTree.vue";
 import type { Client } from "./logic/client.js";
 import { commitDiffSides } from "./logic/commitDiff.js";
-import { type Layout, restoreLayout, splitPercent } from "./logic/layout.js";
+import { type Layout, restoreLayout, splitPosition } from "./logic/layout.js";
 import { hashesToFetch } from "./logic/prefetch.js";
 import type { RowRange } from "./logic/virtualList.js";
 import { viewState } from "./vscodeApi.js";
 
 /** Log 面板：左分支（第 10 步）、中提交列表、右文件（第 11 步重做）。 */
 const props = defineProps<{ client: Client }>();
-
-/**
- * git 的状态 → 给人看的字。
- *
- * 这张表放在**用它的模块里**（`CLAUDE.md` B.3）：它是 UI 的投影，
- * 别的地方（比如图标、排序）会有各自不同的表，不该共用一个。
- */
-const STATUS_LABEL: Readonly<Record<FileStatus, string>> = {
-  [FileStatus.Unchanged]: " ",
-  [FileStatus.Modified]: "M",
-  [FileStatus.Added]: "A",
-  [FileStatus.Deleted]: "D",
-  [FileStatus.Renamed]: "R",
-  [FileStatus.Copied]: "C",
-  [FileStatus.TypeChanged]: "T",
-};
 
 /** `ref`：`.value` 一改，用到它的模板就重画。 */
 const repo = ref<string>();
@@ -50,6 +35,8 @@ const loaded = ref(false);
 const refs = ref<Ref[]>([]);
 const selected = ref<string>();
 const files = ref<CommitFileChange[]>([]);
+/** 右栏正在取选中提交的文件。 */
+const filesLoading = ref(false);
 const error = ref<string>();
 const list = ref<InstanceType<typeof CommitList>>();
 
@@ -87,11 +74,16 @@ async function fetchVisible(range: RowRange): Promise<void> {
 async function select(hash: string): Promise<void> {
   selected.value = hash;
   files.value = [];
+  if (repo.value === undefined) return;
+  filesLoading.value = true;
   try {
-    if (repo.value === undefined) return;
-    files.value = await props.client.request("getCommitFiles", { repo: repo.value, hash });
+    const fetched = await props.client.request("getCommitFiles", { repo: repo.value, hash });
+    // 取的时候又选了别的提交：这份结果已经过时，丢掉。
+    if (selected.value === hash) files.value = fetched;
   } catch (cause) {
     report(cause);
+  } finally {
+    if (selected.value === hash) filesLoading.value = false;
   }
 }
 
@@ -129,8 +121,8 @@ async function load(repository: string): Promise<void> {
   }
 }
 
-/** 临时：第 11 步按「双击打开、单击跟随」重做。 */
-async function openFile(file: CommitFileChange): Promise<void> {
+/** 右栏的文件：双击或回车打开，单击或上下键跟随（由 `mode` 区分）。 */
+async function openFile(file: CommitFileChange, mode: DiffOpenMode): Promise<void> {
   const commit = selected.value === undefined ? undefined : details.value.get(selected.value);
   if (repo.value === undefined || commit === undefined) return;
   const { left, right } = commitDiffSides(commit.hash, commit.parents, file);
@@ -138,7 +130,7 @@ async function openFile(file: CommitFileChange): Promise<void> {
     repo: repo.value,
     left,
     right,
-    mode: DiffOpenMode.Open,
+    mode,
   });
 }
 
@@ -163,20 +155,44 @@ onMounted(async () => {
 });
 
 /**
- * 三栏宽度。从 `viewState` 取回（收起再展开、重新加载窗口都在），拖动时存回去。
+ * 三栏宽度，像素。从 `viewState` 取回（收起再展开、重新加载窗口都在），拖动时存回去。
  *
  * 外层 `fixed-pane="start"`、内层 `fixed-pane="end"`：窗口或面板大小变化时，
  * 左栏和右栏保持像素宽度，只有中间的提交列表伸缩。设了 fixed-pane，组件才会自己
  * 监听尺寸变化；不设的话它不跟踪宽度，改过尺寸后第一次按下分隔线会跳位。
  */
 let layout: Layout = restoreLayout(viewState.read("layout"));
+const innerSplit = ref<VscodeSplitLayout>();
 
-function onSplit(which: keyof Layout, event: Event): void {
-  const percent = splitPercent(event);
-  if (percent === undefined) return;
-  layout = { ...layout, [which]: percent };
+function onLeftSplit(event: Event): void {
+  const position = splitPosition(event);
+  if (position === undefined) return;
+  layout = { ...layout, left: position };
   viewState.write("layout", layout);
 }
+
+/** 内层分隔线的位置从左边算起；右栏宽度 = 内层当时的实际宽度 − 分隔线位置。 */
+function onRightSplit(event: Event): void {
+  const position = splitPosition(event);
+  if (position === undefined || innerSplit.value === undefined) return;
+  const width = innerSplit.value.getBoundingClientRect().width;
+  layout = { ...layout, right: width - position };
+  viewState.write("layout", layout);
+}
+
+/**
+ * 右栏的初始宽度。组件的分隔线位置只能从左边算，没有「从右边算」的写法，
+ * 所以等它自己渲染完、量出内层宽度，一次性把分隔线放到「宽度 − 右栏宽度」。
+ * 之后的尺寸变化由 fixed-pane 保持右栏宽度，不再管。
+ */
+onMounted(async () => {
+  const split = innerSplit.value;
+  if (split === undefined) return;
+  await split.updateComplete;
+  const width = split.getBoundingClientRect().width;
+  split.initialHandlePosition = `${Math.max(0, width - layout.right)}px`;
+  split.resetHandlePosition();
+});
 </script>
 
 <template>
@@ -184,8 +200,8 @@ function onSplit(which: keyof Layout, event: Event): void {
     class="layout"
     split="vertical"
     fixed-pane="start"
-    :initial-handle-position="`${layout.outer}%`"
-    @vsc-split-layout-change="onSplit('outer', $event)"
+    :initial-handle-position="`${layout.left}px`"
+    @vsc-split-layout-change="onLeftSplit"
   >
     <div slot="start" class="pane">
       <BranchTree :refs="refs" />
@@ -195,8 +211,8 @@ function onSplit(which: keyof Layout, event: Event): void {
       slot="end"
       split="vertical"
       fixed-pane="end"
-      :initial-handle-position="`${layout.inner}%`"
-      @vsc-split-layout-change="onSplit('inner', $event)"
+      ref="innerSplit"
+      @vsc-split-layout-change="onRightSplit"
     >
       <div slot="start" class="pane">
         <p v-if="error !== undefined" class="error">{{ error }}</p>
@@ -213,21 +229,9 @@ function onSplit(which: keyof Layout, event: Event): void {
         />
       </div>
 
-      <div slot="end" class="panel">
-        <h2>Files</h2>
-        <ul class="list">
-          <li
-            v-for="file in files"
-            :key="`${file.status}:${file.oldPath ?? ''}:${file.path}`"
-            class="row"
-            @dblclick="openFile(file)"
-          >
-            <code>{{ STATUS_LABEL[file.status] }}</code>
-            <span class="subject">{{
-              file.oldPath === undefined ? file.path : `${file.oldPath} → ${file.path}`
-            }}</span>
-          </li>
-        </ul>
+      <div slot="end" class="pane">
+        <p v-if="filesLoading" class="dim loading">Loading…</p>
+        <FileTree v-else :files="files" @open="openFile" />
       </div>
     </vscode-split-layout>
   </vscode-split-layout>

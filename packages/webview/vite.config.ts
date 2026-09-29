@@ -32,6 +32,9 @@ export default defineConfig({
       template: { compilerOptions: { isCustomElement: (tag) => tag.startsWith("vscode-") } },
     }),
   ],
+  // 产物里的资源地址写成相对路径。webview 里 `/` 指向的是 webview 的根，不是 dist/webview/——
+  // 写成绝对路径时 CSS 里的字体（`url(/webview.woff)`）加载不到，图标一片空白。
+  base: "./",
   build: {
     // 产物直接落到扩展包的 dist 下，由扩展以本地资源方式加载。
     outDir: "../extension/dist/webview",

@@ -1,3 +1,9 @@
+/* Seti 文件图标字体，由 scripts/generate-seti.mjs 生成。 */
+@font-face {
+  font-family: "seti";
+  src: url("./seti/seti.woff") format("woff");
+}
+
 /* 全部用 VSCode 的主题变量，不写死颜色——否则换个主题就看不见了。 */
 body {
   margin: 0;
