@@ -1,8 +1,32 @@
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import vue from "@vitejs/plugin-vue";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
+
+/**
+ * 把 codicons 的样式表与字体原样放进产物。
+ *
+ * vscode-elements 的图标组件要在页面里找到 `id="vscode-codicon-stylesheet"` 的 `<link>`，
+ * 再在自己的 Shadow DOM 里引用同一个样式表——字体进不了 Shadow DOM，只能这样。
+ * 所以它必须是一个独立的文件（由 `vscode/logView.ts` 拼进 HTML），不能被打进 webview.css。
+ * 只复制这两个文件，不复制整个 dist 目录。
+ */
+function codicons(): Plugin {
+  const require = createRequire(import.meta.url);
+  const dist = (name: string): string => require.resolve(`@vscode/codicons/dist/${name}`);
+  return {
+    name: "codicons",
+    generateBundle() {
+      for (const fileName of ["codicon.css", "codicon.ttf"]) {
+        this.emitFile({ type: "asset", fileName, source: readFileSync(dist(fileName)) });
+      }
+    },
+  };
+}
 
 export default defineConfig({
   plugins: [
+    codicons(),
     vue({
       // `vscode-` 开头的是 vscode-elements 的自定义元素，交给浏览器，不当成 Vue 组件解析。
       template: { compilerOptions: { isCustomElement: (tag) => tag.startsWith("vscode-") } },

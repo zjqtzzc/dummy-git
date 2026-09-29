@@ -44,9 +44,10 @@ function html(webview: vscode.Webview, root: vscode.Uri): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
 <title>Dummy Git</title>
 <link rel="stylesheet" href="${style}">
+<link id="vscode-codicon-stylesheet" rel="stylesheet" href="${asset("codicon.css")}">
 </head>
 <body>
 <div id="root"></div>

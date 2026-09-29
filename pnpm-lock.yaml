@@ -209,7 +209,10 @@ importers:
         version: link:../shared
       '@vscode-elements/elements':
         specifier: ^2.5.1
-        version: 2.5.1(@vscode/codicons@0.0.45)
+        version: 2.5.1(@vscode/codicons@0.0.46-24)
+      '@vscode/codicons':
+        specifier: 0.0.46-24
+        version: 0.0.46-24
       vue:
         specifier: ^3.5.43
         version: 3.5.43(typescript@5.9.3)
@@ -689,8 +692,8 @@ packages:
     peerDependencies:
       '@vscode/codicons': '>=0.0.40'
 
-  '@vscode/codicons@0.0.45':
-    resolution: {integrity: sha512-1KAZ7XCMagp5Gdrlr4bbbcAqgcIL623iO1wW6rfcSVGAVUQvR0WP7bQx1SbJ11gmV3fdQTSEFIJQ/5C+HuVasw==}
+  '@vscode/codicons@0.0.46-24':
+    resolution: {integrity: sha512-KIDWUYxG6eh+DHRg+3G4bS487T+g1ZkLfB4HylOBbCcHsvLdfLMRM/m92DS1Ljhi8nglLr9ucwwWhHTEAC+DpA==}
 
   '@vue/compiler-core@3.5.43':
     resolution: {integrity: sha512-zdiLhnbe1QQqgDT8xZMpNmyqZ3qlI+/Q/FHQco57Kwl/b05HhCzN6eVGN9QU9rbga4CrS0H5SYY8VGHZCt/1Hg==}
@@ -1288,13 +1291,13 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
 
-  '@vscode-elements/elements@2.5.1(@vscode/codicons@0.0.45)':
+  '@vscode-elements/elements@2.5.1(@vscode/codicons@0.0.46-24)':
     dependencies:
       '@lit/context': 1.1.6
-      '@vscode/codicons': 0.0.45
+      '@vscode/codicons': 0.0.46-24
       lit: 3.3.3
 
-  '@vscode/codicons@0.0.45': {}
+  '@vscode/codicons@0.0.46-24': {}
 
   '@vue/compiler-core@3.5.43':
     dependencies:
