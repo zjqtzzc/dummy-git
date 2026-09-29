@@ -6,6 +6,7 @@
   "formatter": { "enabled": true, "indentStyle": "space", "lineWidth": 100 },
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "javascript": { "formatter": { "quoteStyle": "double", "trailingCommas": "all" } },
+  "html": { "experimentalFullSupportEnabled": true },
   "linter": {
     "enabled": true,
     "rules": {
