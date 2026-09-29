@@ -22,7 +22,7 @@ import { defineHandlers, type HandlerMap } from "./router.js";
  * ## `repo` 参数
  *
  * 协议里除 `getRepositories` 外每条都带 `repo`，但第一版只有一个仓库，
- * 所以这里直接用 `repository.root`，**不拿协议传来的值去找仓库**——
+ * 所以这里直接用 `repository.location.root`，**不拿协议传来的值去找仓库**——
  * 那个值是 webview 从 `getRepositories` 拿回去再传回来的，必然相同；
  * 用它去选仓库等于凭外部输入决定操作哪个仓库，而现在根本没有「选」这回事。
  * 多仓库时这里换成「按 `params.repo` 查表」，改动只在这一个文件。
@@ -30,9 +30,10 @@ import { defineHandlers, type HandlerMap } from "./router.js";
 export function createHandlers(repository: Repository): HandlerMap {
   return defineHandlers({
     // 第一版只有一个仓库。多仓库时这里返回多条，面板与协议都不用改。
-    getRepositories: () => Promise.resolve([repository.root]),
-    getSkeleton: () => repository.run(getSkeleton, repository.root),
-    getCommitDetails: ({ hashes }) => repository.run(getCommitDetails, repository.root, hashes),
-    getCommitFiles: ({ hash }) => repository.run(getCommitFiles, repository.root, hash),
+    getRepositories: () => Promise.resolve([repository.location.root]),
+    getSkeleton: () => repository.run(getSkeleton, repository.location.root),
+    getCommitDetails: ({ hashes }) =>
+      repository.run(getCommitDetails, repository.location.root, hashes),
+    getCommitFiles: ({ hash }) => repository.run(getCommitFiles, repository.location.root, hash),
   });
 }

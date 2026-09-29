@@ -53,7 +53,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           }),
         // 仓库变了 → 广播给这个面板。只说「哪些域过期了」，不带数据：
         // 要不要重新拉由前端自己决定（`DECISIONS.md`「数据流向的总原则」）。
-        (router) => repo.onDidChange((domains) => router.broadcast(repo.root, [...domains])),
+        (router) =>
+          repo.onDidChange((domains) => router.broadcast(repo.location.root, [...domains])),
       );
     }),
   );
@@ -84,7 +85,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   try {
     repository = await openRepository(cli, folder.uri.fsPath);
     context.subscriptions.push({ dispose: () => repository?.dispose() });
-    channel.appendLine(`仓库：${repository.root}`);
+    channel.appendLine(`仓库：${repository.location.root}`);
 
     // 文件监听跟着**仓库**走，不跟面板走：外部改动要一直被感知到，
     // 哪怕此刻一个面板都没开（下次开面板时状态才是对的）。

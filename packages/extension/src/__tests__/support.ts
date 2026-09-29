@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { GitCli } from "../git/cli.js";
+import type { RepositoryLocation } from "../git/commands/index.js";
 
 /**
  * 测试公用设施。
@@ -81,4 +82,15 @@ export function installSlowCommitHook(repo: string, seconds = 1): void {
   const hook = join(repo, ".git", "hooks", "pre-commit");
   writeFileSync(hook, `#!/bin/sh\nsleep ${seconds}\n`);
   chmodSync(hook, 0o755);
+}
+
+/**
+ * 给**普通仓库**（不是 linked worktree、不是 submodule）拼出位置对象，省得每个测试都起一次 `rev-parse`。
+ *
+ * 只在测试里这样拼：生产代码一律经 `getRepositoryLocation` 问 git。
+ * 要测 worktree 的场景，就用真命令，别用它。
+ */
+export function plainLocation(root: string): RepositoryLocation {
+  const gitDir = join(root, ".git");
+  return { root, gitDir, commonDir: gitDir };
 }

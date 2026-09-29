@@ -1,6 +1,6 @@
 import { GitDomain, GitErrorCode } from "@dummy-git/shared";
 import type { GitCli } from "../git/cli.js";
-import type { GitCommand } from "../git/commands/index.js";
+import type { GitCommand, RepositoryLocation } from "../git/commands/index.js";
 import { GitFailureError } from "../git/failure.js";
 import { classifyGitPath } from "./classify.js";
 import { DEBOUNCE_MS, DebouncedSet, MAX_WAIT_MS } from "./debounce.js";
@@ -57,11 +57,14 @@ export class Repository {
   private readonly pending: DebouncedSet<GitDomain>;
 
   constructor(
-    /** 仓库根目录，由 `getRepositoryLocation` 命令产出。同时是这个仓库的标识。 */
-    readonly root: string,
+    /**
+     * 仓库在磁盘上的位置，由 `getRepositoryLocation` 命令产出。
+     * `location.root` 同时是这个仓库的标识。凡要碰仓库目录的代码都从这里取路径。
+     */
+    readonly location: RepositoryLocation,
     private readonly cli: GitCli,
   ) {
-    this.ignoreCache = new IgnoreCache(cli, root);
+    this.ignoreCache = new IgnoreCache(cli, location.root);
     this.pending = new DebouncedSet<GitDomain>(
       (domains) => this.emit(domains),
       DEBOUNCE_MS,
@@ -84,7 +87,7 @@ export class Repository {
   async run<A extends readonly unknown[], R>(command: GitCommand<A, R>, ...args: A): Promise<R> {
     if (this._state === RepositoryState.Disposed) {
       // 不起进程。批量操作时队列里可能排着几十条，一条条起了再失败是白费。
-      throw new Error(`仓库已失效，不再执行命令：${this.root}`);
+      throw new Error(`仓库已失效，不再执行命令：${this.location.root}`);
     }
 
     try {

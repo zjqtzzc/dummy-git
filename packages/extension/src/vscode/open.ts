@@ -33,8 +33,7 @@ export async function openRepository(cli: GitCli, directory: string): Promise<Re
   // 传进来的可能是仓库里的任意子目录，`--show-toplevel` 会往上找到根。
   // 不自己找 `.git`：worktree 与 submodule 的 `.git` 是**文件**不是目录，
   // 且可能在更上层。这个判断交给 git（见 `commands/location.ts`）。
-  const { root } = await getRepositoryLocation.execute(cli, directory);
-  return new Repository(root, cli);
+  return new Repository(await getRepositoryLocation.execute(cli, directory), cli);
 }
 
 /**

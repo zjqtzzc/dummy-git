@@ -8,6 +8,7 @@ import {
   git,
   installSlowCommitHook,
   makeTempRepo,
+  plainLocation,
 } from "../../__tests__/support.js";
 import { commit, getRepositoryLocation, getStatus } from "../../git/commands/index.js";
 import { GitFailureError } from "../../git/failure.js";
@@ -25,7 +26,7 @@ function collect(repo: Repository): ReadonlySet<GitDomain>[] {
 describe("Repository：跑命令", () => {
   it("run() 是唯一入口，内部自动过队列", async () => {
     const path = makeTempRepo("repo-run");
-    const repo = new Repository(path, cli);
+    const repo = new Repository(plainLocation(path), cli);
     writeFileSync(join(path, "f1"), "changed\n");
     const changes = await repo.run(getStatus, path);
     expect(changes.length).toBeGreaterThan(0);
@@ -40,19 +41,19 @@ describe("Repository：跑命令", () => {
     // 想传错都没有地方传。这里测的是由此得到的性质，不是私有性本身：
     // TS 的 `private` 只在编译期成立（运行时 Object.keys 照样看得见），
     // 编译期的部分由 tsc 在 `pnpm check` 里保证。
-    const a = new Repository(makeTempRepo("repo-a"), cli);
-    const b = new Repository(makeTempRepo("repo-b"), cli);
-    installSlowCommitHook(a.root, 0.3);
-    installSlowCommitHook(b.root, 0.3);
+    const a = new Repository(plainLocation(makeTempRepo("repo-a")), cli);
+    const b = new Repository(plainLocation(makeTempRepo("repo-b")), cli);
+    installSlowCommitHook(a.location.root, 0.3);
+    installSlowCommitHook(b.location.root, 0.3);
     // 改已跟踪的 f1（makeTempRepo 建的），不是新文件——
     // `commit --only` 对未跟踪文件不工作，那是 M5 定的规则（只对未跟踪先 add）。
-    writeFileSync(join(a.root, "f1"), "changed-a\n");
-    writeFileSync(join(b.root, "f1"), "changed-b\n");
+    writeFileSync(join(a.location.root, "f1"), "changed-a\n");
+    writeFileSync(join(b.location.root, "f1"), "changed-b\n");
 
     const started = Date.now();
     await Promise.all([
-      a.run(commit, a.root, "on a", ["f1"]),
-      b.run(commit, b.root, "on b", ["f1"]),
+      a.run(commit, a.location.root, "on a", ["f1"]),
+      b.run(commit, b.location.root, "on b", ["f1"]),
     ]);
     // 并行约 300ms；共用一个队列会串成约 600ms
     expect(Date.now() - started).toBeLessThan(550);
@@ -62,7 +63,7 @@ describe("Repository：跑命令", () => {
 describe("Repository：NotAGitRepository → Disposed（兑现 M4 的唯一消费者）", () => {
   it("仓库被删掉后，状态转为 Disposed", async () => {
     const path = makeTempRepo("repo-gone");
-    const repo = new Repository(path, cli);
+    const repo = new Repository(plainLocation(path), cli);
     expect(repo.state).toBe(RepositoryState.Active);
 
     // 把 .git 删掉：此后任何命令都会得到 NotAGitRepository
@@ -74,7 +75,7 @@ describe("Repository：NotAGitRepository → Disposed（兑现 M4 的唯一消�
 
   it("Disposed 之后 run() 直接拒绝，不再起 git 进程", async () => {
     const path = makeTempRepo("repo-disposed");
-    const repo = new Repository(path, cli);
+    const repo = new Repository(plainLocation(path), cli);
     rmSync(join(path, ".git"), { recursive: true, force: true });
     await expect(repo.run(getRepositoryLocation, path)).rejects.toThrow();
 
@@ -84,7 +85,7 @@ describe("Repository：NotAGitRepository → Disposed（兑现 M4 的唯一消�
 
   it("认不出的失败不会误伤——仓库还在就不该 Disposed", async () => {
     const path = makeTempRepo("repo-other-failure");
-    const repo = new Repository(path, cli);
+    const repo = new Repository(plainLocation(path), cli);
     // 分支不存在：exit 1，classifyError 认不出，code 缺席
     await expect(
       repo.run({
@@ -98,7 +99,7 @@ describe("Repository：NotAGitRepository → Disposed（兑现 M4 的唯一消�
 
 describe("Repository：域通知", () => {
   it(".git 路径经 classify 映射成域", () => {
-    const repo = new Repository(makeTempRepo("repo-domains"), cli);
+    const repo = new Repository(plainLocation(makeTempRepo("repo-domains")), cli);
     const seen = collect(repo);
 
     repo.notifyGitPath("refs/heads/main");
@@ -110,7 +111,7 @@ describe("Repository：域通知", () => {
   });
 
   it("噪声路径不产生任何通知", () => {
-    const repo = new Repository(makeTempRepo("repo-noise"), cli);
+    const repo = new Repository(plainLocation(makeTempRepo("repo-noise")), cli);
     const seen = collect(repo);
 
     for (const p of ["index.lock", "objects/ab/cdef", "fsmonitor--daemon/ipc"]) {
@@ -124,7 +125,7 @@ describe("Repository：域通知", () => {
   it("退订之后那个监听器不再收到，别人照收", () => {
     // 订阅者（面板的 Router）生命周期比仓库短：面板关了要退订，
     // 否则监听器只增不减，关掉的面板还在收广播。
-    const repo = new Repository("/r", cli);
+    const repo = new Repository(plainLocation("/r"), cli);
     const gone: ReadonlySet<GitDomain>[] = [];
     const stays: ReadonlySet<GitDomain>[] = [];
 
@@ -141,7 +142,7 @@ describe("Repository：域通知", () => {
   });
 
   it("dispose 之后不再发通知", () => {
-    const repo = new Repository(makeTempRepo("repo-dispose"), cli);
+    const repo = new Repository(plainLocation(makeTempRepo("repo-dispose")), cli);
     const seen = collect(repo);
     repo.dispose();
     repo.notifyGitPath("refs/heads/main");
@@ -157,7 +158,7 @@ describe("Repository：被 ignore 的文件持续写入 → 0 次通知（验收
     git(path, ["add", "-A"]);
     git(path, ["commit", "-qm", "add gitignore"]);
 
-    const repo = new Repository(path, cli);
+    const repo = new Repository(plainLocation(path), cli);
     const seen = collect(repo);
 
     // 第一次：还不认识这个路径 → 放行（多刷一次，安全方向）
@@ -180,7 +181,7 @@ describe("Repository：被 ignore 的文件持续写入 → 0 次通知（验收
     git(path, ["add", "-A"]);
     git(path, ["commit", "-qm", "add gitignore"]);
 
-    const repo = new Repository(path, cli);
+    const repo = new Repository(plainLocation(path), cli);
     const seen = collect(repo);
 
     repo.notifyWorkspacePath("src/main.ts");
@@ -200,7 +201,7 @@ describe("Repository：被 ignore 的文件持续写入 → 0 次通知（验收
     git(path, ["add", "-f", "forced.log"]);
     git(path, ["commit", "-qm", "force add"]);
 
-    const repo = new Repository(path, cli);
+    const repo = new Repository(plainLocation(path), cli);
     const seen = collect(repo);
 
     repo.notifyWorkspacePath("forced.log");

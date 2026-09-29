@@ -8,7 +8,7 @@ import { isNotARepository, openRepository } from "../open.js";
 describe("openRepository", () => {
   it("传仓库根目录，得到同一个根", async () => {
     const repo = await openRepository(cli, fixtures.base);
-    expect(repo.root).toBe(fixtures.base);
+    expect(repo.location.root).toBe(fixtures.base);
     repo.dispose();
   });
 
@@ -20,7 +20,7 @@ describe("openRepository", () => {
     mkdirSync(sub, { recursive: true });
 
     const repo = await openRepository(cli, sub);
-    expect(repo.root).toBe(fixtures.base);
+    expect(repo.location.root).toBe(fixtures.base);
     repo.dispose();
 
     rmSync(sub, { recursive: true, force: true });

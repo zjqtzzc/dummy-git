@@ -29,7 +29,7 @@ import { relativeTo } from "./relativePath.js";
  * 这里只负责「把 VSCode 的事件翻译成相对路径」——**唯一真正需要宿主的那部分**。
  */
 export function watchRepository(repository: Repository): vscode.Disposable {
-  const root = vscode.Uri.file(repository.root);
+  const root = vscode.Uri.file(repository.location.root);
 
   const dotGit = vscode.workspace.createFileSystemWatcher(
     new vscode.RelativePattern(vscode.Uri.joinPath(root, ".git"), DOT_GIT_GLOB),

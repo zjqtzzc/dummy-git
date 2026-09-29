@@ -22,32 +22,37 @@ describe("handlers：协议接到真仓库上", () => {
   it("getRepositories 返回仓库根——webview 的第一句话", async () => {
     // 这是启动链的第一环：不知道有哪些仓库，别的命令连参数都凑不出来。
     const roots = await createHandlers(repository).getRepositories({});
-    expect(roots).toEqual([repository.root]);
+    expect(roots).toEqual([repository.location.root]);
   });
 
   it("getSkeleton 拿到真实提交", async () => {
-    const skeleton = await createHandlers(repository).getSkeleton({ repo: repository.root });
+    const skeleton = await createHandlers(repository).getSkeleton({
+      repo: repository.location.root,
+    });
     expect(skeleton.length).toBeGreaterThan(3);
     expect(skeleton[0]?.hash).toHaveLength(40);
   });
 
   it("getCommitDetails 按 hash 取到详情", async () => {
     const handlers = createHandlers(repository);
-    const skeleton = await handlers.getSkeleton({ repo: repository.root });
+    const skeleton = await handlers.getSkeleton({ repo: repository.location.root });
     const hashes = skeleton.slice(0, 2).map((c) => c.hash);
 
-    const details = await handlers.getCommitDetails({ repo: repository.root, hashes });
+    const details = await handlers.getCommitDetails({ repo: repository.location.root, hashes });
     expect(details).toHaveLength(2);
     expect(details[0]?.author.name).not.toBe("");
   });
 
   it("getCommitFiles 拿到那条提交改了哪些文件", async () => {
     const handlers = createHandlers(repository);
-    const skeleton = await handlers.getSkeleton({ repo: repository.root });
+    const skeleton = await handlers.getSkeleton({ repo: repository.location.root });
     const hash = skeleton.at(-1)?.hash;
     expect(hash).toBeDefined();
 
-    const files = await handlers.getCommitFiles({ repo: repository.root, hash: hash ?? "" });
+    const files = await handlers.getCommitFiles({
+      repo: repository.location.root,
+      hash: hash ?? "",
+    });
     expect(files.length).toBeGreaterThan(0);
   });
 
@@ -64,7 +69,7 @@ describe("handlers：协议接到真仓库上", () => {
       generation: "g1",
       id: 1,
       command: "getSkeleton",
-      params: { repo: repository.root },
+      params: { repo: repository.location.root },
     });
 
     await vi.waitFor(() => expect(sent).toHaveLength(1));
@@ -82,7 +87,7 @@ describe("handlers：协议接到真仓库上", () => {
       id: 2,
       command: "getCommitFiles",
       // 不存在的 hash：git 会失败，M4 分类，router 转成错误响应。
-      params: { repo: repository.root, hash: "0".repeat(40) },
+      params: { repo: repository.location.root, hash: "0".repeat(40) },
     });
 
     await vi.waitFor(() => expect(sent).toHaveLength(1));
@@ -98,7 +103,7 @@ describe("闭环：仓库变了 → 广播到面板", () => {
     const repository = await openRepository(cli, fixtures.base);
     const sent: unknown[] = [];
     const router = new Router({ post: (m) => void sent.push(m) }, createHandlers(repository));
-    repository.onDidChange((domains) => router.broadcast(repository.root, [...domains]));
+    repository.onDidChange((domains) => router.broadcast(repository.location.root, [...domains]));
 
     router.receive({ kind: MessageKind.Ready, generation: "g1" });
     repository.notifyGitPath("HEAD");
@@ -112,7 +117,7 @@ describe("闭环：仓库变了 → 广播到面板", () => {
         // HEAD 变了给**两个**域：切分支同时改 ref 与工作区文件（`core/classify.ts`）。
         // 写这条时我先按 [Refs] 断言，是断言错了不是实现错了——
         // 失败时先去读实现的理由，别顺手把测试改成「实现现在输出什么」。
-        payload: { repo: repository.root, domains: [GitDomain.Refs, GitDomain.Worktree] },
+        payload: { repo: repository.location.root, domains: [GitDomain.Refs, GitDomain.Worktree] },
       },
     ]);
     repository.dispose();
@@ -122,7 +127,7 @@ describe("闭环：仓库变了 → 广播到面板", () => {
     const repository = await openRepository(cli, fixtures.base);
     const sent: unknown[] = [];
     const router = new Router({ post: (m) => void sent.push(m) }, createHandlers(repository));
-    repository.onDidChange((domains) => router.broadcast(repository.root, [...domains]));
+    repository.onDidChange((domains) => router.broadcast(repository.location.root, [...domains]));
 
     // 没有 ready
     repository.notifyGitPath("HEAD");
@@ -138,7 +143,7 @@ describe("闭环：仓库变了 → 广播到面板", () => {
     const sent: unknown[] = [];
     const router = new Router({ post: (m) => void sent.push(m) }, createHandlers(repository));
     const unsubscribe = repository.onDidChange((domains) =>
-      router.broadcast(repository.root, [...domains]),
+      router.broadcast(repository.location.root, [...domains]),
     );
     router.receive({ kind: MessageKind.Ready, generation: "g1" });
 
