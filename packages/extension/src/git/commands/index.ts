@@ -22,6 +22,7 @@
  * | `getCommitDetails` | `-c log.showSignature=false log --format=… --no-walk --stdin` | — | — |
  * | `getRefs` | `for-each-ref --format=… refs/heads refs/remotes refs/tags` | `%(upstream:remotename)` / `%(upstream:remoteref)`（git 2.16.0 发布说明） | **2.16** |
  * | `getHead` | `rev-parse HEAD --symbolic-full-name HEAD` | — | — |
+ * | `getFileContent` | `cat-file --filters <提交>:<路径>` | `--filters` | 2.11 |
  * | `getCommitFiles` | `-c log.showSignature=false log -1 -M --first-parent --format= --name-status -z <hash>` | — | — |
  *
  * `-c log.showSignature=false` 在不认识这个配置的旧 git 上是无害的空设置，不构成版本要求。
@@ -30,6 +31,7 @@
 export { checkIgnore } from "./checkIgnore.js";
 export type { GitCommand } from "./command.js";
 export { commit } from "./commit.js";
+export { getFileContent } from "./content.js";
 export { getRepositoryLocation, type RepositoryLocation } from "./location.js";
 export { LockPolicy } from "./lock.js";
 export { getCommitDetails, getCommitFiles, getSkeleton, SKELETON_LIMIT } from "./log.js";
