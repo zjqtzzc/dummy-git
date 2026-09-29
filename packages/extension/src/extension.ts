@@ -3,6 +3,7 @@ import { Repository } from "./core/repository.js";
 import { GitCli } from "./git/cli.js";
 import { createHandlers } from "./ipc/handlers.js";
 import { Router } from "./ipc/router.js";
+import { ErrorGate } from "./vscode/errorGate.js";
 import { resolveGitPath } from "./vscode/gitPath.js";
 import { createOutputLogger } from "./vscode/logger.js";
 import { describeStartup, discoverRepositories, StartupKind } from "./vscode/open.js";
@@ -22,6 +23,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // git/ 层不 import vscode（lint 强制），所以路径与日志出口都从这里注入。
   const cli = new GitCli(resolveGitPath(), createOutputLogger(channel));
+
+  // 未知错误的统一出口（`ARCHITECTURE.md` 第 15 题）：输出面板写全，弹一条通知，
+  // 点「Show Output」跳到输出面板。去重与文案在可在纯 node 下测的 errorGate.ts 里。
+  const errors = new ErrorGate({
+    log: (text) => channel.appendLine(text),
+    show: async (summary) => {
+      const pick = await vscode.window.showErrorMessage(`Dummy Git: ${summary}`, "Show Output");
+      if (pick !== undefined) channel.show();
+    },
+  });
 
   /**
    * 没能打开仓库时的原因。
@@ -50,6 +61,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         (transport) =>
           new Router(transport, createHandlers(repo), {
             log: (line) => channel.appendLine(line),
+            report: (error) => errors.report(error),
           }),
         // 仓库变了 → 广播给这个面板。只说「哪些域过期了」，不带数据：
         // 要不要重新拉由前端自己决定（`DECISIONS.md`「数据流向的总原则」）。

@@ -73,12 +73,18 @@ export interface Transport {
   readonly post: (message: OutboundMessage) => void;
 }
 
-/** 出错时记一行。同样注入，默认什么都不做。 */
-export interface RouterLogger {
+/** Router 往外说话的出口。同样注入，默认什么都不做。 */
+export interface RouterHooks {
+  /** 记一行流水（用时、丢弃原因）。 */
   readonly log: (line: string) => void;
+  /**
+   * 请求失败时交给错误关口（`vscode/errorGate.ts`）：输出面板写全、弹通知。
+   * Router 是三个关口之一（`ARCHITECTURE.md` 第 15 题），handler 不自己 `catch`。
+   */
+  readonly report: (error: unknown) => void;
 }
 
-const NOOP_LOGGER: RouterLogger = { log: () => {} };
+const NOOP_HOOKS: RouterHooks = { log: () => {}, report: () => {} };
 
 /**
  * 把 `GitFailureError` 转成协议里的错误。
@@ -120,7 +126,7 @@ export class Router {
   constructor(
     private readonly transport: Transport,
     private readonly handlers: HandlerMap,
-    private readonly logger: RouterLogger = NOOP_LOGGER,
+    private readonly hooks: RouterHooks = NOOP_HOOKS,
   ) {}
 
   /**
@@ -134,14 +140,14 @@ export class Router {
   receive(raw: unknown): void {
     const message = parseInbound(raw);
     if (message === undefined) {
-      this.logger.log(`丢弃：无法解析的消息 ${JSON.stringify(raw)?.slice(0, 200)}`);
+      this.hooks.log(`丢弃：无法解析的消息 ${JSON.stringify(raw)?.slice(0, 200)}`);
       return;
     }
 
     if (message.kind === MessageKind.Ready) {
       const previous = this.generation;
       this.generation = message.generation;
-      this.logger.log(
+      this.hooks.log(
         previous === undefined
           ? `ready：代号 ${message.generation}`
           : `ready：换代 ${previous} → ${message.generation}，上一代的在途响应将被丢弃`,
@@ -150,11 +156,11 @@ export class Router {
     }
 
     if (this.generation === undefined) {
-      this.logger.log(`丢弃：握手前收到请求 ${message.command}`);
+      this.hooks.log(`丢弃：握手前收到请求 ${message.command}`);
       return;
     }
     if (message.generation !== this.generation) {
-      this.logger.log(
+      this.hooks.log(
         `丢弃：代号不符（收到 ${message.generation}，当前 ${this.generation}）${message.command}`,
       );
       return;
@@ -183,7 +189,7 @@ export class Router {
       // 那条回复对新一代毫无意义：它等的是**自己**那条 id，编号还是从 1 开始的。
       // 发过去就是串台，而且内容看起来完全合法——webview 侧也拦，这里是同一道判断的另一半。
       if (generation !== this.generation) {
-        this.logger.log(`不发：${command} 的回复属于上一代 ${generation}`);
+        this.hooks.log(`不发：${command} 的回复属于上一代 ${generation}`);
         return;
       }
       this.transport.post(message);
@@ -193,7 +199,7 @@ export class Router {
     try {
       const value: CommandResult<K> = await this.handlers[command](params);
       respondOnce({ kind: MessageKind.Response, generation, id, result: ResponseKind.Ok, value });
-      this.logger.log(`${command} 用时 ${Date.now() - started}ms`);
+      this.hooks.log(`${command} 用时 ${Date.now() - started}ms`);
     } catch (error) {
       const protocolError = toProtocolError(error);
       respondOnce({
@@ -203,7 +209,8 @@ export class Router {
         result: ResponseKind.Error,
         error: protocolError,
       });
-      this.logger.log(`${command} 失败（${Date.now() - started}ms）：${protocolError.message}`);
+      this.hooks.log(`${command} 失败（${Date.now() - started}ms）：${protocolError.message}`);
+      this.hooks.report(error);
     }
   }
 
@@ -226,7 +233,7 @@ export class Router {
    */
   broadcast(repo: string, domains: readonly GitDomain[]): void {
     if (this.generation === undefined) {
-      this.logger.log("不发：握手之前不广播");
+      this.hooks.log("不发：握手之前不广播");
       return;
     }
     this.transport.post({

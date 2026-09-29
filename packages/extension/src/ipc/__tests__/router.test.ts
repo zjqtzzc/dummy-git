@@ -116,6 +116,26 @@ describe("Router：分发与响应", () => {
     expect(t.sent[0]).not.toHaveProperty("error.code");
   });
 
+  it("handler 失败交给错误关口——Router 是三个关口之一", async () => {
+    const t = recorder();
+    const reported: unknown[] = [];
+    const bug = new TypeError("我们自己的 bug");
+    const router = new Router(
+      t,
+      handlersWith({
+        getCommitFiles: async () => {
+          throw bug;
+        },
+      }),
+      { log: () => {}, report: (error) => reported.push(error) },
+    );
+
+    ready(router);
+    router.receive(request(1));
+    await vi.waitFor(() => expect(t.sent).toHaveLength(1));
+    expect(reported).toEqual([bug]);
+  });
+
   it("post 第一次就抛，也不会回第二次（恰好一次）", async () => {
     // 面板刚被销毁时 post 会抛。若 catch 里再回一次，
     // 就成了「一条请求两条响应」——webview 侧按 id 配对，第二条会砸掉别的状态。
