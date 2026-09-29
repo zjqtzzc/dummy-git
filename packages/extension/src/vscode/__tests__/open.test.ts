@@ -1,45 +1,61 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
-import { cli, fixtures } from "../../__tests__/support.js";
-import { isNotARepository, openRepository } from "../open.js";
+import { afterEach, describe, expect, it } from "vitest";
+import { cleanupTempRepos, cli, makeTempRepo } from "../../__tests__/support.js";
+import { GitCli } from "../../git/cli.js";
+import { discoverRepositories, StartupKind, type StartupResult } from "../open.js";
 
-describe("openRepository", () => {
-  it("传仓库根目录，得到同一个根", async () => {
-    const repo = await openRepository(cli, fixtures.base);
-    expect(repo.location.root).toBe(fixtures.base);
-    repo.dispose();
+afterEach(cleanupTempRepos);
+
+const plainDirs: string[] = [];
+afterEach(() => {
+  for (const dir of plainDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
+
+/** 一个不在任何仓库里的目录。 */
+function plainDir(): string {
+  const dir = mkdtempSync(join(tmpdir(), "dummygit-plain-"));
+  plainDirs.push(dir);
+  return dir;
+}
+
+/** 只看各仓库的根，位置对象的其余字段由 location 测试负责。 */
+function roots(result: StartupResult): readonly string[] {
+  return result.kind === StartupKind.Ready ? result.repositories.map((r) => r.root) : [];
+}
+
+describe("discoverRepositories：启动结果四选一", () => {
+  it("没有打开任何目录 → NoFolder", async () => {
+    expect(await discoverRepositories(cli, [])).toEqual({ kind: StartupKind.NoFolder });
   });
 
-  it("传子目录也能找到根——不能靠找 ./.git 硬编码", async () => {
-    // worktree 与 submodule 的 `.git` 是**文件**不是目录，且可能在更上层。
-    // 这个判断必须交给 git 自己做。
-    const sub = join(fixtures.base, "sub");
-    const { mkdirSync } = await import("node:fs");
-    mkdirSync(sub, { recursive: true });
-
-    const repo = await openRepository(cli, sub);
-    expect(repo.location.root).toBe(fixtures.base);
-    repo.dispose();
-
-    rmSync(sub, { recursive: true, force: true });
+  it("目录都不在仓库里 → NoRepository（正常情况，不是故障）", async () => {
+    expect(await discoverRepositories(cli, [plainDir(), plainDir()])).toEqual({
+      kind: StartupKind.NoRepository,
+    });
   });
 
-  it("非仓库目录：抛错，且被认出是「这儿不是仓库」而不是故障", async () => {
-    // 用户在一个非仓库目录里打开编辑器是**正常情况**，应该安静地什么都不做。
-    // 与「git 不存在」「权限不足」必须分开——那些要报出来。
-    const plain = mkdtempSync(join(tmpdir(), "dummy-git-not-a-repo-"));
-    try {
-      await expect(openRepository(cli, plain)).rejects.toSatisfy(isNotARepository);
-    } finally {
-      rmSync(plain, { recursive: true, force: true });
-    }
+  it("第一个目录不是仓库、第二个是 → 仍然找到仓库，不误报「没有仓库」", async () => {
+    const repo = realpathSync(makeTempRepo("disc-second"));
+    const result = await discoverRepositories(cli, [plainDir(), repo]);
+    expect(result.kind).toBe(StartupKind.Ready);
+    expect(roots(result)).toEqual([repo]);
   });
 
-  it("其他失败不会被误判成「不是仓库」", async () => {
-    // 反向：isNotARepository 不能见错就点头，否则真故障会被当成正常情况咽掉。
-    expect(isNotARepository(new Error("git 不存在"))).toBe(false);
-    expect(isNotARepository(undefined)).toBe(false);
+  it("同一仓库出现两次按根去重，顺序跟着目录走", async () => {
+    const a = realpathSync(makeTempRepo("disc-a"));
+    const b = realpathSync(makeTempRepo("disc-b"));
+    const aSub = join(a, "src");
+    mkdirSync(aSub);
+    expect(roots(await discoverRepositories(cli, [b, aSub, a]))).toEqual([b, a]);
+  });
+
+  it("git 起不来 → GitUnavailable，带上原始原因", async () => {
+    const broken = new GitCli("/nonexistent/git");
+    const result = await discoverRepositories(broken, [plainDir()]);
+    expect(result.kind).toBe(StartupKind.GitUnavailable);
+    // 反向：git 不存在绝不能被当成「这里不是仓库」咽掉。
+    expect(result).toMatchObject({ reason: expect.stringContaining("ENOENT") });
   });
 });

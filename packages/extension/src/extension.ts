@@ -1,11 +1,11 @@
 import * as vscode from "vscode";
-import type { Repository } from "./core/repository.js";
+import { Repository } from "./core/repository.js";
 import { GitCli } from "./git/cli.js";
 import { createHandlers } from "./ipc/handlers.js";
 import { Router } from "./ipc/router.js";
 import { resolveGitPath } from "./vscode/gitPath.js";
 import { createOutputLogger } from "./vscode/logger.js";
-import { isNotARepository, openRepository } from "./vscode/open.js";
+import { describeStartup, discoverRepositories, StartupKind } from "./vscode/open.js";
 import { openLogPanel } from "./vscode/panel.js";
 import { watchRepository } from "./vscode/watcher.js";
 
@@ -34,12 +34,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
    * 「功能不可用」和「功能不存在」对用户是完全不同的两件事。
    */
   let repository: Repository | undefined;
-  let unavailable = "正在启动…";
+  let unavailable = "Starting…";
 
   context.subscriptions.push(
     vscode.commands.registerCommand("dummyGit.showLog", () => {
       if (repository === undefined) {
-        void vscode.window.showWarningMessage(`Dummy Git：${unavailable}`);
+        void vscode.window.showWarningMessage(`Dummy Git: ${unavailable}`);
         return;
       }
       const repo = repository;
@@ -73,38 +73,27 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   status.show();
   context.subscriptions.push(status);
 
-  // 第一版：只认第一个 workspace folder。这是与 VSCode 真正相关的**全部**逻辑，
-  // 其余都在可在纯 node 下测的 open.ts 里。
-  const folder = vscode.workspace.workspaceFolders?.[0];
-  if (folder === undefined) {
-    unavailable = "当前窗口没有打开文件夹。打开一个 git 仓库所在的文件夹后重开窗口。";
-    channel.appendLine(unavailable);
-    return;
-  }
+  // 与 VSCode 真正相关的只有「取出所有工作区目录」这一句，其余都在可在纯 node 下测的 open.ts 里。
+  const directories = (vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath);
+  const startup = await discoverRepositories(cli, directories);
 
-  try {
-    repository = await openRepository(cli, folder.uri.fsPath);
-    context.subscriptions.push({ dispose: () => repository?.dispose() });
-    channel.appendLine(`仓库：${repository.location.root}`);
-
-    // 文件监听跟着**仓库**走，不跟面板走：外部改动要一直被感知到，
-    // 哪怕此刻一个面板都没开（下次开面板时状态才是对的）。
-    context.subscriptions.push(watchRepository(repository));
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    if (isNotARepository(error)) {
-      // 用户在非仓库目录里打开编辑器是**正常情况**，不弹错误。
-      unavailable = `${folder.uri.fsPath} 不是 git 仓库。`;
-      channel.appendLine(unavailable);
-      return;
-    }
-    // 其他失败要让人看见：git 不存在、没有执行权限、仓库损坏……
-    unavailable = `启动失败：${detail}`;
-    channel.appendLine(unavailable);
-    void vscode.window.showErrorMessage(
-      `Dummy Git 启动失败，详情见输出面板「Dummy Git」：${detail}`,
-    );
+  // 没有仓库、git 不可用：只写进输出面板，**不弹通知**（`ARCHITECTURE.md` 第 13 题）。
+  // 在非仓库目录里打开编辑器是正常情况；原因到第 7 步会直接显示在面板里。
+  const reason = describeStartup(startup);
+  if (reason !== undefined) {
+    unavailable = reason;
+    channel.appendLine(reason);
   }
+  if (startup.kind !== StartupKind.Ready) return;
+
+  // 现阶段只支持单仓库：用列表第一个。
+  repository = new Repository(startup.repositories[0], cli);
+  context.subscriptions.push({ dispose: () => repository?.dispose() });
+  channel.appendLine(`Repository: ${repository.location.root}`);
+
+  // 文件监听跟着**仓库**走，不跟面板走：外部改动要一直被感知到，
+  // 哪怕此刻一个面板都没开（下次开面板时状态才是对的）。
+  context.subscriptions.push(watchRepository(repository));
 }
 
 export function deactivate(): void {

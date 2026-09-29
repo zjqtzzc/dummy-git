@@ -1,8 +1,8 @@
 import { GitDomain, MessageKind, ResponseKind } from "@dummy-git/shared";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { cli, fixtures } from "../../__tests__/support.js";
-import type { Repository } from "../../core/repository.js";
-import { openRepository } from "../../vscode/open.js";
+import { Repository } from "../../core/repository.js";
+import { getRepositoryLocation } from "../../git/commands/index.js";
 import { createHandlers } from "../handlers.js";
 import { Router, type Transport } from "../router.js";
 
@@ -15,7 +15,7 @@ import { Router, type Transport } from "../router.js";
 describe("handlers：协议接到真仓库上", () => {
   let repository: Repository;
   beforeAll(async () => {
-    repository = await openRepository(cli, fixtures.base);
+    repository = new Repository(await getRepositoryLocation.execute(cli, fixtures.base), cli);
   });
   afterAll(() => repository.dispose());
 
@@ -100,7 +100,7 @@ describe("闭环：仓库变了 → 广播到面板", () => {
     // 这是 M7 闭环的最后一段，链路：
     //   watcher（vscode，唯一没覆盖的一环）→ repo.notifyGitPath
     //   → M6 分类/防抖 → onDidChange → router.broadcast → transport
-    const repository = await openRepository(cli, fixtures.base);
+    const repository = new Repository(await getRepositoryLocation.execute(cli, fixtures.base), cli);
     const sent: unknown[] = [];
     const router = new Router({ post: (m) => void sent.push(m) }, createHandlers(repository));
     repository.onDidChange((domains) => router.broadcast(repository.location.root, [...domains]));
@@ -124,7 +124,7 @@ describe("闭环：仓库变了 → 广播到面板", () => {
   });
 
   it("握手之前的变化不广播——那一条会静静地丢掉", async () => {
-    const repository = await openRepository(cli, fixtures.base);
+    const repository = new Repository(await getRepositoryLocation.execute(cli, fixtures.base), cli);
     const sent: unknown[] = [];
     const router = new Router({ post: (m) => void sent.push(m) }, createHandlers(repository));
     repository.onDidChange((domains) => router.broadcast(repository.location.root, [...domains]));
@@ -139,7 +139,7 @@ describe("闭环：仓库变了 → 广播到面板", () => {
 
   it("退订之后这个面板不再收到广播", async () => {
     // 面板关了要退订。不退的话监听器只增不减。
-    const repository = await openRepository(cli, fixtures.base);
+    const repository = new Repository(await getRepositoryLocation.execute(cli, fixtures.base), cli);
     const sent: unknown[] = [];
     const router = new Router({ post: (m) => void sent.push(m) }, createHandlers(repository));
     const unsubscribe = repository.onDidChange((domains) =>

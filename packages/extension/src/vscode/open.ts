@@ -1,50 +1,100 @@
-import { GitErrorCode } from "@dummy-git/shared";
-import { Repository } from "../core/repository.js";
+import { assertNever, GitErrorCode } from "@dummy-git/shared";
 import type { GitCli } from "../git/cli.js";
-import { getRepositoryLocation } from "../git/commands/index.js";
+import { getRepositoryLocation, type RepositoryLocation } from "../git/commands/index.js";
 import { GitFailureError } from "../git/failure.js";
 
+/** 扩展启动时，仓库这件事的四种结局。 */
+export enum StartupKind {
+  /** 找到了至少一个仓库。 */
+  Ready = "ready",
+  /** 窗口里没有打开任何目录。 */
+  NoFolder = "noFolder",
+  /** 打开了目录，但没有一个在 git 仓库里。 */
+  NoRepository = "noRepository",
+  /** git 起不来：没装、路径不对、没有执行权限…… */
+  GitUnavailable = "gitUnavailable",
+}
+
+export type StartupResult =
+  | {
+      readonly kind: StartupKind.Ready;
+      /**
+       * 按工作区目录的顺序，按根目录去重。现阶段只用第一个（`ARCHITECTURE.md` 第 13 题）。
+       * 类型写成「至少一个」：走到 `Ready` 就一定有仓库，取第一个不必再判空。
+       */
+      readonly repositories: readonly [RepositoryLocation, ...RepositoryLocation[]];
+    }
+  | { readonly kind: StartupKind.NoFolder }
+  | { readonly kind: StartupKind.NoRepository }
+  | {
+      readonly kind: StartupKind.GitUnavailable;
+      /** 原始报错，给人排查用。 */
+      readonly reason: string;
+    };
+
 /**
- * 为一个目录打开 `Repository`。
+ * 从工作区目录列表得出仓库列表。
  *
- * ## 为什么参数是「目录」而不是「workspace folder」
+ * ## 为什么参数是「目录列表」而不是 workspace folder
  *
- * 为了这一层能在纯 node 下测。真正与 VSCode 有关的只有一句
- * 「取第一个 workspace folder」，那几行留在 `activate.ts` 里。
+ * 为了这一层能在纯 node 下测。与 VSCode 有关的只有「取出所有 workspace folder 的路径」
+ * 那一句，留在 `extension.ts`。
+ *
+ * ## 逐个目录问，按根去重
+ *
+ * 同一个仓库可能出现多次（`~/p/repo` 与 `~/p/repo/src` 都被加进了工作区），
+ * 两者问出的根相同，只留第一次出现的。顺序跟着工作区目录走，所以「第一个仓库」
+ * 是用户能预料的。不扫目录里嵌套的仓库和 submodule。
  *
  * ## 为什么这里直接调 `.execute()`，绕过队列
  *
- * 队列由 `Repository` 私有持有（M6），而此刻 `Repository` **还不存在**——
- * 要先知道根目录才能造它。这是唯一一处合理的绕过，且是安全的：
- * `getRepositoryLocation` 是 `LockPolicy.None`，本来就不进队列
- * （`CommandQueue.run` 对 `None` 直接 `return action()`）。
- *
+ * 队列由 `Repository` 私有持有，而此刻 `Repository` **还不存在**——要先知道位置才能造它。
+ * `getRepositoryLocation` 是 `LockPolicy.None`，本来就不进队列，绕过是安全的。
  * 此后一切命令都必须走 `repo.run()`。
- *
- * ## 第一版只支持一个仓库
- *
- * `PLAN.md`「闭环的四个环节」：下面三层（命令带 `repo` 参数、锁是实例字段、
- * 协议带标识）早就就绪，缺的一直是**没有人负责产生那个仓库**。这里补上。
- *
- * 多仓库的升级路径没被堵死：`Repository` 本来就可实例化多份，协议每条消息都带 `repo`。
- * 要支持时改的是这个函数的调用方，不是整条链。
  */
-export async function openRepository(cli: GitCli, directory: string): Promise<Repository> {
-  // 传进来的可能是仓库里的任意子目录，`--show-toplevel` 会往上找到根。
-  // 不自己找 `.git`：worktree 与 submodule 的 `.git` 是**文件**不是目录，
-  // 且可能在更上层。这个判断交给 git（见 `commands/location.ts`）。
-  return new Repository(await getRepositoryLocation.execute(cli, directory), cli);
+export async function discoverRepositories(
+  cli: GitCli,
+  directories: readonly string[],
+): Promise<StartupResult> {
+  if (directories.length === 0) return { kind: StartupKind.NoFolder };
+
+  const repositories: RepositoryLocation[] = [];
+  for (const directory of directories) {
+    let location: RepositoryLocation;
+    try {
+      location = await getRepositoryLocation.execute(cli, directory);
+    } catch (error) {
+      // 这个目录不是仓库：**正常情况**，看下一个。
+      if (error instanceof GitFailureError && error.code === GitErrorCode.NotAGitRepository) {
+        continue;
+      }
+      // 其余一律当成 git 本身不可用。换下一个目录也只会得到同样的结果，不必再试。
+      return {
+        kind: StartupKind.GitUnavailable,
+        reason: error instanceof Error ? error.message : String(error),
+      };
+    }
+    if (!repositories.some((known) => known.root === location.root)) repositories.push(location);
+  }
+
+  const [first, ...rest] = repositories;
+  return first === undefined
+    ? { kind: StartupKind.NoRepository }
+    : { kind: StartupKind.Ready, repositories: [first, ...rest] };
 }
 
-/**
- * 失败是不是「这儿根本不是仓库」。
- *
- * 那是**正常情况**（用户在一个非仓库目录里打开了编辑器），不是故障——
- * 应该安静地什么都不做，而不是弹错误。其他失败（git 不存在、权限不足）要报出来。
- *
- * M4 那两个错误码里，`NotAGitRepository` 的**唯一**消费者原本是 M6 的状态机；
- * 这是第二个。
- */
-export function isNotARepository(error: unknown): boolean {
-  return error instanceof GitFailureError && error.code === GitErrorCode.NotAGitRepository;
+/** 启动结果 → 给人看的一句话。`Ready` 时没有要说的。 */
+export function describeStartup(result: StartupResult): string | undefined {
+  switch (result.kind) {
+    case StartupKind.Ready:
+      return undefined;
+    case StartupKind.NoFolder:
+      return "No folder is open. Open a folder inside a git repository, then reload the window.";
+    case StartupKind.NoRepository:
+      return "None of the open folders is inside a git repository. Reload the window after running git init.";
+    case StartupKind.GitUnavailable:
+      return `Cannot run git: ${result.reason}. Reload the window after fixing it.`;
+    default:
+      return assertNever(result, "describeStartup");
+  }
 }
