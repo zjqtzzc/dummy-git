@@ -11,6 +11,7 @@
     "lint:fix": "biome check --write .",
     "test": "vitest run",
     "demo:protocol": "vite-node scripts/demo-protocol.ts",
+    "debug:setup": "node scripts/debug-setup.mjs",
     "build": "pnpm -r run build",
     "watch": "pnpm -r --parallel run watch",
     "check": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build"

@@ -5,13 +5,14 @@
       "name": "Run Extension",
       "type": "extensionHost",
       "request": "launch",
-      // 第二个参数让扩展宿主**直接打开本项目**——它自己就是个 git 仓库，
-      // 历史、merge、改名、中文文件名都有，正好当测试对象。
-      // 不给的话宿主窗口默认不开文件夹，扩展会报「没有打开文件夹」。
-      // 想换别的仓库改这一行即可。
+      // 第二个参数是调试窗口打开的目录：本仓库旁边的 linked worktree
+      // `<目录名>-debug`，第一次调试前跑一次 `pnpm debug:setup` 建出来。
+      // 不直接开本项目：当前窗口已经开着它，第二个窗口会被当成重复打开。
+      // worktree 的历史就是本项目的历史，merge、改名、中文文件名都有，
+      // 还顺带每次都走一遍 worktree 的路径。想换别的仓库改这一行即可。
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}/packages/extension",
-        "${workspaceFolder}"
+        "${workspaceFolder}/../${workspaceFolderBasename}-debug"
       ],
       "outFiles": ["${workspaceFolder}/packages/extension/dist/**/*.js"],
       "preLaunchTask": "${defaultBuildTask}"

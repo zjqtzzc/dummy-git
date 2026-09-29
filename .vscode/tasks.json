@@ -24,8 +24,8 @@
         ],
         "background": {
           "activeOnStart": true,
-          "beginsPattern": "^\\[watch\\] build started$",
-          "endsPattern": "^\\[watch\\] build finished$"
+          "beginsPattern": "^\\[watch\\] build started",
+          "endsPattern": "^\\[watch\\] build finished"
         }
       }
     },
@@ -35,6 +35,8 @@
       "command": "pnpm --filter @dummy-git/webview run watch",
       "isBackground": true,
       // vite watch 原生日志本身首轮/重建轮文案一致，不需要额外插件打标记。
+      // 规则不加 ^ $：在 VS Code 的终端里 vite 输出带颜色码，实际一行是
+      // `\e[36mbuilt in 634ms.\e[39m\r`，加了锚定就永远匹配不上，F5 卡在「正在等待 preLaunchTask」。
       "problemMatcher": {
         "owner": "vite",
         "fileLocation": ["relative", "${workspaceFolder}/packages/webview"],
@@ -44,8 +46,8 @@
         },
         "background": {
           "activeOnStart": true,
-          "beginsPattern": "^build started\\.\\.\\.$",
-          "endsPattern": "^built in .*ms\\.$"
+          "beginsPattern": "build started\\.\\.\\.",
+          "endsPattern": "built in \\d+ms\\."
         }
       }
     },
