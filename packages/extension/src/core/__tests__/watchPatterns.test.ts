@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { classifyGitPath } from "../classify.js";
-import { DOT_GIT_GLOB, DOT_GIT_GLOB_COMMON, DOT_GIT_GLOB_WORKTREE } from "../watchPatterns.js";
+import {
+  DOT_GIT_GLOB,
+  DOT_GIT_GLOB_COMMON,
+  DOT_GIT_GLOB_WORKTREE,
+  watchTargets,
+} from "../watchPatterns.js";
 
 /**
  * 极简 glob 匹配，只支持本文件用到的 `{a,b}` 与 `**` / `*`。
@@ -97,5 +102,24 @@ describe("worktree / common 两份白名单合起来等于完整白名单", () =
     ]);
     const full = new Set(DOT_GIT_GLOB.replace(/^\{|\}$/g, "").split(","));
     expect(merged).toEqual(full);
+  });
+});
+
+describe("watchTargets：监听哪几处由仓库位置决定", () => {
+  it("普通仓库：一处，完整白名单", () => {
+    const gitDir = "/r/.git";
+    expect(watchTargets({ root: "/r", gitDir, commonDir: gitDir })).toEqual([
+      { directory: gitDir, glob: DOT_GIT_GLOB },
+    ]);
+  });
+
+  it("linked worktree：专属目录与共享目录各一处，白名单各管各的", () => {
+    // 写死 `<根>/.git` 在这里什么都监听不到：`/wt/.git` 是个文本文件。
+    expect(
+      watchTargets({ root: "/wt", gitDir: "/main/.git/worktrees/wt", commonDir: "/main/.git" }),
+    ).toEqual([
+      { directory: "/main/.git/worktrees/wt", glob: DOT_GIT_GLOB_WORKTREE },
+      { directory: "/main/.git", glob: DOT_GIT_GLOB_COMMON },
+    ]);
   });
 });

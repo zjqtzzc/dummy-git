@@ -1,3 +1,5 @@
+import type { RepositoryLocation } from "../git/commands/index.js";
+
 /**
  * 把一个绝对路径转成相对于某个基准目录的路径，分隔符统一为 `/`。
  *
@@ -36,4 +38,20 @@ export function relativeTo(basePath: string, targetPath: string): string | undef
   const prefix = base.endsWith("/") ? base : `${base}/`;
   if (!target.startsWith(prefix)) return undefined;
   return target.slice(prefix.length);
+}
+
+/**
+ * 工作区里的一个文件事件 → 喂给 `notifyWorkspacePath` 的相对路径；不该喂的返回 `undefined`。
+ *
+ * git 目录里的事件由 git 目录的 watcher 管，这里跳过，别喂两遍。
+ * 判断「在不在 git 目录里」用仓库位置，**不写死 `.git/`**：普通仓库的 git 目录恰好在根下，
+ * linked worktree 的在别处——两种情况同一条规则。
+ */
+export function workspaceRelative(
+  location: RepositoryLocation,
+  fsPath: string,
+): string | undefined {
+  if (relativeTo(location.gitDir, fsPath) !== undefined) return undefined;
+  if (relativeTo(location.commonDir, fsPath) !== undefined) return undefined;
+  return relativeTo(location.root, fsPath);
 }

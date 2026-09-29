@@ -1,20 +1,22 @@
 import * as vscode from "vscode";
 import type { Repository } from "../core/repository.js";
-import { DOT_GIT_GLOB } from "../core/watchPatterns.js";
-import { relativeTo } from "./relativePath.js";
+import { watchTargets } from "../core/watchPatterns.js";
+import { relativeTo, workspaceRelative } from "./relativePath.js";
 
 /**
  * 文件变化 → `Repository`。闭环的最后一段。
  *
- * ## 两个 watcher，不是一个
+ * ## git 目录与工作区分开监听
  *
- * `.git/**` 与工作区是两类完全不同的东西，分域也不一样
- * （`.git/HEAD` 变了是 `refs`，工作区文件变了只是 `worktree`），
+ * git 目录与工作区是两类完全不同的东西，分域也不一样
+ * （`HEAD` 变了是 `refs`，工作区文件变了只是 `worktree`），
  * 所以分开订阅、分别喂给 `Repository` 的两个入口。
+ * git 目录要监听哪几处、各用什么白名单，由 `watchTargets(location)` 决定——
+ * 普通仓库一处，linked worktree 两处。路径一律取自仓库位置，不拼 `<根>/.git`。
  *
  * ## 白名单在**订阅时**给，不是收到之后再过滤
  *
- * `.git/objects/**` 一次 fetch 能刷出上千个事件。给了白名单（`DOT_GIT_GLOB`），
+ * `.git/objects/**` 一次 fetch 能刷出上千个事件。给了白名单（`core/watchPatterns.ts`），
  * 这些事件**根本不会到达**——连收都不用收。
  * 收下来再 `if` 掉是在我们这边花 CPU 处理一堆注定要丢的东西。
  * 来源：GitLens 的 `watcherPatterns.ts`（M6 第 7 步）。
@@ -29,34 +31,39 @@ import { relativeTo } from "./relativePath.js";
  * 这里只负责「把 VSCode 的事件翻译成相对路径」——**唯一真正需要宿主的那部分**。
  */
 export function watchRepository(repository: Repository): vscode.Disposable {
-  const root = vscode.Uri.file(repository.location.root);
+  const { location } = repository;
+  const subscriptions: vscode.Disposable[] = [];
 
-  const dotGit = vscode.workspace.createFileSystemWatcher(
-    new vscode.RelativePattern(vscode.Uri.joinPath(root, ".git"), DOT_GIT_GLOB),
+  // git 目录：普通仓库一处，linked worktree 两处（`watchTargets` 决定）。
+  for (const target of watchTargets(location)) {
+    const watcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(vscode.Uri.file(target.directory), target.glob),
+    );
+    const feed = (uri: vscode.Uri): void => {
+      const rel = relativeTo(target.directory, uri.fsPath);
+      if (rel !== undefined) repository.notifyGitPath(rel);
+    };
+    subscriptions.push(
+      watcher,
+      watcher.onDidCreate(feed),
+      watcher.onDidChange(feed),
+      watcher.onDidDelete(feed),
+    );
+  }
+
+  const worktree = vscode.workspace.createFileSystemWatcher(
+    new vscode.RelativePattern(vscode.Uri.file(location.root), "**"),
   );
-  const worktree = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, "**"));
-
-  const dotGitPath = vscode.Uri.joinPath(root, ".git");
-  const feedGit = (uri: vscode.Uri): void => {
-    const rel = relativeTo(dotGitPath.fsPath, uri.fsPath);
-    if (rel !== undefined) repository.notifyGitPath(rel);
-  };
   const feedWorktree = (uri: vscode.Uri): void => {
-    const rel = relativeTo(root.fsPath, uri.fsPath);
-    // `.git` 下的事情由上面那个 watcher 管，别喂两遍。
-    if (rel !== undefined && !rel.startsWith(".git/")) repository.notifyWorkspacePath(rel);
+    const rel = workspaceRelative(location, uri.fsPath);
+    if (rel !== undefined) repository.notifyWorkspacePath(rel);
   };
-
-  const subscriptions = [
-    dotGit,
+  subscriptions.push(
     worktree,
-    dotGit.onDidCreate(feedGit),
-    dotGit.onDidChange(feedGit),
-    dotGit.onDidDelete(feedGit),
     worktree.onDidCreate(feedWorktree),
     worktree.onDidChange(feedWorktree),
     worktree.onDidDelete(feedWorktree),
-  ];
+  );
 
   return vscode.Disposable.from(...subscriptions);
 }

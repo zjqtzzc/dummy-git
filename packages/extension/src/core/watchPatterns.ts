@@ -1,3 +1,5 @@
+import type { RepositoryLocation } from "../git/commands/index.js";
+
 /**
  * `.git` 目录的订阅白名单。
  *
@@ -23,7 +25,7 @@
  *
  * ## 消费者
  *
- * M7 的 `vscode/` 层：`createFileSystemWatcher(new RelativePattern(gitDir, pattern))`。
+ * `vscode/watcher.ts`：按 `watchTargets()` 的结果逐个 `createFileSystemWatcher`。
  * 本文件只给字符串，不碰 VSCode API——这一层要能在纯 node 下跑。
  */
 
@@ -82,3 +84,29 @@ export const DOT_GIT_GLOB_WORKTREE = `{${WORKTREE_FILES.join(",")}}`;
 
 /** 有 linked worktree 时：共用 watcher 看共享文件。 */
 export const DOT_GIT_GLOB_COMMON = `{${COMMON_FILES.join(",")}}`;
+
+/** 一个要监听的目录，以及在它下面订阅哪些路径。 */
+export interface WatchTarget {
+  readonly directory: string;
+  readonly glob: string;
+}
+
+/**
+ * 仓库的 git 目录要监听哪几处。
+ *
+ * - 普通仓库：`gitDir` 与 `commonDir` 是同一个目录，一个 watcher 用完整白名单。
+ * - linked worktree：专属文件在 `<主仓库>/.git/worktrees/<名字>`，共享文件在主仓库的 `.git`，
+ *   两处各一个 watcher、各用各的白名单。写死 `<根>/.git` 在这里什么都监听不到——
+ *   那里是个文本文件。
+ *
+ * 两处的相对路径都与普通 `.git` 同形（`HEAD`、`refs/heads/main`），`classify.ts` 不用区分来源。
+ */
+export function watchTargets(location: RepositoryLocation): readonly WatchTarget[] {
+  if (location.gitDir === location.commonDir) {
+    return [{ directory: location.gitDir, glob: DOT_GIT_GLOB }];
+  }
+  return [
+    { directory: location.gitDir, glob: DOT_GIT_GLOB_WORKTREE },
+    { directory: location.commonDir, glob: DOT_GIT_GLOB_COMMON },
+  ];
+}

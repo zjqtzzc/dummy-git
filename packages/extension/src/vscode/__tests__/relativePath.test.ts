@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { relativeTo } from "../relativePath.js";
+import { relativeTo, workspaceRelative } from "../relativePath.js";
 
 /**
  * 这一段此前**零覆盖**——现有测试验的是 `notifyGitPath` 之后的链路，
@@ -51,5 +51,24 @@ describe("relativeTo", () => {
 
   it("基准目录末尾已带分隔符时不重复拼接", () => {
     expect(relativeTo("/repo/.git/", "/repo/.git/HEAD")).toBe("HEAD");
+  });
+});
+
+describe("workspaceRelative：git 目录里的事件不喂给工作区入口", () => {
+  it("普通仓库：`<根>/.git` 下的跳过，其余转成相对路径", () => {
+    const location = { root: "/r", gitDir: "/r/.git", commonDir: "/r/.git" };
+    expect(workspaceRelative(location, "/r/src/a.ts")).toBe("src/a.ts");
+    expect(workspaceRelative(location, "/r/.git/HEAD")).toBeUndefined();
+  });
+
+  it("linked worktree：git 目录不在根下，根下的一切都算工作区", () => {
+    const location = { root: "/wt", gitDir: "/main/.git/worktrees/wt", commonDir: "/main/.git" };
+    expect(workspaceRelative(location, "/wt/src/a.ts")).toBe("src/a.ts");
+    expect(workspaceRelative(location, "/main/.git/worktrees/wt/HEAD")).toBeUndefined();
+  });
+
+  it("不在仓库根下的路径 → undefined", () => {
+    const location = { root: "/r", gitDir: "/r/.git", commonDir: "/r/.git" };
+    expect(workspaceRelative(location, "/other/x")).toBeUndefined();
   });
 });
