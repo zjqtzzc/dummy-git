@@ -8,6 +8,7 @@ import { resolveGitPath } from "./vscode/gitPath.js";
 import { createOutputLogger } from "./vscode/logger.js";
 import { describeStartup, discoverRepositories, StartupKind } from "./vscode/open.js";
 import { openLogPanel } from "./vscode/panel.js";
+import { registerRevisionFileSystem } from "./vscode/revisionFileSystem.js";
 import { watchRepository } from "./vscode/watcher.js";
 
 /**
@@ -106,6 +107,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // 文件监听跟着**仓库**走，不跟面板走：外部改动要一直被感知到，
   // 哪怕此刻一个面板都没开（下次开面板时状态才是对的）。
   context.subscriptions.push(watchRepository(repository));
+
+  // diff 里历史版本的内容。重新加载窗口后恢复的 diff 标签也靠它（`onFileSystem:dummygit` 激活）。
+  context.subscriptions.push(registerRevisionFileSystem(repository, errors));
 }
 
 export function deactivate(): void {
