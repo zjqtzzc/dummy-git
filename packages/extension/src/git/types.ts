@@ -17,7 +17,7 @@ export class GitCancelledError extends Error {
   }
 }
 
-/** git 进程层的类型。只描述形状，不 import 任何东西。设计理由见 `.notes/design/M2-git-cli.md`。 */
+/** git 进程层的类型。只描述形状，不 import 任何东西。 */
 
 /** 一条 git 命令的结果，stdout 已解码成 UTF-8 文本。 */
 export interface ExecResult {

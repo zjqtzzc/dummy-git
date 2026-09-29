@@ -1,7 +1,6 @@
 /**
  * git 命令失败的分类。`git/failure.ts` 的分类结果。
  *
- * 设计依据见 `.notes/design/M4-errors.md` §2.1、§4。
  *
  * ## 为什么这是个闭集，而 git 的错误是开放集
  *
@@ -45,7 +44,7 @@ export enum GitErrorCode {
   /**
    * 另一个 git 进程正持有 `.git/index.lock`。
    *
-   * 它不带来行为差异（我们不重试，见 `design/locking.md` §3.1），
+   * 它不带来行为差异（我们不重试，见 `.notes/specs/locking.md` §3.1），
    * 保留是因为**这是唯一一个「原始 stderr 会主动误导用户」的错误**：
    *
    * ```
@@ -57,7 +56,7 @@ export enum GitErrorCode {
    * 弹通知只显示一行时，用户看到的恰好是最不可操作的那句——他不会想到
    * 是自己终端里那条命令。旧仓库 `d53cda9` 补的正是这条。
    *
-   * 对应文案见 `design/locking.md` §3.1。
+   * 对应文案见 `.notes/specs/locking.md` §3.1。
    */
   RepositoryIsLocked = "repositoryIsLocked",
 }

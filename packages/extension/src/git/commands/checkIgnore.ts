@@ -7,7 +7,7 @@ import { LockPolicy } from "./lock.js";
  * 批量问 git：这些工作区路径里，哪些是被忽略的。
  *
  * 服务 `core/ignoreCache.ts`——被 `.gitignore` 忽略的日志/构建产物持续写入时，
- * 不能让它们一路变成刷新。设计见 `.notes/design/M6-repository.md` §9.2。
+ * 不能让它们一路变成刷新。
  *
  * ## 为什么问 git，而不自己做模式匹配
  *

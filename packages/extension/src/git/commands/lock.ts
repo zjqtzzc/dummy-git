@@ -1,7 +1,7 @@
 /**
  * 跑一条 git 命令时要不要抢锁。
  *
- * 设计依据见 `.notes/design/locking.md` §2.1。
+ * 设计依据见 `.notes/specs/locking.md` §2.1。
  *
  * 只有两态。git4idea 有第三态 `READ_OPTIONAL_LOCKING`，那是为了支持 git < 2.15
  * （`GIT_OPTIONAL_LOCKS` 自 2.15 起）；我们无条件传该变量，第三态不需要。

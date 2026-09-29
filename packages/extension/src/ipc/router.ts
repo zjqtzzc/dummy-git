@@ -53,8 +53,7 @@ export type HandlerMap = { [K in CommandName]: Handler<K> };
  * `Record<Exclude<keyof T, CommandName>, never>` 把「表外的键」收窄成 `never`，
  * 于是变量形态下同样拦得住——**保护不依赖调用方的书写习惯**。
  *
- * （这个区分来自 `LESSONS.md` 2026-09-21：守卫真实存在，但它守的东西
- * 与你以为的不是一个。那次的教训正是「完备性断言只拦漏、不拦多」。）
+ * 守卫真实存在，但它守的东西可能与你以为的不是一个：完备性断言只拦漏、不拦多。
  */
 export function defineHandlers<T extends HandlerMap>(
   handlers: T & Record<Exclude<keyof T, CommandName>, never>,
@@ -111,7 +110,7 @@ function toProtocolError(error: unknown): ProtocolError {
  *
  * ## 「每条请求恰好回一次」是不设超时的前提
  *
- * 协议层**没有统一超时**（`design/M7-protocol.md` §5.5）：写命令会排队，
+ * 协议层**没有统一超时**：写命令会排队，
  * 排在慢命令后面的那条可能等很久，一旦超时，UI 说「失败了」而 git **还在跑**——
  * 那不是失败，是撒谎，用户会重试一个正在成功的提交。
  *
@@ -209,7 +208,8 @@ export class Router {
         result: ResponseKind.Error,
         error: protocolError,
       });
-      this.hooks.log(`${command} 失败（${Date.now() - started}ms）：${protocolError.message}`);
+      // 错误内容由关口写（report），这里只记用时，与成功时那行对称。
+      this.hooks.log(`${command} 失败（${Date.now() - started}ms）`);
       this.hooks.report(error);
     }
   }

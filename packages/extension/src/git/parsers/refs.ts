@@ -4,7 +4,6 @@
  * 用 `for-each-ref` 而不是 `git log` 的 `%D`：`%D` 给的是 `origin/main` 这种字符串，
  * **分不出它是远程分支还是一个恰好叫这名字的本地分支**——旧仓库 `ad9f396` 就栽在这。
  * `for-each-ref` 给完整路径（`refs/heads/…` / `refs/remotes/…` / `refs/tags/…`），零歧义。
- * 详见 `.notes/design/M3-parsers.md` §3.2。
  */
 import { type Ref, RefKind, type Upstream, UpstreamState } from "@dummy-git/shared";
 import { GitParseError } from "./errors.js";

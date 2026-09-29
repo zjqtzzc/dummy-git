@@ -1,6 +1,6 @@
 import { DiffSideKind } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
-import { diffTitle } from "../diffTab.js";
+import { diffTitle } from "../diffTitle.js";
 
 describe("diffTitle", () => {
   it("文件名 + 左右短 hash，不存在的一边写 none", () => {

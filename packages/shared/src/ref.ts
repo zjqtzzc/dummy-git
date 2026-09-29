@@ -2,7 +2,7 @@
  * 引用：分支、标签、HEAD。`git for-each-ref` 的解析结果。
  *
  * 服务分支树（Local/Remote 分组、当前分支置顶、ahead/behind）与
- * Log 列表的 ref 标签。设计依据见 `.notes/design/M3-parsers.md` §2.2。
+ * Log 列表的 ref 标签。
  */
 
 export enum RefKind {

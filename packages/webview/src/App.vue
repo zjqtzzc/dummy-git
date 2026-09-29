@@ -12,7 +12,7 @@ import { nextTick, onMounted, onUnmounted, ref } from "vue";
 import BranchTree from "./BranchTree.vue";
 import CommitList from "./CommitList.vue";
 import FileTree from "./FileTree.vue";
-import type { Client } from "./logic/client.js";
+import { type Client, CommandFailedError } from "./logic/client.js";
 import { commitDiffSides } from "./logic/commitDiff.js";
 import { type Layout, restoreLayout, splitPosition } from "./logic/layout.js";
 import { hashesToFetch } from "./logic/prefetch.js";
@@ -37,7 +37,6 @@ const selected = ref<string>();
 const files = ref<CommitFileChange[]>([]);
 /** 右栏正在取选中提交的文件。 */
 const filesLoading = ref(false);
-const error = ref<string>();
 const list = ref<InstanceType<typeof CommitList>>();
 
 /** 「现在」，秒。每 30 秒走一次，「5 minutes ago」才会跟着变。 */
@@ -47,8 +46,12 @@ const clock = setInterval(() => {
 }, 30_000);
 onUnmounted(() => clearInterval(clock));
 
+/**
+ * 请求失败已由扩展侧的错误关口弹过通知、写过输出面板（`ARCHITECTURE.md` 第 15 题），
+ * 这里不再显示第二遍。webview 自己代码里的错误扩展侧不知道，写到开发者工具的控制台。
+ */
 function report(cause: unknown): void {
-  error.value = cause instanceof Error ? cause.message : String(cause);
+  if (!(cause instanceof CommandFailedError)) console.error(cause);
 }
 
 /** 可见范围变了：把范围前后还没有详情的提交取回来。 */
@@ -103,7 +106,6 @@ async function load(repository: string): Promise<void> {
     hashes.value = skeleton.map((commit) => commit.hash);
     refs.value = fetchedRefs;
     loaded.value = true;
-    error.value = undefined;
     await nextTick();
 
     const kept = selected.value === undefined ? -1 : hashes.value.indexOf(selected.value);
@@ -215,7 +217,6 @@ onMounted(async () => {
       @vsc-split-layout-change="onRightSplit"
     >
       <div slot="start" class="pane">
-        <p v-if="error !== undefined" class="error">{{ error }}</p>
         <p v-if="!loaded" class="dim loading">Loading…</p>
         <CommitList
           v-else

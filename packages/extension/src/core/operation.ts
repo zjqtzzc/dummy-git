@@ -4,7 +4,7 @@ import { LockPolicy } from "../git/commands/index.js";
 /**
  * 命令调度：**写命令互斥排队，读命令直接跑。**
  *
- * 设计依据见 `.notes/design/M5-commands-operation.md` §3.3 与 `.notes/design/locking.md` §2。
+ * 设计依据见 `.notes/specs/locking.md` §2。
  *
  * ## 它只有一个概念
  *

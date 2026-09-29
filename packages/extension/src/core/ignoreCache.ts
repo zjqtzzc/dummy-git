@@ -4,8 +4,7 @@ import { checkIgnore } from "../git/commands/index.js";
 /**
  * 记住「工作区的哪些路径是被 git 忽略的」，让日志/构建产物的写入不再刷界面。
  *
- * 设计见 `.notes/design/M6-repository.md` §9.2；用户从旧仓库实际用出来的痛点，
- * 症状链见 `FEATURES.md` §7.2.1（进度条每隔几秒闪、文件树整个重绘）。
+ * 旧仓库用户实际遇到的痛点：被忽略的日志、构建产物不停写入，进度条每隔几秒闪、文件树整个重绘。
  *
  * ## 它不做模式匹配，只做记忆
  *
@@ -93,7 +92,7 @@ export class IgnoreCache {
   /**
    * 清空。规则可能变了，之前的答案一律作废。
    *
-   * 触发时机（`design/M6-repository.md` §9.2）：任意 `.gitignore` /
+   * 触发时机：任意 `.gitignore` /
    * `.git/info/exclude` / `config`（`core.excludesFile` 可能变）/
    * `.git/index`（可能有 `add -f`，会让一个已忽略的路径变成不忽略）。
    *

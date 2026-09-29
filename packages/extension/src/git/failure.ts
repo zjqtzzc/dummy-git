@@ -1,5 +1,5 @@
 /**
- * git 命令失败的分类。设计依据见 `.notes/design/M4-errors.md`。
+ * git 命令失败的分类。
  *
  * 文件名是 `failure.ts` 而不是 `errors.ts`：`parsers/errors.ts` 已经占用了那个名字，
  * 且两者管的是不同的东西——那个是**解析失败**的诊断，这个是**命令失败**的分类。
@@ -11,7 +11,6 @@
  * 表现是「锁冲突的提示突然变回裸 stderr」，几乎没人会联想到 locale。
  *
  * 所以 `cli.ts` 的 `FORCED_ENV` 里那三行 `LANGUAGE`/`LC_ALL`/`LANG` 不是可选项。
- * 见 `.notes/design/M2-git-cli.md` §4.1。
  *
  * ## 为什么不看退出码
  *
@@ -146,11 +145,10 @@ export async function run(
 /**
  * `run()` 的字节版：stdout 保持 `Buffer`，不解码。
  *
- * **M3 的 parser 全部吃 `Buffer`**（`parseStatus(stdout: Buffer)`），理由见
- * `.notes/design/M3-parsers.md` §5：在字节层切分才不会拖住大缓冲区、
+ * **parser 全部吃 `Buffer`**（`parseStatus(stdout: Buffer)`）：在字节层切分才不会拖住大缓冲区、
  * 也不会切坏多字节字符。所以凡是「跑完要解析」的命令都走这里，不走 `run()`。
  *
- * 将来读任意 revision 的文件内容（`git show HEAD:image.png`）也用它。
+ * 读某个版本的文件原始字节（`getFileContent`）也用它。
  */
 export async function runRaw(
   cli: GitCli,

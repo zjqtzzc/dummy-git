@@ -1,7 +1,6 @@
 /**
  * 一条提交。`git log` 的解析结果，Log 面板的数据源。
  *
- * 设计依据见 `.notes/design/M3-parsers.md` §2.1。
  */
 
 /**
@@ -66,7 +65,7 @@ export interface Commit {
  * （vscode 仓库 18.8 万条），窄字段的输出是 18 MB，带上作者和消息就是 46 MB。
  * 而画图用不到那 28 MB。
  *
- * 取数模型见 `.notes/design/M3-parsers.md` §4.2：
+ * 取数模型见 `.notes/ARCHITECTURE.md` 第 8 题：
  * 全量拉骨架建图，用户看到哪几行就按 hash 去取那几条的 `Commit`。
  */
 export interface CommitSkeleton {

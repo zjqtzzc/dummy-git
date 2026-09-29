@@ -4,7 +4,6 @@
  * 用 **porcelain v2**，不用 v1（两家参考实现都用 v1，这里刻意分歧）。
  * v2 每条记录的第一个字段就是记录类型，而 `FileChange` 正是「用 `kind` 区分形态」
  * 的结构——**git 直接把 `kind` 给了我们**，不必从 `XY` 的值里猜。
- * 详见 `.notes/design/M3-parsers.md` §3.3。
  */
 import { ChangeKind, ConflictKind, type FileChange, FileStatus } from "@dummy-git/shared";
 import { GitParseError } from "./errors.js";

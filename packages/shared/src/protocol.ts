@@ -27,7 +27,7 @@ import type { Ref } from "./ref.js";
  * | 漏注册（表里有、没注册） | `router.ts` 的完备性断言 |
  * | 多注册（注册了表外的） | `handle<K extends keyof Commands>` 的泛型签名 |
  *
- * **不要把两者混为一谈**（`LESSONS.md` 2026-09-21）：完备性断言拦不住多注册——
+ * **不要把两者混为一谈**：完备性断言拦不住多注册——
  * TypeScript 的多余属性检查只对**字面量**生效，而真实的注册表是由 `handle()`
  * 逐条累积出来的变量。实测多注册时断言零报错。
  *
@@ -47,8 +47,7 @@ import type { Ref } from "./ref.js";
  *
  * **除 `getRepositories` 外每条都带 `repo`**（它就是用来问「有哪些 repo」的，
  * 带一个自己要去查的东西没有意义）。MVP 只支持一个仓库，这个值永远相同——
- * 但**现在加是一个字段，将来加是重写契约**：协议的封闭性意味着改它会让编译全线报错
- * （`PLAN.md`「M7 追加两条」）。
+ * 但**现在加是一个字段，将来加是重写契约**：协议的封闭性意味着改它会让编译全线报错。
  *
  * 取数分两步（`DECISIONS.md`「M3 log 取数模型」）：`getSkeleton` 跑遍全历史但每条
  * 只有三个字段，`getCommitDetails` 只取当前要显示的那几十条。实测在 vscode 仓库
@@ -142,7 +141,7 @@ export type EventPayload<E extends EventName> = Events[E];
  * **当成自己那条 id=1 的回复**——串台，且内容看起来完全合法。
  *
  * 代号对不上的一律丢弃。它同时也是清理时机：
- * 收到新 ready 就丢弃上一代的一切（`design/M7-protocol.md` §5.4、§5.6）。
+ * 收到新 ready 就丢弃上一代的一切。
  */
 export type Generation = string;
 

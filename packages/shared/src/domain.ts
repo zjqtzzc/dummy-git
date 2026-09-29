@@ -26,7 +26,7 @@ export enum GitDomain {
    * **四个域里唯一昂贵的一个**，别顺手带上。
    * 注意它内部还差两百倍：列 ref 不到 10 ms，而提交图骨架要 1.9 秒。
    * 那个差距**不在这一层解决**（watcher 分辨不了），
-   * 正确解法在消费者侧，见 `design/M6-repository.md` §13.4。
+   * 正确解法在消费者侧。
    */
   Refs = "refs",
 
@@ -46,13 +46,7 @@ export enum GitDomain {
   /**
    * `git stash` 的列表。
    *
-   * 消费者：Commit 面板的 Shelf 标签页。
-   *
-   * 只管 `git stash`。IDEA 的 `.idea/shelf/` 是**磁盘上的 patch 文件、根本不碰 git**，
-   * 该有自己的域（`ideaShelf`）——结论已定但本里程碑不实现，
-   * 因为它的消费者还不存在。加的时机与加法见 `design/M6-repository.md` §8 末尾。
-   * **不要把它并进这里**：旧仓库那么做，导致 IntelliJ 那边改动时标签页不刷新，
-   * 而外部互操作正是那个功能存在的全部理由。
+   * 消费者：Commit 面板的 Stash 模式（需求第 4 阶段）。
    */
   Stash = "stash",
 

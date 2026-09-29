@@ -11,7 +11,6 @@ import { CommandQueue } from "./operation.js";
 /**
  * 一个仓库的状态权威。**M6 的产出，也是 M7 唯一的入口。**
  *
- * 设计见 `.notes/design/M6-repository.md`。
  *
  * ## 它回答的问题：「现在是什么状态」
  *
@@ -138,15 +137,14 @@ export class Repository {
    * 喂一个工作区路径（相对仓库根，`/` 分隔）。
    *
    * **先过 ignore 的筛**：被 `.gitignore` 忽略的日志/构建产物持续写入时，
-   * 不挡住的话界面会一直抖（`FEATURES.md` §7.2.1 的真实痛点）。
+   * 不挡住的话界面会一直抖（旧仓库用户实际遇到的痛点）。
    *
    * 不认识的路径一律放行（多刷一次，安全方向），同时排队等下次批量问 git。
    */
   notifyWorkspacePath(relPath: string): void {
     if (this._state === RepositoryState.Disposed) return;
     if (this.ignoreCache.shouldIgnore(relPath)) return;
-    // 工作区的一切只映射到 worktree（`design/M6-repository.md` §9.1）。
-    // 加入 ideaShelf 域时这里要改成分类表，那是垂直切片期的事。
+    // 工作区的一切只映射到 worktree。
     this.pending.add([GitDomain.Worktree]);
   }
 
@@ -163,7 +161,7 @@ export class Repository {
   }
 
   /**
-   * M4 欠下的**唯一消费者**在这里兑现（`design/M6-repository.md` §2.1）。
+   * M4 欠下的**唯一消费者**在这里兑现。
    *
    * `GitErrorCode.NotAGitRepository` 从 M4 产出至今没有任何人读过。
    * 它的意义就是这一处：仓库没了就停止一切，而不是反复对一个不存在的

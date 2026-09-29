@@ -1,6 +1,6 @@
 import { assertNever, DiffOpenMode, type DiffSide } from "@dummy-git/shared";
 import * as vscode from "vscode";
-import { diffTitle } from "./diffTab.js";
+import { diffTitle } from "./diffTitle.js";
 import { REVISION_SCHEME, toRevisionUri } from "./revisionUri.js";
 
 /**

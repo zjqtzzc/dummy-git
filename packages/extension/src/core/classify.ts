@@ -62,7 +62,7 @@ const OP_REFS_WORKTREE: readonly GitDomain[] = Object.freeze([
  * - `*.lock` —— 每次 git 操作都建了又删。实测除了 `index.lock` / `HEAD.lock`，
  *   还有 `next-index-<pid>.lock` 这种带随机数字的，**靠后缀一条规则全覆盖**，
  *   不必逐个列举。
- *   （另见 `design/locking.md` §5：不把 `.git/index.lock` 当状态源。）
+ *   （另见 `.notes/specs/locking.md` §5：不把 `.git/index.lock` 当状态源。）
  * - `hooks/` `info/` `lfs/` —— 与我们关心的状态无关。
  */
 function isNoise(relPath: string): boolean {

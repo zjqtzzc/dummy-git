@@ -10,7 +10,6 @@
     "lint": "biome check . && node scripts/check-assertions.mjs",
     "lint:fix": "biome check --write .",
     "test": "node scripts/test.mjs",
-    "demo:protocol": "vite-node scripts/demo-protocol.ts",
     "debug:setup": "node scripts/debug-setup.mjs",
     "build": "pnpm -r run build",
     "watch": "pnpm -r --parallel run watch",
@@ -22,7 +21,6 @@
     "@vue/compiler-sfc": "3.5.43",
     "esbuild": "^0.27.2",
     "typescript": "^5.9.3",
-    "vite-node": "3.2.4",
     "vitest": "^3.2.4"
   }
 }

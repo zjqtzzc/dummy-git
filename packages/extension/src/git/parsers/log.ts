@@ -1,5 +1,5 @@
 /**
- * `git log` 的命令与解析。**两个查询**，对应取数模型 B（见 `.notes/design/M3-parsers.md` §4.2）：
+ * `git log` 的命令与解析。**两个查询**，对应取数模型 B（`.notes/ARCHITECTURE.md` 第 8 题）：
  *
  *   骨架  git log HEAD --branches --remotes --tags --date-order --format=<3 字段>
  *   详情  git log --no-walk --stdin --format=<9 字段>    按 hash 取，显示用
@@ -179,7 +179,7 @@ export function parseSkeleton(stdout: Buffer): CommitSkeleton[] {
 
 /**
  * `%aN`/`%aE` 是大写：走 **mailmap**（把同一个人的多个邮箱归一），
- * `%an`/`%ae` 才是提交里的原始值。`FEATURES.md §2.2` 明确要求走 mailmap——
+ * `%an`/`%ae` 才是提交里的原始值。需求明确要求走 mailmap——
  * 不归一的话，按作者过滤时一个人会被拆成好几个。
  */
 const LOG_FORMAT = "%H%x00%P%x00%aN%x00%aE%x00%at%x00%cN%x00%cE%x00%ct%x00%B%x00%x00%x01";
