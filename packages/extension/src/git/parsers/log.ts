@@ -153,11 +153,12 @@ const SK_FIELD_COUNT = 3;
  * 实测代价（vscode 仓库 188,163 条提交）：1.6 秒 / 18 MB 输出。
  * 带上作者与消息的话是 46 MB，而画图用不到那 28 MB。
  */
-export function skeletonArgs(): string[] {
+export function skeletonArgs(limit: number): string[] {
   // 顺序对齐 IntelliJ 的 LOG_ALL：HEAD / 分支 / 远程 / 标签。
   return [
     ...LOG_PREFIX,
     `--format=${SKELETON_FORMAT}`,
+    `--max-count=${limit}`,
     "HEAD",
     "--branches",
     "--remotes",

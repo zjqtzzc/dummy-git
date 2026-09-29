@@ -17,13 +17,18 @@ import { LockPolicy } from "./lock.js";
  */
 
 /**
- * 全量骨架。
+ * 骨架：最近的 `SKELETON_LIMIT` 条，更早的不取。
+ *
+ * 上限是需求（第 1 阶段「提交列表最多一万条」），理由见 `ARCHITECTURE.md` 第 8 题：
+ * 不设上限时 18.8 万条的仓库常驻约 360 MB，更大的仓库会让扩展宿主内存溢出。
  *
  * 纯读，`LockPolicy.None`。
  *
  * ⚠️ 它是本项目**最重的**一条只读命令：vscode 仓库上约 1.6 秒 / 18 MB。
  * 界面上必须避免频繁重跑——`NFR.md` N2「过滤输入要防抖」针对的正是这类查询。
  */
+export const SKELETON_LIMIT = 10_000;
+
 export const getSkeleton: GitCommand<[repository: string], CommitSkeleton[]> = {
   // 只读历史，不碰 index、不碰工作区。
   lock: LockPolicy.None,
@@ -31,7 +36,7 @@ export const getSkeleton: GitCommand<[repository: string], CommitSkeleton[]> = {
   execute: async (cli, repository) => {
     // runRaw：parser 吃 Buffer 不吃字符串（`M3-parsers.md` §5）。
     // 18 MB 的输出尤其不能先解码成一整个字符串——那正是 V8 sliced string 的陷阱所在。
-    const result = await runRaw(cli, skeletonArgs(), { cwd: repository });
+    const result = await runRaw(cli, skeletonArgs(SKELETON_LIMIT), { cwd: repository });
     return parseSkeleton(result.stdout);
   },
 };

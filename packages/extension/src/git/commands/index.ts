@@ -18,7 +18,7 @@
  * | `getStatus` | `status --porcelain=v2 -z -uall`，环境 `GIT_OPTIONAL_LOCKS=0` | `--porcelain=v2`；`GIT_OPTIONAL_LOCKS` | 2.11；**2.15** |
  * | `checkIgnore` | `check-ignore -z --stdin` | — | — |
  * | `commit` | `commit --only -F - -- <路径…>` | — | — |
- * | `getSkeleton` | `-c log.showSignature=false log --format=… HEAD --branches --remotes --tags --date-order` | — | — |
+ * | `getSkeleton` | `-c log.showSignature=false log --format=… --max-count=10000 HEAD --branches --remotes --tags --date-order` | — | — |
  * | `getCommitDetails` | `-c log.showSignature=false log --format=… --no-walk --stdin` | — | — |
  * | `getCommitFiles` | `-c log.showSignature=false log -1 -M --first-parent --format= --name-status -z <hash>` | — | — |
  *
@@ -30,5 +30,5 @@ export type { GitCommand } from "./command.js";
 export { commit } from "./commit.js";
 export { getRepositoryLocation, type RepositoryLocation } from "./location.js";
 export { LockPolicy } from "./lock.js";
-export { getCommitDetails, getCommitFiles, getSkeleton } from "./log.js";
+export { getCommitDetails, getCommitFiles, getSkeleton, SKELETON_LIMIT } from "./log.js";
 export { getStatus } from "./status.js";

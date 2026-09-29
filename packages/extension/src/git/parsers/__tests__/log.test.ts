@@ -1,11 +1,12 @@
 import type { Commit, CommitSkeleton } from "@dummy-git/shared";
 import { beforeAll, describe, expect, it } from "vitest";
 import { cli, fixtures } from "../../../__tests__/support.js";
+import { SKELETON_LIMIT } from "../../commands/log.js";
 import { detailsArgs, parseLog, parseSkeleton, skeletonArgs } from "../log.js";
 
 /** 走真实路径：`cli.execRaw` → `parseXxx`，与生产代码同一条链。 */
 async function skeletonOf(repo: string): Promise<CommitSkeleton[]> {
-  const r = await cli.execRaw(skeletonArgs(), { cwd: repo });
+  const r = await cli.execRaw(skeletonArgs(SKELETON_LIMIT), { cwd: repo });
   return parseSkeleton(r.stdout);
 }
 
@@ -104,7 +105,7 @@ describe("parseLog：log.showSignature=true 不崩", () => {
   });
 
   it("我们的 skeletonArgs 带了 -c log.showSignature=false，解析正常", async () => {
-    expect(skeletonArgs()).toContain("log.showSignature=false");
+    expect(skeletonArgs(SKELETON_LIMIT)).toContain("log.showSignature=false");
     const skeleton = await skeletonOf(fixtures.signed);
     expect(skeleton.length).toBeGreaterThan(0);
     for (const c of skeleton) {
@@ -121,11 +122,11 @@ describe("skeletonArgs 不用 --all", () => {
    * the stuff from index or stash）。
    */
   it("参数里不出现 --all", () => {
-    expect(skeletonArgs()).not.toContain("--all");
+    expect(skeletonArgs(SKELETON_LIMIT)).not.toContain("--all");
   });
 
   it("用 HEAD / --branches / --remotes / --tags 四件套代替", () => {
-    const args = skeletonArgs();
+    const args = skeletonArgs(SKELETON_LIMIT);
     expect(args).toContain("HEAD");
     expect(args).toContain("--branches");
     expect(args).toContain("--remotes");
@@ -159,10 +160,22 @@ describe("skeletonArgs 不用 --all", () => {
       git("stash", "-q");
 
       // `--all` 下这里会是 3 条：c1 + "WIP on master" + "index on master"。
-      const raw = await cli.execRaw(skeletonArgs(), { cwd: repo });
+      const raw = await cli.execRaw(skeletonArgs(SKELETON_LIMIT), { cwd: repo });
       expect(parseSkeleton(raw.stdout)).toHaveLength(1);
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }
+  });
+});
+
+describe("skeletonArgs 的上限", () => {
+  it("只取最近 limit 条——超过上限的仓库截断，不是全量", async () => {
+    const all = parseSkeleton(
+      (await cli.execRaw(skeletonArgs(SKELETON_LIMIT), { cwd: fixtures.base })).stdout,
+    );
+    // fixture 远少于一万条，拿一个比它小的上限验证截断确实生效。
+    expect(all.length).toBeGreaterThan(2);
+    const two = parseSkeleton((await cli.execRaw(skeletonArgs(2), { cwd: fixtures.base })).stdout);
+    expect(two).toEqual(all.slice(0, 2));
   });
 });
