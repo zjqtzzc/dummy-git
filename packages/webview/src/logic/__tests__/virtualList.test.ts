@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { keepRowInPlace, ROW_HEIGHT, renderRange, scrollToReveal } from "../virtualList.js";
+import {
+  keepRowInPlace,
+  ROW_HEIGHT,
+  renderRange,
+  scrollIntoView,
+  scrollToCenter,
+} from "../virtualList.js";
 
 describe("renderRange：只渲染看得见的几十行", () => {
   it("顶部：从第 0 行起，下方多留余量", () => {
@@ -20,19 +26,35 @@ describe("renderRange：只渲染看得见的几十行", () => {
   });
 });
 
-describe("scrollToReveal：让某一行出现在视口里", () => {
+describe("scrollIntoView：键盘逐行移动，只滚一行", () => {
   const viewport = 10 * ROW_HEIGHT;
 
   it("已经看得见 → 不动", () => {
-    expect(scrollToReveal(5, 0, viewport)).toBe(0);
+    expect(scrollIntoView(5, 0, viewport)).toBe(0);
   });
 
-  it("看不见 → 滚到让它居中", () => {
-    expect(scrollToReveal(100, 0, viewport)).toBe(100 * ROW_HEIGHT - (viewport - ROW_HEIGHT) / 2);
+  it("刚好在底部下一行 → 只往下滚一行，不跳半页", () => {
+    expect(scrollIntoView(10, 0, viewport)).toBe(ROW_HEIGHT);
+  });
+
+  it("刚好在顶部上一行 → 只往上滚一行", () => {
+    expect(scrollIntoView(19, 20 * ROW_HEIGHT, viewport)).toBe(19 * ROW_HEIGHT);
+  });
+});
+
+describe("scrollToCenter：打开时跳到 HEAD，让它居中", () => {
+  const viewport = 10 * ROW_HEIGHT;
+
+  it("已经看得见 → 不动", () => {
+    expect(scrollToCenter(5, 0, viewport)).toBe(0);
+  });
+
+  it("看不见 → 居中", () => {
+    expect(scrollToCenter(100, 0, viewport)).toBe(100 * ROW_HEIGHT - (viewport - ROW_HEIGHT) / 2);
   });
 
   it("靠近顶部时不滚成负数", () => {
-    expect(scrollToReveal(1, 50 * ROW_HEIGHT, viewport)).toBe(0);
+    expect(scrollToCenter(1, 50 * ROW_HEIGHT, viewport)).toBe(0);
   });
 });
 

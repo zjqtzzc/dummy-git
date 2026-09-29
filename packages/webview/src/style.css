@@ -71,3 +71,15 @@ li.row {
 code {
   font-family: var(--vscode-editor-font-family);
 }
+.pane {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.pane > .commit-list {
+  flex: 1;
+  min-height: 0;
+}
+.loading {
+  padding: 12px;
+}

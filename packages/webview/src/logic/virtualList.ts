@@ -27,8 +27,19 @@ export function renderRange(scrollTop: number, viewportHeight: number, total: nu
   };
 }
 
-/** 让第 `row` 行出现在视口里：已经看得见就不动，否则滚到让它居中。 */
-export function scrollToReveal(row: number, scrollTop: number, viewportHeight: number): number {
+/**
+ * 让第 `row` 行刚好露出来，只滚必要的距离：在上面就对齐顶部，在下面就对齐底部，
+ * 看得见就不动。键盘逐行移动用它——一次一行，不跳半页。
+ */
+export function scrollIntoView(row: number, scrollTop: number, viewportHeight: number): number {
+  const top = row * ROW_HEIGHT;
+  if (top < scrollTop) return top;
+  if (top + ROW_HEIGHT > scrollTop + viewportHeight) return top + ROW_HEIGHT - viewportHeight;
+  return scrollTop;
+}
+
+/** 让第 `row` 行居中：看得见就不动。打开时跳到 HEAD 用它，四周的上下文都看得到。 */
+export function scrollToCenter(row: number, scrollTop: number, viewportHeight: number): number {
   const top = row * ROW_HEIGHT;
   if (top >= scrollTop && top + ROW_HEIGHT <= scrollTop + viewportHeight) return scrollTop;
   return Math.max(0, top - (viewportHeight - ROW_HEIGHT) / 2);
