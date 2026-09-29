@@ -3,6 +3,7 @@ import { Repository } from "./core/repository.js";
 import { GitCli } from "./git/cli.js";
 import { createHandlers } from "./ipc/handlers.js";
 import { Router } from "./ipc/router.js";
+import { openDiff } from "./vscode/diff.js";
 import { ErrorGate } from "./vscode/errorGate.js";
 import { resolveGitPath } from "./vscode/gitPath.js";
 import { createOutputLogger } from "./vscode/logger.js";
@@ -60,7 +61,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       openLogPanel(
         context,
         (transport) =>
-          new Router(transport, createHandlers(repo), {
+          new Router(transport, createHandlers(repo, { openDiff }), {
             log: (line) => channel.appendLine(line),
             report: (error) => errors.report(error),
           }),

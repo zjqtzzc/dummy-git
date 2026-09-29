@@ -1,9 +1,23 @@
-import { GitDomain, MessageKind, RefKind, ResponseKind } from "@dummy-git/shared";
+import {
+  DiffOpenMode,
+  type DiffSide,
+  DiffSideKind,
+  GitDomain,
+  MessageKind,
+  RefKind,
+  ResponseKind,
+} from "@dummy-git/shared";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { cli, fixtures } from "../../__tests__/support.js";
 import { Repository } from "../../core/repository.js";
 import { getRepositoryLocation } from "../../git/commands/index.js";
-import { createHandlers } from "../handlers.js";
+import { createHandlers, type HandlerUi } from "../handlers.js";
+
+/** 不涉及界面的测试用它：真调到就说明测错了东西。 */
+const NO_UI: HandlerUi = {
+  openDiff: () => Promise.reject(new Error("测试里不该打开 diff")),
+};
+
 import { Router, type Transport } from "../router.js";
 
 /**
@@ -21,12 +35,12 @@ describe("handlers：协议接到真仓库上", () => {
 
   it("getRepositories 返回仓库根——webview 的第一句话", async () => {
     // 这是启动链的第一环：不知道有哪些仓库，别的命令连参数都凑不出来。
-    const roots = await createHandlers(repository).getRepositories({});
+    const roots = await createHandlers(repository, NO_UI).getRepositories({});
     expect(roots).toEqual([repository.location.root]);
   });
 
   it("getSkeleton 拿到真实提交", async () => {
-    const skeleton = await createHandlers(repository).getSkeleton({
+    const skeleton = await createHandlers(repository, NO_UI).getSkeleton({
       repo: repository.location.root,
     });
     expect(skeleton.length).toBeGreaterThan(3);
@@ -34,7 +48,7 @@ describe("handlers：协议接到真仓库上", () => {
   });
 
   it("getCommitDetails 按 hash 取到详情", async () => {
-    const handlers = createHandlers(repository);
+    const handlers = createHandlers(repository, NO_UI);
     const skeleton = await handlers.getSkeleton({ repo: repository.location.root });
     const hashes = skeleton.slice(0, 2).map((c) => c.hash);
 
@@ -44,7 +58,7 @@ describe("handlers：协议接到真仓库上", () => {
   });
 
   it("getCommitFiles 拿到那条提交改了哪些文件", async () => {
-    const handlers = createHandlers(repository);
+    const handlers = createHandlers(repository, NO_UI);
     const skeleton = await handlers.getSkeleton({ repo: repository.location.root });
     const hash = skeleton.at(-1)?.hash;
     expect(hash).toBeDefined();
@@ -57,7 +71,9 @@ describe("handlers：协议接到真仓库上", () => {
   });
 
   it("getRefs：第一条是 HEAD，其后是分支与 tag——左栏一次拿全", async () => {
-    const refs = await createHandlers(repository).getRefs({ repo: repository.location.root });
+    const refs = await createHandlers(repository, NO_UI).getRefs({
+      repo: repository.location.root,
+    });
     expect(refs[0]).toMatchObject({ kind: RefKind.Head, branch: "main" });
     expect(refs).toContainEqual(
       expect.objectContaining({ kind: RefKind.LocalBranch, name: "feat" }),
@@ -70,7 +86,9 @@ describe("handlers：协议接到真仓库上", () => {
       cli,
     );
     try {
-      const [head] = await createHandlers(detached).getRefs({ repo: detached.location.root });
+      const [head] = await createHandlers(detached, NO_UI).getRefs({
+        repo: detached.location.root,
+      });
       expect(head?.kind).toBe(RefKind.Head);
       expect(head).not.toHaveProperty("branch");
     } finally {
@@ -78,12 +96,31 @@ describe("handlers：协议接到真仓库上", () => {
     }
   });
 
+  it("openDiff：把仓库根和左右两边原样交给界面", async () => {
+    const calls: unknown[][] = [];
+    const ui: HandlerUi = {
+      openDiff: async (...args) => {
+        calls.push(args);
+      },
+    };
+    const left: DiffSide = { kind: DiffSideKind.Missing, path: "a.ts" };
+    const right: DiffSide = { kind: DiffSideKind.Revision, hash: "f".repeat(40), path: "a.ts" };
+    const result = await createHandlers(repository, ui).openDiff({
+      repo: repository.location.root,
+      left,
+      right,
+      mode: DiffOpenMode.Open,
+    });
+    expect(result).toBeNull();
+    expect(calls).toEqual([[repository.location.root, left, right, DiffOpenMode.Open]]);
+  });
+
   it("经 Router 走一遍：请求进去，Ok 响应出来", async () => {
     // 与上面三条的区别：这条经过了**边界校验**与**信封**，
     // 也就是真实运行时 webview 那一侧看到的东西。
     const sent: unknown[] = [];
     const transport: Transport = { post: (m) => void sent.push(m) };
-    const router = new Router(transport, createHandlers(repository));
+    const router = new Router(transport, createHandlers(repository, NO_UI));
 
     router.receive({ kind: MessageKind.Ready, generation: "g1" });
     router.receive({
@@ -100,7 +137,10 @@ describe("handlers：协议接到真仓库上", () => {
 
   it("失败也能经 Router 变成错误响应", async () => {
     const sent: unknown[] = [];
-    const router = new Router({ post: (m) => void sent.push(m) }, createHandlers(repository));
+    const router = new Router(
+      { post: (m) => void sent.push(m) },
+      createHandlers(repository, NO_UI),
+    );
 
     router.receive({ kind: MessageKind.Ready, generation: "g1" });
     router.receive({
@@ -124,7 +164,10 @@ describe("闭环：仓库变了 → 广播到面板", () => {
     //   → M6 分类/防抖 → onDidChange → router.broadcast → transport
     const repository = new Repository(await getRepositoryLocation.execute(cli, fixtures.base), cli);
     const sent: unknown[] = [];
-    const router = new Router({ post: (m) => void sent.push(m) }, createHandlers(repository));
+    const router = new Router(
+      { post: (m) => void sent.push(m) },
+      createHandlers(repository, NO_UI),
+    );
     repository.onDidChange((domains) => router.broadcast(repository.location.root, [...domains]));
 
     router.receive({ kind: MessageKind.Ready, generation: "g1" });
@@ -148,7 +191,10 @@ describe("闭环：仓库变了 → 广播到面板", () => {
   it("握手之前的变化不广播——那一条会静静地丢掉", async () => {
     const repository = new Repository(await getRepositoryLocation.execute(cli, fixtures.base), cli);
     const sent: unknown[] = [];
-    const router = new Router({ post: (m) => void sent.push(m) }, createHandlers(repository));
+    const router = new Router(
+      { post: (m) => void sent.push(m) },
+      createHandlers(repository, NO_UI),
+    );
     repository.onDidChange((domains) => router.broadcast(repository.location.root, [...domains]));
 
     // 没有 ready
@@ -163,7 +209,10 @@ describe("闭环：仓库变了 → 广播到面板", () => {
     // 面板关了要退订。不退的话监听器只增不减。
     const repository = new Repository(await getRepositoryLocation.execute(cli, fixtures.base), cli);
     const sent: unknown[] = [];
-    const router = new Router({ post: (m) => void sent.push(m) }, createHandlers(repository));
+    const router = new Router(
+      { post: (m) => void sent.push(m) },
+      createHandlers(repository, NO_UI),
+    );
     const unsubscribe = repository.onDidChange((domains) =>
       router.broadcast(repository.location.root, [...domains]),
     );

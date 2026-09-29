@@ -1,3 +1,4 @@
+import type { DiffOpenMode, DiffSide } from "@dummy-git/shared";
 import type { Repository } from "../core/repository.js";
 import {
   getCommitDetails,
@@ -33,7 +34,20 @@ import { defineHandlers, type HandlerMap } from "./router.js";
  * 用它去选仓库等于凭外部输入决定操作哪个仓库，而现在根本没有「选」这回事。
  * 多仓库时这里换成「按 `params.repo` 查表」，改动只在这一个文件。
  */
-export function createHandlers(repository: Repository): HandlerMap {
+/**
+ * 要用到 VS Code 界面的动作，由 `extension.ts` 注入。handler 自己不 import vscode，
+ * 这样 handler 的测试能在纯 node 下跑。
+ */
+export interface HandlerUi {
+  readonly openDiff: (
+    root: string,
+    left: DiffSide,
+    right: DiffSide,
+    mode: DiffOpenMode,
+  ) => Promise<void>;
+}
+
+export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMap {
   return defineHandlers({
     // 第一版只有一个仓库。多仓库时这里返回多条，面板与协议都不用改。
     getRepositories: () => Promise.resolve([repository.location.root]),
@@ -47,6 +61,10 @@ export function createHandlers(repository: Repository): HandlerMap {
         repository.run(getRefs, root),
       ]);
       return [head, ...refs];
+    },
+    openDiff: async ({ left, right, mode }) => {
+      await ui.openDiff(repository.location.root, left, right, mode);
+      return null;
     },
     getCommitFiles: ({ hash }) => repository.run(getCommitFiles, repository.location.root, hash),
   });

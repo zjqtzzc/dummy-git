@@ -1,5 +1,6 @@
 import type { CommitFileChange } from "./change.js";
 import type { Commit, CommitSkeleton } from "./commit.js";
+import type { DiffOpenMode, DiffSide } from "./diff.js";
 import type { GitDomain } from "./domain.js";
 import type { GitErrorCode } from "./error.js";
 import type { Ref } from "./ref.js";
@@ -87,6 +88,14 @@ export interface Commands {
   getRefs: {
     params: { repo: string };
     result: Ref[];
+  };
+  /**
+   * 用 VS Code 的 diff 编辑器打开左右两边。左右可以是任意一种 `DiffSide`，自由组合。
+   * 插件的 diff 始终只占一个标签；`mode` 决定是打开还是跟随选中。标题由扩展统一拼。
+   */
+  openDiff: {
+    params: { repo: string; left: DiffSide; right: DiffSide; mode: DiffOpenMode };
+    result: null;
   };
   /** 一条提交改了哪些文件。端到端验收里「点一条」那一下。 */
   getCommitFiles: {

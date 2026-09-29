@@ -1,7 +1,8 @@
 import type { Commit, CommitFileChange, CommitSkeleton, FileStatus } from "@dummy-git/shared";
-import { GitDomain } from "@dummy-git/shared";
+import { DiffOpenMode, GitDomain } from "@dummy-git/shared";
 import { useCallback, useEffect, useState } from "react";
 import type { Client } from "./client.js";
+import { commitDiffSides } from "./commitDiff.js";
 
 /** 一屏显示多少条。骨架跑遍全历史，详情只取要显示的这些（取数模型 B）。 */
 const PAGE = 100;
@@ -105,6 +106,16 @@ export function App({ client }: { readonly client: Client }): React.JSX.Element 
     [client, repo],
   );
 
+  const openFile = useCallback(
+    async (file: CommitFileChange) => {
+      const commit = commits.find((c) => c.hash === selected);
+      if (repo === undefined || commit === undefined) return;
+      const { left, right } = commitDiffSides(commit.hash, commit.parents, file);
+      await client.request("openDiff", { repo, left, right, mode: DiffOpenMode.Open });
+    },
+    [client, repo, commits, selected],
+  );
+
   return (
     <div className="layout">
       <div className="panel">
@@ -137,7 +148,12 @@ export function App({ client }: { readonly client: Client }): React.JSX.Element 
         </h2>
         <ul className="list">
           {files.map((file) => (
-            <li key={`${file.status}:${file.oldPath ?? ""}:${file.path}`} className="row">
+            <li
+              key={`${file.status}:${file.oldPath ?? ""}:${file.path}`}
+              className="row"
+              // 临时：第 5 步手动验证 openDiff 用。第 6 步换成 Vue 时按「双击打开、单击跟随」重做。
+              onDoubleClick={() => void openFile(file)}
+            >
               <code>{STATUS_LABEL[file.status]}</code>
               <span className="subject">
                 {file.oldPath === undefined ? file.path : `${file.oldPath} → ${file.path}`}

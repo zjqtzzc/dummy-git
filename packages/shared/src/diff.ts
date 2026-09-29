@@ -29,3 +29,11 @@ export type DiffSide =
       /** 只用来显示文件名、判断语言，没有内容。 */
       readonly path: string;
     };
+
+/** 打开 diff 的两种来由（需求第 1 阶段：所有文件树的点击规则）。 */
+export enum DiffOpenMode {
+  /** 双击、回车：打开（或替换）插件的 diff 标签并翻到前台。 */
+  Open = "open",
+  /** 单击、方向键：只有插件的 diff 标签正显示在前台时才跟着换，否则什么都不做。 */
+  Follow = "follow",
+}

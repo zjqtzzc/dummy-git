@@ -25,6 +25,9 @@
 import {
   type CommandName,
   type CommandParams,
+  DiffOpenMode,
+  type DiffSide,
+  DiffSideKind,
   type Generation,
   type InboundMessage,
   MessageKind,
@@ -36,6 +39,37 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function asGeneration(value: unknown): Generation | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+/**
+ * diff 的一边。深验：`hash` 与 `path` 会拼进 `git cat-file` 的命令行。
+ * hash 的格式（完整 40 / 64 位）在 URI 解析时再卡一次，这里只管类型与闭集。
+ */
+function asDiffSide(value: unknown): DiffSide | undefined {
+  if (!isRecord(value)) return undefined;
+  const path = value["path"];
+  if (typeof path !== "string") return undefined;
+  switch (value["kind"]) {
+    case DiffSideKind.Revision: {
+      const hash = value["hash"];
+      return typeof hash === "string" ? { kind: DiffSideKind.Revision, hash, path } : undefined;
+    }
+    case DiffSideKind.Missing:
+      return { kind: DiffSideKind.Missing, path };
+    default:
+      return undefined;
+  }
+}
+
+function asDiffOpenMode(value: unknown): DiffOpenMode | undefined {
+  switch (value) {
+    case DiffOpenMode.Open:
+      return DiffOpenMode.Open;
+    case DiffOpenMode.Follow:
+      return DiffOpenMode.Follow;
+    default:
+      return undefined;
+  }
 }
 
 function asStringArray(value: unknown): readonly string[] | undefined {
@@ -69,6 +103,18 @@ const PARAM_GUARDS = {
   getRefs: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     return typeof repo === "string" ? { repo } : undefined;
+  },
+  openDiff: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const left = asDiffSide(raw["left"]);
+    const right = asDiffSide(raw["right"]);
+    const mode = asDiffOpenMode(raw["mode"]);
+    return typeof repo === "string" &&
+      left !== undefined &&
+      right !== undefined &&
+      mode !== undefined
+      ? { repo, left, right, mode }
+      : undefined;
   },
   getCommitFiles: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];

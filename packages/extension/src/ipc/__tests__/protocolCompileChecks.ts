@@ -41,6 +41,7 @@ const detailsStub = async (): Promise<Commit[]> => [];
 const filesStub = async (): Promise<CommitFileChange[]> => [];
 const reposStub = async (): Promise<readonly string[]> => [];
 const refsStub = async (): Promise<Ref[]> => [];
+const openDiffStub = async (): Promise<null> => null;
 
 /** 基线：三条齐全、类型正确 —— 必须编译通过，否则下面两条的对照失去意义。 */
 export const _baseline = defineHandlers({
@@ -48,6 +49,7 @@ export const _baseline = defineHandlers({
   getSkeleton: skeletonStub,
   getCommitDetails: detailsStub,
   getRefs: refsStub,
+  openDiff: openDiffStub,
   getCommitFiles: filesStub,
 });
 
@@ -82,6 +84,7 @@ const extraHandlers = {
   getSkeleton: skeletonStub,
   getCommitDetails: detailsStub,
   getRefs: refsStub,
+  openDiff: openDiffStub,
   getCommitFiles: filesStub,
   cherryPick: async (): Promise<CommitFileChange[]> => [],
 };

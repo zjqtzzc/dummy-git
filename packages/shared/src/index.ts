@@ -7,7 +7,7 @@ export {
   FileStatus,
 } from "./change.js";
 export type { Commit, CommitSkeleton, Signature } from "./commit.js";
-export { type DiffSide, DiffSideKind } from "./diff.js";
+export { DiffOpenMode, type DiffSide, DiffSideKind } from "./diff.js";
 export { GitDomain } from "./domain.js";
 export { GitErrorCode } from "./error.js";
 export {
