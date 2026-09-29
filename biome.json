@@ -1,7 +1,14 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.13/schema.json",
   "files": {
-    "includes": ["**", "!**/dist", "!**/node_modules", "!**/.vscode-test", "!.notes"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/node_modules",
+      "!**/.vscode-test",
+      "!.notes",
+      "!**/seti/setiMap.json"
+    ]
   },
   "formatter": { "enabled": true, "indentStyle": "space", "lineWidth": 100 },
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
