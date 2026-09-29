@@ -7,18 +7,12 @@ import { openDiff } from "./vscode/diff.js";
 import { ErrorGate } from "./vscode/errorGate.js";
 import { resolveGitPath } from "./vscode/gitPath.js";
 import { createOutputLogger } from "./vscode/logger.js";
+import { type LogSource, LogSourceKind, registerLogView } from "./vscode/logView.js";
 import { describeStartup, discoverRepositories, StartupKind } from "./vscode/open.js";
-import { openLogPanel } from "./vscode/panel.js";
 import { registerRevisionFileSystem } from "./vscode/revisionFileSystem.js";
 import { watchRepository } from "./vscode/watcher.js";
 
-/**
- * 扩展入口。**只做装配**：把已经存在的各层接起来，不含任何业务逻辑。
- *
- * 目标是 `extension.ts < 150 行`（`ARCHITECTURE-NOTES.md` §6）。
- * 旧仓库这个文件 1720 行、塞了 89 个 handler——那是「上帝文件」的教科书形态，
- * 也是协议漂移能发生的土壤。
- */
+/** 扩展入口。**只做装配**：把已经存在的各层接起来，不含任何业务逻辑。 */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const channel = vscode.window.createOutputChannel("Dummy Git");
   context.subscriptions.push(channel);
@@ -36,81 +30,50 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     },
   });
 
-  /**
-   * 没能打开仓库时的原因。
-   *
-   * **第一版曾把命令注册放在「仓库打开成功」之后**，结果是：扩展宿主窗口没开文件夹时，
-   * 命令根本没注册，命令面板里搜不到任何东西——**扩展看起来完全不存在，
-   * 而且没有任何途径知道为什么**。原因确实写在输出面板里，但得先知道去看那儿。
-   *
-   * 所以改成：命令**无条件注册**，跑不了的时候由它自己说清楚为什么。
-   * 「功能不可用」和「功能不存在」对用户是完全不同的两件事。
-   */
-  let repository: Repository | undefined;
-  let unavailable = "Starting…";
-
+  // 视图先注册、内容后定：面板上次开着的话，视图可能在仓库还没找完时就要显示，
+  // 它拿着这个 Promise 等启动结果（`vscode/logView.ts`）。
+  let settle: (source: LogSource) => void = () => {};
+  const source = new Promise<LogSource>((resolve) => {
+    settle = resolve;
+  });
   context.subscriptions.push(
-    vscode.commands.registerCommand("dummyGit.showLog", () => {
-      if (repository === undefined) {
-        void vscode.window.showWarningMessage(`Dummy Git: ${unavailable}`);
-        return;
-      }
-      const repo = repository;
-      // 一个面板配一个 Router。面板关了再开，握手会带来新代号，
-      // 上一代的回复自动作废（`ipc/router.ts` 的换代逻辑）。
-      openLogPanel(
-        context,
-        (transport) =>
-          new Router(transport, createHandlers(repo, { openDiff }), {
-            log: (line) => channel.appendLine(line),
-            report: (error) => errors.report(error),
-          }),
-        // 仓库变了 → 广播给这个面板。只说「哪些域过期了」，不带数据：
-        // 要不要重新拉由前端自己决定（`DECISIONS.md`「数据流向的总原则」）。
-        (router) =>
-          repo.onDidChange((domains) => router.broadcast(repo.location.root, [...domains])),
-      );
-    }),
+    registerLogView(
+      context,
+      source,
+      // 一次展开配一个 Router。收起再展开，握手会带来新代号，上一代的回复自动作废。
+      (repository, transport) =>
+        new Router(transport, createHandlers(repository, { openDiff }), {
+          log: (line) => channel.appendLine(line),
+          report: (error) => errors.report(error),
+        }),
+    ),
   );
-
-  // 状态栏入口。**没有它这个扩展在界面上完全不可见**——只有一条命令，
-  // 不按 Cmd+Shift+P 搜就永远找不到。「功能不可用」和「功能找不到」
-  // 对用户是一样的结果，而后者更让人以为是装错了。
-  //
-  // 活动栏图标 + 常驻视图是更好的形态（旧仓库就是那样），但那要把面板从
-  // `WebviewPanel` 改成 `WebviewViewProvider`，属垂直切片期。状态栏是现在
-  // 花五行就能消除「找不到」的做法。
-  const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-  status.text = "$(git-commit) Dummy Git";
-  status.tooltip = "打开 Dummy Git 日志面板";
-  status.command = "dummyGit.showLog";
-  status.show();
-  context.subscriptions.push(status);
 
   // 与 VSCode 真正相关的只有「取出所有工作区目录」这一句，其余都在可在纯 node 下测的 open.ts 里。
   const directories = (vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath);
   const startup = await discoverRepositories(cli, directories);
 
-  // 没有仓库、git 不可用：只写进输出面板，**不弹通知**（`ARCHITECTURE.md` 第 13 题）。
-  // 在非仓库目录里打开编辑器是正常情况；原因到第 7 步会直接显示在面板里。
+  // 没有仓库、git 不可用：视图里直接写原因，同时进输出面板，**不弹通知**（`ARCHITECTURE.md` 第 13 题）。
   const reason = describeStartup(startup);
   if (reason !== undefined) {
-    unavailable = reason;
     channel.appendLine(reason);
+    settle({ kind: LogSourceKind.Unavailable, reason });
   }
   if (startup.kind !== StartupKind.Ready) return;
 
   // 现阶段只支持单仓库：用列表第一个。
-  repository = new Repository(startup.repositories[0], cli);
-  context.subscriptions.push({ dispose: () => repository?.dispose() });
+  const repository = new Repository(startup.repositories[0], cli);
+  context.subscriptions.push({ dispose: () => repository.dispose() });
   channel.appendLine(`Repository: ${repository.location.root}`);
 
-  // 文件监听跟着**仓库**走，不跟面板走：外部改动要一直被感知到，
-  // 哪怕此刻一个面板都没开（下次开面板时状态才是对的）。
+  // 文件监听跟着**仓库**走，不跟视图走：外部改动要一直被感知到，
+  // 哪怕此刻面板收着（下次展开时状态才是对的）。
   context.subscriptions.push(watchRepository(repository));
 
   // diff 里历史版本的内容。重新加载窗口后恢复的 diff 标签也靠它（`onFileSystem:dummygit` 激活）。
   context.subscriptions.push(registerRevisionFileSystem(repository, errors));
+
+  settle({ kind: LogSourceKind.Repository, repository });
 }
 
 export function deactivate(): void {

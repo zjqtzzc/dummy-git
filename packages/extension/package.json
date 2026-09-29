@@ -18,13 +18,24 @@
     "onFileSystem:dummygit"
   ],
   "contributes": {
-    "commands": [
-      {
-        "command": "dummyGit.showLog",
-        "title": "Show Log",
-        "category": "Dummy Git"
-      }
-    ]
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "dummyGit",
+          "title": "Dummy Git",
+          "icon": "resources/log.svg"
+        }
+      ]
+    },
+    "views": {
+      "dummyGit": [
+        {
+          "type": "webview",
+          "id": "dummyGit.log",
+          "name": "Log"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && pnpm -w run build",
