@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 /**
- * 给 F5 调试准备一个目标目录：本仓库的一个 linked worktree，放在仓库旁边的
- * `<仓库目录名>-debug`。
+ * 给 F5 / Ctrl+F5 准备调试目标：本仓库旁边的 linked worktree `<仓库目录名>-debug`。
+ * 由 `.vscode/tasks.json` 的 preLaunchTask 每次自动执行。
  *
- * 为什么不直接让调试窗口打开本项目：当前窗口已经开着它，VS Code 把第二个窗口当成
- * 重复打开，不会正常出现。换成 worktree 是另一个目录，历史却还是本项目的历史，
- * 而且每次调试都顺带走一遍 worktree 的路径（`.git` 是文件、git 目录在别处）。
+ * 为什么是 worktree：当前窗口已经开着本项目，调试窗口再开它会被当成重复打开；
+ * worktree 是另一个目录，历史却是同一份，而且每次调试都顺带走一遍 worktree 的路径
+ * （`.git` 是文件、git 目录在别处）。
  *
- * detached 在当前提交上，不建分支。已存在就什么都不做。
+ * 每次都重置到主仓库当前的 HEAD（detached）并清掉未跟踪文件：这是调试用的草稿区，
+ * 上一次手动验证留下的提交与改动不该影响这一次。被丢掉的提交 reflog 里还找得回。
  */
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -17,12 +18,17 @@ import { fileURLToPath } from "node:url";
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const target = join(dirname(repoRoot), `${basename(repoRoot)}-debug`);
 
+function git(cwd, args) {
+  return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
+}
+
+const head = git(repoRoot, ["rev-parse", "HEAD"]).trim();
+
 if (existsSync(target)) {
-  console.log(`已存在：${target}`);
+  git(target, ["checkout", "-q", "--detach", "--force", head]);
+  git(target, ["clean", "-q", "-fd"]);
+  console.log(`已重置：${target} → ${head.slice(0, 7)}`);
 } else {
-  execFileSync("git", ["worktree", "add", "--detach", target, "HEAD"], {
-    cwd: repoRoot,
-    stdio: "inherit",
-  });
-  console.log(`已创建：${target}`);
+  git(repoRoot, ["worktree", "add", "-q", "--detach", target, head]);
+  console.log(`已创建：${target} → ${head.slice(0, 7)}`);
 }
