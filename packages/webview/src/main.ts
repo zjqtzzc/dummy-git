@@ -1,4 +1,6 @@
 import "./style.css";
+// 只引入用到的 vscode-elements 组件，不引整个库。
+import "@vscode-elements/elements/dist/vscode-split-layout/index.js";
 import { createApp } from "vue";
 import App from "./App.vue";
 import { Client } from "./logic/client.js";

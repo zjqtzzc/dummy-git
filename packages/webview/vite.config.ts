@@ -2,7 +2,12 @@ import vue from "@vitejs/plugin-vue";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [
+    vue({
+      // `vscode-` 开头的是 vscode-elements 的自定义元素，交给浏览器，不当成 Vue 组件解析。
+      template: { compilerOptions: { isCustomElement: (tag) => tag.startsWith("vscode-") } },
+    }),
+  ],
   build: {
     // 产物直接落到扩展包的 dist 下，由扩展以本地资源方式加载。
     outDir: "../extension/dist/webview",

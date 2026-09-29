@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@dummy-git/shared": "workspace:*",
+    "@vscode-elements/elements": "^2.5.1",
     "vue": "^3.5.43"
   },
   "devDependencies": {

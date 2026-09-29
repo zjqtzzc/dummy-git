@@ -7,18 +7,13 @@ body {
   background: var(--vscode-editor-background);
 }
 .layout {
-  display: flex;
   height: 100vh;
 }
 .panel {
-  flex: 1;
-  min-width: 0;
+  height: 100%;
   overflow: auto;
   padding: 0 12px 12px;
-  border-right: 1px solid var(--vscode-panel-border);
-}
-.panel:last-child {
-  border-right: none;
+  box-sizing: border-box;
 }
 h2 {
   font-size: 1em;

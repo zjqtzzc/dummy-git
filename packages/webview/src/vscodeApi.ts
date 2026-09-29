@@ -8,6 +8,9 @@ import type { ClientTransport } from "./logic/client.js";
  */
 interface VsCodeApi {
   readonly postMessage: (message: unknown) => void;
+  /** 上一次 `setState` 存的值。webview 收起再展开时还在，重新加载窗口后是 `undefined`。 */
+  readonly getState: () => unknown;
+  readonly setState: (state: unknown) => void;
 }
 
 declare function acquireVsCodeApi(): VsCodeApi;
@@ -15,3 +18,9 @@ declare function acquireVsCodeApi(): VsCodeApi;
 const api = acquireVsCodeApi();
 
 export const transport: ClientTransport = { post: (message) => api.postMessage(message) };
+
+/** 界面自己的状态（栏宽、展开状态……），收起再展开时恢复（`ARCHITECTURE.md` 第 4 题）。 */
+export const viewState = {
+  get: (): unknown => api.getState(),
+  set: (state: unknown): void => api.setState(state),
+};

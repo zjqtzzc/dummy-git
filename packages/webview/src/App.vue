@@ -9,6 +9,8 @@ import {
 import { onMounted, ref } from "vue";
 import type { Client } from "./logic/client.js";
 import { commitDiffSides } from "./logic/commitDiff.js";
+import { type Layout, restoreLayout, splitPercent } from "./logic/layout.js";
+import { viewState } from "./vscodeApi.js";
 
 /** 地基期的最小界面。第 8 步起按 `.notes/design/phase-1.md` 重做成三栏。 */
 const props = defineProps<{ client: Client }>();
@@ -39,6 +41,22 @@ const total = ref(0);
 const selected = ref<string>();
 const files = ref<CommitFileChange[]>([]);
 const error = ref<string>();
+
+/**
+ * 三栏宽度。从 `viewState` 取回（收起再展开、重新加载窗口都在），拖动时存回去。
+ *
+ * 外层 `fixed-pane="start"`、内层 `fixed-pane="end"`：窗口或面板大小变化时，
+ * 左栏和右栏保持像素宽度，只有中间的提交列表伸缩。设了 fixed-pane，组件才会自己
+ * 监听尺寸变化；不设的话它不跟踪宽度，改过尺寸后第一次按下分隔线会跳位。
+ */
+let layout: Layout = restoreLayout(viewState.get());
+
+function onSplit(which: keyof Layout, event: Event): void {
+  const percent = splitPercent(event);
+  if (percent === undefined) return;
+  layout = { ...layout, [which]: percent };
+  viewState.set(layout);
+}
 
 function shortHash(hash: string): string {
   return hash.slice(0, 8);
@@ -119,46 +137,64 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="layout">
-    <div class="panel">
-      <h2>
-        提交 <span class="dim">{{ total === 0 ? "" : `共 ${total} 条，显示前 ${PAGE}` }}</span>
-      </h2>
-      <p v-if="error !== undefined" class="error">{{ error }}</p>
-      <ul class="list">
-        <li v-for="commit in commits" :key="commit.hash">
-          <button
-            type="button"
-            :class="commit.hash === selected ? 'row selected' : 'row'"
-            @click="select(commit.hash)"
-          >
-            <code>{{ shortHash(commit.hash) }}</code>
-            <span class="subject">{{ subject(commit.message) }}</span>
-            <span class="dim">{{ commit.author.name }}</span>
-            <span class="dim">{{ when(commit.author.at) }}</span>
-          </button>
-        </li>
-      </ul>
+  <vscode-split-layout
+    class="layout"
+    split="vertical"
+    fixed-pane="start"
+    :initial-handle-position="`${layout.outer}%`"
+    @vsc-split-layout-change="onSplit('outer', $event)"
+  >
+    <div slot="start" class="panel">
+      <h2>Branches</h2>
     </div>
 
-    <div class="panel">
-      <h2>
-        变更文件
-        <span class="dim">{{ selected === undefined ? "（未选择）" : shortHash(selected) }}</span>
-      </h2>
-      <ul class="list">
-        <li
-          v-for="file in files"
-          :key="`${file.status}:${file.oldPath ?? ''}:${file.path}`"
-          class="row"
-          @dblclick="openFile(file)"
-        >
-          <code>{{ STATUS_LABEL[file.status] }}</code>
-          <span class="subject">{{
-            file.oldPath === undefined ? file.path : `${file.oldPath} → ${file.path}`
-          }}</span>
-        </li>
-      </ul>
-    </div>
-  </div>
+    <vscode-split-layout
+      slot="end"
+      split="vertical"
+      fixed-pane="end"
+      :initial-handle-position="`${layout.inner}%`"
+      @vsc-split-layout-change="onSplit('inner', $event)"
+    >
+      <div slot="start" class="panel">
+        <h2>
+          提交 <span class="dim">{{ total === 0 ? "" : `共 ${total} 条，显示前 ${PAGE}` }}</span>
+        </h2>
+        <p v-if="error !== undefined" class="error">{{ error }}</p>
+        <ul class="list">
+          <li v-for="commit in commits" :key="commit.hash">
+            <button
+              type="button"
+              :class="commit.hash === selected ? 'row selected' : 'row'"
+              @click="select(commit.hash)"
+            >
+              <code>{{ shortHash(commit.hash) }}</code>
+              <span class="subject">{{ subject(commit.message) }}</span>
+              <span class="dim">{{ commit.author.name }}</span>
+              <span class="dim">{{ when(commit.author.at) }}</span>
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <div slot="end" class="panel">
+        <h2>
+          变更文件
+          <span class="dim">{{ selected === undefined ? "（未选择）" : shortHash(selected) }}</span>
+        </h2>
+        <ul class="list">
+          <li
+            v-for="file in files"
+            :key="`${file.status}:${file.oldPath ?? ''}:${file.path}`"
+            class="row"
+            @dblclick="openFile(file)"
+          >
+            <code>{{ STATUS_LABEL[file.status] }}</code>
+            <span class="subject">{{
+              file.oldPath === undefined ? file.path : `${file.oldPath} → ${file.path}`
+            }}</span>
+          </li>
+        </ul>
+      </div>
+    </vscode-split-layout>
+  </vscode-split-layout>
 </template>
