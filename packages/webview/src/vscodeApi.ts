@@ -1,4 +1,4 @@
-import type { ClientTransport } from "./client.js";
+import type { ClientTransport } from "./logic/client.js";
 
 /**
  * VSCode 注入给 webview 的唯一 API。

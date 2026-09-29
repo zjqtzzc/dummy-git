@@ -35,8 +35,24 @@
               "options": {
                 "paths": {
                   "vscode": "shared 必须保持中立：不得依赖 VSCode API（CLAUDE.md §A）。",
-                  "react": "shared 必须保持中立：不得依赖 UI 框架（CLAUDE.md §A）。",
-                  "react-dom": "shared 必须保持中立：不得依赖 UI 框架（CLAUDE.md §A）。"
+                  "vue": "shared 必须保持中立：不得依赖 UI 框架（CLAUDE.md §A）。"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/webview/src/logic/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "vue": "webview/src/logic 是纯逻辑，要能在纯 node 下测，不得依赖 Vue（CLAUDE.md §A）。"
                 }
               }
             }

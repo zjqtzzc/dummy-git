@@ -7,8 +7,8 @@ import {
   GitDomain,
 } from "@dummy-git/shared";
 import { onMounted, ref } from "vue";
-import type { Client } from "./client.js";
-import { commitDiffSides } from "./commitDiff.js";
+import type { Client } from "./logic/client.js";
+import { commitDiffSides } from "./logic/commitDiff.js";
 
 /** 地基期的最小界面。第 8 步起按 `.notes/design/phase-1.md` 重做成三栏。 */
 const props = defineProps<{ client: Client }>();

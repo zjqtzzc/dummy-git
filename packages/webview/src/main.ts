@@ -1,7 +1,7 @@
 import "./style.css";
 import { createApp } from "vue";
 import App from "./App.vue";
-import { Client } from "./client.js";
+import { Client } from "./logic/client.js";
 import { transport } from "./vscodeApi.js";
 
 /**
