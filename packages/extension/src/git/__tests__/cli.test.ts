@@ -1,4 +1,5 @@
-import { writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -54,6 +55,23 @@ describe("stdin", () => {
     expect(r.exitCode).toBe(0);
     // 已知内容的 blob hash，稳定值
     expect(r.stdout.trim()).toBe("ce013625030ba8dba906f756967f9e9ca394464a");
+  });
+
+  it("git 没读完 stdin 就退出：得到它的退出码，不冒出未捕获的 EPIPE", async () => {
+    // 不是仓库 → git 一启动就失败退出，根本不读 stdin。1 MB 远大于管道缓冲（64 KB），
+    // 它退出时我们一定还在写，写端必然 EPIPE。以前 stdin 上没挂 error 监听，
+    // 这个 EPIPE 成了未捕获异常（偶发于 checkIgnore 的「不是仓库」测试，靠时序）。
+    const dir = mkdtempSync(join(tmpdir(), "dummygit-epipe-"));
+    try {
+      const r = await cli.exec(["check-ignore", "-z", "--stdin"], {
+        cwd: dir,
+        input: "x\0".repeat(512 * 1024),
+      });
+      expect(r.exitCode).not.toBe(0);
+      expect(r.stderr).toMatch(/not a git repository/i);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("不传 input 时 stdin 立刻 EOF（不挂住）", async () => {

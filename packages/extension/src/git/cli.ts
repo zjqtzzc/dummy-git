@@ -99,6 +99,12 @@ export class GitCli {
     });
 
     if (options.input !== undefined) {
+      // git 可能没读完输入就退出（比如「不是仓库」一启动就失败），这时写端会得到 EPIPE。
+      // 不接住它就是未捕获异常。真正的失败原因由退出码和 stderr 说明，EPIPE 只是它的回声，
+      // 丢掉；别的写入错误照常抛。必须在写之前挂上：写失败的事件可能在下一轮就触发。
+      child.stdin?.on("error", (error: NodeJS.ErrnoException) => {
+        if (error.code !== "EPIPE") throw error;
+      });
       // end() 而非 write()：不关闭管道的话 git 等不到 EOF，一样会挂住。
       child.stdin?.end(options.input, "utf8");
     }
