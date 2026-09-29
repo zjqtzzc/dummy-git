@@ -170,3 +170,9 @@ export function defaultExpanded(nodes: readonly BranchNode[]): ReadonlySet<strin
   }
   return open;
 }
+
+/** 取回上次存的展开状态（id 列表）。没有或格式不对返回 `undefined`，由调用方用默认值。 */
+export function restoreExpanded(saved: unknown): ReadonlySet<string> | undefined {
+  if (!Array.isArray(saved) || !saved.every((id) => typeof id === "string")) return undefined;
+  return new Set(saved);
+}

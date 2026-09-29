@@ -19,8 +19,17 @@ const api = acquireVsCodeApi();
 
 export const transport: ClientTransport = { post: (message) => api.postMessage(message) };
 
-/** 界面自己的状态（栏宽、展开状态……），收起再展开时恢复（`ARCHITECTURE.md` 第 4 题）。 */
+/**
+ * 界面自己的状态（栏宽、展开状态……），收起再展开、重新加载窗口都在（`ARCHITECTURE.md` 第 4 题）。
+ * 按键分开存，写一个键不覆盖别的键。读出来的值类型未知，由调用方校验。
+ */
 export const viewState = {
-  get: (): unknown => api.getState(),
-  set: (state: unknown): void => api.setState(state),
+  read(key: string): unknown {
+    const saved: unknown = api.getState();
+    return typeof saved === "object" && saved !== null ? Reflect.get(saved, key) : undefined;
+  },
+  write(key: string, value: unknown): void {
+    const saved: unknown = api.getState();
+    api.setState({ ...(typeof saved === "object" && saved !== null ? saved : {}), [key]: value });
+  },
 };

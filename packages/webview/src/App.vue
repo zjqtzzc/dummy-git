@@ -5,9 +5,11 @@ import {
   DiffOpenMode,
   FileStatus,
   GitDomain,
+  type Ref,
   RefKind,
 } from "@dummy-git/shared";
 import { nextTick, onMounted, onUnmounted, ref } from "vue";
+import BranchTree from "./BranchTree.vue";
 import CommitList from "./CommitList.vue";
 import type { Client } from "./logic/client.js";
 import { commitDiffSides } from "./logic/commitDiff.js";
@@ -44,6 +46,8 @@ const details = ref(new Map<string, Commit>());
 /** 正在路上的详情请求，避免重复要。不参与界面，不用 ref。 */
 const inFlight = new Set<string>();
 const loaded = ref(false);
+/** 分支、tag 与 HEAD，左栏用。 */
+const refs = ref<Ref[]>([]);
 const selected = ref<string>();
 const files = ref<CommitFileChange[]>([]);
 const error = ref<string>();
@@ -99,12 +103,13 @@ async function select(hash: string): Promise<void> {
  */
 async function load(repository: string): Promise<void> {
   try {
-    const [skeleton, refs] = await Promise.all([
+    const [skeleton, fetchedRefs] = await Promise.all([
       props.client.request("getSkeleton", { repo: repository }),
       props.client.request("getRefs", { repo: repository }),
     ]);
     const previous = selected.value === undefined ? -1 : hashes.value.indexOf(selected.value);
     hashes.value = skeleton.map((commit) => commit.hash);
+    refs.value = fetchedRefs;
     loaded.value = true;
     error.value = undefined;
     await nextTick();
@@ -114,7 +119,7 @@ async function load(repository: string): Promise<void> {
       list.value?.shift(previous, kept);
       return;
     }
-    const head = refs.find((r) => r.kind === RefKind.Head)?.target;
+    const head = fetchedRefs.find((r) => r.kind === RefKind.Head)?.target;
     const row = head === undefined ? -1 : hashes.value.indexOf(head);
     if (head === undefined || row === -1) return;
     list.value?.reveal(row);
@@ -164,13 +169,13 @@ onMounted(async () => {
  * 左栏和右栏保持像素宽度，只有中间的提交列表伸缩。设了 fixed-pane，组件才会自己
  * 监听尺寸变化；不设的话它不跟踪宽度，改过尺寸后第一次按下分隔线会跳位。
  */
-let layout: Layout = restoreLayout(viewState.get());
+let layout: Layout = restoreLayout(viewState.read("layout"));
 
 function onSplit(which: keyof Layout, event: Event): void {
   const percent = splitPercent(event);
   if (percent === undefined) return;
   layout = { ...layout, [which]: percent };
-  viewState.set(layout);
+  viewState.write("layout", layout);
 }
 </script>
 
@@ -182,8 +187,8 @@ function onSplit(which: keyof Layout, event: Event): void {
     :initial-handle-position="`${layout.outer}%`"
     @vsc-split-layout-change="onSplit('outer', $event)"
   >
-    <div slot="start" class="panel">
-      <h2>Branches</h2>
+    <div slot="start" class="pane">
+      <BranchTree :refs="refs" />
     </div>
 
     <vscode-split-layout

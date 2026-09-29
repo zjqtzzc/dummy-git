@@ -5,6 +5,7 @@ import {
   BranchNodeKind,
   buildBranchTree,
   defaultExpanded,
+  restoreExpanded,
 } from "../branchTree.js";
 
 const T = "a".repeat(40);
@@ -105,5 +106,15 @@ describe("defaultExpanded", () => {
     expect(open.has("local/a")).toBe(true);
     expect(open.has("local/a/b")).toBe(true);
     expect(open.has("local/z")).toBe(false);
+  });
+});
+
+describe("restoreExpanded", () => {
+  it("字符串数组 → 集合；其它 → undefined，用默认值", () => {
+    expect(restoreExpanded(["local", "remote/origin"])).toEqual(
+      new Set(["local", "remote/origin"]),
+    );
+    expect(restoreExpanded(undefined)).toBeUndefined();
+    expect(restoreExpanded([1, 2])).toBeUndefined();
   });
 });
