@@ -19,6 +19,13 @@
   ],
   "contributes": {
     "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "dummyGitSidebar",
+          "title": "Dummy Git",
+          "icon": "resources/log.svg"
+        }
+      ],
       "panel": [
         {
           "id": "dummyGit",
@@ -28,6 +35,13 @@
       ]
     },
     "views": {
+      "dummyGitSidebar": [
+        {
+          "type": "webview",
+          "id": "dummyGit.commit",
+          "name": "Commit"
+        }
+      ],
       "dummyGit": [
         {
           "type": "webview",

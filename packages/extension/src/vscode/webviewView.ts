@@ -4,9 +4,6 @@ import * as vscode from "vscode";
 import type { Repository } from "../core/repository.js";
 import type { Router, Transport } from "../ipc/router.js";
 
-/** 与 package.json 的 contributes.views 里的 id 一致。 */
-const VIEW_TYPE = "dummyGit.log";
-
 /**
  * 每次加载一个新的随机串，写进 CSP，也写在 `<script>` 标签上。
  *
@@ -29,8 +26,11 @@ function makeNonce(): string {
  * HTML 里**不塞任何数据**。webview 启动后自己问 `getRepositories`——
  * 「有哪些仓库」是协议的问题，烤进页面就等于由扩展替用户选好了那一个，
  * 多仓库时还得再拆出来（见 `shared/protocol.ts` 的 `getRepositories`）。
+ *
+ * 只写一个视图 id（`data-view`），页面按它挂 Log 还是 Commit。两个视图共用一份脚本；
+ * 视图 id 本来就是写在 `package.json` 里的外部字符串，不另造一套名字。
  */
-function html(webview: vscode.Webview, root: vscode.Uri): string {
+function html(webview: vscode.Webview, root: vscode.Uri, viewType: string): string {
   const nonce = makeNonce();
   const asset = (name: string): string =>
     webview.asWebviewUri(vscode.Uri.joinPath(root, "dist", "webview", name)).toString();
@@ -50,7 +50,7 @@ function html(webview: vscode.Webview, root: vscode.Uri): string {
 <link id="vscode-codicon-stylesheet" rel="stylesheet" href="${asset("codicon.css")}">
 </head>
 <body>
-<div id="root"></div>
+<div id="root" data-view="${viewType}"></div>
 <script type="module" nonce="${nonce}" src="${script}"></script>
 </body>
 </html>`;
@@ -71,18 +71,19 @@ function unavailableHtml(reason: string): string {
 </html>`;
 }
 
-export enum LogSourceKind {
+export enum ViewSourceKind {
   Repository = "repository",
   Unavailable = "unavailable",
 }
 
 /** 视图要显示什么：一个仓库，或者一句「为什么没有」。 */
-export type LogSource =
-  | { readonly kind: LogSourceKind.Repository; readonly repository: Repository }
-  | { readonly kind: LogSourceKind.Unavailable; readonly reason: string };
+export type ViewSource =
+  | { readonly kind: ViewSourceKind.Repository; readonly repository: Repository }
+  | { readonly kind: ViewSourceKind.Unavailable; readonly reason: string };
 
 /**
- * 底部面板的 Log 视图（`ARCHITECTURE.md` 第 1 题）。
+ * 注册一个 webview 视图：底部面板的 Log、侧栏的 Commit（`ARCHITECTURE.md` 第 1 题）。
+ * 两者的装配完全相同，只有视图 id 不同。
  *
  * ## 视图收起就销毁，展开再重建
  *
@@ -99,21 +100,23 @@ export type LogSource =
  *
  * 上次关窗口时面板开着的话，视图可能在仓库还没找完时就要显示。
  */
-export function registerLogView(
+export function registerWebviewView(
   context: vscode.ExtensionContext,
-  source: Promise<LogSource>,
+  /** 与 package.json 的 contributes.views 里的 id 一致。 */
+  viewType: string,
+  source: Promise<ViewSource>,
   /** 拿着这个视图的 `Transport` 换一个 `Router`。理由同 Router 需要 Transport 才能造。 */
   createRouter: (repository: Repository, transport: Transport) => Router,
 ): vscode.Disposable {
-  return vscode.window.registerWebviewViewProvider(VIEW_TYPE, {
+  return vscode.window.registerWebviewViewProvider(viewType, {
     resolveWebviewView: async (view) => {
       const resolved = await source;
       switch (resolved.kind) {
-        case LogSourceKind.Unavailable:
+        case ViewSourceKind.Unavailable:
           view.webview.options = { enableScripts: false };
           view.webview.html = unavailableHtml(resolved.reason);
           return;
-        case LogSourceKind.Repository:
+        case ViewSourceKind.Repository:
           break;
         default:
           assertNever(resolved, "resolveWebviewView");
@@ -125,7 +128,7 @@ export function registerLogView(
         // 只允许从扩展自己的 dist 目录读资源。
         localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, "dist")],
       };
-      view.webview.html = html(view.webview, context.extensionUri);
+      view.webview.html = html(view.webview, context.extensionUri, viewType);
 
       // 视图销毁后往它 post 会抛。Transport 在这里收口。
       let alive = true;

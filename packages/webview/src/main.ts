@@ -1,11 +1,17 @@
 import "./style.css";
 // 只引入用到的 vscode-elements 组件，不引整个库。
+import "@vscode-elements/elements/dist/vscode-button/index.js";
+import "@vscode-elements/elements/dist/vscode-checkbox/index.js";
 import "@vscode-elements/elements/dist/vscode-icon/index.js";
 import "@vscode-elements/elements/dist/vscode-split-layout/index.js";
+import "@vscode-elements/elements/dist/vscode-textarea/index.js";
+import "@vscode-elements/elements/dist/vscode-toolbar-button/index.js";
+import "@vscode-elements/elements/dist/vscode-toolbar-container/index.js";
 import "@vscode-elements/elements/dist/vscode-tree/index.js";
 import "@vscode-elements/elements/dist/vscode-tree-item/index.js";
-import { createApp } from "vue";
-import App from "./App.vue";
+import { type Component, createApp } from "vue";
+import CommitApp from "./CommitApp.vue";
+import LogApp from "./LogApp.vue";
 import { Client } from "./logic/client.js";
 import { transport } from "./vscodeApi.js";
 
@@ -17,4 +23,12 @@ const client = new Client(transport, crypto.randomUUID());
 
 window.addEventListener("message", (event) => client.receive(event.data));
 
-createApp(App, { client }).mount("#root");
+/** 视图 id（扩展侧写在 `data-view` 上，即 package.json 里的 id）→ 根组件。 */
+const APPS: Readonly<Record<string, Component>> = {
+  "dummyGit.log": LogApp,
+  "dummyGit.commit": CommitApp,
+};
+const root = document.getElementById("root");
+const app = APPS[root?.dataset["view"] ?? ""];
+if (root === null || app === undefined) throw new Error(`未知视图：${root?.dataset["view"]}`);
+createApp(app, { client }).mount(root);

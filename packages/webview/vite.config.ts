@@ -8,7 +8,7 @@ import { defineConfig, type Plugin } from "vite";
  *
  * vscode-elements 的图标组件要在页面里找到 `id="vscode-codicon-stylesheet"` 的 `<link>`，
  * 再在自己的 Shadow DOM 里引用同一个样式表——字体进不了 Shadow DOM，只能这样。
- * 所以它必须是一个独立的文件（由 `vscode/logView.ts` 拼进 HTML），不能被打进 webview.css。
+ * 所以它必须是一个独立的文件（由 `vscode/webviewView.ts` 拼进 HTML），不能被打进 webview.css。
  * 只复制这两个文件，不复制整个 dist 目录。
  */
 function codicons(): Plugin {
