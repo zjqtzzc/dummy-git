@@ -163,32 +163,67 @@ export function parseParams<K extends CommandName>(
   return PARAM_GUARDS[command](raw);
 }
 
+export enum InboundKind {
+  /** 合法的消息。 */
+  Message = "message",
+  /** 读得出代号与 id，但命令名或参数不合法。 */
+  Rejected = "rejected",
+}
+
+export type Inbound =
+  | { readonly kind: InboundKind.Message; readonly message: InboundMessage }
+  | {
+      readonly kind: InboundKind.Rejected;
+      readonly generation: Generation;
+      readonly id: number;
+      readonly reason: string;
+    };
+
 /**
  * 校验整个信封。
  *
- * 返回 `undefined` 表示「这条消息不可理解」——**连回复都没法回**
- * （不知道 id、不知道代号），只能丢弃并记日志。这与「命令执行失败」
- * 是两件事：后者有 id，能好好回一个错误响应。
+ * - 返回 `undefined`：连代号或 id 都读不出，**回不了**，只能丢弃并记日志。
+ * - `Rejected`：代号与 id 都在，只是命令名或参数不对（比如 webview 与扩展宿主版本不一致：
+ *   webview 已是新构建、扩展宿主还没重新加载）。**能回就必须回一个错误**——
+ *   「每条请求恰好回一次」是不设超时的前提，丢掉它前端就永远等下去。
  */
-export function parseInbound(raw: unknown): InboundMessage | undefined {
+export function parseInbound(raw: unknown): Inbound | undefined {
   if (!isRecord(raw)) return undefined;
 
   const generation = asGeneration(raw["generation"]);
   if (generation === undefined) return undefined;
 
   if (raw["kind"] === MessageKind.Ready) {
-    return { kind: MessageKind.Ready, generation };
+    return { kind: InboundKind.Message, message: { kind: MessageKind.Ready, generation } };
   }
 
   if (raw["kind"] === MessageKind.Request) {
     const id = raw["id"];
     if (typeof id !== "number" || !Number.isInteger(id)) return undefined;
-    if (!isCommandName(raw["command"])) return undefined;
+    const command = raw["command"];
+    if (!isCommandName(command)) {
+      return {
+        kind: InboundKind.Rejected,
+        generation,
+        id,
+        reason: `unknown command ${JSON.stringify(command)}`,
+      };
+    }
 
-    const params = parseParams(raw["command"], raw["params"]);
-    if (params === undefined) return undefined;
+    const params = parseParams(command, raw["params"]);
+    if (params === undefined) {
+      return {
+        kind: InboundKind.Rejected,
+        generation,
+        id,
+        reason: `invalid params for ${command}`,
+      };
+    }
 
-    return { kind: MessageKind.Request, generation, id, command: raw["command"], params };
+    return {
+      kind: InboundKind.Message,
+      message: { kind: MessageKind.Request, generation, id, command, params },
+    };
   }
 
   return undefined;

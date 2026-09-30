@@ -10,7 +10,7 @@ import {
   ResponseKind,
 } from "@dummy-git/shared";
 import { GitFailureError } from "../git/failure.js";
-import { parseInbound } from "./protocol.guards.js";
+import { InboundKind, parseInbound } from "./protocol.guards.js";
 
 /**
  * 一条命令的处理函数。参数与返回值都由协议表推出来，写错编译不过。
@@ -133,15 +133,21 @@ export class Router {
    *
    * 三种丢弃，都记日志（静默丢弃是最难查的那类问题）：
    * - 信封不可理解：连 id 都没有，**回不了**，只能丢
+   *   （读得出 id、只是命令名或参数不对的，回一个错误，见 `reject`）
    * - 代号对不上：上一代 webview 的残留请求，回了也没人要
    * - 还没握手：`generation` 未定，此时不该有任何请求
    */
   receive(raw: unknown): void {
-    const message = parseInbound(raw);
-    if (message === undefined) {
+    const inbound = parseInbound(raw);
+    if (inbound === undefined) {
       this.hooks.log(`丢弃：无法解析的消息 ${JSON.stringify(raw)?.slice(0, 200)}`);
       return;
     }
+    if (inbound.kind === InboundKind.Rejected) {
+      this.reject(inbound.generation, inbound.id, inbound.reason);
+      return;
+    }
+    const { message } = inbound;
 
     if (message.kind === MessageKind.Ready) {
       const previous = this.generation;
@@ -166,6 +172,27 @@ export class Router {
     }
 
     void this.dispatch(message.generation, message.id, message.command, message.params);
+  }
+
+  /**
+   * 读得出 id、但命令名或参数不对的请求：回一个错误，并交给错误关口。
+   * 不回的话前端会一直等下去（按钮停在「进行中」）。常见成因是 webview 与扩展宿主版本不一致。
+   * 代号对不上的照样丢：那是上一代的请求，回了也没人要。
+   */
+  private reject(generation: Generation, id: number, reason: string): void {
+    if (generation !== this.generation) {
+      this.hooks.log(`丢弃：代号不符的不合法请求（${reason}）`);
+      return;
+    }
+    this.transport.post({
+      kind: MessageKind.Response,
+      generation,
+      id,
+      result: ResponseKind.Error,
+      error: { message: reason },
+    });
+    this.hooks.log(`拒绝：${reason}`);
+    this.hooks.report(new Error(`Rejected request: ${reason}`));
   }
 
   /**

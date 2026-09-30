@@ -215,10 +215,6 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
       { kind: MessageKind.Request, id: 1, command: "getSkeleton", params: { repo: "/r" } },
     ],
     [
-      "命令名不在协议表里",
-      { kind: MessageKind.Request, generation: GEN, id: 1, command: "cherryPick", params: {} },
-    ],
-    [
       "id 不是整数",
       {
         kind: MessageKind.Request,
@@ -226,26 +222,6 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
         id: 1.5,
         command: "getSkeleton",
         params: { repo: "/r" },
-      },
-    ],
-    [
-      "参数缺字段",
-      {
-        kind: MessageKind.Request,
-        generation: GEN,
-        id: 1,
-        command: "getCommitFiles",
-        params: { repo: "/r" },
-      },
-    ],
-    [
-      "参数类型不对",
-      {
-        kind: MessageKind.Request,
-        generation: GEN,
-        id: 1,
-        command: "getCommitDetails",
-        params: { repo: "/r", hashes: [1, 2] },
       },
     ],
   ])("丢弃：%s", async (_name, raw) => {
@@ -261,10 +237,6 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
         getSkeleton: async () => {
           ran = true;
           return [];
-        },
-        amend: async () => {
-          ran = true;
-          return null;
         },
         getCommitDetails: async () => {
           ran = true;
@@ -290,6 +262,10 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
           ran = true;
           return null;
         },
+        amend: async () => {
+          ran = true;
+          return null;
+        },
       }),
     );
 
@@ -298,6 +274,42 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
     await new Promise((r) => setTimeout(r, 10));
 
     expect(ran).toBe(false);
+    expect(t.sent).toHaveLength(0);
+  });
+});
+
+describe("Router：读得出 id 的不合法请求回一个错误，不让前端一直等", () => {
+  it.each([
+    ["命令名不在协议表里（webview 比扩展宿主新）", "cherryPick", {}],
+    ["参数缺字段", "getCommitFiles", { repo: "/r" }],
+    ["参数类型不对", "getCommitDetails", { repo: "/r", hashes: [1, 2] }],
+  ])("%s", async (_name, command, params) => {
+    const t = recorder();
+    const reported: unknown[] = [];
+    const router = new Router(t, handlersWith(), {
+      log: () => {},
+      report: (error) => void reported.push(error),
+    });
+    ready(router);
+    router.receive({ kind: MessageKind.Request, generation: GEN, id: 7, command, params });
+
+    expect(t.sent).toEqual([
+      expect.objectContaining({ kind: MessageKind.Response, id: 7, result: ResponseKind.Error }),
+    ]);
+    expect(reported).toHaveLength(1);
+  });
+
+  it("代号不符的照样丢：上一代的请求，回了也没人要", () => {
+    const t = recorder();
+    const router = new Router(t, handlersWith());
+    ready(router, "gen-2");
+    router.receive({
+      kind: MessageKind.Request,
+      generation: "gen-1",
+      id: 7,
+      command: "x",
+      params: {},
+    });
     expect(t.sent).toHaveLength(0);
   });
 });
