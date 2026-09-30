@@ -21,10 +21,22 @@ function commitWith(amend: readonly string[]): GitCommand<CommitArgs, void> {
       }
       // 不做「消息是不是空」之类的防御性检查：验证只在边界做一次（CLAUDE.md §C.2），
       // 而这里在边界之内。空消息由 git 拒绝，M4 会把它包成 GitFailureError。
-      await run(cli, ["commit", ...amend, "--only", "-F", "-", "--", ...paths], {
-        cwd: repository,
-        input: message,
-      });
+      try {
+        await run(cli, ["commit", ...amend, "--only", "-F", "-", "--", ...paths], {
+          cwd: repository,
+          input: message,
+        });
+      } catch (error) {
+        // 提交失败（比如钩子拒绝）：把刚 `add` 的未跟踪文件撤回，暂存区回到原样，
+        // 它们在界面上仍是未跟踪（ARCHITECTURE.md 第 14 题第 3 步）。撤回本身失败也不掩盖
+        // 提交的报错——那才是用户要看的。
+        if (untracked.length > 0) {
+          await run(cli, ["reset", "-q", "--", ...untracked], { cwd: repository }).catch(
+            () => undefined,
+          );
+        }
+        throw error;
+      }
     },
   };
 }
@@ -81,7 +93,8 @@ function commitWith(amend: readonly string[]): GitCommand<CommitArgs, void> {
  *
  * 未跟踪文件的 `add` 由 `untracked` 参数给出：在同一次写锁里先 `add` 它们再提交，
  * 中间插不进别的写命令；`add` 失败就抛，提交不会跑。`add` 成功而提交失败（钩子拒绝）时，
- * 这些文件留在暂存区成了「新增」，重试时它们已是已跟踪文件，不再需要 `add`——依然幂等。
+ * `reset` 撤回这些文件，暂存区回到原样（ARCHITECTURE.md 第 14 题第 3 步）——
+ * 重试时它们仍是未跟踪文件，照样先 `add`，依然幂等。
  *
  * ## 不返回新提交的 hash
  *

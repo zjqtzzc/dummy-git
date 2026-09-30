@@ -57,6 +57,16 @@ describe("commit：未跟踪文件先 add 再提交", () => {
     expect(git(repo, ["status", "--porcelain"]).trim()).toBe("");
   });
 
+  it("提交失败（钩子拒绝）：刚 add 的未跟踪文件撤回，仍是未跟踪", async () => {
+    const repo = makeTempRepo("untracked-hook");
+    writeFileSync(join(repo, ".git", "hooks", "pre-commit"), "#!/bin/sh\nexit 1\n", {
+      mode: 0o755,
+    });
+    writeFileSync(join(repo, "new.txt"), "new\n");
+    await expect(commit.execute(cli, repo, "msg", ["new.txt"], ["new.txt"])).rejects.toThrow();
+    expect(git(repo, ["status", "--porcelain"]).trim()).toBe("?? new.txt");
+  });
+
   it("未跟踪文件 add 失败：不提交", async () => {
     const repo = makeTempRepo("untracked-fail");
     writeFileSync(join(repo, "f1"), "changed\n");
