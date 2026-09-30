@@ -6,6 +6,7 @@ import {
   getHead,
   getRefs,
   getSkeleton,
+  getStatus,
 } from "../git/commands/index.js";
 import { defineHandlers, type HandlerMap } from "./router.js";
 
@@ -67,5 +68,6 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       return null;
     },
     getCommitFiles: ({ hash }) => repository.run(getCommitFiles, repository.location.root, hash),
+    getStatus: () => repository.run(getStatus, repository.location.root),
   });
 }

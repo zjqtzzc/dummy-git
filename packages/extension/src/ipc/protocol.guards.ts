@@ -121,6 +121,10 @@ const PARAM_GUARDS = {
     const hash = raw["hash"];
     return typeof repo === "string" && typeof hash === "string" ? { repo, hash } : undefined;
   },
+  getStatus: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    return typeof repo === "string" ? { repo } : undefined;
+  },
 } satisfies { [K in CommandName]: (raw: Record<string, unknown>) => CommandParams<K> | undefined };
 
 /** 命令名是不是协议表里的。**这是「不存在游离命令」在运行时的那一半。** */

@@ -70,6 +70,13 @@ describe("handlers：协议接到真仓库上", () => {
     expect(files.length).toBeGreaterThan(0);
   });
 
+  it("getStatus 拿到工作区的改动——Commit 面板的数据", async () => {
+    const changes = await createHandlers(repository, NO_UI).getStatus({
+      repo: repository.location.root,
+    });
+    expect(changes.length).toBeGreaterThan(0);
+  });
+
   it("getRefs：第一条是 HEAD，其后是分支与 tag——左栏一次拿全", async () => {
     const refs = await createHandlers(repository, NO_UI).getRefs({
       repo: repository.location.root,

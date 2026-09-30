@@ -1,10 +1,54 @@
 <script setup lang="ts">
+import { GitDomain } from "@dummy-git/shared";
+import { computed, onMounted, ref } from "vue";
+import FileTree from "./FileTree.vue";
+import { type Client, report } from "./logic/client.js";
+import { type WorkingFile, workingFiles, workingGroups } from "./logic/workingChanges.js";
+
 /**
  * 侧栏 Commit 面板（`.notes/design/phase-2.md` 第二节第 2 条）。
  *
  * 从上到下：Commit / Stash 切换、工具栏、文件树、底部固定区（Amend、说明、提交）。
- * 文件树占满中间，底部固定区始终贴底。现在只有布局，各部分在后面几步接上。
+ * 文件树占满中间，底部固定区始终贴底。
  */
+const props = defineProps<{ client: Client }>();
+
+const files = ref<WorkingFile[]>([]);
+const loaded = ref(false);
+const groups = computed(() => workingGroups(files.value));
+
+/**
+ * 最近一次请求的序号。`git status` 不排队、可以并发，先发的可能后回来；
+ * 只收最新那次的结果，免得旧结果盖掉新的。
+ */
+let latest = 0;
+async function load(repo: string): Promise<void> {
+  const mine = ++latest;
+  try {
+    const changes = await props.client.request("getStatus", { repo });
+    if (mine !== latest) return;
+    files.value = workingFiles(changes);
+    loaded.value = true;
+  } catch (cause) {
+    report(cause);
+  }
+}
+
+onMounted(async () => {
+  props.client.start();
+  try {
+    const roots = await props.client.request("getRepositories", {});
+    const first = roots[0];
+    if (first === undefined) return;
+    // 工作区与暂存区的变化都归 worktree 域（提交、切分支也会带上它）。
+    props.client.onDomainsChanged((_changed, domains) => {
+      if (domains.includes(GitDomain.Worktree)) void load(first);
+    });
+    await load(first);
+  } catch (cause) {
+    report(cause);
+  }
+});
 </script>
 
 <template>
@@ -21,7 +65,11 @@
       <vscode-toolbar-button icon="collapse-all" label="Collapse All" />
     </vscode-toolbar-container>
 
-    <div class="files" />
+    <div class="files">
+      <p v-if="!loaded" class="dim note">Loading…</p>
+      <p v-else-if="files.length === 0" class="dim note">No changes</p>
+      <FileTree v-else :groups="groups" />
+    </div>
 
     <div class="footer">
       <vscode-checkbox label="Amend" />
@@ -67,6 +115,11 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
+}
+.note {
+  margin: 0;
+  padding-top: 24px;
+  text-align: center;
 }
 .footer {
   display: flex;

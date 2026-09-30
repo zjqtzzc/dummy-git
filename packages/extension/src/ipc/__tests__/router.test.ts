@@ -2,6 +2,7 @@ import {
   type Commit,
   type CommitFileChange,
   type CommitSkeleton,
+  type FileChange,
   GitDomain,
   GitErrorCode,
   MessageKind,
@@ -29,6 +30,7 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     getRefs: async (): Promise<Ref[]> => [],
     openDiff: async (): Promise<null> => null,
     getCommitFiles: async (): Promise<CommitFileChange[]> => [],
+    getStatus: async (): Promise<FileChange[]> => [],
     ...overrides,
   });
 }
@@ -271,6 +273,10 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
           return null;
         },
         getCommitFiles: async () => {
+          ran = true;
+          return [];
+        },
+        getStatus: async () => {
           ran = true;
           return [];
         },

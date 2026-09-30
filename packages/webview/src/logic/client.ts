@@ -52,6 +52,14 @@ export class CommandFailedError extends Error {
   }
 }
 
+/**
+ * 请求失败已由扩展侧的错误关口弹过通知、写过输出面板（`ARCHITECTURE.md` 第 15 题），
+ * 这里不再显示第二遍。webview 自己代码里的错误扩展侧不知道，写到开发者工具的控制台。
+ */
+export function report(cause: unknown): void {
+  if (!(cause instanceof CommandFailedError)) console.error(cause);
+}
+
 /** 只是给 `pending` 的签名取个名字。 */
 type ResponseIncoming = Extract<Incoming, { kind: MessageKind.Response }>;
 
