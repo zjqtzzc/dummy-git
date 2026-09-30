@@ -213,3 +213,15 @@ export function toTreeNodes(nodes: readonly FileNode[], light: boolean): TreeNod
 function fileCount(count: number): string {
   return count === 1 ? "1 file" : `${count} files`;
 }
+
+/**
+ * 刷新后的勾选（`.notes/design/phase-2.md` 第二节第 6 条）：按路径保持，消失的路径移出。
+ * 新出现的文件本来就不在集合里，自然不勾。
+ */
+export function keepChecked(
+  checked: ReadonlySet<string>,
+  groups: readonly FileGroup[],
+): ReadonlySet<string> {
+  const present = new Set(groups.flatMap((group) => group.entries.map((entry) => entry.path)));
+  return new Set([...checked].filter((path) => present.has(path)));
+}

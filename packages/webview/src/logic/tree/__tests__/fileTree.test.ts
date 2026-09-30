@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildFileTree, type FileEntry, type FileNode, FileNodeKind } from "../fileTree.js";
+import {
+  buildFileTree,
+  type FileEntry,
+  type FileNode,
+  FileNodeKind,
+  keepChecked,
+} from "../fileTree.js";
 
 const m = (path: string): FileEntry => ({ path, letter: "M", color: "red" });
 
@@ -85,5 +91,14 @@ describe("buildFileTree", () => {
       "  src/ (1)",
       "    c.ts",
     ]);
+  });
+});
+
+describe("keepChecked", () => {
+  it("刷新后：勾选按路径保持，消失的移出，新文件不勾", () => {
+    const kept = keepChecked(new Set(["a.ts", "gone.ts"]), [
+      { id: "changes", entries: [m("a.ts"), m("new.ts")] },
+    ]);
+    expect([...kept]).toEqual(["a.ts"]);
   });
 });

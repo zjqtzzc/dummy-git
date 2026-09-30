@@ -148,3 +148,23 @@ export function treeKeyAction(
       return undefined;
   }
 }
+
+/** 复选框的三种样子。可展开的节点由下面的叶子推出来。 */
+export enum CheckState {
+  Checked = "checked",
+  Unchecked = "unchecked",
+  Mixed = "mixed",
+}
+
+/** 节点下面（含自己）所有叶子的 id。勾一个上级节点，就是勾这些。 */
+export function leafIds(node: TreeNode): string[] {
+  return node.children === undefined ? [node.id] : node.children.flatMap(leafIds);
+}
+
+/** 由勾选的叶子集合推出一个节点的复选框：全勾、全不勾，或者半选。没有叶子的上级算不勾。 */
+export function checkState(node: TreeNode, checked: ReadonlySet<string>): CheckState {
+  const ids = leafIds(node);
+  const count = ids.filter((id) => checked.has(id)).length;
+  if (count === 0) return CheckState.Unchecked;
+  return count === ids.length ? CheckState.Checked : CheckState.Mixed;
+}

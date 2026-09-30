@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   branchIds,
+  CheckState,
+  checkState,
   flattenTree,
+  leafIds,
   setExpanded,
   TreeKeyActionKind,
   type TreeNode,
@@ -121,5 +124,27 @@ describe("treeKeyAction：照 VS Code 原生的树", () => {
       kind: TreeKeyActionKind.Expand,
       open: false,
     });
+  });
+});
+
+describe("复选框", () => {
+  const [a, z] = TREE;
+
+  it("上级：下面的叶子全勾是勾，一部分是半选，都没勾是不勾", () => {
+    if (a === undefined) throw new Error("没有 a");
+    expect(checkState(a, new Set(["x", "y"]))).toBe(CheckState.Checked);
+    expect(checkState(a, new Set(["x"]))).toBe(CheckState.Mixed);
+    expect(checkState(a, new Set(["z"]))).toBe(CheckState.Unchecked);
+  });
+
+  it("叶子只有勾与不勾", () => {
+    if (z === undefined) throw new Error("没有 z");
+    expect(checkState(z, new Set(["z"]))).toBe(CheckState.Checked);
+    expect(checkState(z, new Set())).toBe(CheckState.Unchecked);
+  });
+
+  it("勾一个上级，就是勾它下面所有叶子", () => {
+    if (a === undefined) throw new Error("没有 a");
+    expect(leafIds(a)).toEqual(["x", "y"]);
   });
 });

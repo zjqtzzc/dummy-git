@@ -3,7 +3,9 @@ import { GitDomain } from "@dummy-git/shared";
 import { computed, onMounted, ref } from "vue";
 import { type Client, report } from "../logic/client.js";
 import { type WorkingFile, workingFiles, workingGroups } from "../logic/commit/workingChanges.js";
+import { keepChecked } from "../logic/tree/fileTree.js";
 import FileTree from "../tree/FileTree.vue";
+import { viewState } from "../vscodeApi.js";
 
 /**
  * 侧栏 Commit 面板（`.notes/design/phase-2.md` 第二节第 2 条）。
@@ -18,6 +20,26 @@ const loaded = ref(false);
 const groups = computed(() => workingGroups(files.value));
 
 /**
+ * 勾选的路径。默认都不勾（第二节第 4 条）。存进 `viewState`：面板收起再展开、重新加载窗口都还在。
+ */
+const checked = ref<ReadonlySet<string>>(new Set(restoreChecked(viewState.read("checked"))));
+function restoreChecked(saved: unknown): string[] {
+  return Array.isArray(saved) ? saved.filter((path) => typeof path === "string") : [];
+}
+function setChecked(next: ReadonlySet<string>): void {
+  checked.value = next;
+  viewState.write("checked", [...next]);
+}
+function onCheck(paths: readonly string[], value: boolean): void {
+  const next = new Set(checked.value);
+  for (const path of paths) {
+    if (value) next.add(path);
+    else next.delete(path);
+  }
+  setChecked(next);
+}
+
+/**
  * 最近一次请求的序号。`git status` 不排队、可以并发，先发的可能后回来；
  * 只收最新那次的结果，免得旧结果盖掉新的。
  */
@@ -28,6 +50,7 @@ async function load(repo: string): Promise<void> {
     const changes = await props.client.request("getStatus", { repo });
     if (mine !== latest) return;
     files.value = workingFiles(changes);
+    setChecked(keepChecked(checked.value, groups.value));
     loaded.value = true;
   } catch (cause) {
     report(cause);
@@ -68,7 +91,7 @@ onMounted(async () => {
     <div class="files">
       <p v-if="!loaded" class="dim note">Loading…</p>
       <p v-else-if="files.length === 0" class="dim note">No changes</p>
-      <FileTree v-else :groups="groups" />
+      <FileTree v-else :groups="groups" :checked="checked" @check="onCheck" />
     </div>
 
     <div class="footer">

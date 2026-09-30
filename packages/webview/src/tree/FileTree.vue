@@ -10,9 +10,17 @@ import Tree from "./Tree.vue";
  * 分组的文件整理成树、配上 Seti 图标与改动字母；新出现的目录默认展开；
  * 双击或回车打开 diff，单击或上下键时 diff 跟随（真正开不开由扩展侧 `vscode/diff.ts` 判断）。
  * 只认 `FileEntry`，左右各是什么由使用方决定。
+ * 给了 `checked`（勾选的路径）才有复选框；勾选状态由使用方持有，这里只转发 `check`。
  */
-const props = defineProps<{ groups: readonly FileGroup[] }>();
-const emit = defineEmits<{ open: [entry: FileEntry, mode: DiffOpenMode] }>();
+const props = defineProps<{
+  groups: readonly FileGroup[];
+  checked?: ReadonlySet<string> | undefined;
+}>();
+const emit = defineEmits<{
+  open: [entry: FileEntry, mode: DiffOpenMode];
+  /** 叶子的 id 就是文件路径。 */
+  check: [paths: readonly string[], value: boolean];
+}>();
 
 /** 浅色主题用 Seti 的 `_light` 那一套。VS Code 切主题时改 body 的类名，跟着它走。 */
 const light = ref(false);
@@ -77,5 +85,12 @@ function onActivate(node: TreeNode): void {
 </script>
 
 <template>
-  <Tree v-model:expanded="expanded" :nodes="nodes" @select="onSelect" @activate="onActivate" />
+  <Tree
+    v-model:expanded="expanded"
+    :nodes="nodes"
+    :checked="checked"
+    @select="onSelect"
+    @activate="onActivate"
+    @check="(paths, value) => emit('check', paths, value)"
+  />
 </template>

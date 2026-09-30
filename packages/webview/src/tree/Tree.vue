@@ -2,7 +2,10 @@
 import { assertNever } from "@dummy-git/shared";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import {
+  CheckState,
+  checkState,
   flattenTree,
+  leafIds,
   setExpanded,
   type TreeIcon,
   TreeIconKind,
@@ -16,19 +19,29 @@ import { ROW_HEIGHT, renderRange, scrollIntoView } from "../logic/virtualList.js
 /**
  * 所有树共用的基础组件（`.notes/design/phase-2.md` 第一节），外观与交互照 VS Code 原生的树。
  *
- * 一行从左到右：缩进、箭头（没有下级时隐藏但占位）、图标（可选）、文字、说明（可选）、右侧字母（可选）。
+ * 一行从左到右：缩进、箭头（没有下级时隐藏但占位）、复选框（可选）、图标（可选）、文字、说明（可选）、
+ * 右侧字母（可选）。
  * 行高固定 22px，虚拟滚动，只渲染看得见的行。
  *
  * 展开状态由使用方持有（`v-model:expanded`）：默认展开哪些、要不要存下来各不相同。
  * 这里只算出新的集合交回去，收起时连下面的节点一起收起也在这一步。
+ *
+ * 给了 `checked`（勾选的叶子 id）才画复选框，勾选状态同样由使用方持有：
+ * 这里只发出 `check`（想把哪些叶子改成勾 / 不勾），上级的全选 / 半选由叶子推出来。
  */
-const props = defineProps<{ nodes: readonly TreeNode[]; expanded: ReadonlySet<string> }>();
+const props = defineProps<{
+  nodes: readonly TreeNode[];
+  expanded: ReadonlySet<string>;
+  checked?: ReadonlySet<string> | undefined;
+}>();
 const emit = defineEmits<{
   "update:expanded": [expanded: ReadonlySet<string>];
   /** 单击、上下键：选中的行。 */
   select: [node: TreeNode];
   /** 双击、回车落在叶子上：打开。 */
   activate: [node: TreeNode];
+  /** 点了复选框：把这些叶子改成勾（`true`）或不勾。 */
+  check: [ids: readonly string[], value: boolean];
 }>();
 
 const rows = computed(() => flattenTree(props.nodes, props.expanded));
@@ -42,7 +55,12 @@ const scrollTop = ref(0);
 const viewportHeight = ref(0);
 const visible = computed(() => {
   const range = renderRange(scrollTop.value, viewportHeight.value, rows.value.length);
-  return rows.value.slice(range.start, range.end).map((row, i) => ({ row, index: range.start + i }));
+  const checked = props.checked;
+  return rows.value.slice(range.start, range.end).map((row, i) => ({
+    row,
+    index: range.start + i,
+    check: checked === undefined ? undefined : checkState(row.node, checked),
+  }));
 });
 
 function onScroll(): void {
@@ -82,16 +100,25 @@ function rowAt(event: MouseEvent): number | undefined {
   return index === null || index === undefined ? undefined : Number(index);
 }
 
-/** 单击：选中；可展开的节点同时展开 / 收起（VS Code 默认的单击展开）。 */
+/**
+ * 单击：点在复选框上只切换勾选（全勾时全不勾，否则全勾），不选中、不展开；
+ * 点在别处选中这一行，可展开的节点同时展开 / 收起（VS Code 默认的单击展开）。
+ */
 function onClick(event: MouseEvent): void {
   const index = rowAt(event);
   const row = index === undefined ? undefined : rows.value[index];
   if (index === undefined || row === undefined) return;
+  if (props.checked !== undefined && event.target instanceof Element && event.target.closest(".check")) {
+    emit("check", leafIds(row.node), checkState(row.node, props.checked) !== CheckState.Checked);
+    return;
+  }
   select(index);
   toggle(row);
 }
 
 function onDblclick(event: MouseEvent): void {
+  // 连点两下复选框是勾了又取消，不是打开。
+  if (event.target instanceof Element && event.target.closest(".check")) return;
   const index = rowAt(event);
   const row = index === undefined ? undefined : rows.value[index];
   if (row !== undefined && row.expanded === undefined) emit("activate", row.node);
@@ -127,6 +154,13 @@ function onKeydown(event: KeyboardEvent): void {
   }
 }
 
+/** 复选框里画什么：勾、横杠、空。codicon 的类名，表放在用它的模块里（CLAUDE.md B.3）。 */
+const CHECK_ICON: Readonly<Record<CheckState, string>> = {
+  [CheckState.Checked]: "codicon-check",
+  [CheckState.Mixed]: "codicon-dash",
+  [CheckState.Unchecked]: "",
+};
+
 /** codicon 的类名。展开着且有 `openedName` 时换成它。 */
 function codicon(icon: Extract<TreeIcon, { kind: TreeIconKind.Codicon }>, row: TreeRow): string {
   return `codicon-${row.expanded === true && icon.openedName !== undefined ? icon.openedName : icon.name}`;
@@ -153,7 +187,7 @@ function rowId(index: number): string {
   >
     <div :style="{ height: `${rows.length * ROW_HEIGHT}px`, position: 'relative' }">
       <div
-        v-for="{ row, index } in visible"
+        v-for="{ row, index, check } in visible"
         :id="rowId(index)"
         :key="row.node.id"
         role="treeitem"
@@ -178,6 +212,7 @@ function rowId(index: number): string {
             row.expanded === undefined ? '' : row.expanded ? 'codicon-chevron-down' : 'codicon-chevron-right',
           ]"
         />
+        <span v-if="check !== undefined" :class="['check', 'codicon', CHECK_ICON[check]]" />
         <template v-if="row.node.icon !== undefined">
           <span
             v-if="row.node.icon.kind === TreeIconKind.Codicon"
@@ -204,7 +239,7 @@ function rowId(index: number): string {
 
 <style scoped>
 /*
- * 尺寸与配色照 VS Code 原生的树（资源管理器），缩进按我们自己的：行高 22px、每层缩进 11px、箭头格 3 + 16 + 3、
+ * 尺寸与配色照 VS Code 原生的树（资源管理器），缩进按我们自己的：行高 22px、每层缩进 11px、箭头格与复选框格都是 3 + 16 + 3、
  * 图标 16px 右留 6px；选中、悬停、焦点框、缩进线都用主题的 list / tree 变量。
  */
 .tree {
@@ -259,6 +294,21 @@ function rowId(index: number): string {
   padding-right: 3px;
   font-size: 16px;
   color: var(--vscode-icon-foreground);
+}
+.check {
+  box-sizing: border-box;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin: 0 3px;
+  font-size: 14px;
+  border: 1px solid var(--vscode-checkbox-border);
+  border-radius: 3px;
+  background: var(--vscode-checkbox-background);
+  color: var(--vscode-checkbox-foreground);
 }
 .icon {
   flex: none;
