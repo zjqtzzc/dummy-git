@@ -3,6 +3,7 @@ import type { Ref } from "@dummy-git/shared";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import BranchTreeNode from "./BranchTreeNode.vue";
 import { buildBranchTree, defaultExpanded, restoreExpanded } from "./logic/branchTree.js";
+import { collapseDescendants } from "./treeCollapse.js";
 import { viewState } from "./vscodeApi.js";
 
 /**
@@ -42,12 +43,17 @@ const observer = new MutationObserver((mutations) => {
   }
   viewState.write("branches", [...expanded]);
 });
+let collapsing: MutationObserver | undefined;
 onMounted(() => {
   if (root.value !== undefined) {
     observer.observe(root.value, { subtree: true, attributes: true, attributeFilter: ["open"] });
+    collapsing = collapseDescendants(root.value);
   }
 });
-onUnmounted(() => observer.disconnect());
+onUnmounted(() => {
+  observer.disconnect();
+  collapsing?.disconnect();
+});
 </script>
 
 <template>

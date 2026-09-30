@@ -3,6 +3,7 @@ import { DiffOpenMode } from "@dummy-git/shared";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import FileTreeNode from "./FileTreeNode.vue";
 import { buildFileTree, type FileEntry } from "./logic/fileTree.js";
+import { collapseDescendants } from "./treeCollapse.js";
 
 /**
  * 所有文件树共用的组件（`.notes/design/phase-2.md` 第一节）：全部展开；双击或回车打开 diff，
@@ -21,11 +22,17 @@ function readTheme(): void {
   light.value = classes.contains("vscode-light") || classes.contains("vscode-high-contrast-light");
 }
 const themeWatch = new MutationObserver(readTheme);
+const root = ref<HTMLElement>();
+let collapsing: MutationObserver | undefined;
 onMounted(() => {
   readTheme();
   themeWatch.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+  if (root.value !== undefined) collapsing = collapseDescendants(root.value);
 });
-onUnmounted(() => themeWatch.disconnect());
+onUnmounted(() => {
+  themeWatch.disconnect();
+  collapsing?.disconnect();
+});
 
 /** 节点 id（完整路径）→ 文件。树里只有 id，打开时查回来。 */
 const byId = computed(() => new Map(props.entries.map((entry) => [entry.path, entry])));
@@ -68,6 +75,7 @@ function onKeydown(event: KeyboardEvent): void {
 
 <template>
   <vscode-tree
+    ref="root"
     class="file-tree"
     indent-guides="onHover"
     @focusin="onFocusin"
