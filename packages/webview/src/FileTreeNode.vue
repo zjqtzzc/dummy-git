@@ -10,8 +10,14 @@ const icon = computed(() => setiIcon(props.node.label, props.light));
 </script>
 
 <template>
+  <!-- 组标题行不带 data-id：它不是文件，点它不打开任何东西。 -->
+  <vscode-tree-item v-if="node.kind === FileNodeKind.Group" branch open>
+    <span class="group">{{ node.label }}</span>
+    <span slot="description">{{ node.count === 1 ? "1 file" : `${node.count} files` }}</span>
+    <FileTreeNode v-for="child in node.children" :key="child.id" :node="child" :light="light" />
+  </vscode-tree-item>
   <vscode-tree-item
-    v-if="node.kind === FileNodeKind.Folder"
+    v-else-if="node.kind === FileNodeKind.Folder"
     branch
     open
     :data-id="node.id"
@@ -33,6 +39,9 @@ const icon = computed(() => setiIcon(props.node.label, props.light));
 </template>
 
 <style scoped>
+.group {
+  font-weight: 600;
+}
 /*
  * Seti 图标（参照 GitLens 的 gl-file-icon）：
  * - 16×16 的方框里用 flex 上下左右居中，行高 1。不用 22px 行高去撑——那样字形的上下位置

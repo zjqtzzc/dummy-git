@@ -36,7 +36,8 @@ const loaded = ref(false);
 const refs = ref<Ref[]>([]);
 const selected = ref<string>();
 const files = ref<CommitFileChange[]>([]);
-const fileEntries = computed(() => files.value.map(commitFileEntry));
+/** 右栏只有一组，没有标题。 */
+const fileGroups = computed(() => [{ id: "files", entries: files.value.map(commitFileEntry) }]);
 /** 右栏正在取选中提交的文件。 */
 const filesLoading = ref(false);
 const list = ref<InstanceType<typeof CommitList>>();
@@ -235,7 +236,7 @@ onMounted(async () => {
 
       <div slot="end" class="pane">
         <p v-if="filesLoading" class="dim loading">Loading…</p>
-        <FileTree v-else :entries="fileEntries" @open="openFile" />
+        <FileTree v-else :groups="fileGroups" @open="openFile" />
       </div>
     </vscode-split-layout>
   </vscode-split-layout>

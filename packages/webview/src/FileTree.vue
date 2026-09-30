@@ -2,7 +2,7 @@
 import { DiffOpenMode } from "@dummy-git/shared";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import FileTreeNode from "./FileTreeNode.vue";
-import { buildFileTree, type FileEntry } from "./logic/fileTree.js";
+import { buildFileTree, type FileEntry, type FileGroup } from "./logic/fileTree.js";
 import { collapseDescendants } from "./treeCollapse.js";
 
 /**
@@ -10,10 +10,10 @@ import { collapseDescendants } from "./treeCollapse.js";
  * 单击或上下键时 diff 跟随（真正开不开由扩展侧 `vscode/diff.ts` 判断）。
  * 只认 `FileEntry`，左右各是什么由使用方决定。
  */
-const props = defineProps<{ entries: readonly FileEntry[] }>();
+const props = defineProps<{ groups: readonly FileGroup[] }>();
 const emit = defineEmits<{ open: [entry: FileEntry, mode: DiffOpenMode] }>();
 
-const tree = computed(() => buildFileTree(props.entries));
+const tree = computed(() => buildFileTree(props.groups));
 
 /** 浅色主题用 Seti 的 `_light` 那一套。VS Code 切主题时改 body 的类名，跟着它走。 */
 const light = ref(false);
@@ -35,7 +35,9 @@ onUnmounted(() => {
 });
 
 /** 节点 id（完整路径）→ 文件。树里只有 id，打开时查回来。 */
-const byId = computed(() => new Map(props.entries.map((entry) => [entry.path, entry])));
+const byId = computed(
+  () => new Map(props.groups.flatMap((group) => group.entries.map((entry) => [entry.path, entry]))),
+);
 
 function fileAt(event: Event): FileEntry | undefined {
   if (!(event.target instanceof Element)) return undefined;
@@ -47,7 +49,7 @@ function fileAt(event: Event): FileEntry | undefined {
 let followed: string | undefined;
 // 文件列表整个换了（比如换了一条提交）：同名文件也要重新跟。
 watch(
-  () => props.entries,
+  () => props.groups,
   () => {
     followed = undefined;
   },

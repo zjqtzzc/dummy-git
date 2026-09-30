@@ -1,10 +1,12 @@
 /**
- * 所有文件树共用的整理逻辑（`.notes/design/phase-2.md` 第一节）：一组文件整理成树。
+ * 所有文件树共用的整理逻辑（`.notes/design/phase-2.md` 第一节）：几组文件整理成树。
  *
+ * - 有标题的组画成顶层一行（`Changes  N files`），下面是它自己的目录树；空组不画。
  * - 只有一个子目录、自己没有文件的目录链合并成一行（`apps/rgv_calib_parser`）。
  * - 目录带「下面一共几个文件」。
  * - 目录在前、文件在后，各按名字排序。
  */
+
 /**
  * 文件树里的一个文件。各使用方把自己的数据转成它，并各自持有「改动类型 → 字母 / 颜色」表；
  * 树只认它。
@@ -20,12 +22,32 @@ export interface FileEntry {
   readonly color: string;
 }
 
+/**
+ * 一组文件。有标题时画成顶层一行；没有标题时直接铺开（Log 右栏只有这一组）。
+ */
+export interface FileGroup {
+  /** 组的身份，在同一棵树里唯一。 */
+  readonly id: string;
+  readonly label?: string;
+  readonly entries: readonly FileEntry[];
+}
+
 export enum FileNodeKind {
+  Group = "group",
   Folder = "folder",
   File = "file",
 }
 
 export type FileNode =
+  | {
+      readonly kind: FileNodeKind.Group;
+      /** 组的 id。 */
+      readonly id: string;
+      readonly label: string;
+      /** 组里一共几个文件。 */
+      readonly count: number;
+      readonly children: readonly FileNode[];
+    }
   | {
       readonly kind: FileNodeKind.Folder;
       /** 相对仓库根的目录路径，也是节点 id。 */
@@ -52,7 +74,24 @@ interface Draft {
   readonly files: FileEntry[];
 }
 
-export function buildFileTree(entries: readonly FileEntry[]): readonly FileNode[] {
+export function buildFileTree(groups: readonly FileGroup[]): readonly FileNode[] {
+  return groups.flatMap((group): FileNode[] => {
+    if (group.entries.length === 0) return [];
+    const children = buildEntries(group.entries);
+    if (group.label === undefined) return children;
+    return [
+      {
+        kind: FileNodeKind.Group,
+        id: group.id,
+        label: group.label,
+        count: group.entries.length,
+        children,
+      },
+    ];
+  });
+}
+
+function buildEntries(entries: readonly FileEntry[]): FileNode[] {
   const root: Draft = { folders: new Map(), files: [] };
   for (const entry of entries) {
     const parts = entry.path.split("/");
