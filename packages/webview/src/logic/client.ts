@@ -93,7 +93,7 @@ export class Client {
    *
    * **必须在挂好消息监听之后调用。** 这正是握手要解决的问题：
    * 扩展侧在收到它之前一个字节都不发，于是「消息发早了、页面还没监听、悄悄丢了」
-   * 不可能发生。旧仓库在这里用的是 `setTimeout(…, 200)`——那不是机制，是赌博。
+   * 不可能发生。不要换成「延时一下再发」——那不是机制，是赌博。
    */
   start(): void {
     this.transport.post({ kind: MessageKind.Ready, generation: this.generation });

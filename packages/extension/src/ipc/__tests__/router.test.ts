@@ -322,7 +322,6 @@ describe("Router：读得出 id 的不合法请求回一个错误，不让前端
 describe("Router：握手与换代", () => {
   it("握手之前不广播——那一条会静静地丢掉，不报任何错", () => {
     // webview 是一张网页，脚本挂上监听之前 postMessage 发过去的东西没人收。
-    // 旧仓库在这里用 setTimeout(…, 200) 赌页面已经好了（commitViewProvider.ts:51）。
     const t = recorder();
     const router = new Router(t, handlersWith());
 

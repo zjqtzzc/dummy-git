@@ -24,9 +24,7 @@ import { LockPolicy } from "./lock.js";
  * git status                    →  M app.log     照常报告改动
  * ```
  *
- * 纯模式匹配的库（GitLens 用的 `ignore` 包）等价于 `--no-index`，
- * 会把这个文件误判成忽略、把用户的改动丢掉——GitLens 确有此洞，
- * 其 `watching/` 里没有任何 `tracked` 防护。
+ * 纯模式匹配的库等价于 `--no-index`，会把这个文件误判成忽略、把用户的改动丢掉。
  * **我们不加防护也不会有这个洞，因为答案来自 git 自己。**
  *
  * ## 退出码是数据
@@ -40,12 +38,10 @@ import { LockPolicy } from "./lock.js";
  * | 真出错（不是仓库等） | 128 | — |
  *
  * `1` 是**正常答案**，不是失败。所以这条命令走 `cli.execRaw()` 自己判退出码，
- * 不走 M4 的 `runRaw()`——那个「失败即抛」会把 1 当成错误。
+ * 不走 `runRaw()`——那个「失败即抛」会把 1 当成错误。
  *
- * M4 刻意**没有**给 `run()` 加「某些退出码视为成功」的开关，界限就划在这里：
- * 要读退出码的命令自己读（vscode 的 `ignoreExitCode` 开关是反例，
- * 它默认仍抛、只开逃生口，结果调用方写出了三处永不可达的分支）。
- * 代价是这条命令要自己负责「真出错时抛」，见下面 `default` 分支。
+ * `run()` 刻意**没有**「某些退出码视为成功」的开关，界限就划在这里：
+ * 要读退出码的命令自己读。代价是这条命令要自己负责「真出错时抛」，见下面 `default` 分支。
  */
 export const checkIgnore: GitCommand<
   [repository: string, paths: readonly string[]],
@@ -80,7 +76,7 @@ export const checkIgnore: GitCommand<
         // 一个都没被忽略。正常答案。
         return new Set();
       default:
-        // 真出错（不是仓库、参数写错…）。自己抛，形态与 M4 的 `runRaw()` 一致，
+        // 真出错（不是仓库、参数写错…）。自己抛，形态与 `runRaw()` 一致，
         // 这样上层对 `GitFailureError` 的处置不必为这条命令开特例。
         throw new GitFailureError(
           args,

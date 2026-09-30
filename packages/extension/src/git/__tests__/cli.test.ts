@@ -17,8 +17,7 @@ afterEach(cleanupTempRepos);
 
 describe("退出码是数据，不是异常", () => {
   it("rev-parse --verify 一个不存在的 ref → 返回 128，不抛", async () => {
-    // 默认抛的代价：vscode `git.ts:1503/1852/1877` 三处死代码——
-    // `if (result.exitCode) return []` 位于必定抛出的路径之后，永不可达。
+    // 默认抛的话，调用方写的 `if (result.exitCode) return []` 位于必定抛出的路径之后，永不可达。
     const r = await cli.exec(["rev-parse", "--verify", "nosuchref"], { cwd: fixtures.base });
     expect(r.exitCode).toBe(128);
     expect(r.stderr).not.toBe("");
@@ -119,8 +118,7 @@ describe("取消", () => {
 
 describe("进程起不来时 reject，不伪造退出码", () => {
   it("git 路径不存在", async () => {
-    // git-graph 的做法是伪造 `code: -1`，那会让「命令失败」和
-    // 「git 装都没装」变成同一种结果。
+    // 伪造一个退出码（比如 -1）会让「命令失败」和「git 装都没装」变成同一种结果。
     const broken = new GitCli("/nonexistent/git-binary");
     await expect(broken.exec(["log"], { cwd: fixtures.base })).rejects.toThrow();
   });
@@ -128,7 +126,6 @@ describe("进程起不来时 reject，不伪造退出码", () => {
 
 describe("日志", () => {
   it("一条命令只记一次", async () => {
-    // M2 审阅时抓到的 bug：成功路径记了两遍。
     const lines: string[] = [];
     const logger: GitLogger = { log: (l) => lines.push(l) };
     const logged = new GitCli("git", logger);

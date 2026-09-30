@@ -6,8 +6,7 @@ import type { GitCommand } from "./command.js";
 import { LockPolicy } from "./lock.js";
 
 /**
- * 取提交历史。**一件事拆成两条命令**，这是 M3 定的取数模型 B
- * （「全量骨架 + 按 hash 取详情」，见 `DECISIONS.md`）。
+ * 取提交历史。**一件事拆成两条命令**：全量骨架 + 按 hash 取详情。
  *
  * - `getSkeleton` 跑遍整个历史，每条只取画图必需的三个字段（hash / 父提交 / 时间）
  * - `getCommitDetails` 只对**当前屏幕要显示的那几十条**取作者、消息等
@@ -34,7 +33,7 @@ export const getSkeleton: GitCommand<[repository: string], CommitSkeleton[]> = {
   lock: LockPolicy.None,
 
   execute: async (cli, repository) => {
-    // runRaw：parser 吃 Buffer 不吃字符串（`M3-parsers.md` §5）。
+    // runRaw：parser 吃 Buffer 不吃字符串。
     // 18 MB 的输出尤其不能先解码成一整个字符串——那正是 V8 sliced string 的陷阱所在。
     const result = await runRaw(cli, skeletonArgs(SKELETON_LIMIT), { cwd: repository });
     return parseSkeleton(result.stdout);
@@ -47,8 +46,8 @@ export const getSkeleton: GitCommand<[repository: string], CommitSkeleton[]> = {
  * hash 列表走 **stdin**，不走命令行参数：命令行长度有上限，几百个 hash 就可能超。
  *
  * `detailsArgs()` 把 `args` 与 `input` **绑成一个返回值**，所以这里不存在
- * 「忘了传输入」——那正是 M2 §4.3 那条约束的形态（git 读到空 stdin 会返回
- * 空结果而**不报错**）。绑在一起之后，纪律由类型承担，不靠记性。
+ * 「忘了传输入」（git 读到空 stdin 会返回空结果而**不报错**）。
+ * 绑在一起之后，纪律由类型承担，不靠记性。
  */
 export const getCommitDetails: GitCommand<
   [repository: string, hashes: readonly string[]],
@@ -66,7 +65,7 @@ export const getCommitDetails: GitCommand<
 /**
  * 一条提交改了哪些文件。界面上「点一条提交」那一下。
  *
- * 一次只取一条：用户一次只能点开一个。批量取没有消费者（`CLAUDE.md` D.5.1(a)），
+ * 一次只取一条：用户一次只能点开一个。批量取没有消费者（`CLAUDE.md` D.6(a)），
  * 真需要时加一条命令，不要现在把参数改成数组。
  *
  * 返回 `CommitFileChange` 而不是 `FileChange`：后者带 `index`/`worktree`

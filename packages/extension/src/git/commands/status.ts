@@ -7,21 +7,17 @@ import { LockPolicy } from "./lock.js";
 /**
  * 读工作区的改动列表。
  *
- * 这是第一条**要解析输出**的命令，把 M3 的 parser 接了进来。
- * 在此之前 parser 是「能用但没人用」的纯函数。
- *
  * ## 三样东西的分工
  *
  * - `statusArgs()` / `STATUS_ENV` 在 **parser 那边**——改了 `--porcelain=v2`，
  *   parser 就会坏，两者必须一起改，放在一起才不会漏。
- * - `runRaw()` 在 **M4**——跑，失败就抛，且 stdout 保持字节。
+ * - `runRaw()` 在 `failure.ts`——跑，失败就抛，且 stdout 保持字节。
  * - 本文件只负责**把它们串起来**，并声明这条命令的元数据。
  *
- * ## `GIT_OPTIONAL_LOCKS=0` 的欠条在这里兑现
+ * ## `GIT_OPTIONAL_LOCKS=0` 在这里传
  *
- * 这张欠条跨了三个里程碑：M2 决定不放进全局强制环境变量（进程层只看到一个
- * 字符串数组，靠 `args[0] === "status"` 判断等于把 git 语义焊进下层），
- * M3 把常量准备好，M5 的命令层真正传进去。
+ * 不放进进程层的全局强制环境变量：进程层只看到一个字符串数组，
+ * 靠 `args[0] === "status"` 判断等于把 git 语义焊进下层。
  *
  * 它有三个作用，缺一不可（`.notes/specs/locking.md` §6）：
  * 1. 防 status 回写 index → 触发 watcher → 又跑 status 的**刷新回路**

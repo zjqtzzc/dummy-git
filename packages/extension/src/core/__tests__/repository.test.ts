@@ -33,11 +33,10 @@ describe("Repository：跑命令", () => {
   });
 
   it("一仓库一队列是结构性的——两个仓库互不等待", async () => {
-    // 这是 M5 复核点名的缺口：当时这条性质靠调用方自觉建两个队列，
     // `runCommand(queue, cli, cmd, ...args)` 里 queue 与仓库路径毫无关联，
     // 传一个全局队列进去代码照跑，只是所有仓库开始互等。
     //
-    // 现在队列在构造时内部创建，**构造函数根本不接收队列**——
+    // 队列在构造时内部创建，**构造函数根本不接收队列**——
     // 想传错都没有地方传。这里测的是由此得到的性质，不是私有性本身：
     // TS 的 `private` 只在编译期成立（运行时 Object.keys 照样看得见），
     // 编译期的部分由 tsc 在 `pnpm check` 里保证。
@@ -46,7 +45,7 @@ describe("Repository：跑命令", () => {
     installSlowCommitHook(a.location.root, 0.3);
     installSlowCommitHook(b.location.root, 0.3);
     // 改已跟踪的 f1（makeTempRepo 建的），不是新文件——
-    // `commit --only` 对未跟踪文件不工作，那是 M5 定的规则（只对未跟踪先 add）。
+    // `commit --only` 对未跟踪文件不工作（只对未跟踪先 add）。
     writeFileSync(join(a.location.root, "f1"), "changed-a\n");
     writeFileSync(join(b.location.root, "f1"), "changed-b\n");
 
@@ -60,7 +59,7 @@ describe("Repository：跑命令", () => {
   });
 });
 
-describe("Repository：NotAGitRepository → Disposed（兑现 M4 的唯一消费者）", () => {
+describe("Repository：NotAGitRepository → Disposed", () => {
   it("仓库被删掉后，状态转为 Disposed", async () => {
     const path = makeTempRepo("repo-gone");
     const repo = new Repository(plainLocation(path), cli);
@@ -193,7 +192,7 @@ describe("Repository：被 ignore 的文件持续写入 → 0 次通知（验收
     expect(seen).toHaveLength(2); // 两次都通知
   });
 
-  it("add -f 强制跟踪的 ignored 文件仍然通知（GitLens 那个洞）", async () => {
+  it("add -f 强制跟踪的 ignored 文件仍然通知", async () => {
     const path = makeTempRepo("repo-forced");
     writeFileSync(join(path, ".gitignore"), "*.log\n");
     writeFileSync(join(path, "forced.log"), "v1\n");

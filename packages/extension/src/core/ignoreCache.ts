@@ -4,7 +4,7 @@ import { checkIgnore } from "../git/commands/index.js";
 /**
  * 记住「工作区的哪些路径是被 git 忽略的」，让日志/构建产物的写入不再刷界面。
  *
- * 旧仓库用户实际遇到的痛点：被忽略的日志、构建产物不停写入，进度条每隔几秒闪、文件树整个重绘。
+ * 否则被忽略的日志、构建产物不停写入时，进度条每隔几秒闪、文件树整个重绘。
  *
  * ## 它不做模式匹配，只做记忆
  *
@@ -14,7 +14,7 @@ import { checkIgnore } from "../git/commands/index.js";
  *
  * 所以答案始终来自 `git check-ignore`——**正确性不是「实现得准」，
  * 是「根本没有自己的实现」**。连「被 `add -f` 强制跟踪的 ignored 文件」
- * 这个 GitLens 踩过的洞，我们也不需要防护：git 的 check-ignore 默认认 index，
+ * 这个坑也不需要防护：git 的 check-ignore 默认认 index，
  * 被跟踪的文件它直接答「不忽略」，进不了缓存。
  *
  * ## 不认识的路径一律放行

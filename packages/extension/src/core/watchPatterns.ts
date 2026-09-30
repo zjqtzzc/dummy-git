@@ -17,8 +17,6 @@ import type { RepositoryLocation } from "../git/commands/index.js";
  * 少了任何一个都不行：只有白名单，`index.lock` 会漏进来（它匹配 `index*`
  * 这类模式）；只有噪声规则，`fetch` 时要在 JS 里过滤上千个事件。
  *
- * 来源：GitLens `packages/git/src/watching/watcherPatterns.ts`。
- *
  * ## 为什么不直接写成一个 `**`
  *
  * 那就是「全订阅再过滤」，正是这一步要改掉的。

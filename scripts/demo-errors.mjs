@@ -114,7 +114,7 @@ function cases({ repo, hooks }) {
   return [
     {
       name: "index 锁被占用",
-      why: "M4 闭集里 RepositoryIsLocked 的主场景。注意第 1 行与第 3 行的落差。",
+      why: "RepositoryIsLocked 的主场景。注意第 1 行与第 3 行的落差。",
       args: ["commit", "--allow-empty", "-m", "x"],
       wrap: (fn) => withLock(repo, ".git/index.lock", fn),
     },
@@ -126,7 +126,7 @@ function cases({ repo, hooks }) {
     },
     {
       name: "不是 git 仓库",
-      why: "闭集里唯一带来真实行为差异的码——M6 据此把仓库置为 Disposed。",
+      why: "闭集里唯一带来真实行为差异的码——Repository 据此把仓库置为 Disposed。",
       args: ["status"],
       cwd: tmpdir(),
     },

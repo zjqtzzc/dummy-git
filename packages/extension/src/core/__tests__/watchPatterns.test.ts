@@ -83,8 +83,7 @@ describe("DOT_GIT_GLOB：白名单挡住 objects/", () => {
 describe("白名单与噪声规则是两道独立的关卡", () => {
   it("refs/ 下的锁文件能穿过白名单，靠噪声规则挡住", () => {
     // glob 表达不了 `*.lock` 这类跨目录的后缀规则：`refs/**` 必须放行
-    // refs 下的一切，而 git 创建 ref 时会先写 `refs/heads/xxx.lock`
-    // （M4 的 ref 锁测试用的就是这个真实路径）。
+    // refs 下的一切，而 git 创建 ref 时会先写 `refs/heads/xxx.lock`。
     // 所以 classify.ts 的噪声规则不能删——这条测试钉住这件事。
     expect(matches(DOT_GIT_GLOB, "refs/heads/main.lock")).toBe(true); // ← 穿过白名单
     expect(classifyGitPath("refs/heads/main.lock")).toEqual([]); // ← 被噪声规则挡住

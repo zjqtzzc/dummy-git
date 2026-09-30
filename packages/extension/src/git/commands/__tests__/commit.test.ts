@@ -24,10 +24,8 @@ describe("commit：--only 只提交勾选的路径", () => {
     expect(git(repo, ["status", "--porcelain"]).trim()).toBe("");
   });
 
-  it("已删除已暂存：--only 直接工作（旧仓库 exit 128 的那类 bug 不会发生）", async () => {
-    // 用户考古出的真实 bug：旧仓库对不同的 worktree 状态分别判断该不该
-    // 传 pathspec，删除+已暂存的组合曾漏判导致 exit 128。
-    // 这里的规则更简单：--only 对所有已跟踪状态都直接可用，不用分支判断。
+  it("已删除已暂存：--only 直接工作，不需要先 add（add 会 exit 128）", async () => {
+    // --only 对所有已跟踪状态都直接可用，不用按状态分支判断。
     const repo = makeTempRepo("only-deleted-staged");
     rmSync(join(repo, "f1"));
     git(repo, ["add", "-A"]);
@@ -100,7 +98,7 @@ describe("amendCommit", () => {
 });
 
 describe("getStatus：命令层为它传了 GIT_OPTIONAL_LOCKS=0", () => {
-  it("跨 M2→M3→M5 的欠条已兑现", async () => {
+  it("带着这个环境变量照常取到改动", async () => {
     const repo = makeTempRepo("locks-env");
     writeFileSync(join(repo, "f1"), "changed\n");
     const { changes } = await getStatus.execute(cli, repo);

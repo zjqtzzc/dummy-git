@@ -20,7 +20,7 @@ import { viewState } from "../vscodeApi.js";
 import BranchTree from "./BranchTree.vue";
 import CommitList from "./CommitList.vue";
 
-/** Log 面板：左分支（第 10 步）、中提交列表、右文件（第 11 步重做）。 */
+/** 底部 Log 面板：左分支树、中提交列表、右边选中提交的文件树。 */
 const props = defineProps<{ client: Client }>();
 
 /** `ref`：`.value` 一改，用到它的模板就重画。 */

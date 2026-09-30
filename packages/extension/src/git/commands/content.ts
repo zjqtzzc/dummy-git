@@ -10,7 +10,6 @@ import { LockPolicy } from "./lock.js";
  * `--filters` 让 git 做与检出时相同的转换：换行符（`core.autocrlf`、`.gitattributes`
  * 的 `eol`）和 smudge 过滤器（如 Git LFS——不加只能读到几行的指针文件）。
  * 这样历史版本与工作区里的写法一致，以后拿它和工作区比较时，不会整个文件每一行都显示成改动。
- * IDEA 默认同样带 `--filters`（`git.read.content.with` 默认 `FILTERS`）。
  *
  * ## 返回字节，不解码
  *

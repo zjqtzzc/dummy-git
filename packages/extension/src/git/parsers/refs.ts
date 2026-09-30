@@ -2,7 +2,7 @@
  * 分支、标签、HEAD 的命令与解析。
  *
  * 用 `for-each-ref` 而不是 `git log` 的 `%D`：`%D` 给的是 `origin/main` 这种字符串，
- * **分不出它是远程分支还是一个恰好叫这名字的本地分支**——旧仓库 `ad9f396` 就栽在这。
+ * **分不出它是远程分支还是一个恰好叫这名字的本地分支**。
  * `for-each-ref` 给完整路径（`refs/heads/…` / `refs/remotes/…` / `refs/tags/…`），零歧义。
  */
 import { type Ref, RefKind, type Upstream, UpstreamState } from "@dummy-git/shared";
@@ -39,7 +39,6 @@ const REFS_FORMAT =
  * `[ahead 2]` / `[behind 1]` / `[ahead 1, behind 1]` / `[gone]` / 空串。
  *
  * 注意 behind 为 0 时**整项省略**，不是 `[ahead 2, behind 0]`。
- * vscode 用的是同一套正则（`git.ts:1286`）。
  */
 const TRACK_PATTERN = /\[(?:ahead (\d+))?(?:, )?(?:behind (\d+))?]/;
 const GONE = "[gone]";
@@ -58,7 +57,6 @@ export function headArgs(): string[] {
  * 把 `refs/remotes/origin/feat/x` 拆成远程名与分支名。
  *
  * **在第一个斜杠处拆**：远程名不含斜杠，而分支名可以（`feat/x`）。
- * vscode 用同一个假设（`git.ts:1282` 的 `^refs\/remotes\/([^/]+)\/([^ ]+)$`）。
  */
 function splitRemote(rest: string): { remote: string; name: string } | undefined {
   const slash = rest.indexOf("/");

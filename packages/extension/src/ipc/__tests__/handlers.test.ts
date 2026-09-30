@@ -167,7 +167,7 @@ describe("handlers：协议接到真仓库上", () => {
       generation: "g1",
       id: 2,
       command: "getCommitFiles",
-      // 不存在的 hash：git 会失败，M4 分类，router 转成错误响应。
+      // 不存在的 hash：git 会失败，分类后由 router 转成错误响应。
       params: { repo: repository.location.root, hash: "0".repeat(40) },
     });
 
@@ -178,9 +178,8 @@ describe("handlers：协议接到真仓库上", () => {
 
 describe("闭环：仓库变了 → 广播到面板", () => {
   it("git 路径变化 → 分域 → 广播，只说哪些域过期，不带数据", async () => {
-    // 这是 M7 闭环的最后一段，链路：
-    //   watcher（vscode，唯一没覆盖的一环）→ repo.notifyGitPath
-    //   → M6 分类/防抖 → onDidChange → router.broadcast → transport
+    // 链路：watcher（vscode，唯一没覆盖的一环）→ repo.notifyGitPath
+    //   → 分类/防抖 → onDidChange → router.broadcast → transport
     const repository = new Repository(await getRepositoryLocation.execute(cli, fixtures.base), cli);
     const sent: unknown[] = [];
     const router = new Router(

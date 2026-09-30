@@ -16,7 +16,7 @@ import { InboundKind, parseInbound } from "./protocol.guards.js";
  * 一条命令的处理函数。参数与返回值都由协议表推出来，写错编译不过。
  *
  * 它**不认识 `vscode`，也不认识信封**——只是「给我参数，还你结果」。
- * 收消息、校验、配 id、发响应是 `Router`（M7-3）的事。
+ * 收消息、校验、配 id、发响应是 `Router` 的事。
  */
 export type Handler<K extends CommandName> = (
   params: CommandParams<K>,
@@ -30,9 +30,8 @@ export type HandlerMap = { [K in CommandName]: Handler<K> };
  *
  * ## 为什么是「一次性给全」，而不是逐条 `handle("名字", fn)`
  *
- * 旧仓库正是逐条注册的，结果实测：协议声明 76 条、实际注册 89 条、**游离 13 条**。
- * 散落在 1720 行 `extension.ts` 里的 89 次 `.handle()` 调用，没有任何一处能看出
- * 「表里的每条都注册了吗」。**一次性给全，这个问题在结构上不存在**——
+ * 逐条注册时，散落各处的 `.handle()` 调用里没有任何一处能看出「表里的每条都注册了吗」，
+ * 协议声明与实际注册会悄悄漂移。**一次性给全，这个问题在结构上不存在**——
  * 而且整个对外表面积可以从上到下读一遍。
  *
  * ## 它拦住什么（全部实测，见 `__tests__/protocolCompileChecks.ts`）
@@ -64,8 +63,8 @@ export function defineHandlers<T extends HandlerMap>(
 /**
  * 消息怎么发出去。**注入式，`Router` 因此不 import `vscode`。**
  *
- * 与 M2 的 `GitLogger` 同一手法：这一层只描述形状，
- * 由 `vscode/panel.ts` 接到真正的 `Webview.postMessage` 上。
+ * 与 `GitLogger` 同一手法：这一层只描述形状，
+ * 由 `vscode/webviewView.ts` 接到真正的 `Webview.postMessage` 上。
  * 好处是 `Router` 能在纯 node 下测——不必为了验「请求走通了没有」去起一个 VSCode 宿主。
  */
 export interface Transport {
@@ -88,7 +87,7 @@ const NOOP_HOOKS: RouterHooks = { log: () => {}, report: () => {} };
 /**
  * 把 `GitFailureError` 转成协议里的错误。
  *
- * `code` 可能缺席——M4 的 `classifyError` 对认不出的 stderr 返回 `undefined`，
+ * `code` 可能缺席——`classifyError` 对认不出的 stderr 返回 `undefined`，
  * 因为 git 的错误文案本来就是开放集。**决策看 `code`，排查看 `message`。**
  *
  * 非 `GitFailureError`（我们自己的 bug、解析失败）没有 `code`，
@@ -119,7 +118,7 @@ function toProtocolError(error: unknown): ProtocolError {
  * 这不是防御性检查——这是让「等不到回复」这件事不可能发生。
  */
 export class Router {
-  /** 当前这一代 webview。ready 握手时确定（M7-5），此前不接受任何请求。 */
+  /** 当前这一代 webview。ready 握手时确定，此前不接受任何请求。 */
   private generation: Generation | undefined;
 
   constructor(
@@ -252,10 +251,8 @@ export class Router {
    * **握手之前一个字节都不发。** 这正是握手要解决的问题：webview 是一张网页，
    * 它的脚本挂上监听之前，`postMessage` 发过去的东西会**静静地丢掉，不报任何错**。
    *
-   * 旧仓库在这里用的是 `setTimeout(…, 200)` 配一句注释「稍微延迟一下，确保面板都准备好了」
-   * （`views/commitViewProvider.ts:51`）。那不是机制，是赌博：慢机器 200ms 不够，
-   * 快机器纯属浪费，而失败的表现是「偶尔面板是空的、刷新一下又好了」——最难查的那类。
-   *
+   * 不要用「延时一下再发」代替：慢机器延时不够，快机器纯属浪费，失败的表现是
+   * 「偶尔面板是空的、刷新一下又好了」——最难查的那类。
    * 握手是**因果**（等到了才发），延时是**猜测**（估计好了吧）。
    */
   broadcast(repo: string, domains: readonly GitDomain[]): void {

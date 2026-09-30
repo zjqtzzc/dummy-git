@@ -59,8 +59,6 @@ export enum GitDomain {
    * 重拉它只是看几个文件在不在，而 rebase 每重放一个提交都会动 `rebase-merge/`。
    * 不分开的话，rebase 20 个提交就是 20 次 1.9 秒的无谓重算，
    * 而界面上真正变的只有 Banner 上 `(3/7)` 那个数字。
-   *
-   * （IntelliJ 不单独分这个域，因为它的冲突状态显示在别处。我们分，因为 Banner 在。）
    */
   Operation = "operation",
 }

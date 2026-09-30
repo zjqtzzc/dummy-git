@@ -4,7 +4,7 @@
  * 文件名是 `failure.ts` 而不是 `errors.ts`：`parsers/errors.ts` 已经占用了那个名字，
  * 且两者管的是不同的东西——那个是**解析失败**的诊断，这个是**命令失败**的分类。
  *
- * ## ⚠️ 这里的正则依赖 M2 强制的 `LC_ALL=en_US.UTF-8`
+ * ## ⚠️ 这里的正则依赖进程层强制的 `LC_ALL=en_US.UTF-8`
  *
  * git 的错误消息是会本地化的。中文环境下 `not a git repository` 会变成中文，
  * 两条正则同时失效——而且**不报错，只是永远返回 `undefined`**。
@@ -19,7 +19,7 @@
  *
  * 退出码分类是真的，但**必须知道当时在跑什么命令**：`merge` 的 `exit 1` 是「有冲突」，
  * `diff --quiet` 的 `exit 1` 是「有差异」，`checkout` 的 `exit 1` 才是「失败了」。
- * 那属于 M5 的命令层。见 `M4-errors.md` §4.3、§4.4。
+ * 那属于命令层（`commands/`）。
  */
 import { GitErrorCode } from "@dummy-git/shared";
 import type { ExecOptions, GitCli } from "./cli.js";
@@ -66,8 +66,7 @@ const PATTERNS: readonly (readonly [RegExp, GitErrorCode])[] = [
    * ```
    *
    * 覆盖它是**对的**：同样的成因（另一个 git 进程）、同样的处置（等）、
-   * 同样该显示的消息。vscode 为此单列了 `CantLockRef`，但那是给重试策略用的
-   * （只有 Fetch/Pull/Sync 会对它重试）——我们不重试，不需要这个区分。
+   * 同样该显示的消息。只有要对 ref 锁单独重试时才需要把它分出来——我们不重试。
    */
   [
     /Another git process seems to be running in this repository|If no other git process is currently running/,
@@ -78,7 +77,7 @@ const PATTERNS: readonly (readonly [RegExp, GitErrorCode])[] = [
 /**
  * 从 stderr 认出失败类型。
  *
- * **只收 stderr，不收退出码。** 调用方（M4 第 4 步的 `run()`）已经判定了「这次失败了」，
+ * **只收 stderr，不收退出码。** 调用方（`run()`）已经判定了「这次失败了」，
  * 这里只回答「是哪一类」。在函数内再判一次 `exitCode === 0` 属于防御性检查，
  * 违反 `CLAUDE.md §C.2`——「`exitCode === 0` 永不产出失败」由**唯一调用点**保证，
  * 不由运行时检查保证。
@@ -94,7 +93,7 @@ export function classifyError(stderr: string): GitErrorCode | undefined {
  * 一条 git 命令失败了。`run()` 在非零退出码时抛出。
  *
  * 字段分两类用途，**不要混用**：
- * - `code` 用于**决策**（M6 见 `NotAGitRepository` 就置 Disposed）。可缺席——
+ * - `code` 用于**决策**（`Repository` 见 `NotAGitRepository` 就置 Disposed）。可缺席——
  *   认不出是常态（见文件头），缺席时下游只能走通用处置。
  * - `exitCode` / `stderr` / `args` 用于**排查**：写日志、给用户看原文。
  *   拿 `stderr` 做 `includes` 判断正是本文件要消灭的东西。
@@ -126,8 +125,7 @@ export class GitFailureError extends Error {
  *   「引用不存在」——这些都是合法答案，不是失败。
  *
  * **`run()` 不提供「某些退出码视为成功」的开关。** 需要读退出码就改用 `exec()`，
- * 界限清楚。vscode 的 `ignoreExitCode` 开关是反例：默认仍是抛、只开个逃生口，
- * 结果调用方写出了三处永不可达的分支（`git.ts:1503/1852/1877`）。
+ * 界限清楚。「默认仍抛、只开个逃生口」的开关容易让调用方写出永不可达的分支。
  *
  * 「`exitCode === 0` 永不产出失败」的保证点已收口到 `throwIfFailed()`，
  * `run()` 与 `runRaw()` 共用。

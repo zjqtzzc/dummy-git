@@ -21,8 +21,7 @@ import type { CommandQueue } from "./operation.js";
  * 队列的全部价值在于「加一条新 git 命令永不必改并发代码」，
  * 这一层是「组合」，不是「调度」，所以单独一个文件。
  *
- * M6 的 `Repository` 会把它包起来（还要加上「跑完要不要刷新状态」），
- * 那时这里就是它的内核。
+ * `Repository.run()` 包着它：多了「仓库已失效就不跑」「仓库没了就停」两件事。
  */
 export function runCommand<A extends readonly unknown[], R>(
   queue: CommandQueue,

@@ -10,32 +10,17 @@ import type { Ref } from "./ref.js";
  *
  * ## 它要解决的具体问题
  *
- * 旧仓库的 `shared/protocol.ts` 也自称唯一来源，实测（本人复核）：
- *
- * ```
- * 声明 76 条命令 / 实际注册 89 条 / 游离在协议之外 13 条
- * ```
- *
- * 那 13 条能存在，是因为注册函数接受**任意字符串**。后果不是崩溃，
+ * 注册函数若接受**任意字符串**，协议之外就会长出游离的命令。后果不是崩溃，
  * 是没人知道协议到底有哪些命令——改一条消息时无从判断谁会受影响。
  *
  * 本文件的目标：**协议表与实现之间的任何不一致，都在 `pnpm check` 时报错。**
- * 两个方向由**两个不同的机制**保证，见 `ipc/router.ts`：
- *
- * | 方向 | 谁拦的 |
- * |---|---|
- * | 漏注册（表里有、没注册） | `router.ts` 的完备性断言 |
- * | 多注册（注册了表外的） | `handle<K extends keyof Commands>` 的泛型签名 |
- *
- * **不要把两者混为一谈**：完备性断言拦不住多注册——
- * TypeScript 的多余属性检查只对**字面量**生效，而真实的注册表是由 `handle()`
- * 逐条累积出来的变量。实测多注册时断言零报错。
+ * 由 `ipc/router.ts` 的 `defineHandlers` 保证：漏注册、多注册、返回类型不对都编译不过
+ * （见那里的说明）；运行时的参数校验表（`ipc/protocol.guards.ts`）同样按这张表逐条写全。
  *
  * ## 为什么在 `shared/`
  *
  * 两侧都要认识它。与 `Commit` / `Ref` / `FileChange` 放这里是同一个判断。
- * 但 router 的**实现**必须留在 `extension/`——它要 import `vscode`，
- * 而 `shared/` 被 lint 禁止（`CLAUDE.md` §A）。
+ * router 的**实现**留在 `extension/`：它是扩展这一侧的事，webview 有自己的 `Client`。
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -49,7 +34,7 @@ import type { Ref } from "./ref.js";
  * 带一个自己要去查的东西没有意义）。MVP 只支持一个仓库，这个值永远相同——
  * 但**现在加是一个字段，将来加是重写契约**：协议的封闭性意味着改它会让编译全线报错。
  *
- * 取数分两步（`DECISIONS.md`「M3 log 取数模型」）：`getSkeleton` 跑遍全历史但每条
+ * 取数分两步：`getSkeleton` 跑遍全历史但每条
  * 只有三个字段，`getCommitDetails` 只取当前要显示的那几十条。实测在 vscode 仓库
  * （188,163 条）上是 1,937 ms vs 11 ms（`NFR.md` §5.3）。
  */
@@ -146,11 +131,11 @@ export type CommandResult<K extends CommandName> = Commands[K]["result"];
  *
  * 算出新值要跑 `git log` + `for-each-ref`，在 vscode 仓库上是 1.9 秒 / 360 MB
  * （`NFR.md` §5.3），而此刻可能根本没人在看那个面板。
- * 让消费者自己决定要不要拉，是唯一不浪费的做法（M6 定）。
+ * 让消费者自己决定要不要拉，是唯一不浪费的做法。
  *
  * `domains` 不是摆设：webview 应当**只在自己关心的域出现时**才重拉。
  * 保存一次工作区文件只会得到 `worktree`，不该触发提交图重算——
- * 那是 M6 分域最主要的收益，在这里兑现。
+ * 那是分域最主要的收益。
  */
 export interface Events {
   domainsChanged: { repo: string; domains: readonly GitDomain[] };
@@ -213,7 +198,7 @@ export enum ResponseKind {
 }
 
 /**
- * 失败时 `code` 可能缺席——M4 的 `classifyError` 对认不出的 stderr 返回
+ * 失败时 `code` 可能缺席——`classifyError` 对认不出的 stderr 返回
  * `undefined`，因为 **git 的错误文案本来就是开放集，认不出是常态不是故障**。
  * 不设 `Unknown` 成员：那等于让「我不知道」伪装成一个结论。
  *

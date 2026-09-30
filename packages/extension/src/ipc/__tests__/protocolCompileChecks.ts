@@ -3,10 +3,10 @@
  *
  * ## 为什么需要它
  *
- * 「漏注册/多注册编译不过」是 M7 的全部卖点。但编译期约束有个特点：
+ * 「漏注册/多注册编译不过」是协议封闭性的全部保证。但编译期约束有个特点：
  * **`pnpm check` 只证明「符合约束」，不证明「约束还在」。**
  * 把 `defineHandlers` 放宽成 `(h: HandlerMap) => h`，所有调用点照常编译、
- * 全绿，而保护已经没了——和 M5 验收⑤ 一样，验过一次之后再无保护。
+ * 全绿，而保护已经没了——验过一次之后再无保护。
  *
  * `@ts-expect-error` 的特殊之处是**它会因为「不再报错」而失败**
  * （`TS2578: Unused '@ts-expect-error' directive`），这是唯一能锁住
@@ -28,8 +28,10 @@
  * ## 改动这个文件时
  *
  * 必须做**变异确认**：把 `defineHandlers` 临时放宽，确认对应那条变红。
- * 只确认「通过」不够——要确认它抓的是我们以为的那个东西。
- * 上次变异确认结果见文件末尾。
+ * 只确认「通过」不够——要确认它抓的是我们以为的那个东西：
+ * - 放宽为 `(handlers: HandlerMap): HandlerMap`：`_extra` 应变红（TS2578），`_missing` 仍绿
+ *   （漏注册由 `HandlerMap` 的必填属性拦，与这次放宽无关）。
+ * - 再放宽为 `(handlers: Partial<HandlerMap>)`：`_missing` 应变红。
  */
 
 import type {
@@ -77,18 +79,15 @@ export const _missing = defineHandlers(
 /**
  * 方向二：**多注册**。多了一条协议表里没有的 `cherryPick`。
  *
- * 它守的是「不存在游离于协议之外的命令」——旧仓库那 13 条正是这个形态，
- * 也是整个 M7 立项的直接原因。
+ * 它守的是「不存在游离于协议之外的命令」。
  *
  * ## 为什么这里必须先存进变量，而不是直接写字面量
  *
- * **变异确认时发现的（第一版就是字面量，测法是错的）**：字面量有 TypeScript
- * 自带的多余属性检查（`TS2353`）兜底，它与 `defineHandlers` 毫无关系。
+ * 字面量有 TypeScript 自带的多余属性检查（`TS2353`）兜底，它与 `defineHandlers` 毫无关系。
  * 于是把 `defineHandlers` 放宽成 `(h: HandlerMap)` 之后，这一行**照样报错**、
  * 指令照样算「被用到」、测试照样绿——**它锁的是字面量检查，不是它声称的那个机制**。
  *
- * 两个机制只在**变量形态**下才分得开，而变量形态恰恰是真实代码的形态
- * （handler 由各个 feature 提供，最后汇总）。所以这里必须传变量。
+ * 两个机制只在**变量形态**下才分得开。所以这里必须传变量。
  */
 const extraHandlers = {
   getRepositories: reposStub,
@@ -106,20 +105,3 @@ const extraHandlers = {
 
 // @ts-expect-error 多注册：不允许存在协议表之外的命令
 export const _extra = defineHandlers(extraHandlers);
-
-/*
- * ── 变异确认记录（2026-09-21，实跑）──────────────────────────────────────────
- *
- * 变异①：`defineHandlers` 放宽为 `(handlers: HandlerMap): HandlerMap`
- *   → `_extra`   变红（TS2578）✅ 它确实锁住了「多余键被收窄成 never」这个机制
- *   → `_missing` 仍绿          ✅ 漏注册由 HandlerMap 的必填属性拦，与本次放宽无关
- *
- * 变异②：再放宽为 `(handlers: Partial<HandlerMap>)`
- *   → `_missing` 变红（TS2578）✅
- *
- * 两条各自锁住不同的东西，不是一条在干两份活。
- *
- * ⚠️ **第一版的 `_extra` 写成字面量，变异①下没有变红**——字面量的 TS2353
- * 与 `defineHandlers` 无关，放宽后仍然报错、指令仍被消耗、测试仍绿。
- * 改成变量后才真正锁住。这就是「只证明通过不够，要证明它抓的是我们以为的那个东西」。
- */

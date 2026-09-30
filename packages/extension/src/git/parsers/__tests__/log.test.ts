@@ -91,8 +91,7 @@ describe("parseLog：五种输入", () => {
 
 describe("parseLog：log.showSignature=true 不崩", () => {
   /**
-   * M3 的教训：第一次测法是**无效**的——只把配置设成 true 然后跑，
-   * 输出毫无变化，因为未签名的提交不产生额外输出。
+   * 只把配置设成 true 然后跑是**无效**的测法：未签名的提交不产生额外输出。
    * 所以 fixture 里的 `signed` 仓库有**真实的 ssh 签名提交**。
    */
   it("先证明：不带 -c 时 git 确实会插入额外输出", async () => {
@@ -117,9 +116,8 @@ describe("parseLog：log.showSignature=true 不崩", () => {
 describe("skeletonArgs 不用 --all", () => {
   /**
    * `--all` 会把 stash 及其内部 `index on ...` 提交列进来（实测），
-   * 用户 stash 过一次，界面就凭空多两条。IntelliJ 为此用显式三件套
-   * （`GitLogUtil.java:75`，注释：equivalent to --all, but doesn't show
-   * the stuff from index or stash）。
+   * 用户 stash 过一次，界面就凭空多两条。所以用显式三件套
+   * `--branches --remotes --tags`：等价于 `--all`，但不带 index 与 stash 那些提交。
    */
   it("参数里不出现 --all", () => {
     expect(skeletonArgs(SKELETON_LIMIT)).not.toContain("--all");

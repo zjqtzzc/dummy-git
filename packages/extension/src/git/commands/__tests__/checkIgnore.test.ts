@@ -46,8 +46,7 @@ describe("checkIgnore：退出码是数据", () => {
 
 describe("checkIgnore：为什么问 git 而不自己做模式匹配", () => {
   it("被 add -f 强制跟踪的 ignored 文件 → **不算忽略**", async () => {
-    // 这是 GitLens 用 `ignore` npm 包踩的洞：纯模式匹配等价于 --no-index，
-    // 会把这个文件判成忽略，于是用户对它的改动永远不显示。
+    // 纯模式匹配等价于 --no-index，会把这个文件判成忽略，于是用户对它的改动永远不显示。
     // git 自己的 check-ignore 默认认 index，结构上不会有这个问题。
     const repo = repoWithIgnores();
     writeFileSync(join(repo, "forced.log"), "v1\n");
@@ -60,7 +59,7 @@ describe("checkIgnore：为什么问 git 而不自己做模式匹配", () => {
     expect(ignored.has("other.log")).toBe(true);
   });
 
-  it("嵌套 .gitignore 也认（GitLens 只读根目录，我们不用管）", async () => {
+  it("嵌套 .gitignore 也认（问 git，不用自己找各级 .gitignore）", async () => {
     const repo = repoWithIgnores();
     mkdirSync(join(repo, "sub"), { recursive: true });
     writeFileSync(join(repo, "sub", ".gitignore"), "*.tmp\n");

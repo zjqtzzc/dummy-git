@@ -24,8 +24,7 @@ describe("parseRefs：远程与本地不靠斜杠区分", () => {
   });
 
   it("远程分支的 remote 与 name 分开存", () => {
-    // 旧仓库 ad9f396 / da91d25 / 01b15db 三条 fix 的根因都是留了
-    // `"origin/main"` 一个字符串让人事后拆。
+    // 留一个 `"origin/main"` 字符串让人事后拆，分不出远程分支与带斜杠的本地分支。
     const remote = refs.find((r) => r.kind === RefKind.RemoteBranch);
     expect(remote).toBeDefined();
     if (remote?.kind !== RefKind.RemoteBranch) throw new Error("unreachable");
@@ -89,7 +88,7 @@ describe("parseRefs：上游状态", () => {
     expect(none.upstream).toBeUndefined();
   });
 
-  it("跟踪**本地**分支也算有上游（M3 修掉的真缺陷）", () => {
+  it("跟踪**本地**分支也算有上游", () => {
     // `git branch --set-upstream-to=main feature` 是合法配置，
     // 此时 `%(upstream)` 是 `refs/heads/main` 而不是 `refs/remotes/…`。
     // 原实现按 `refs/remotes/` 前缀判断，不匹配就当「无上游」——

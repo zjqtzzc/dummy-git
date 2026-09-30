@@ -12,7 +12,7 @@ describe("relativeTo", () => {
       expect(relativeTo("C:\\repo\\.git", "C:\\repo\\.git\\HEAD")).toBe("HEAD");
     });
 
-    it("多层目录，分隔符统一成 `/`——M6 的分类表按 `/` 书写", () => {
+    it("多层目录，分隔符统一成 `/`——域分类表按 `/` 书写", () => {
       expect(relativeTo("C:\\repo\\.git", "C:\\repo\\.git\\refs\\heads\\main")).toBe(
         "refs/heads/main",
       );

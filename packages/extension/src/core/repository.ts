@@ -9,12 +9,11 @@ import { IgnoreCache } from "./ignoreCache.js";
 import { CommandQueue } from "./operation.js";
 
 /**
- * 一个仓库的状态权威。**M6 的产出，也是 M7 唯一的入口。**
- *
+ * 一个仓库的状态权威，也是界面层碰 git 的唯一入口。
  *
  * ## 它回答的问题：「现在是什么状态」
  *
- * M2–M5 造的都是**动作**（跑命令、解析、认错、排队），问完就完，没人记得答案。
+ * 下面几层造的都是**动作**（跑命令、解析、认错、排队），问完就完，没人记得答案。
  * 状态和动作的根本差别是：**状态会自己过期**——用户在外面的终端敲了
  * `git commit`，我们什么都没做，手里的答案已经错了。
  * 所以这一层的真正任务不是「存一份状态」，而是**知道它什么时候不再有效**。
@@ -25,7 +24,7 @@ import { CommandQueue } from "./operation.js";
  *
  * **刻意没有 `getStatus()` / `getBranches()` 这类方法**——那些是命令，
  * 通过 `run(getStatus, …)` 调。替每条命令包一个同名方法会让
- * 「加一条新 git 命令」变成「要改 Repository」，正是 M5 极力避免的耦合。
+ * 「加一条新 git 命令」变成「要改 Repository」。
  */
 export enum RepositoryState {
   Active = "active",
@@ -37,14 +36,11 @@ export class Repository {
   private _state = RepositoryState.Active;
 
   /**
-   * 队列**私有持有、不对外暴露**。
+   * 队列**私有持有、不对外暴露**：一仓库一队列。
    *
-   * 这是 M5 复核时点名的结构性缺口（见 `REVIEW-LOG.md`）：当时「一仓库一队列」
-   * 靠的是 demo 自己建了两个队列，`runCommand(queue, cli, cmd, ...args)` 里
-   * `queue` 与 args 中的仓库路径毫无关联——传一个全局队列进去代码照跑，
-   * 只是所有仓库开始互相等待。
-   *
-   * 现在队列在构造时内部创建，没有任何方法能取到它，**想传错都没有地方传**。
+   * `runCommand(queue, cli, cmd, ...args)` 里 `queue` 与 args 中的仓库路径毫无关联——
+   * 传一个全局队列进去代码照跑，只是所有仓库开始互相等待。
+   * 队列在构造时内部创建，没有任何方法能取到它，**想传错都没有地方传**。
    */
   private readonly queue = new CommandQueue();
 
@@ -79,9 +75,8 @@ export class Repository {
    * 跑一条 git 命令。**唯一的执行入口。**
    *
    * 成功之后**不做任何通知**——刷新完全由 watcher 驱动。
-   * 这不只是 M5 砍掉 `mutates` 的后果，也是 §7 独立复核后的结论：
    * 「写操作完成」信号唯一能买到的是去掉防抖等待，而 150 ms 的窗口
-   * 本来就在感知阈值以内，它要解决的问题不存在。
+   * 本来就在感知阈值以内；外部终端的操作反正要靠 watcher，两条路会回答同一个问题。
    */
   async run<A extends readonly unknown[], R>(command: GitCommand<A, R>, ...args: A): Promise<R> {
     if (this._state === RepositoryState.Disposed) {
@@ -101,19 +96,12 @@ export class Repository {
    * 订阅「哪几类数据过期了」。
    *
    * 事件**只说过期，不带新值**——算出新值要跑 `git log` + `for-each-ref`，
-   * 在 vscode 仓库上是 1.9 秒、360 MB（`NFR.md` §5.3），而此刻可能根本
-   * 没人在看那个面板。让消费者自己决定要不要拉，是唯一不浪费的做法。
+   * 大仓库上是秒级、几百 MB，而此刻可能根本没人在看那个面板。
+   * 让消费者自己决定要不要拉，是唯一不浪费的做法。
    *
-   * 返回退订函数。
-   *
-   * M6 收尾时删过它一次（没有任何调用点接住、没有任何测试覆盖），
-   * 当时记下的条件是「等 M7 的 router 真正需要时再加」。条件在 M7-8 到期：
-   * **每开一个面板就有一个 `Router` 订阅这里，面板关了必须退订**，
+   * 返回退订函数：**订阅者的生命周期比仓库短**。`Repository` 跟着 workspace 走，
+   * 面板来来去去，每开一个面板就有一个 `Router` 订阅这里，面板关了必须退订，
    * 否则监听器只增不减，已经关掉的面板还在收广播。
-   *
-   * 当时也猜过它「形态与现在的猜测未必一致」——确实不一致：
-   * 真正的需求不是「某个监听器想取消」，而是**订阅者的生命周期比仓库短**。
-   * `Repository` 跟着 workspace 走，面板来来去去。
    */
   onDidChange(listener: (domains: ReadonlySet<GitDomain>) => void): () => void {
     this.listeners.add(listener);
@@ -125,8 +113,8 @@ export class Repository {
   /**
    * 喂一个 `.git` 目录内的相对路径（`/` 分隔）。
    *
-   * 由 `vscode/` 层的文件监听调用（M7）。这一层不订阅任何东西——
-   * 那样它才能在纯 node 下跑给人看。
+   * 由 `vscode/` 层的文件监听调用。这一层不订阅任何东西——
+   * 那样它才能在纯 node 下测。
    */
   notifyGitPath(relPath: string): void {
     if (this._state === RepositoryState.Disposed) return;
@@ -137,7 +125,7 @@ export class Repository {
    * 喂一个工作区路径（相对仓库根，`/` 分隔）。
    *
    * **先过 ignore 的筛**：被 `.gitignore` 忽略的日志/构建产物持续写入时，
-   * 不挡住的话界面会一直抖（旧仓库用户实际遇到的痛点）。
+   * 不挡住的话界面会一直抖。
    *
    * 不认识的路径一律放行（多刷一次，安全方向），同时排队等下次批量问 git。
    */
@@ -148,7 +136,7 @@ export class Repository {
     this.pending.add([GitDomain.Worktree]);
   }
 
-  /** 供测试与 M7 确定性推进：立刻结算待处理的域，不等防抖窗口。 */
+  /** 供测试确定性推进：立刻结算待处理的域，不等防抖窗口。 */
   flushPending(): void {
     this.pending.flushNow();
   }
@@ -161,11 +149,8 @@ export class Repository {
   }
 
   /**
-   * M4 欠下的**唯一消费者**在这里兑现。
-   *
-   * `GitErrorCode.NotAGitRepository` 从 M4 产出至今没有任何人读过。
-   * 它的意义就是这一处：仓库没了就停止一切，而不是反复对一个不存在的
-   * 仓库起进程、反复报错。vscode 的 `repository.ts:2734` 做的是同一件事。
+   * 仓库没了（`NotAGitRepository`）就停止一切，而不是反复对一个不存在的
+   * 仓库起进程、反复报错。
    */
   private disposeIfRepositoryGone(error: unknown): void {
     if (error instanceof GitFailureError && error.code === GitErrorCode.NotAGitRepository) {

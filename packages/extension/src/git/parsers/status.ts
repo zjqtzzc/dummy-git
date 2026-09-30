@@ -94,7 +94,6 @@ export function statusArgs(): string[] {
  *
  * `git status` 会把 stat 缓存回写进 `.git/index`；扩展若监听 `.git` 感知变化，
  * 这次回写会被当成「仓库又变了」而触发刷新，刷新又跑 status——自己触发自己。
- * 旧仓库 `ed3a30d` 与 vscode `git.ts:2745` 独立得出同一结论。
  *
  * 只给 status 加、不全局加：代价是 index 的 stat 缓存不再刷新，
  * 大仓库上连续跑只读命令会变慢，没必要让所有命令都付。

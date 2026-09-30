@@ -26,9 +26,8 @@ const CR = 0x0d;
  * 所以「按行切记录」从根上就是错的。而 `\0` 不可能出现在提交消息里
  * （git 的对象格式本身不允许），所以不用赌、不用正则、不用为解析牺牲功能。
  *
- * 对照另外两家的取舍：vscode 用换行分字段 + `-z` 分记录，代价是只能靠正则 + 字段
- * 顺序固定来解析；git-graph 赌一串随机魔法字符串，且因为用换行分记录，
- * 列表里只能拿单行 subject，完整消息要再查一次 git。
+ * 别的分法各有代价：换行分字段只能靠正则 + 字段顺序固定来解析；
+ * 随机魔法字符串是在赌；用换行分记录则列表里只能拿单行 subject，完整消息要再查一次 git。
  *
  * `\x01` 单独出现是合法的（fixture 里就有一条这样的提交），
  * 只有紧跟在两个 `\0` 之后才构成分隔符。
@@ -102,8 +101,7 @@ function parseTimestamp(record: LogRecord, raw: string, label: string): number {
  *
  * `log.showSignature` 被用户打开时，git 会往每条提交插入 GPG 签名验证信息，
  * `--format` 的输出直接被破坏（实测：记录开头变成 `Good "git" signature for …`，
- * hash 字段整个错位）。vscode 与旧仓库都没防这一条（各搜 0 处）——
- * 这种 bug 只在特定用户机器上出现，本地永远复现不了。
+ * hash 字段整个错位）。这种 bug 只在特定用户机器上出现，本地永远复现不了。
  */
 /**
  * 所有 `git log` 查询共用的前缀。
@@ -145,16 +143,15 @@ const SK_FIELD_COUNT = 3;
  * 用户只要 stash 过一次，提交列表就凭空多两条，其中 `index on master`
  * 是 git stash 的内部实现细节，完全不该出现在界面上。
  *
- * IntelliJ 用的是显式三件套（`GitLogUtil.java:75`），注释写得很直白：
- * *"equivalent to `--all`, but doesn't show the stuff from index or stash"*。
+ * 显式三件套 `--branches --remotes --tags` 等价于 `--all`，但不带 index 与 stash 那些提交。
  *
  * `--date-order`：按提交时间排，与 `CommitSkeleton.at` 一致。
  *
- * 实测代价（vscode 仓库 188,163 条提交）：1.6 秒 / 18 MB 输出。
+ * 实测代价（18.8 万条提交的大仓库）：1.6 秒 / 18 MB 输出。
  * 带上作者与消息的话是 46 MB，而画图用不到那 28 MB。
  */
 export function skeletonArgs(limit: number): string[] {
-  // 顺序对齐 IntelliJ 的 LOG_ALL：HEAD / 分支 / 远程 / 标签。
+  // HEAD / 分支 / 远程 / 标签。
   return [
     ...LOG_PREFIX,
     `--format=${SKELETON_FORMAT}`,
@@ -208,7 +205,7 @@ export interface StdinCommand {
  * `--stdin`：hash 列表从标准输入读——命令行长度有上限，几百个 hash 就可能超。
  *
  * 返回值把 `args` 与 `input` 绑在一起：`GitCli` 的 stdin 是可选参数，
- * 忘了传的话 git 读到立刻 EOF、返回空结果而**不报错**（M2 §4.3 实测过这类静默行为）。
+ * 忘了传的话 git 读到立刻 EOF、返回空结果而**不报错**。
  * 绑成一个值，就没有「忘了传」这种用法。
  */
 export function detailsArgs(hashes: readonly string[]): StdinCommand {

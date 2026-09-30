@@ -49,7 +49,7 @@ export default defineConfig({
         // 我们自己拼 URI——hash 在这里不解决任何问题，只带来一个麻烦：
         // 扩展侧得去解析 vite 生成的 index.html 才知道文件叫什么。
         //
-        // 固定名字之后，HTML 由 `vscode/panel.ts` 用 TypeScript 直接拼，
+        // 固定名字之后，HTML 由 `vscode/webviewView.ts` 用 TypeScript 直接拼，
         // 顺带把 CSP 的 nonce 也一起塞进去——那是**改写别人生成的 HTML 做不干净**的事。
         entryFileNames: "webview.js",
         assetFileNames: "webview.[ext]",

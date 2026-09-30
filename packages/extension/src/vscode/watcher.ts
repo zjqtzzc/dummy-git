@@ -19,7 +19,6 @@ import { relativeTo, workspaceRelative } from "./relativePath.js";
  * `.git/objects/**` 一次 fetch 能刷出上千个事件。给了白名单（`core/watchPatterns.ts`），
  * 这些事件**根本不会到达**——连收都不用收。
  * 收下来再 `if` 掉是在我们这边花 CPU 处理一堆注定要丢的东西。
- * 来源：GitLens 的 `watcherPatterns.ts`（M6 第 7 步）。
  *
  * 白名单与 `classify` 的噪声规则是**两道独立关卡，少一个都不行**：
  * `refs/heads/main.lock` 能穿过白名单（`refs/**` 必须放行 refs 下一切），
@@ -27,7 +26,7 @@ import { relativeTo, workspaceRelative } from "./relativePath.js";
  *
  * ## 为什么这一层这么薄
  *
- * 分类、ignore 过滤、防抖全在 M6 里，且都能在纯 node 下测。
+ * 分类、ignore 过滤、防抖全在 `core/` 里，且都能在纯 node 下测。
  * 这里只负责「把 VSCode 的事件翻译成相对路径」——**唯一真正需要宿主的那部分**。
  */
 export function watchRepository(repository: Repository): vscode.Disposable {

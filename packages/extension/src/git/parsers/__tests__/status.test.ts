@@ -54,7 +54,7 @@ describe("parseStatus：冲突", () => {
   });
 
   it("同一个路径不出现两条记录", () => {
-    // vscode 的事故形态：`AA` 在 X 和 Y 两个 switch 里各命中一次。
+    // 若按 X、Y 两列各查一次，`AA` 会在两个 switch 里各命中一次。
     // 冲突单独成一支之后，这种情况在类型上就不可能。
     const paths = changes.map((c) => c.path);
     expect(new Set(paths).size).toBe(paths.length);
@@ -112,8 +112,7 @@ describe("statusArgs / STATUS_ENV", () => {
   });
 
   it("带 GIT_OPTIONAL_LOCKS=0", () => {
-    // 跨 M2→M3→M5 三个里程碑的欠条：进程层不认识 status，
-    // 所以这个 env 必须由命令层为这条命令传入。
+    // 进程层不认识 status，所以这个 env 必须由命令层为这条命令传入。
     expect(STATUS_ENV["GIT_OPTIONAL_LOCKS"]).toBe("0");
   });
 });

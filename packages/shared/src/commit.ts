@@ -20,7 +20,6 @@ export interface Signature {
    * unix 秒。
    *
    * 不存 ISO 字符串：格式化是界面的事，而**数字没有「格式错误」这种状态**。
-   * 旧仓库写 `authorDate: string // ISO 8601`，靠注释承担类型该承担的职责。
    */
   readonly at: number;
 }
@@ -41,7 +40,7 @@ export interface Commit {
   /**
    * 虽然界面目前只显示 author，committer 也一并提供。
    *
-   * 理由是「数据层都提供，应用层决定怎么渲染」（见 `M3-parsers.md` §2.4）：
+   * 理由是「数据层都提供，应用层决定怎么渲染」：
    * git 默认按**提交日期**倒序排，而列表显示的是**作者**——rebase 之后两者脱节，
    * Date 列会看起来乱序。到时候换哪个、怎么显示，是应用层的决定，数据层不替它做。
    */

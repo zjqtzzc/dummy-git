@@ -42,7 +42,7 @@ const OFF = "\x1b[0m";
  * 在不劈坏多字节字符的前提下截断。
  *
  * 直接 `subarray(0, n).toString("utf8")` 会把跨越边界的汉字切成两半，显示成替换字符——
- * 正是 M3 整体在防的那件事。UTF-8 的续接字节都是 `10xxxxxx`（0x80-0xBF），
+ * 正是 parser 在字节层切分要防的那件事。UTF-8 的续接字节都是 `10xxxxxx`（0x80-0xBF），
  * 往回退到不是续接字节的位置即可。
  */
 function truncate(buf, limit) {

@@ -50,7 +50,7 @@ describe("parseNameStatus", () => {
 
   it("用户设了 diff.renames=false 时，改名仍然是改名（靠 -M 覆盖）", async () => {
     // 不加 `-M` 的话，一次改名会退化成 `D` + `A` 两条，改名关系彻底丢失。
-    // 这类「用户配置改变我们的输出」的坑与 M3 的 `log.showSignature` 同源，
+    // 这类「用户配置改变我们的输出」的坑与 `log.showSignature` 同源，
     // 本地默认配置下永远复现不了。
     const args = ["-c", "diff.renames=false", ...commitFilesArgs(zhRenameCommit)];
     const r = await cli.execRaw(args, { cwd: fixtures.base });
@@ -61,7 +61,7 @@ describe("parseNameStatus", () => {
   });
 
   it("根提交能列出文件——它没有父提交，也不需要 --root", async () => {
-    // 旧仓库 `8f1d104` 的 bug：用 `diff <hash>^ <hash>` 取文件，根提交没有 `^`，
+    // 用 `diff <hash>^ <hash>` 取文件的话，根提交没有 `^`，
     // 命令直接失败，界面上根提交永远是空的。
     // 走 `git log --name-status` 就不需要引用父提交，那一整类 bug 不可能发生。
     const r = await cli.exec(["rev-list", "--max-parents=0", "HEAD"], { cwd: fixtures.base });

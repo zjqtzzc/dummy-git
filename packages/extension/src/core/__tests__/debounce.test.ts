@@ -89,7 +89,7 @@ describe("DebouncedSet：maxWait 防饿死", () => {
         vi.advanceTimersByTime(50);
         now += 50;
       }
-      // 3 秒内该有约 3 次（maxWait=1000），而不是旧仓库 5000 下的 0~1 次
+      // 3 秒内该有约 3 次（maxWait=1000）
       expect(at.length).toBeGreaterThanOrEqual(2);
     });
   });

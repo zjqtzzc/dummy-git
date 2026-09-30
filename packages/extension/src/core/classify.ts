@@ -6,9 +6,8 @@ import { GitDomain } from "@dummy-git/shared";
  * ## 本文件只做分类，不做编排
  *
  * 订阅、防抖、生命周期在 `watcher.ts`；工作区路径的 ignore 过滤在 `ignoreCache.ts`。
- * 拆开是为了让这一层**保持纯粹**——它是唯一能拿一串真实路径直接跑给人看的东西
- * （见 M6 第 3 步：用实测抓到的 27 条 commit 事件路径验证）。
- * 混进状态之后那种验证就做不了了。
+ * 拆开是为了让这一层**保持纯粹**：能拿一串实测抓到的真实事件路径直接验证
+ * （见 `__tests__/classify.test.ts`），混进状态之后那种验证就做不了了。
  *
  * ## 这一层为什么是纯函数
  *
@@ -16,7 +15,7 @@ import { GitDomain } from "@dummy-git/shared";
  * 好处是能在普通 node 里直接测、直接跑给人看（`scripts/demo-watch.mjs`），
  * 一旦这层 import 了 `vscode` 就都做不了。
  *
- * 真正去订阅文件事件的那部分属于 `vscode/` 层（M7），它把事件喂给这里。
+ * 真正去订阅文件事件的那部分属于 `vscode/` 层，它把事件喂给这里。
  *
  * ## 输入的约定
  *
@@ -73,12 +72,12 @@ function isNoise(relPath: string): boolean {
     relPath.startsWith("info/") ||
     relPath.endsWith(".lock") ||
     // git 自己的文件监控守护进程的产物（socket、cookie 文件）。
-    // `.lock` 规则挡不住它们。来源：GitLens `watcherPatterns.ts`。
+    // `.lock` 规则挡不住它们。
     relPath.startsWith("fsmonitor--daemon/") ||
     // 交互式 rebase 的待办清单。它是**用户在编辑器里改的文件**——
     // 每存一次盘就是一个事件，而 rebase 的真实进展由 `rebase-merge/` 下的
     // 兄弟文件反映，这个文件本身不带状态信息。
-    // 不挡的话，用户编辑 todo 的整个过程都在刷界面。来源：GitLens `classifyChange.ts`。
+    // 不挡的话，用户编辑 todo 的整个过程都在刷界面。
     relPath.endsWith("/git-rebase-todo") ||
     relPath.endsWith("/git-rebase-todo.backup")
   );
@@ -115,7 +114,7 @@ export function classifyGitPath(relPath: string): readonly GitDomain[] {
   // `sequencer/` 同理，而且**漏了它是功能漏判，不是性能问题**：
   // 多提交的 `cherry-pick` / `revert` 用 `.git/sequencer/` 记录序列进度
   // （`todo` 文件列出剩余的提交）。不认它的话，序列进行中的状态根本不显示——
-  // 界面上看不出「正在 cherry-pick，还剩 3 个」。来源：GitLens `watcherPatterns.ts`。
+  // 界面上看不出「正在 cherry-pick，还剩 3 个」。
   if (
     relPath === "REBASE_HEAD" ||
     relPath.startsWith("rebase-merge/") ||
@@ -127,7 +126,7 @@ export function classifyGitPath(relPath: string): readonly GitDomain[] {
 
   // 暂存区。**只给 Worktree，绝不给 Refs**——`git status` 自己会回写 index 刷新
   // stat 缓存，算进 Refs 就会变成 status → 写 index → 重拉 → 又跑 status 的回路。
-  // 见 `domains.ts` 上 `Worktree` 的说明。
+  // 见 `shared/src/domain.ts` 上 `Worktree` 的说明。
   if (relPath === "index") {
     return WORKTREE;
   }
@@ -150,7 +149,7 @@ export function classifyGitPath(relPath: string): readonly GitDomain[] {
     // 这两个改的是**祖先关系**，不是 ref 指向：
     // `shallow` 记录浅克隆的截断点，`refs/replace/**` 让 git 在遍历时
     // 用另一个对象替换掉某个提交。即使所有分支的指向都没动，
-    // 提交图的形状也变了。GitLens 把它们归到 `heads`，同一判断。
+    // 提交图的形状也变了。
     // （`refs/replace/` 本来就被下面的 `refs/` 前缀覆盖，这里只是显式记一笔。）
     relPath === "shallow" ||
     relPath.startsWith("refs/") ||
@@ -169,8 +168,5 @@ export function classifyGitPath(relPath: string): readonly GitDomain[] {
   // 会改变状态的动作必然同时碰到上面某条已覆盖的路径（HEAD、index、refs/**、
   // logs/**、MERGE_HEAD…）。真发现漏判，应该在上面加一条明确规则，
   // 而不是在这里默默刷新——兜底会让「为什么刷了」永远查不清。
-  //
-  // IntelliJ 的 `GitRepositoryUpdater.filesChanged()` 也是白名单、认不出就落空，
-  // 是独立实现的同一判断。
   return NONE;
 }

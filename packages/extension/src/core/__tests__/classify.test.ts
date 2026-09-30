@@ -2,9 +2,9 @@ import { GitDomain } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
 import { classifyGitPath } from "../classify.js";
 
-describe("classifyGitPath：M6 第 1 步实测抓到的真实路径", () => {
-  // 这份路径清单来自 scripts/demo-watch-timing.mjs 对一次真实 `commit` 的抓取
-  // （见 .notes/NFR.md §7）：27 个原始事件，滤噪后剩 10 个，5 个有效路径。
+describe("classifyGitPath：实测抓到的真实路径", () => {
+  // 这份路径清单来自 scripts/demo-watch-timing.mjs 对一次真实 `commit` 的抓取：
+  // 27 个原始事件，滤噪后剩 10 个，5 个有效路径。
   it("噪声全部丢弃", () => {
     for (const p of [
       "index.lock",
@@ -85,7 +85,7 @@ describe("classifyGitPath：认不出就丢弃，不兜底刷新", () => {
   });
 });
 
-describe("classifyGitPath：GitLens 考古补上的缺口（M6 第 3a 步）", () => {
+describe("classifyGitPath：容易漏的几类路径", () => {
   it("sequencer/** → operation——漏了是功能漏判，不是性能问题", () => {
     // 多提交的 cherry-pick / revert 用 .git/sequencer/ 记录序列进度。
     // 不认它，界面上看不出「正在 cherry-pick，还剩 3 个」。

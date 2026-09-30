@@ -36,12 +36,11 @@ export interface Upstream {
 /**
  * 四种引用。
  *
- * 三处形状是刻意的，每处都对应旧仓库一条真实的 bug：
+ * 三处形状是刻意的：
  *
  * 1. **远程分支的 `remote` 与 `name` 分开存**，不留 `"origin/main"` 让人事后拆。
- *    从字符串无法判断它是远程分支还是一个恰好叫这名字的本地分支——
- *    旧仓库 `ad9f396`（带斜杠的本地分支被当成远程）、`da91d25`（删远程分支跑成删本地）、
- *    `01b15db`（`origin/HEAD` 被当成独立分支）三条 fix 都是这个根因。
+ *    从字符串无法判断它是远程分支还是一个恰好叫这名字的本地分支：带斜杠的本地分支
+ *    会被当成远程、删远程分支会跑成删本地、`origin/HEAD` 会被当成独立分支。
  * 2. **`Head` 用 `branch` 的有无表示 detached**，不用 `isDetached: boolean`——
  *    后者允许 `{ isDetached: true, branch: "main" }` 这种自相矛盾的值。
  * 3. **「当前分支」只由 `Head.branch` 给出**，不在每个分支上挂 `isCurrent`——

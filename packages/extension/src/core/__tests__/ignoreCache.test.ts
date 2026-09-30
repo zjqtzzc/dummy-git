@@ -81,7 +81,7 @@ describe("IgnoreCache：invalidate 让规则变化生效", () => {
   });
 });
 
-describe("IgnoreCache：GitLens 那个洞在这里结构上不存在", () => {
+describe("IgnoreCache：强制跟踪的 ignored 文件照常通知", () => {
   it("add -f 强制跟踪的 ignored 文件，改动**不会**被挡", async () => {
     // 纯模式匹配的库会把它判成忽略 → 用户对它的改动永远不显示。
     // 我们问的是 git，而 check-ignore 默认认 index。

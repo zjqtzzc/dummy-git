@@ -4,7 +4,7 @@ import type { RepositoryLocation } from "../git/commands/index.js";
  * 把一个绝对路径转成相对于某个基准目录的路径，分隔符统一为 `/`。
  *
  * 这是**外部感知链路的入口**：VSCode 的文件事件给的是绝对 URI，
- * 而 M6 的域分类表（`core/watchPatterns.ts`、`core/classify.ts`）按 `/` 分隔的
+ * 而域分类表（`core/watchPatterns.ts`、`core/classify.ts`）按 `/` 分隔的
  * 相对路径书写。这一步转换错了，watcher 收到的每个事件都会被丢弃，
  * 表现是**外部 git 操作完全感知不到，且不报任何错**。
  *
