@@ -18,6 +18,7 @@
  * | `getStatus` | `status --porcelain=v2 --branch -z -uall`，环境 `GIT_OPTIONAL_LOCKS=0` | `--porcelain=v2`；`GIT_OPTIONAL_LOCKS` | 2.11；2.15 |
  * | `checkIgnore` | `check-ignore -z --stdin` | — | — |
  * | `commit` | `add -- <未跟踪…>`（有才跑）+ `commit --only -F - -- <路径…>` | — | — |
+ * | `amendCommit` | 同上，`commit --amend --only …`；路径可为空（只改说明） | — | — |
  * | `getSkeleton` | `-c log.showSignature=false log --format=… --max-count=10000 HEAD --branches --remotes --tags --date-order` | — | — |
  * | `getCommitDetails` | `-c log.showSignature=false log --format=… --no-walk --stdin` | — | — |
  * | `getRefs` | `for-each-ref --format=… refs/heads refs/remotes refs/tags` | `%(upstream:remotename)` / `%(upstream:remoteref)`（git 2.16.0 发布说明） | **2.16** |
@@ -30,7 +31,7 @@
 
 export { checkIgnore } from "./checkIgnore.js";
 export type { GitCommand } from "./command.js";
-export { commit } from "./commit.js";
+export { amendCommit, commit } from "./commit.js";
 export { getFileContent } from "./content.js";
 export { getRepositoryLocation, type RepositoryLocation } from "./location.js";
 export { LockPolicy } from "./lock.js";

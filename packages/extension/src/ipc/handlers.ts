@@ -1,6 +1,7 @@
 import { ChangeKind, type DiffOpenMode, type DiffSide } from "@dummy-git/shared";
 import type { Repository } from "../core/repository.js";
 import {
+  amendCommit,
   commit,
   getCommitDetails,
   getCommitFiles,
@@ -50,6 +51,32 @@ export interface HandlerUi {
 }
 
 export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMap {
+  /**
+   * 勾选的路径 → 交给 git 的两份：要提交的路径（改名的带上旧路径——界面上只有新路径一行，
+   * 旧路径的删除要一起提交，否则剩下一个 D）、其中要先 `add` 的未跟踪文件。
+   * 由扩展自己问 git，不信 webview 手里可能已过时的状态。
+   */
+  const expand = async (
+    paths: readonly string[],
+  ): Promise<[paths: readonly string[], untracked: readonly string[]]> => {
+    const { changes } = await repository.run(getStatus, repository.location.root);
+    const untracked = new Set<string>();
+    const renamedFrom = new Map<string, string>();
+    for (const change of changes) {
+      if (change.kind === ChangeKind.Untracked) untracked.add(change.path);
+      if (change.kind === ChangeKind.Tracked && change.oldPath !== undefined) {
+        renamedFrom.set(change.path, change.oldPath);
+      }
+    }
+    return [
+      paths.flatMap((path) => {
+        const old = renamedFrom.get(path);
+        return old === undefined ? [path] : [path, old];
+      }),
+      paths.filter((path) => untracked.has(path)),
+    ];
+  };
+
   return defineHandlers({
     // 第一版只有一个仓库。多仓库时这里返回多条，面板与协议都不用改。
     getRepositories: () => Promise.resolve([repository.location.root]),
@@ -71,27 +98,15 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
     getCommitFiles: ({ hash }) => repository.run(getCommitFiles, repository.location.root, hash),
     getStatus: () => repository.run(getStatus, repository.location.root),
     commit: async ({ message, paths }) => {
-      const root = repository.location.root;
-      const { changes } = await repository.run(getStatus, root);
-      const untracked = new Set<string>();
-      /** 改名：新路径 → 旧路径。界面上只有新路径一行，提交时旧路径的删除要一起带上。 */
-      const renamedFrom = new Map<string, string>();
-      for (const change of changes) {
-        if (change.kind === ChangeKind.Untracked) untracked.add(change.path);
-        if (change.kind === ChangeKind.Tracked && change.oldPath !== undefined) {
-          renamedFrom.set(change.path, change.oldPath);
-        }
-      }
-      const withOldPaths = paths.flatMap((path) => {
-        const old = renamedFrom.get(path);
-        return old === undefined ? [path] : [path, old];
-      });
+      await repository.run(commit, repository.location.root, message, ...(await expand(paths)));
+      return null;
+    },
+    amend: async ({ message, paths }) => {
       await repository.run(
-        commit,
-        root,
+        amendCommit,
+        repository.location.root,
         message,
-        withOldPaths,
-        paths.filter((path) => untracked.has(path)),
+        ...(await expand(paths)),
       );
       return null;
     },

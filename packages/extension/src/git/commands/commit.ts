@@ -2,6 +2,33 @@ import { run } from "../failure.js";
 import type { GitCommand } from "./command.js";
 import { LockPolicy } from "./lock.js";
 
+type CommitArgs = [
+  repository: string,
+  message: string,
+  paths: readonly string[],
+  /** `paths` 里的未跟踪文件，先 `add`。 */
+  untracked: readonly string[],
+];
+
+function commitWith(amend: readonly string[]): GitCommand<CommitArgs, void> {
+  return {
+    // 改 index 也改 HEAD，必须与别的写命令互斥。
+    lock: LockPolicy.Exclusive,
+
+    execute: async (cli, repository, message, paths, untracked) => {
+      if (untracked.length > 0) {
+        await run(cli, ["add", "--", ...untracked], { cwd: repository });
+      }
+      // 不做「消息是不是空」之类的防御性检查：验证只在边界做一次（CLAUDE.md §C.2），
+      // 而这里在边界之内。空消息由 git 拒绝，M4 会把它包成 GitFailureError。
+      await run(cli, ["commit", ...amend, "--only", "-F", "-", "--", ...paths], {
+        cwd: repository,
+        input: message,
+      });
+    },
+  };
+}
+
 /**
  * 提交选中的文件。**第一条写命令。**
  *
@@ -64,28 +91,12 @@ import { LockPolicy } from "./lock.js";
  * ⚠️ `paths` 不能为空：`commit --only` 不带路径时提交的是**整个暂存区**。
  * 协议边界（`ipc/protocol.guards.ts`）拒绝空列表。
  */
-export const commit: GitCommand<
-  [
-    repository: string,
-    message: string,
-    paths: readonly string[],
-    /** `paths` 里的未跟踪文件，先 `add`。 */
-    untracked: readonly string[],
-  ],
-  void
-> = {
-  // 改 index 也改 HEAD，必须与别的写命令互斥。
-  lock: LockPolicy.Exclusive,
+export const commit = commitWith([]);
 
-  execute: async (cli, repository, message, paths, untracked) => {
-    if (untracked.length > 0) {
-      await run(cli, ["add", "--", ...untracked], { cwd: repository });
-    }
-    // 不做「消息是不是空」之类的防御性检查：验证只在边界做一次（CLAUDE.md §C.2），
-    // 而这里在边界之内。空消息由 git 拒绝，M4 会把它包成 GitFailureError。
-    await run(cli, ["commit", "--only", "-F", "-", "--", ...paths], {
-      cwd: repository,
-      input: message,
-    });
-  },
-};
+/**
+ * 改最近一次提交：勾选的文件按工作区现状并进去，说明换成新的。
+ *
+ * `paths` **可以为空**：`--amend --only` 不带路径时只改说明，暂存区里已有的改动不带进去
+ * （git 文档明说的用法，实测确认）。这与 `commit` 不带路径的危险行为不同。
+ */
+export const amendCommit = commitWith(["--amend"]);

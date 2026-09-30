@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { type DiffOpenMode, GitDomain } from "@dummy-git/shared";
+import { VscodeCheckbox } from "@vscode-elements/elements/dist/vscode-checkbox/vscode-checkbox.js";
 import { VscodeTextarea } from "@vscode-elements/elements/dist/vscode-textarea/vscode-textarea.js";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { type Client, report } from "../logic/client.js";
@@ -51,45 +52,95 @@ function onCheck(paths: readonly string[], value: boolean): void {
 }
 
 /**
- * 提交说明。面板隐藏、重新加载窗口后还在（`viewState`），只有提交成功才清空（第二节第 7 条）。
- * 每次输入停手 300ms 存一次：webview 没有可靠的「要关了」事件，不能等关闭时再存。
+ * 提交说明与 Amend（第二节第 7、8 条）。
+ *
+ * - `message`：说明框当前的内容。
+ * - `amend`：是否勾着 Amend。勾上时说明框换成 HEAD 的说明（每次重新取），当前输入存为 `draft`；
+ *   取消时换回 `draft`，没有就是空。Amend 时改到一半的内容不另存，下次勾上照样重新取。
+ *
+ * 三样都存进 `viewState`，面板隐藏、重新加载窗口原样恢复。输入时停手 300ms 存一次：
+ * webview 没有可靠的「要关了」事件，不能等关闭时再存。
  */
-const savedMessage = viewState.read("message");
-const message = ref(typeof savedMessage === "string" ? savedMessage : "");
+const saved = {
+  message: viewState.read("message"),
+  draft: viewState.read("draft"),
+  amend: viewState.read("amend"),
+};
+const message = ref(typeof saved.message === "string" ? saved.message : "");
+const draft = ref(typeof saved.draft === "string" ? saved.draft : "");
+const amend = ref(saved.amend === true);
 let saving: ReturnType<typeof setTimeout> | undefined;
-function saveMessage(): void {
+function save(): void {
   clearTimeout(saving);
-  saving = setTimeout(() => viewState.write("message", message.value), 300);
+  viewState.write("message", message.value);
+  viewState.write("draft", draft.value);
+  viewState.write("amend", amend.value);
+}
+function saveLater(): void {
+  clearTimeout(saving);
+  saving = setTimeout(save, 300);
 }
 onUnmounted(() => clearTimeout(saving));
 function onInput(event: Event): void {
   if (!(event.target instanceof VscodeTextarea)) return;
   message.value = event.target.value;
-  saveMessage();
+  saveLater();
+}
+
+async function onAmendChange(event: Event): Promise<void> {
+  if (!(event.target instanceof VscodeCheckbox)) return;
+  if (!event.target.checked) {
+    amend.value = false;
+    message.value = draft.value;
+    save();
+    return;
+  }
+  if (repo.value === undefined || head.value === undefined) return;
+  amend.value = true;
+  draft.value = message.value;
+  try {
+    const [last] = await props.client.request("getCommitDetails", {
+      repo: repo.value,
+      hashes: [head.value],
+    });
+    message.value = last?.message ?? "";
+  } catch (cause) {
+    report(cause);
+  }
+  save();
 }
 
 /** 正在提交：按钮置灰、文字变 `Committing…`，防重复点击。 */
 const committing = ref(false);
-/** 说明为空（只有空白也算）或一个文件都没勾时不能提交。 */
+/**
+ * 说明为空（只有空白也算）不能提交；普通提交还要至少勾一个文件，
+ * Amend 不勾文件也行（只改说明）。
+ */
 const canCommit = computed(
-  () => !committing.value && !isBlankMessage(message.value) && checked.value.size > 0,
+  () =>
+    !committing.value &&
+    !isBlankMessage(message.value) &&
+    (amend.value || checked.value.size > 0),
 );
 
 /**
- * 提交勾选的文件。成功不弹通知（结果本身可见），清空说明；失败由扩展侧的错误关口报，
- * 说明与勾选原样保留，改一改就能重试（第二节第 12 条）。
+ * 提交或 Amend 勾选的文件。成功不弹通知（结果本身可见），说明框与普通草稿都清空，
+ * Amend 取消勾选。失败由扩展侧的错误关口报，说明与勾选原样保留，
+ * 改一改就能重试（第二节第 12 条）。
  */
 async function submit(): Promise<void> {
   if (repo.value === undefined || !canCommit.value) return;
   committing.value = true;
   try {
-    await props.client.request("commit", {
+    await props.client.request(amend.value ? "amend" : "commit", {
       repo: repo.value,
       message: commitMessage(message.value),
       paths: [...checked.value],
     });
+    amend.value = false;
     message.value = "";
-    saveMessage();
+    draft.value = "";
+    save();
   } catch (cause) {
     report(cause);
   } finally {
@@ -190,7 +241,13 @@ onMounted(async () => {
     </div>
 
     <div class="footer">
-      <vscode-checkbox label="Amend" />
+      <!-- 还没有任何提交时没有可改的，置灰（第二节第 8 条）。 -->
+      <vscode-checkbox
+        label="Amend"
+        :checked="amend"
+        :disabled="head === undefined"
+        @change="onAmendChange"
+      />
       <vscode-textarea
         class="message"
         rows="4"

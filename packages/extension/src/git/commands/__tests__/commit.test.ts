@@ -10,7 +10,7 @@ import {
 } from "../../../__tests__/support.js";
 import { runCommand } from "../../../core/executor.js";
 import { CommandQueue } from "../../../core/operation.js";
-import { commit } from "../commit.js";
+import { amendCommit, commit } from "../commit.js";
 import { getStatus } from "../status.js";
 
 afterEach(cleanupTempRepos);
@@ -65,6 +65,27 @@ describe("commit：未跟踪文件先 add 再提交", () => {
       commit.execute(cli, repo, "msg", ["f1", "gone.txt"], ["gone.txt"]),
     ).rejects.toThrow();
     expect(git(repo, ["rev-list", "--count", "HEAD"]).trim()).toBe("1");
+  });
+});
+
+describe("amendCommit", () => {
+  it("不勾文件：只改说明，暂存区里已有的改动不带进去", async () => {
+    const repo = makeTempRepo("amend-message");
+    const before = git(repo, ["rev-parse", "HEAD^{tree}"]);
+    writeFileSync(join(repo, "f1"), "staged\n");
+    git(repo, ["add", "f1"]);
+    await amendCommit.execute(cli, repo, "new message", [], []);
+    expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe("new message");
+    expect(git(repo, ["rev-parse", "HEAD^{tree}"])).toBe(before);
+    expect(git(repo, ["status", "--porcelain"]).trim()).toBe("M  f1");
+  });
+
+  it("勾了文件：并进最近一次提交，不多出一条", async () => {
+    const repo = makeTempRepo("amend-files");
+    writeFileSync(join(repo, "f1"), "changed\n");
+    await amendCommit.execute(cli, repo, "amended", ["f1"], []);
+    expect(git(repo, ["rev-list", "--count", "HEAD"]).trim()).toBe("1");
+    expect(git(repo, ["status", "--porcelain"]).trim()).toBe("");
   });
 });
 

@@ -118,6 +118,11 @@ export interface Commands {
     params: { repo: string; message: string; paths: readonly string[] };
     result: null;
   };
+  /** 改最近一次提交：勾选的文件并进去，说明换成新的。`paths` 可以为空，即只改说明。 */
+  amend: {
+    params: { repo: string; message: string; paths: readonly string[] };
+    result: null;
+  };
 }
 
 export type CommandName = keyof Commands;

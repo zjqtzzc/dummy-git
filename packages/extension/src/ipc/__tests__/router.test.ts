@@ -32,6 +32,7 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     getCommitFiles: async (): Promise<CommitFileChange[]> => [],
     getStatus: async (): Promise<StatusSnapshot> => ({ changes: [] }),
     commit: async (): Promise<null> => null,
+    amend: async (): Promise<null> => null,
     ...overrides,
   });
 }
@@ -260,6 +261,10 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
         getSkeleton: async () => {
           ran = true;
           return [];
+        },
+        amend: async () => {
+          ran = true;
+          return null;
         },
         getCommitDetails: async () => {
           ran = true;

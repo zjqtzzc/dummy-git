@@ -139,6 +139,14 @@ const PARAM_GUARDS = {
       ? { repo, message, paths }
       : undefined;
   },
+  amend: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const message = raw["message"];
+    const paths = asStringArray(raw["paths"]);
+    return typeof repo === "string" && typeof message === "string" && paths !== undefined
+      ? { repo, message, paths }
+      : undefined;
+  },
 } satisfies { [K in CommandName]: (raw: Record<string, unknown>) => CommandParams<K> | undefined };
 
 /** 命令名是不是协议表里的。**这是「不存在游离命令」在运行时的那一半。** */

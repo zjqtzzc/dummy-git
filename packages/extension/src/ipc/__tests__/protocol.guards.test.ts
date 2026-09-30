@@ -36,3 +36,10 @@ describe("commit 的参数校验", () => {
     expect(parseParams("commit", { repo: "/r", message: "msg", paths: [] })).toBeUndefined();
   });
 });
+
+describe("amend 的参数校验", () => {
+  it("路径可以为空：只改说明", () => {
+    const raw = { repo: "/r", message: "msg", paths: [] };
+    expect(parseParams("amend", raw)).toEqual(raw);
+  });
+});
