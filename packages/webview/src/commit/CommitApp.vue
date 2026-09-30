@@ -24,6 +24,7 @@ const repo = ref<string>();
 /** HEAD 的完整 hash，diff 左边用。还没有任何提交时缺席。 */
 const head = ref<string>();
 const files = ref<WorkingFile[]>([]);
+const tree = ref<InstanceType<typeof FileTree>>();
 const loaded = ref(false);
 const groups = computed(() => workingGroups(files.value));
 
@@ -108,14 +109,28 @@ onMounted(async () => {
 
     <vscode-toolbar-container class="toolbar">
       <vscode-toolbar-button icon="discard" label="Rollback" />
-      <vscode-toolbar-button icon="expand-all" label="Expand All" />
-      <vscode-toolbar-button icon="collapse-all" label="Collapse All" />
+      <!-- 没有改动时置灰（第二节第 13 条）。这个按钮组件没有 disabled，用样式表示。 -->
+      <vscode-toolbar-button
+        icon="expand-all"
+        label="Expand All"
+        :class="{ disabled: files.length === 0 }"
+        @click="tree?.expandAll()"
+      />
+      <vscode-toolbar-button
+        icon="collapse-all"
+        label="Collapse All"
+        :class="{ disabled: files.length === 0 }"
+        @click="tree?.collapseAll()"
+      />
     </vscode-toolbar-container>
 
     <div class="files">
       <p v-if="!loaded" class="dim note">Loading…</p>
       <p v-else-if="files.length === 0" class="dim note">No changes</p>
-      <FileTree v-else :groups="groups" :checked="checked" @check="onCheck" @open="openFile" />
+      <FileTree
+        v-else
+        ref="tree"
+        :groups="groups" :checked="checked" @check="onCheck" @open="openFile" />
     </div>
 
     <div class="footer">
@@ -157,6 +172,10 @@ onMounted(async () => {
 .toolbar {
   padding: 2px 8px;
   border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, transparent);
+}
+.disabled {
+  opacity: 0.4;
+  pointer-events: none;
 }
 .files {
   flex: 1;

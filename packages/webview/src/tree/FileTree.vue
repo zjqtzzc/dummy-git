@@ -69,6 +69,16 @@ watch(
   },
 );
 
+defineExpose({
+  /** 全部展开 / 全部收起（Commit 面板工具栏）。 */
+  expandAll(): void {
+    expanded.value = new Set(branchIds(nodes.value));
+  },
+  collapseAll(): void {
+    expanded.value = new Set();
+  },
+});
+
 function onSelect(node: TreeNode): void {
   const entry = byId.value.get(node.id);
   if (entry === undefined || entry.path === followed) return;
