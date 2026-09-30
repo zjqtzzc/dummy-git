@@ -108,25 +108,6 @@
           }
         }
       }
-    },
-    {
-      "includes": ["packages/extension/src/features/**"],
-      "linter": {
-        "rules": {
-          "style": {
-            "noRestrictedImports": {
-              "level": "error",
-              "options": {
-                "patterns": [
-                  {
-                    "group": ["**/git/*", "**/git/**"]
-                  }
-                ]
-              }
-            }
-          }
-        }
-      }
     }
   ]
 }

@@ -109,7 +109,7 @@ writeFileSync(join(repo, "f1"), "changed\n");
 
 const queue = new CommandQueue();
 const started = performance.now();
-await runCommand(queue, cli, commit, repo, "测量用提交", ["f1"]);
+await runCommand(queue, cli, commit, repo, "测量用提交", ["f1"], []);
 t0 = performance.now();
 
 console.log(`  命令本身耗时：${(t0 - started).toFixed(0)} ms`);

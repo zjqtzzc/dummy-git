@@ -95,8 +95,8 @@ function report(repo, t0, results) {
   console.log("─".repeat(68));
   const t0 = Date.now();
   const results = await Promise.allSettled([
-    commit.execute(cli, repo, "提交 A\n", ["f1"]),
-    commit.execute(cli, repo, "提交 B\n", ["f2"]),
+    commit.execute(cli, repo, "提交 A\n", ["f1"], []),
+    commit.execute(cli, repo, "提交 B\n", ["f2"], []),
   ]);
   report(repo, t0, results);
   console.log("  → 一条失败，它要提交的内容**没有进入历史**");
@@ -110,8 +110,8 @@ function report(repo, t0, results) {
   const queue = new CommandQueue();
   const t0 = Date.now();
   const results = await Promise.allSettled([
-    runCommand(queue, cli, commit, repo, "提交 A\n", ["f1"]),
-    runCommand(queue, cli, commit, repo, "提交 B\n", ["f2"]),
+    runCommand(queue, cli, commit, repo, "提交 A\n", ["f1"], []),
+    runCommand(queue, cli, commit, repo, "提交 B\n", ["f2"], []),
   ]);
   report(repo, t0, results);
   console.log("  → 两条都进了历史。耗时约为①的两倍，因为真的排了队");
@@ -148,8 +148,8 @@ console.log();
   const qB = new CommandQueue();
   const t0 = Date.now();
   await Promise.all([
-    runCommand(qA, cli, commit, repoA, "仓库A\n", ["f1"]),
-    runCommand(qB, cli, commit, repoB, "仓库B\n", ["f1"]),
+    runCommand(qA, cli, commit, repoA, "仓库A\n", ["f1"], []),
+    runCommand(qB, cli, commit, repoB, "仓库B\n", ["f1"], []),
   ]);
   const total = Date.now() - t0;
   console.log(`  总耗时 ${total} ms（单条约 400ms —— 排队的话应接近 800ms）`);
@@ -159,7 +159,7 @@ console.log();
 // ── ⑤ getLog：两步取数 ────────────────────────────────────────────
 {
   const repo = makeRepo();
-  await runCommand(new CommandQueue(), cli, commit, repo, "提交 1\n", ["f1"]);
+  await runCommand(new CommandQueue(), cli, commit, repo, "提交 1\n", ["f1"], []);
   console.log("\n⑤ 取数模型 B：全量骨架 → 按 hash 取详情");
   console.log("─".repeat(68));
   const q = new CommandQueue();

@@ -13,8 +13,8 @@ import { GitDomain } from "@dummy-git/shared";
  * ## 这一层为什么是纯函数
  *
  * 它只认字符串，不认识 VSCode、不认识文件系统、不订阅任何东西。
- * 好处是能在普通 node 里直接跑给人看——本项目不写测试，
- * `scripts/demo-*.mjs` 是唯一的可观察物，一旦这层 import 了 `vscode` 就再也跑不了。
+ * 好处是能在普通 node 里直接测、直接跑给人看（`scripts/demo-watch.mjs`），
+ * 一旦这层 import 了 `vscode` 就都做不了。
  *
  * 真正去订阅文件事件的那部分属于 `vscode/` 层（M7），它把事件喂给这里。
  *

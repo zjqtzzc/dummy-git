@@ -74,7 +74,3 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   settle({ kind: ViewSourceKind.Repository, repository });
 }
-
-export function deactivate(): void {
-  // 需要清理的东西都进了 context.subscriptions，由宿主负责。
-}
