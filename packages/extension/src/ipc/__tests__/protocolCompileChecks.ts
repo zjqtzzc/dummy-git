@@ -59,6 +59,7 @@ export const _baseline = defineHandlers({
   openDiff: openDiffStub,
   getCommitFiles: filesStub,
   getStatus: statusStub,
+  commit: openDiffStub,
 });
 
 /**
@@ -95,6 +96,7 @@ const extraHandlers = {
   openDiff: openDiffStub,
   getCommitFiles: filesStub,
   getStatus: statusStub,
+  commit: openDiffStub,
   cherryPick: async (): Promise<CommitFileChange[]> => [],
 };
 

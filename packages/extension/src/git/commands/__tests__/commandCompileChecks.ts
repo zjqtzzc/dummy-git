@@ -38,7 +38,7 @@ import { commit } from "../commit.js";
 declare const cli: GitCli;
 
 /** 基线：参数齐全、类型正确，必须编译通过，否则下面那条的对照失去意义。 */
-export const _baseline = (): Promise<void> => commit.execute(cli, "/repo", "消息", ["a.txt"]);
+export const _baseline = (): Promise<void> => commit.execute(cli, "/repo", "消息", ["a.txt"], []);
 
 /**
  * `commit` 走 `-F -`（消息从 stdin 读）。没有消息就是一次空 stdin 提交，
@@ -47,7 +47,7 @@ export const _baseline = (): Promise<void> => commit.execute(cli, "/repo", "消�
  */
 export const _missingMessage = (): Promise<void> =>
   // @ts-expect-error 读 stdin 的命令，输入参数必填（M2 §4.3 / M5 验收⑤）
-  commit.execute(cli, "/repo", undefined, ["a.txt"]);
+  commit.execute(cli, "/repo", undefined, ["a.txt"], []);
 
 /*
  * ── 变异确认记录（2026-09-21，实跑）──────────────────────────────────────────

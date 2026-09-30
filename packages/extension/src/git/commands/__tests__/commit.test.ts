@@ -19,7 +19,7 @@ describe("commit：--only 只提交勾选的路径", () => {
   it("已跟踪文件改动：勾选的那个进了提交，工作区变干净", async () => {
     const repo = makeTempRepo("only-tracked");
     writeFileSync(join(repo, "f1"), "changed\n");
-    await commit.execute(cli, repo, "msg", ["f1"]);
+    await commit.execute(cli, repo, "msg", ["f1"], []);
     expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe("msg");
     expect(git(repo, ["status", "--porcelain"]).trim()).toBe("");
   });
@@ -31,7 +31,7 @@ describe("commit：--only 只提交勾选的路径", () => {
     const repo = makeTempRepo("only-deleted-staged");
     rmSync(join(repo, "f1"));
     git(repo, ["add", "-A"]);
-    await commit.execute(cli, repo, "delete f1", ["f1"]);
+    await commit.execute(cli, repo, "delete f1", ["f1"], []);
     expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe("delete f1");
   });
 
@@ -41,10 +41,30 @@ describe("commit：--only 只提交勾选的路径", () => {
     writeFileSync(join(repo, "f2"), "new\n");
     git(repo, ["add", "-A"]);
 
-    await commit.execute(cli, repo, "only f1", ["f1"]);
+    await commit.execute(cli, repo, "only f1", ["f1"], []);
 
     expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe("only f1");
     expect(git(repo, ["status", "--porcelain"])).toContain("f2");
+  });
+});
+
+describe("commit：未跟踪文件先 add 再提交", () => {
+  it("勾了未跟踪文件：它进了提交", async () => {
+    const repo = makeTempRepo("untracked");
+    writeFileSync(join(repo, "new.txt"), "new\n");
+    await commit.execute(cli, repo, "add new", ["new.txt"], ["new.txt"]);
+    expect(git(repo, ["show", "--name-status", "--format=", "HEAD"]).trim()).toBe("A\tnew.txt");
+    expect(git(repo, ["status", "--porcelain"]).trim()).toBe("");
+  });
+
+  it("未跟踪文件 add 失败：不提交", async () => {
+    const repo = makeTempRepo("untracked-fail");
+    writeFileSync(join(repo, "f1"), "changed\n");
+    // 声称未跟踪、实际不存在的路径：add 报 pathspec 不匹配，f1 也不能被提交。
+    await expect(
+      commit.execute(cli, repo, "msg", ["f1", "gone.txt"], ["gone.txt"]),
+    ).rejects.toThrow();
+    expect(git(repo, ["rev-list", "--count", "HEAD"]).trim()).toBe("1");
   });
 });
 
@@ -67,8 +87,8 @@ describe("真 git：队列决定「改动会不会丢」", () => {
     git(repo, ["add", "-A"]);
 
     const results = await Promise.allSettled([
-      commit.execute(cli, repo, "commit A", ["a.txt"]),
-      commit.execute(cli, repo, "commit B", ["b.txt"]),
+      commit.execute(cli, repo, "commit A", ["a.txt"], []),
+      commit.execute(cli, repo, "commit B", ["b.txt"], []),
     ]);
 
     expect(results.some((r) => r.status === "rejected")).toBe(true);
@@ -85,8 +105,8 @@ describe("真 git：队列决定「改动会不会丢」", () => {
 
     const queue = new CommandQueue();
     await Promise.all([
-      runCommand(queue, cli, commit, repo, "commit A", ["a.txt"]),
-      runCommand(queue, cli, commit, repo, "commit B", ["b.txt"]),
+      runCommand(queue, cli, commit, repo, "commit A", ["a.txt"], []),
+      runCommand(queue, cli, commit, repo, "commit B", ["b.txt"], []),
     ]);
 
     const count = Number(git(repo, ["rev-list", "--count", "HEAD"]).trim());

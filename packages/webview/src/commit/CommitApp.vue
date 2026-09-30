@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { type DiffOpenMode, GitDomain } from "@dummy-git/shared";
-import { computed, onMounted, ref } from "vue";
+import { VscodeTextarea } from "@vscode-elements/elements/dist/vscode-textarea/vscode-textarea.js";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { type Client, report } from "../logic/client.js";
+import { commitMessage, isBlankMessage } from "../logic/commit/message.js";
 import {
   type WorkingFile,
   workingDiffSides,
@@ -46,6 +48,60 @@ function onCheck(paths: readonly string[], value: boolean): void {
     else next.delete(path);
   }
   setChecked(next);
+}
+
+/**
+ * 提交说明。面板隐藏、重新加载窗口后还在（`viewState`），只有提交成功才清空（第二节第 7 条）。
+ * 每次输入停手 300ms 存一次：webview 没有可靠的「要关了」事件，不能等关闭时再存。
+ */
+const savedMessage = viewState.read("message");
+const message = ref(typeof savedMessage === "string" ? savedMessage : "");
+let saving: ReturnType<typeof setTimeout> | undefined;
+function saveMessage(): void {
+  clearTimeout(saving);
+  saving = setTimeout(() => viewState.write("message", message.value), 300);
+}
+onUnmounted(() => clearTimeout(saving));
+function onInput(event: Event): void {
+  if (!(event.target instanceof VscodeTextarea)) return;
+  message.value = event.target.value;
+  saveMessage();
+}
+
+/** 正在提交：按钮置灰、文字变 `Committing…`，防重复点击。 */
+const committing = ref(false);
+/** 说明为空（只有空白也算）或一个文件都没勾时不能提交。 */
+const canCommit = computed(
+  () => !committing.value && !isBlankMessage(message.value) && checked.value.size > 0,
+);
+
+/**
+ * 提交勾选的文件。成功不弹通知（结果本身可见），清空说明；失败由扩展侧的错误关口报，
+ * 说明与勾选原样保留，改一改就能重试（第二节第 12 条）。
+ */
+async function submit(): Promise<void> {
+  if (repo.value === undefined || !canCommit.value) return;
+  committing.value = true;
+  try {
+    await props.client.request("commit", {
+      repo: repo.value,
+      message: commitMessage(message.value),
+      paths: [...checked.value],
+    });
+    message.value = "";
+    saveMessage();
+  } catch (cause) {
+    report(cause);
+  } finally {
+    committing.value = false;
+  }
+}
+
+/** 说明框里 Ctrl+Enter（Mac 上 Cmd+Enter）= 点 Commit 按钮。快捷键只有这一个（第二节第 11 条）。 */
+function onMessageKeydown(event: KeyboardEvent): void {
+  if (event.key !== "Enter" || !(event.ctrlKey || event.metaKey)) return;
+  event.preventDefault();
+  void submit();
 }
 
 /**
@@ -135,8 +191,18 @@ onMounted(async () => {
 
     <div class="footer">
       <vscode-checkbox label="Amend" />
-      <vscode-textarea class="message" rows="4" resize="vertical" placeholder="Commit Message" />
-      <vscode-button>Commit</vscode-button>
+      <vscode-textarea
+        class="message"
+        rows="4"
+        resize="vertical"
+        placeholder="Commit Message"
+        :value="message"
+        @input="onInput"
+        @keydown="onMessageKeydown"
+      />
+      <vscode-button :disabled="!canCommit" @click="submit">{{
+        committing ? "Committing…" : "Commit"
+      }}</vscode-button>
     </div>
   </div>
 </template>

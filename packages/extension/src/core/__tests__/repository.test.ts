@@ -52,8 +52,8 @@ describe("Repository：跑命令", () => {
 
     const started = Date.now();
     await Promise.all([
-      a.run(commit, a.location.root, "on a", ["f1"]),
-      b.run(commit, b.location.root, "on b", ["f1"]),
+      a.run(commit, a.location.root, "on a", ["f1"], []),
+      b.run(commit, b.location.root, "on b", ["f1"], []),
     ]);
     // 并行约 300ms；共用一个队列会串成约 600ms
     expect(Date.now() - started).toBeLessThan(550);

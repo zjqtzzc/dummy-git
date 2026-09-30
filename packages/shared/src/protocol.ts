@@ -109,6 +109,15 @@ export interface Commands {
     params: { repo: string };
     result: StatusSnapshot;
   };
+  /**
+   * 提交勾选的文件（按工作区现状整个提交，其余路径的暂存区不动）。`paths` 不能为空——
+   * `commit --only` 不带路径会提交整个暂存区，边界上就拒绝。
+   * 哪些是未跟踪文件（要先 `add`）由扩展自己问 git，不信 webview 手里可能已过时的状态。
+   */
+  commit: {
+    params: { repo: string; message: string; paths: readonly string[] };
+    result: null;
+  };
 }
 
 export type CommandName = keyof Commands;

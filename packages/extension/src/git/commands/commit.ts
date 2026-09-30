@@ -52,22 +52,35 @@ import { LockPolicy } from "./lock.js";
  * 旧仓库的 `getWorkingTreeChanges()` 明说「不区分 index/worktree，一个路径只出一条记录」，
  * **上层于是没有信息可做判断**，只能无差别 `add`。
  *
- * 未跟踪文件的 `add` 不在 M5 范围（M5 只做四条验证形态），到 Commit 面板那一片再补。
+ * 未跟踪文件的 `add` 由 `untracked` 参数给出：在同一次写锁里先 `add` 它们再提交，
+ * 中间插不进别的写命令；`add` 失败就抛，提交不会跑。`add` 成功而提交失败（钩子拒绝）时，
+ * 这些文件留在暂存区成了「新增」，重试时它们已是已跟踪文件，不再需要 `add`——依然幂等。
  *
  * ## 不返回新提交的 hash
  *
  * `git commit` 的输出（`[main abc1234] msg`）不适合解析，要拿 hash 得再跑一次
- * `rev-parse HEAD`。那会让「一条命令 = 一次 git 调用」这条简单规则破例。
- * 需要 hash 的地方由上层自己去读 HEAD。
+ * `rev-parse HEAD`。需要 hash 的地方由上层自己去读 HEAD。
+ *
+ * ⚠️ `paths` 不能为空：`commit --only` 不带路径时提交的是**整个暂存区**。
+ * 协议边界（`ipc/protocol.guards.ts`）拒绝空列表。
  */
 export const commit: GitCommand<
-  [repository: string, message: string, paths: readonly string[]],
+  [
+    repository: string,
+    message: string,
+    paths: readonly string[],
+    /** `paths` 里的未跟踪文件，先 `add`。 */
+    untracked: readonly string[],
+  ],
   void
 > = {
   // 改 index 也改 HEAD，必须与别的写命令互斥。
   lock: LockPolicy.Exclusive,
 
-  execute: async (cli, repository, message, paths) => {
+  execute: async (cli, repository, message, paths, untracked) => {
+    if (untracked.length > 0) {
+      await run(cli, ["add", "--", ...untracked], { cwd: repository });
+    }
     // 不做「消息是不是空」之类的防御性检查：验证只在边界做一次（CLAUDE.md §C.2），
     // 而这里在边界之内。空消息由 git 拒绝，M4 会把它包成 GitFailureError。
     await run(cli, ["commit", "--only", "-F", "-", "--", ...paths], {

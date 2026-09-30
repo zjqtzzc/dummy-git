@@ -1,6 +1,7 @@
-import type { DiffOpenMode, DiffSide } from "@dummy-git/shared";
+import { ChangeKind, type DiffOpenMode, type DiffSide } from "@dummy-git/shared";
 import type { Repository } from "../core/repository.js";
 import {
+  commit,
   getCommitDetails,
   getCommitFiles,
   getHead,
@@ -69,5 +70,30 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
     },
     getCommitFiles: ({ hash }) => repository.run(getCommitFiles, repository.location.root, hash),
     getStatus: () => repository.run(getStatus, repository.location.root),
+    commit: async ({ message, paths }) => {
+      const root = repository.location.root;
+      const { changes } = await repository.run(getStatus, root);
+      const untracked = new Set<string>();
+      /** 改名：新路径 → 旧路径。界面上只有新路径一行，提交时旧路径的删除要一起带上。 */
+      const renamedFrom = new Map<string, string>();
+      for (const change of changes) {
+        if (change.kind === ChangeKind.Untracked) untracked.add(change.path);
+        if (change.kind === ChangeKind.Tracked && change.oldPath !== undefined) {
+          renamedFrom.set(change.path, change.oldPath);
+        }
+      }
+      const withOldPaths = paths.flatMap((path) => {
+        const old = renamedFrom.get(path);
+        return old === undefined ? [path] : [path, old];
+      });
+      await repository.run(
+        commit,
+        root,
+        message,
+        withOldPaths,
+        paths.filter((path) => untracked.has(path)),
+      );
+      return null;
+    },
   });
 }

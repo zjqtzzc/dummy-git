@@ -8,7 +8,14 @@ import {
   ResponseKind,
 } from "@dummy-git/shared";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { cli, fixtures } from "../../__tests__/support.js";
+import {
+  cleanupTempRepos,
+  cli,
+  fixtures,
+  git,
+  makeTempRepo,
+  plainLocation,
+} from "../../__tests__/support.js";
 import { Repository } from "../../core/repository.js";
 import { getRepositoryLocation } from "../../git/commands/index.js";
 import { createHandlers, type HandlerUi } from "../handlers.js";
@@ -232,5 +239,22 @@ describe("闭环：仓库变了 → 广播到面板", () => {
 
     expect(sent).toHaveLength(0);
     repository.dispose();
+  });
+});
+
+describe("handlers.commit", () => {
+  afterAll(cleanupTempRepos);
+
+  it("改名：只勾新路径，旧路径的删除也一起提交，不剩下一个 D", async () => {
+    const path = makeTempRepo("commit-rename");
+    git(path, ["mv", "f1", "renamed"]);
+    const repository = new Repository(plainLocation(path), cli);
+    await createHandlers(repository, NO_UI).commit({
+      repo: path,
+      message: "rename",
+      paths: ["renamed"],
+    });
+    repository.dispose();
+    expect(git(path, ["status", "--porcelain"]).trim()).toBe("");
   });
 });

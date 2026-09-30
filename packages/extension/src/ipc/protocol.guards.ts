@@ -127,6 +127,18 @@ const PARAM_GUARDS = {
     const repo = raw["repo"];
     return typeof repo === "string" ? { repo } : undefined;
   },
+  commit: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const message = raw["message"];
+    const paths = asStringArray(raw["paths"]);
+    // 空列表会让 `commit --only` 提交整个暂存区：在这里拒绝。
+    return typeof repo === "string" &&
+      typeof message === "string" &&
+      paths !== undefined &&
+      paths.length > 0
+      ? { repo, message, paths }
+      : undefined;
+  },
 } satisfies { [K in CommandName]: (raw: Record<string, unknown>) => CommandParams<K> | undefined };
 
 /** 命令名是不是协议表里的。**这是「不存在游离命令」在运行时的那一半。** */

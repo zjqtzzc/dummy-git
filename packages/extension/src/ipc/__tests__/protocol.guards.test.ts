@@ -25,3 +25,14 @@ describe("openDiff 的参数校验：两边会拼进 git 命令行，深验", ()
     expect(parseParams("openDiff", raw)).toBeUndefined();
   });
 });
+
+describe("commit 的参数校验", () => {
+  it("合法参数原样通过", () => {
+    const raw = { repo: "/r", message: "msg", paths: ["a.ts"] };
+    expect(parseParams("commit", raw)).toEqual(raw);
+  });
+
+  it("拒绝空的路径列表：commit --only 不带路径会提交整个暂存区", () => {
+    expect(parseParams("commit", { repo: "/r", message: "msg", paths: [] })).toBeUndefined();
+  });
+});
