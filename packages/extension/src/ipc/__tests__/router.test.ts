@@ -2,13 +2,13 @@ import {
   type Commit,
   type CommitFileChange,
   type CommitSkeleton,
-  type FileChange,
   GitDomain,
   GitErrorCode,
   MessageKind,
   type OutboundMessage,
   type Ref,
   ResponseKind,
+  type StatusSnapshot,
 } from "@dummy-git/shared";
 import { describe, expect, it, vi } from "vitest";
 import { GitFailureError } from "../../git/failure.js";
@@ -30,7 +30,7 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     getRefs: async (): Promise<Ref[]> => [],
     openDiff: async (): Promise<null> => null,
     getCommitFiles: async (): Promise<CommitFileChange[]> => [],
-    getStatus: async (): Promise<FileChange[]> => [],
+    getStatus: async (): Promise<StatusSnapshot> => ({ changes: [] }),
     ...overrides,
   });
 }
@@ -278,7 +278,7 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
         },
         getStatus: async () => {
           ran = true;
-          return [];
+          return { changes: [] };
         },
       }),
     );

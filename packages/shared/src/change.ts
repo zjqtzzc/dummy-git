@@ -86,6 +86,18 @@ export type FileChange =
     };
 
 /**
+ * 一次 `git status` 的结果：HEAD 在哪条提交上，加上工作区的改动。
+ *
+ * HEAD 与改动来自同一次调用，两者一定对得上。Commit 面板打开 diff 时左边要 HEAD 的完整 hash
+ * （历史版本的 URI 必须是完整 hash，内容才永远不变）。
+ */
+export interface StatusSnapshot {
+  /** HEAD 的完整 hash。还没有任何提交的仓库没有 HEAD，缺席。 */
+  readonly head?: string;
+  readonly changes: FileChange[];
+}
+
+/**
  * **一条提交里**改动的一个文件。`git log --name-status` 的解析结果。
  *
  * ## 为什么不复用上面的 `FileChange`

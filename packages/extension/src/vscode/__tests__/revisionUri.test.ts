@@ -1,11 +1,11 @@
-import { type DiffSide, DiffSideKind } from "@dummy-git/shared";
+import { DiffSideKind } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
-import { parseRevisionUri, toRevisionUri } from "../revisionUri.js";
+import { parseRevisionUri, type RevisionSide, toRevisionUri } from "../revisionUri.js";
 
 const HASH = "9c487b97".padEnd(40, "0");
 
 describe("revisionUri：一边 ↔ URI", () => {
-  it.each<[string, DiffSide]>([
+  it.each<[string, RevisionSide]>([
     ["某个提交里的文件", { kind: DiffSideKind.Revision, hash: HASH, path: "src/a.ts" }],
     ["不存在", { kind: DiffSideKind.Missing, path: "src/a.ts" }],
     ["中文与空格路径", { kind: DiffSideKind.Revision, hash: HASH, path: "文档/说 明.md" }],

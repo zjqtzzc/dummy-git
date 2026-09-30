@@ -32,7 +32,13 @@
  * 上次变异确认结果见文件末尾。
  */
 
-import type { Commit, CommitFileChange, CommitSkeleton, FileChange, Ref } from "@dummy-git/shared";
+import type {
+  Commit,
+  CommitFileChange,
+  CommitSkeleton,
+  Ref,
+  StatusSnapshot,
+} from "@dummy-git/shared";
 import { defineHandlers } from "../router.js";
 
 /** 类型正确的空实现。用它们把「参数/返回值写错」这个错误来源排除掉。 */
@@ -42,7 +48,7 @@ const filesStub = async (): Promise<CommitFileChange[]> => [];
 const reposStub = async (): Promise<readonly string[]> => [];
 const refsStub = async (): Promise<Ref[]> => [];
 const openDiffStub = async (): Promise<null> => null;
-const statusStub = async (): Promise<FileChange[]> => [];
+const statusStub = async (): Promise<StatusSnapshot> => ({ changes: [] });
 
 /** 基线：三条齐全、类型正确 —— 必须编译通过，否则下面两条的对照失去意义。 */
 export const _baseline = defineHandlers({

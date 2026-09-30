@@ -1,4 +1,5 @@
-import { assertNever, DiffOpenMode, type DiffSide } from "@dummy-git/shared";
+import { join } from "node:path";
+import { assertNever, DiffOpenMode, type DiffSide, DiffSideKind } from "@dummy-git/shared";
 import * as vscode from "vscode";
 import { diffTitle } from "./diffTitle.js";
 import { REVISION_SCHEME, toRevisionUri } from "./revisionUri.js";
@@ -46,6 +47,16 @@ export async function openDiff(
 }
 
 function toUri(root: string, side: DiffSide): vscode.Uri {
-  const { fsPath, query } = toRevisionUri(root, side);
-  return vscode.Uri.file(fsPath).with({ scheme: REVISION_SCHEME, query });
+  switch (side.kind) {
+    // 真实文件：diff 里能直接编辑保存。
+    case DiffSideKind.WorkingTree:
+      return vscode.Uri.file(join(root, ...side.path.split("/")));
+    case DiffSideKind.Revision:
+    case DiffSideKind.Missing: {
+      const { fsPath, query } = toRevisionUri(root, side);
+      return vscode.Uri.file(fsPath).with({ scheme: REVISION_SCHEME, query });
+    }
+    default:
+      return assertNever(side, "toUri");
+  }
 }

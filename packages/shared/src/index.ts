@@ -5,6 +5,7 @@ export {
   ConflictKind,
   type FileChange,
   FileStatus,
+  type StatusSnapshot,
 } from "./change.js";
 export type { Commit, CommitSkeleton, Signature } from "./commit.js";
 export { DiffOpenMode, type DiffSide, DiffSideKind } from "./diff.js";

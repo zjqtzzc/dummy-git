@@ -1,4 +1,4 @@
-import type { FileChange } from "@dummy-git/shared";
+import type { StatusSnapshot } from "@dummy-git/shared";
 import { runRaw } from "../failure.js";
 import { parseStatus, STATUS_ENV, statusArgs } from "../parsers/status.js";
 import type { GitCommand } from "./command.js";
@@ -31,7 +31,7 @@ import { LockPolicy } from "./lock.js";
  *
  * ⚠️ 删掉 `STATUS_ENV` 不会报任何错，只会让刷新回路悄悄回来。
  */
-export const getStatus: GitCommand<[repository: string], FileChange[]> = {
+export const getStatus: GitCommand<[repository: string], StatusSnapshot> = {
   // 靠 STATUS_ENV 保证不写 index，才敢标 None——两者是绑定的，见上。
   lock: LockPolicy.None,
 

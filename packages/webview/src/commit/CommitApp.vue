@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import { GitDomain } from "@dummy-git/shared";
+import { type DiffOpenMode, GitDomain } from "@dummy-git/shared";
 import { computed, onMounted, ref } from "vue";
 import { type Client, report } from "../logic/client.js";
-import { type WorkingFile, workingFiles, workingGroups } from "../logic/commit/workingChanges.js";
-import { keepChecked } from "../logic/tree/fileTree.js";
+import {
+  type WorkingFile,
+  workingDiffSides,
+  workingFiles,
+  workingGroups,
+} from "../logic/commit/workingChanges.js";
+import { type FileEntry, keepChecked } from "../logic/tree/fileTree.js";
 import FileTree from "../tree/FileTree.vue";
 import { viewState } from "../vscodeApi.js";
 
@@ -15,6 +20,9 @@ import { viewState } from "../vscodeApi.js";
  */
 const props = defineProps<{ client: Client }>();
 
+const repo = ref<string>();
+/** HEAD 的完整 hash，diff 左边用。还没有任何提交时缺席。 */
+const head = ref<string>();
 const files = ref<WorkingFile[]>([]);
 const loaded = ref(false);
 const groups = computed(() => workingGroups(files.value));
@@ -47,11 +55,24 @@ let latest = 0;
 async function load(repo: string): Promise<void> {
   const mine = ++latest;
   try {
-    const changes = await props.client.request("getStatus", { repo });
+    const status = await props.client.request("getStatus", { repo });
     if (mine !== latest) return;
-    files.value = workingFiles(changes);
+    head.value = status.head;
+    files.value = workingFiles(status.changes);
     setChecked(keepChecked(checked.value, groups.value));
     loaded.value = true;
+  } catch (cause) {
+    report(cause);
+  }
+}
+
+/** 双击或回车打开，单击或上下键跟随（由 `mode` 区分）。 */
+async function openFile(entry: FileEntry, mode: DiffOpenMode): Promise<void> {
+  const file = files.value.find((f) => f.path === entry.path);
+  if (repo.value === undefined || file === undefined) return;
+  const { left, right } = workingDiffSides(head.value, file);
+  try {
+    await props.client.request("openDiff", { repo: repo.value, left, right, mode });
   } catch (cause) {
     report(cause);
   }
@@ -63,9 +84,12 @@ onMounted(async () => {
     const roots = await props.client.request("getRepositories", {});
     const first = roots[0];
     if (first === undefined) return;
-    // 工作区与暂存区的变化都归 worktree 域（提交、切分支也会带上它）。
+    repo.value = first;
+    // 工作区与暂存区的变化归 worktree 域；HEAD 移动归 refs 域（diff 左边要跟着换）。
     props.client.onDomainsChanged((_changed, domains) => {
-      if (domains.includes(GitDomain.Worktree)) void load(first);
+      if (domains.includes(GitDomain.Worktree) || domains.includes(GitDomain.Refs)) {
+        void load(first);
+      }
     });
     await load(first);
   } catch (cause) {
@@ -91,7 +115,7 @@ onMounted(async () => {
     <div class="files">
       <p v-if="!loaded" class="dim note">Loading…</p>
       <p v-else-if="files.length === 0" class="dim note">No changes</p>
-      <FileTree v-else :groups="groups" :checked="checked" @check="onCheck" />
+      <FileTree v-else :groups="groups" :checked="checked" @check="onCheck" @open="openFile" />
     </div>
 
     <div class="footer">

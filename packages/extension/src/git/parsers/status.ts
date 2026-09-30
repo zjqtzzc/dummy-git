@@ -5,7 +5,13 @@
  * v2 每条记录的第一个字段就是记录类型，而 `FileChange` 正是「用 `kind` 区分形态」
  * 的结构——**git 直接把 `kind` 给了我们**，不必从 `XY` 的值里猜。
  */
-import { ChangeKind, ConflictKind, type FileChange, FileStatus } from "@dummy-git/shared";
+import {
+  ChangeKind,
+  ConflictKind,
+  type FileChange,
+  FileStatus,
+  type StatusSnapshot,
+} from "@dummy-git/shared";
 import { GitParseError } from "./errors.js";
 import { decode, type Range, split } from "./scan.js";
 
@@ -22,6 +28,14 @@ const ORDINARY = "1";
 const RENAMED = "2";
 const UNMERGED = "u";
 const UNTRACKED = "?";
+/**
+ * `--branch` 带来的头部行，以 `# ` 开头。只读 `branch.oid`（HEAD 的 hash），
+ * 其余（分支名、上游、领先落后）现在没人用，跳过。
+ */
+const HEADER = "#";
+const HEAD_OID = "# branch.oid ";
+/** 还没有任何提交时 `branch.oid` 的值。 */
+const INITIAL = "(initial)";
 
 /** 路径之前有多少个空格分隔的字段（含记录类型本身）。路径可能含空格，所以必须按个数切。 */
 const HEAD_FIELDS = {
@@ -71,7 +85,8 @@ const CONFLICT_BY_XY: Readonly<Record<string, ConflictKind>> = {
 
 export function statusArgs(): string[] {
   // -uall：未跟踪文件逐个列出，不折叠成目录（FEATURES §3.1 明确要求）。
-  return ["status", "--porcelain=v2", "-z", "-uall"];
+  // --branch：顺带给出 HEAD 的 hash，与改动来自同一次调用。
+  return ["status", "--porcelain=v2", "--branch", "-z", "-uall"];
 }
 
 /**
@@ -104,8 +119,9 @@ function splitHead(buf: Buffer, record: Range, count: number): { fields: string[
   return { fields, path: decode(buf, { start: cursor, end: record.end }) };
 }
 
-export function parseStatus(stdout: Buffer): FileChange[] {
+export function parseStatus(stdout: Buffer): StatusSnapshot {
   const changes: FileChange[] = [];
+  let head: string | undefined;
   const records = split(stdout, NUL);
 
   for (let index = 0; index < records.length; index++) {
@@ -122,6 +138,14 @@ export function parseStatus(stdout: Buffer): FileChange[] {
       });
 
     const kind = decode(stdout, { start: record.start, end: record.start + 1 });
+    if (kind === HEADER) {
+      const line = decode(stdout, record);
+      if (line.startsWith(HEAD_OID)) {
+        const oid = line.slice(HEAD_OID.length);
+        if (oid !== INITIAL) head = oid;
+      }
+      continue;
+    }
     if (kind !== ORDINARY && kind !== RENAMED && kind !== UNMERGED && kind !== UNTRACKED) {
       throw fail(`未知的记录类型 ${JSON.stringify(kind)}`);
     }
@@ -180,5 +204,5 @@ export function parseStatus(stdout: Buffer): FileChange[] {
     });
   }
 
-  return changes;
+  return head === undefined ? { changes } : { head, changes };
 }

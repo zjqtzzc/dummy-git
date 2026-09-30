@@ -1,4 +1,11 @@
-import { assertNever, ChangeKind, type FileChange, FileStatus } from "@dummy-git/shared";
+import {
+  assertNever,
+  ChangeKind,
+  type DiffSide,
+  DiffSideKind,
+  type FileChange,
+  FileStatus,
+} from "@dummy-git/shared";
 import type { FileEntry, FileGroup } from "../tree/fileTree.js";
 
 /**
@@ -131,4 +138,34 @@ export function workingGroups(files: readonly WorkingFile[]): FileGroup[] {
     { id: "changes", label: "Changes", entries: tracked.map(toEntry) },
     { id: "unversioned", label: "Unversioned Files", entries: untracked.map(toEntry) },
   ];
+}
+
+/**
+ * 双击打开的 diff（`.notes/design/phase-2.md` 第二节第 10 条）：左边 HEAD 版本，右边工作区里的真实文件
+ * （能直接编辑）。新增、未跟踪的左边空；删除的右边空；改名的左边用 HEAD 里的旧路径。
+ * `head` 缺席（还没有任何提交）时左边一律空。
+ */
+export function workingDiffSides(
+  head: string | undefined,
+  file: WorkingFile,
+): { readonly left: DiffSide; readonly right: DiffSide } {
+  const inHead = (path: string): DiffSide =>
+    head === undefined
+      ? { kind: DiffSideKind.Missing, path }
+      : { kind: DiffSideKind.Revision, hash: head, path };
+  const missing: DiffSide = { kind: DiffSideKind.Missing, path: file.path };
+  const working: DiffSide = { kind: DiffSideKind.WorkingTree, path: file.path };
+  switch (file.status) {
+    case WorkingStatus.Added:
+    case WorkingStatus.Untracked:
+      return { left: missing, right: working };
+    case WorkingStatus.Deleted:
+      return { left: inHead(file.path), right: missing };
+    case WorkingStatus.Renamed:
+      return { left: inHead(file.oldPath ?? file.path), right: working };
+    case WorkingStatus.Modified:
+      return { left: inHead(file.path), right: working };
+    default:
+      return assertNever(file.status, "workingDiffSides");
+  }
 }

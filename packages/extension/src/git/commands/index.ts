@@ -15,7 +15,7 @@
  * | 命令 | 执行的 git | 较新的特性 | 要求 |
  * |---|---|---|---|
  * | `getRepositoryLocation` | `rev-parse --show-toplevel --absolute-git-dir --git-common-dir` | `--absolute-git-dir` | 2.13 |
- * | `getStatus` | `status --porcelain=v2 -z -uall`，环境 `GIT_OPTIONAL_LOCKS=0` | `--porcelain=v2`；`GIT_OPTIONAL_LOCKS` | 2.11；2.15 |
+ * | `getStatus` | `status --porcelain=v2 --branch -z -uall`，环境 `GIT_OPTIONAL_LOCKS=0` | `--porcelain=v2`；`GIT_OPTIONAL_LOCKS` | 2.11；2.15 |
  * | `checkIgnore` | `check-ignore -z --stdin` | — | — |
  * | `commit` | `commit --only -F - -- <路径…>` | — | — |
  * | `getSkeleton` | `-c log.showSignature=false log --format=… --max-count=10000 HEAD --branches --remotes --tags --date-order` | — | — |

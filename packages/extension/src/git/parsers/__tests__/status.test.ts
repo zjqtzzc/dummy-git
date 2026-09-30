@@ -13,8 +13,22 @@ import { parseStatus, STATUS_ENV, statusArgs } from "../status.js";
 
 async function statusOf(repo: string): Promise<FileChange[]> {
   const r = await cli.execRaw(statusArgs(), { cwd: repo, env: STATUS_ENV });
-  return parseStatus(r.stdout);
+  return parseStatus(r.stdout).changes;
 }
+
+describe("parseStatus：HEAD（--branch 的头部行）", () => {
+  it("有提交：给出 HEAD 的完整 hash", async () => {
+    const r = await cli.execRaw(statusArgs(), { cwd: fixtures.detached, env: STATUS_ENV });
+    expect(parseStatus(r.stdout).head).toMatch(/^[0-9a-f]{40}$/);
+  });
+
+  it("还没有任何提交：没有 HEAD，不报错", () => {
+    const out = Buffer.from("# branch.oid (initial)\0# branch.head main\0? new.txt\0");
+    expect(parseStatus(out)).toEqual({
+      changes: [{ kind: ChangeKind.Untracked, path: "new.txt" }],
+    });
+  });
+});
 
 describe("parseStatus：冲突", () => {
   let changes: FileChange[];

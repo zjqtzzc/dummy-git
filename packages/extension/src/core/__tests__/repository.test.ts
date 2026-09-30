@@ -28,7 +28,7 @@ describe("Repository：跑命令", () => {
     const path = makeTempRepo("repo-run");
     const repo = new Repository(plainLocation(path), cli);
     writeFileSync(join(path, "f1"), "changed\n");
-    const changes = await repo.run(getStatus, path);
+    const { changes } = await repo.run(getStatus, path);
     expect(changes.length).toBeGreaterThan(0);
   });
 

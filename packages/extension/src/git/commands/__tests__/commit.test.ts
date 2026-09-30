@@ -52,7 +52,7 @@ describe("getStatus：命令层为它传了 GIT_OPTIONAL_LOCKS=0", () => {
   it("跨 M2→M3→M5 的欠条已兑现", async () => {
     const repo = makeTempRepo("locks-env");
     writeFileSync(join(repo, "f1"), "changed\n");
-    const changes = await getStatus.execute(cli, repo);
+    const { changes } = await getStatus.execute(cli, repo);
     expect(changes.length).toBeGreaterThan(0);
   });
 });

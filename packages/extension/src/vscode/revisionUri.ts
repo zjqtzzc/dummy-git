@@ -24,6 +24,12 @@ import { relativeTo } from "./relativePath.js";
  */
 export const REVISION_SCHEME = "dummygit";
 
+/** 由我们提供内容的两种边。工作区文件用普通 `file:` URI，不经过这里。 */
+export type RevisionSide = Extract<
+  DiffSide,
+  { kind: DiffSideKind.Revision | DiffSideKind.Missing }
+>;
+
 /** 查询部分的字样。改它等于让用户已开着的标签失效。 */
 const REV_KEY = "rev";
 const EMPTY_QUERY = "empty";
@@ -34,7 +40,7 @@ const FULL_HASH = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 /** 一边 → URI 的两部分。`root` 是仓库根的绝对路径。 */
 export function toRevisionUri(
   root: string,
-  side: DiffSide,
+  side: RevisionSide,
 ): { readonly fsPath: string; readonly query: string } {
   const fsPath = join(root, ...side.path.split("/"));
   switch (side.kind) {
@@ -56,7 +62,7 @@ export function parseRevisionUri(
   root: string,
   fsPath: string,
   query: string,
-): DiffSide | undefined {
+): RevisionSide | undefined {
   const path = relativeTo(root, fsPath);
   if (path === undefined || path === "") return undefined;
 

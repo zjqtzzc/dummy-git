@@ -1,6 +1,12 @@
-import { ChangeKind, ConflictKind, type FileChange, FileStatus } from "@dummy-git/shared";
+import {
+  ChangeKind,
+  ConflictKind,
+  DiffSideKind,
+  type FileChange,
+  FileStatus,
+} from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
-import { WorkingStatus, workingFiles, workingGroups } from "../workingChanges.js";
+import { WorkingStatus, workingDiffSides, workingFiles, workingGroups } from "../workingChanges.js";
 
 const tracked = (
   path: string,
@@ -72,5 +78,33 @@ describe("workingGroups", () => {
       ["Changes", ["M a.ts"]],
       ["Unversioned Files", ["U new.txt"]],
     ]);
+  });
+});
+
+describe("workingDiffSides：左 HEAD，右工作区文件", () => {
+  const H = "h".repeat(40);
+  const head = (path: string) => ({ kind: DiffSideKind.Revision, hash: H, path });
+  const working = (path: string) => ({ kind: DiffSideKind.WorkingTree, path });
+  const missing = (path: string) => ({ kind: DiffSideKind.Missing, path });
+
+  it.each([
+    ["修改", WorkingStatus.Modified, head("a.ts"), working("a.ts")],
+    ["新增", WorkingStatus.Added, missing("a.ts"), working("a.ts")],
+    ["未跟踪", WorkingStatus.Untracked, missing("a.ts"), working("a.ts")],
+    ["删除", WorkingStatus.Deleted, head("a.ts"), missing("a.ts")],
+  ])("%s", (_name, status, left, right) => {
+    expect(workingDiffSides(H, { path: "a.ts", status })).toEqual({ left, right });
+  });
+
+  it("改名：左边用 HEAD 里的旧路径", () => {
+    expect(
+      workingDiffSides(H, { path: "b.ts", oldPath: "a.ts", status: WorkingStatus.Renamed }).left,
+    ).toEqual(head("a.ts"));
+  });
+
+  it("还没有任何提交：左边空", () => {
+    expect(
+      workingDiffSides(undefined, { path: "a.ts", status: WorkingStatus.Modified }).left,
+    ).toEqual(missing("a.ts"));
   });
 });

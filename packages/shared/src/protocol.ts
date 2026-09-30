@@ -1,4 +1,4 @@
-import type { CommitFileChange, FileChange } from "./change.js";
+import type { CommitFileChange, StatusSnapshot } from "./change.js";
 import type { Commit, CommitSkeleton } from "./commit.js";
 import type { DiffOpenMode, DiffSide } from "./diff.js";
 import type { GitDomain } from "./domain.js";
@@ -101,10 +101,13 @@ export interface Commands {
     params: { repo: string; hash: string };
     result: CommitFileChange[];
   };
-  /** 工作区的未提交改动（含未跟踪），Commit 面板用。暂存区与工作区两列都给，由界面合成。 */
+  /**
+   * 工作区的未提交改动（含未跟踪），加上 HEAD 的 hash，Commit 面板用。
+   * 暂存区与工作区两列都给，由界面合成。
+   */
   getStatus: {
     params: { repo: string };
-    result: FileChange[];
+    result: StatusSnapshot;
   };
 }
 

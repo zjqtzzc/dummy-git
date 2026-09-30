@@ -56,6 +56,8 @@ function asDiffSide(value: unknown): DiffSide | undefined {
     }
     case DiffSideKind.Missing:
       return { kind: DiffSideKind.Missing, path };
+    case DiffSideKind.WorkingTree:
+      return { kind: DiffSideKind.WorkingTree, path };
     default:
       return undefined;
   }
