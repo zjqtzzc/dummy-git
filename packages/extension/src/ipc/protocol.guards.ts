@@ -139,6 +139,13 @@ const PARAM_GUARDS = {
       ? { repo, message, paths }
       : undefined;
   },
+  rollback: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const paths = asStringArray(raw["paths"]);
+    return typeof repo === "string" && paths !== undefined && paths.length > 0
+      ? { repo, paths }
+      : undefined;
+  },
   amend: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const message = raw["message"];

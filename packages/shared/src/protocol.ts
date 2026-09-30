@@ -123,6 +123,14 @@ export interface Commands {
     params: { repo: string; message: string; paths: readonly string[] };
     result: null;
   };
+  /**
+   * 勾选的已跟踪文件恢复成 HEAD 的样子。先由扩展弹确认；取消了也回 `null`。
+   * 勾选里的未跟踪文件不动。`paths` 不能为空。
+   */
+  rollback: {
+    params: { repo: string; paths: readonly string[] };
+    result: null;
+  };
 }
 
 export type CommandName = keyof Commands;

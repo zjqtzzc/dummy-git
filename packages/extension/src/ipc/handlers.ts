@@ -9,6 +9,7 @@ import {
   getRefs,
   getSkeleton,
   getStatus,
+  rollback,
 } from "../git/commands/index.js";
 import { defineHandlers, type HandlerMap } from "./router.js";
 
@@ -42,6 +43,8 @@ import { defineHandlers, type HandlerMap } from "./router.js";
  * 这样 handler 的测试能在纯 node 下跑。
  */
 export interface HandlerUi {
+  /** Rollback 前的确认：`true` 是确认。只列勾选的已跟踪文件（不含补上的旧路径）。 */
+  readonly confirmRollback: (paths: readonly string[]) => Promise<boolean>;
   readonly openDiff: (
     root: string,
     left: DiffSide,
@@ -52,13 +55,12 @@ export interface HandlerUi {
 
 export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMap {
   /**
-   * 勾选的路径 → 交给 git 的两份：要提交的路径（改名的带上旧路径——界面上只有新路径一行，
-   * 旧路径的删除要一起提交，否则剩下一个 D）、其中要先 `add` 的未跟踪文件。
+   * 按当前的 `git status` 看勾选的路径：哪些是未跟踪文件（提交前要先 `add`；Rollback 不管），
+   * 哪些是已跟踪的；`withOldPaths` 给改名的补上旧路径——界面上只有新路径一行，
+   * 旧路径那一半（删除）要一起交给 git，否则剩下一个 D。
    * 由扩展自己问 git，不信 webview 手里可能已过时的状态。
    */
-  const expand = async (
-    paths: readonly string[],
-  ): Promise<[paths: readonly string[], untracked: readonly string[]]> => {
+  const inspect = async (paths: readonly string[]) => {
     const { changes } = await repository.run(getStatus, repository.location.root);
     const untracked = new Set<string>();
     const renamedFrom = new Map<string, string>();
@@ -68,13 +70,15 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         renamedFrom.set(change.path, change.oldPath);
       }
     }
-    return [
-      paths.flatMap((path) => {
-        const old = renamedFrom.get(path);
-        return old === undefined ? [path] : [path, old];
-      }),
-      paths.filter((path) => untracked.has(path)),
-    ];
+    return {
+      untracked: paths.filter((path) => untracked.has(path)),
+      tracked: paths.filter((path) => !untracked.has(path)),
+      withOldPaths: (list: readonly string[]): string[] =>
+        list.flatMap((path) => {
+          const old = renamedFrom.get(path);
+          return old === undefined ? [path] : [path, old];
+        }),
+    };
   };
 
   return defineHandlers({
@@ -98,16 +102,32 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
     getCommitFiles: ({ hash }) => repository.run(getCommitFiles, repository.location.root, hash),
     getStatus: () => repository.run(getStatus, repository.location.root),
     commit: async ({ message, paths }) => {
-      await repository.run(commit, repository.location.root, message, ...(await expand(paths)));
+      const { untracked, withOldPaths } = await inspect(paths);
+      await repository.run(
+        commit,
+        repository.location.root,
+        message,
+        withOldPaths(paths),
+        untracked,
+      );
       return null;
     },
     amend: async ({ message, paths }) => {
+      const { untracked, withOldPaths } = await inspect(paths);
       await repository.run(
         amendCommit,
         repository.location.root,
         message,
-        ...(await expand(paths)),
+        withOldPaths(paths),
+        untracked,
       );
+      return null;
+    },
+    rollback: async ({ paths }) => {
+      // 未跟踪文件不归 Rollback 管（第 7 阶段右键 Delete）。一个已跟踪的都没有就什么都不做。
+      const { tracked, withOldPaths } = await inspect(paths);
+      if (tracked.length === 0 || !(await ui.confirmRollback(tracked))) return null;
+      await repository.run(rollback, repository.location.root, withOldPaths(tracked));
       return null;
     },
   });

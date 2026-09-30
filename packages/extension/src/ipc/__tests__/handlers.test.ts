@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   DiffOpenMode,
   type DiffSide,
@@ -22,6 +24,7 @@ import { createHandlers, type HandlerUi } from "../handlers.js";
 
 /** 不涉及界面的测试用它：真调到就说明测错了东西。 */
 const NO_UI: HandlerUi = {
+  confirmRollback: () => Promise.reject(new Error("测试里不该弹确认")),
   openDiff: () => Promise.reject(new Error("测试里不该打开 diff")),
 };
 
@@ -114,6 +117,7 @@ describe("handlers：协议接到真仓库上", () => {
   it("openDiff：把仓库根和左右两边原样交给界面", async () => {
     const calls: unknown[][] = [];
     const ui: HandlerUi = {
+      ...NO_UI,
       openDiff: async (...args) => {
         calls.push(args);
       },
@@ -256,5 +260,39 @@ describe("handlers.commit", () => {
     });
     repository.dispose();
     expect(git(path, ["status", "--porcelain"]).trim()).toBe("");
+  });
+});
+
+describe("handlers.rollback", () => {
+  afterAll(cleanupTempRepos);
+
+  it("未跟踪文件不动；确认后已跟踪的恢复（改名带上旧路径）", async () => {
+    const path = makeTempRepo("rollback-handler");
+    git(path, ["mv", "f1", "renamed"]);
+    writeFileSync(join(path, "untracked.txt"), "keep\n");
+    const asked: (readonly string[])[] = [];
+    const repository = new Repository(plainLocation(path), cli);
+    await createHandlers(repository, {
+      ...NO_UI,
+      confirmRollback: async (paths) => {
+        asked.push(paths);
+        return true;
+      },
+    }).rollback({ repo: path, paths: ["renamed", "untracked.txt"] });
+    repository.dispose();
+    expect(asked).toEqual([["renamed"]]);
+    expect(git(path, ["status", "--porcelain"]).trim()).toBe("?? untracked.txt");
+  });
+
+  it("取消确认：什么都不做", async () => {
+    const path = makeTempRepo("rollback-cancel");
+    writeFileSync(join(path, "f1"), "changed\n");
+    const repository = new Repository(plainLocation(path), cli);
+    await createHandlers(repository, { ...NO_UI, confirmRollback: async () => false }).rollback({
+      repo: path,
+      paths: ["f1"],
+    });
+    repository.dispose();
+    expect(git(path, ["status", "--porcelain"]).trim()).toBe("M f1");
   });
 });

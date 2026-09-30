@@ -3,6 +3,7 @@ import { Repository } from "./core/repository.js";
 import { GitCli } from "./git/cli.js";
 import { createHandlers } from "./ipc/handlers.js";
 import { Router, type Transport } from "./ipc/router.js";
+import { confirmRollback } from "./vscode/confirm.js";
 import { openDiff } from "./vscode/diff.js";
 import { ErrorGate } from "./vscode/errorGate.js";
 import { resolveGitPath } from "./vscode/gitPath.js";
@@ -38,7 +39,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
   // 一次展开配一个 Router。收起再展开，握手会带来新代号，上一代的回复自动作废。
   const createRouter = (repository: Repository, transport: Transport): Router =>
-    new Router(transport, createHandlers(repository, { openDiff }), {
+    new Router(transport, createHandlers(repository, { confirmRollback, openDiff }), {
       log: (line) => channel.appendLine(line),
       report: (error) => errors.report(error),
     });

@@ -7,6 +7,7 @@ import { type Client, report } from "../logic/client.js";
 import { commitMessage, isBlankMessage } from "../logic/commit/message.js";
 import {
   type WorkingFile,
+  WorkingStatus,
   workingDiffSides,
   workingFiles,
   workingGroups,
@@ -112,13 +113,16 @@ async function onAmendChange(event: Event): Promise<void> {
 
 /** 正在提交：按钮置灰、文字变 `Committing…`，防重复点击。 */
 const committing = ref(false);
+/** 正在 Rollback。提交与 Rollback 进行中，两个按钮都置灰（第二节第 12 条）。 */
+const rollingBack = ref(false);
+const busy = computed(() => committing.value || rollingBack.value);
 /**
  * 说明为空（只有空白也算）不能提交；普通提交还要至少勾一个文件，
  * Amend 不勾文件也行（只改说明）。
  */
 const canCommit = computed(
   () =>
-    !committing.value &&
+    !busy.value &&
     !isBlankMessage(message.value) &&
     (amend.value || checked.value.size > 0),
 );
@@ -145,6 +149,29 @@ async function submit(): Promise<void> {
     report(cause);
   } finally {
     committing.value = false;
+  }
+}
+
+/**
+ * Rollback 只管已跟踪的改动：勾选里一个已跟踪文件都没有时置灰（第二节第 9 条）。
+ * 未跟踪文件用第 7 阶段右键菜单的 Delete。
+ */
+const canRollback = computed(
+  () =>
+    !busy.value &&
+    files.value.some((file) => file.status !== WorkingStatus.Untracked && checked.value.has(file.path)),
+);
+
+/** 确认框由扩展弹；勾选里的未跟踪文件扩展会跳过。失败由错误关口报。 */
+async function rollbackChecked(): Promise<void> {
+  if (repo.value === undefined || !canRollback.value) return;
+  rollingBack.value = true;
+  try {
+    await props.client.request("rollback", { repo: repo.value, paths: [...checked.value] });
+  } catch (cause) {
+    report(cause);
+  } finally {
+    rollingBack.value = false;
   }
 }
 
@@ -215,7 +242,12 @@ onMounted(async () => {
     </div>
 
     <vscode-toolbar-container class="toolbar">
-      <vscode-toolbar-button icon="discard" label="Rollback" />
+      <vscode-toolbar-button
+        icon="discard"
+        label="Rollback"
+        :class="{ disabled: !canRollback }"
+        @click="rollbackChecked"
+      />
       <!-- 没有改动时置灰（第二节第 13 条）。这个按钮组件没有 disabled，用样式表示。 -->
       <vscode-toolbar-button
         icon="expand-all"
