@@ -301,7 +301,6 @@ onMounted(async () => {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--vscode-sideBar-background);
 }
 .modes {
   display: flex;

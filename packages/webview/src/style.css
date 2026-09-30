@@ -4,13 +4,17 @@
   src: url("./seti/seti.woff") format("woff");
 }
 
-/* 全部用 VSCode 的主题变量，不写死颜色——否则换个主题就看不见了。 */
+/*
+ * 全部用 VSCode 的主题变量，不写死颜色——否则换个主题就看不见了。
+ * - 不设背景：VS Code 默认让 body 透明，透出所在容器自己的背景（侧栏、底部面板各不相同）。
+ * - VS Code 注入的默认样式里有 `body { padding: 0 20px }`，不去掉的话左右各空 20px。
+ */
 body {
   margin: 0;
+  padding: 0;
   font-family: var(--vscode-font-family);
   font-size: var(--vscode-font-size);
   color: var(--vscode-foreground);
-  background: var(--vscode-editor-background);
 }
 .layout {
   height: 100vh;
