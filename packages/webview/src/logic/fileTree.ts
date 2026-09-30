@@ -1,12 +1,25 @@
-import type { CommitFileChange } from "@dummy-git/shared";
-
 /**
- * 右栏文件树（`.notes/design/phase-1.md` 第 5 条）：一条提交改了的文件整理成树。
+ * 所有文件树共用的整理逻辑（`.notes/design/phase-2.md` 第一节）：一组文件整理成树。
  *
  * - 只有一个子目录、自己没有文件的目录链合并成一行（`apps/rgv_calib_parser`）。
  * - 目录带「下面一共几个文件」。
  * - 目录在前、文件在后，各按名字排序。
  */
+/**
+ * 文件树里的一个文件。各使用方把自己的数据转成它，并各自持有「改动类型 → 字母 / 颜色」表；
+ * 树只认它。
+ */
+export interface FileEntry {
+  /** 相对仓库根、`/` 分隔。 */
+  readonly path: string;
+  /** 改名 / 复制前的路径；其余缺席。 */
+  readonly oldPath?: string;
+  /** 右侧的改动字母，比如 `M`。 */
+  readonly letter: string;
+  /** 文件名与字母的颜色，CSS 颜色值。 */
+  readonly color: string;
+}
+
 export enum FileNodeKind {
   Folder = "folder",
   File = "file",
@@ -31,18 +44,18 @@ export type FileNode =
       readonly label: string;
       /** 改名 / 复制时：同一目录写旧文件名，换了目录写旧的完整路径；其余缺席。 */
       readonly renamedFrom?: string;
-      readonly change: CommitFileChange;
+      readonly entry: FileEntry;
     };
 
 interface Draft {
   readonly folders: Map<string, Draft>;
-  readonly files: CommitFileChange[];
+  readonly files: FileEntry[];
 }
 
-export function buildFileTree(changes: readonly CommitFileChange[]): readonly FileNode[] {
+export function buildFileTree(entries: readonly FileEntry[]): readonly FileNode[] {
   const root: Draft = { folders: new Map(), files: [] };
-  for (const change of changes) {
-    const parts = change.path.split("/");
+  for (const entry of entries) {
+    const parts = entry.path.split("/");
     let draft = root;
     for (const part of parts.slice(0, -1)) {
       let next = draft.folders.get(part);
@@ -52,7 +65,7 @@ export function buildFileTree(changes: readonly CommitFileChange[]): readonly Fi
       }
       draft = next;
     }
-    draft.files.push(change);
+    draft.files.push(entry);
   }
   return toNodes(root, "");
 }
@@ -92,12 +105,12 @@ function countFiles(draft: Draft): number {
   return count;
 }
 
-function toFile(change: CommitFileChange): FileNode {
-  const label = basename(change.path);
-  const base = { kind: FileNodeKind.File, id: change.path, label, change } as const;
-  if (change.oldPath === undefined) return base;
-  const sameFolder = dirname(change.oldPath) === dirname(change.path);
-  return { ...base, renamedFrom: sameFolder ? basename(change.oldPath) : change.oldPath };
+function toFile(entry: FileEntry): FileNode {
+  const label = basename(entry.path);
+  const base = { kind: FileNodeKind.File, id: entry.path, label, entry } as const;
+  if (entry.oldPath === undefined) return base;
+  const sameFolder = dirname(entry.oldPath) === dirname(entry.path);
+  return { ...base, renamedFrom: sameFolder ? basename(entry.oldPath) : entry.oldPath };
 }
 
 function basename(path: string): string {

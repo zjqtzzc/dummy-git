@@ -1,8 +1,7 @@
-import { type CommitFileChange, FileStatus } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
-import { buildFileTree, type FileNode, FileNodeKind } from "../fileTree.js";
+import { buildFileTree, type FileEntry, type FileNode, FileNodeKind } from "../fileTree.js";
 
-const m = (path: string): CommitFileChange => ({ path, status: FileStatus.Modified });
+const m = (path: string): FileEntry => ({ path, letter: "M", color: "red" });
 
 /** 树 → 缩进文本。目录写 `名字/ (N)`，改名写 `← 旧名`。 */
 function outline(nodes: readonly FileNode[], depth = 0): string[] {
@@ -45,8 +44,8 @@ describe("buildFileTree", () => {
 
   it("改名：同一目录写旧文件名，换了目录写旧的完整路径", () => {
     const tree = buildFileTree([
-      { path: "d/new.ts", oldPath: "d/old.ts", status: FileStatus.Renamed },
-      { path: "e/moved.ts", oldPath: "f/moved.ts", status: FileStatus.Renamed },
+      { ...m("d/new.ts"), oldPath: "d/old.ts" },
+      { ...m("e/moved.ts"), oldPath: "f/moved.ts" },
     ]);
     expect(outline(tree)).toEqual([
       "d/ (1)",

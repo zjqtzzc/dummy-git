@@ -1,34 +1,10 @@
 <script setup lang="ts">
-import { FileStatus } from "@dummy-git/shared";
 import { computed } from "vue";
 import { type FileNode, FileNodeKind } from "./logic/fileTree.js";
 import { setiIcon } from "./logic/setiIcon.js";
 
 /** 文件树的一个节点，递归画出子节点。 */
 const props = defineProps<{ node: FileNode; light: boolean }>();
-
-/** 改动类型 → 右侧字母与 git 装饰色（与资源管理器、源代码管理的配色一致）。 */
-const STATUS: Readonly<Record<FileStatus, { readonly letter: string; readonly color: string }>> = {
-  [FileStatus.Unchanged]: { letter: "", color: "inherit" },
-  [FileStatus.Modified]: {
-    letter: "M",
-    color: "var(--vscode-gitDecoration-modifiedResourceForeground)",
-  },
-  [FileStatus.Added]: { letter: "A", color: "var(--vscode-gitDecoration-addedResourceForeground)" },
-  [FileStatus.Deleted]: {
-    letter: "D",
-    color: "var(--vscode-gitDecoration-deletedResourceForeground)",
-  },
-  [FileStatus.Renamed]: {
-    letter: "R",
-    color: "var(--vscode-gitDecoration-renamedResourceForeground)",
-  },
-  [FileStatus.Copied]: { letter: "C", color: "var(--vscode-gitDecoration-addedResourceForeground)" },
-  [FileStatus.TypeChanged]: {
-    letter: "T",
-    color: "var(--vscode-gitDecoration-modifiedResourceForeground)",
-  },
-};
 
 const icon = computed(() => setiIcon(props.node.label, props.light));
 </script>
@@ -48,13 +24,11 @@ const icon = computed(() => setiIcon(props.node.label, props.light));
   </vscode-tree-item>
   <vscode-tree-item v-else :data-id="node.id">
     <span slot="icon-leaf" class="seti" :style="{ color: icon.color }">{{ icon.char }}</span>
-    <span :style="{ color: STATUS[node.change.status].color }">{{ node.label }}</span>
+    <span :style="{ color: node.entry.color }">{{ node.label }}</span>
     <span v-if="node.renamedFrom !== undefined" slot="description"
       >renamed from {{ node.renamedFrom }}</span
     >
-    <span slot="decoration" :style="{ color: STATUS[node.change.status].color }">{{
-      STATUS[node.change.status].letter
-    }}</span>
+    <span slot="decoration" :style="{ color: node.entry.color }">{{ node.entry.letter }}</span>
   </vscode-tree-item>
 </template>
 

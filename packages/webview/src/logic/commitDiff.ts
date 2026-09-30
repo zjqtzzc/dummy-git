@@ -5,6 +5,39 @@ import {
   DiffSideKind,
   FileStatus,
 } from "@dummy-git/shared";
+import type { FileEntry } from "./fileTree.js";
+
+/** 改动类型 → 右侧字母与 git 装饰色（与资源管理器、源代码管理的配色一致）。 */
+const STATUS: Readonly<Record<FileStatus, { readonly letter: string; readonly color: string }>> = {
+  [FileStatus.Unchanged]: { letter: "", color: "inherit" },
+  [FileStatus.Modified]: {
+    letter: "M",
+    color: "var(--vscode-gitDecoration-modifiedResourceForeground)",
+  },
+  [FileStatus.Added]: { letter: "A", color: "var(--vscode-gitDecoration-addedResourceForeground)" },
+  [FileStatus.Deleted]: {
+    letter: "D",
+    color: "var(--vscode-gitDecoration-deletedResourceForeground)",
+  },
+  [FileStatus.Renamed]: {
+    letter: "R",
+    color: "var(--vscode-gitDecoration-renamedResourceForeground)",
+  },
+  [FileStatus.Copied]: {
+    letter: "C",
+    color: "var(--vscode-gitDecoration-addedResourceForeground)",
+  },
+  [FileStatus.TypeChanged]: {
+    letter: "T",
+    color: "var(--vscode-gitDecoration-modifiedResourceForeground)",
+  },
+};
+
+/** 提交详情里的一个文件 → 文件树的一行。 */
+export function commitFileEntry(file: CommitFileChange): FileEntry {
+  const entry = { path: file.path, ...STATUS[file.status] };
+  return file.oldPath === undefined ? entry : { ...entry, oldPath: file.oldPath };
+}
 
 /**
  * 提交详情里点开一个文件：左边是父提交里的它，右边是这条提交里的它。

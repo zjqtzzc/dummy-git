@@ -8,12 +8,13 @@ import {
   RefKind,
 } from "@dummy-git/shared";
 import type { VscodeSplitLayout } from "@vscode-elements/elements/dist/vscode-split-layout/vscode-split-layout.js";
-import { nextTick, onMounted, onUnmounted, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import BranchTree from "./BranchTree.vue";
 import CommitList from "./CommitList.vue";
 import FileTree from "./FileTree.vue";
 import { type Client, CommandFailedError } from "./logic/client.js";
-import { commitDiffSides } from "./logic/commitDiff.js";
+import { commitDiffSides, commitFileEntry } from "./logic/commitDiff.js";
+import type { FileEntry } from "./logic/fileTree.js";
 import { type Layout, restoreLayout, splitPosition } from "./logic/layout.js";
 import { hashesToFetch } from "./logic/prefetch.js";
 import type { RowRange } from "./logic/virtualList.js";
@@ -35,6 +36,7 @@ const loaded = ref(false);
 const refs = ref<Ref[]>([]);
 const selected = ref<string>();
 const files = ref<CommitFileChange[]>([]);
+const fileEntries = computed(() => files.value.map(commitFileEntry));
 /** 右栏正在取选中提交的文件。 */
 const filesLoading = ref(false);
 const list = ref<InstanceType<typeof CommitList>>();
@@ -124,9 +126,10 @@ async function load(repository: string): Promise<void> {
 }
 
 /** 右栏的文件：双击或回车打开，单击或上下键跟随（由 `mode` 区分）。 */
-async function openFile(file: CommitFileChange, mode: DiffOpenMode): Promise<void> {
+async function openFile(entry: FileEntry, mode: DiffOpenMode): Promise<void> {
   const commit = selected.value === undefined ? undefined : details.value.get(selected.value);
-  if (repo.value === undefined || commit === undefined) return;
+  const file = files.value.find((change) => change.path === entry.path);
+  if (repo.value === undefined || commit === undefined || file === undefined) return;
   const { left, right } = commitDiffSides(commit.hash, commit.parents, file);
   await props.client.request("openDiff", {
     repo: repo.value,
@@ -232,7 +235,7 @@ onMounted(async () => {
 
       <div slot="end" class="pane">
         <p v-if="filesLoading" class="dim loading">Loading…</p>
-        <FileTree v-else :files="files" @open="openFile" />
+        <FileTree v-else :entries="fileEntries" @open="openFile" />
       </div>
     </vscode-split-layout>
   </vscode-split-layout>

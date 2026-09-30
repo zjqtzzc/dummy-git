@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import { type CommitFileChange, DiffOpenMode } from "@dummy-git/shared";
+import { DiffOpenMode } from "@dummy-git/shared";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import FileTreeNode from "./FileTreeNode.vue";
-import { buildFileTree } from "./logic/fileTree.js";
+import { buildFileTree, type FileEntry } from "./logic/fileTree.js";
 
 /**
- * 右栏文件树（`.notes/design/phase-1.md` 第 1、5 条）：全部展开；双击或回车打开 diff，
- * 单击或上下键时 diff 跟随（真正开不开由 `openDiff` 判断，见扩展侧 `diffTab.ts`）。
+ * 所有文件树共用的组件（`.notes/design/phase-2.md` 第一节）：全部展开；双击或回车打开 diff，
+ * 单击或上下键时 diff 跟随（真正开不开由扩展侧 `vscode/diff.ts` 判断）。
+ * 只认 `FileEntry`，左右各是什么由使用方决定。
  */
-const props = defineProps<{ files: readonly CommitFileChange[] }>();
-const emit = defineEmits<{ open: [change: CommitFileChange, mode: DiffOpenMode] }>();
+const props = defineProps<{ entries: readonly FileEntry[] }>();
+const emit = defineEmits<{ open: [entry: FileEntry, mode: DiffOpenMode] }>();
 
-const tree = computed(() => buildFileTree(props.files));
+const tree = computed(() => buildFileTree(props.entries));
 
 /** 浅色主题用 Seti 的 `_light` 那一套。VS Code 切主题时改 body 的类名，跟着它走。 */
 const light = ref(false);
@@ -26,10 +27,10 @@ onMounted(() => {
 });
 onUnmounted(() => themeWatch.disconnect());
 
-/** 节点 id（完整路径）→ 文件改动。树里只有 id，打开时查回来。 */
-const byId = computed(() => new Map(props.files.map((change) => [change.path, change])));
+/** 节点 id（完整路径）→ 文件。树里只有 id，打开时查回来。 */
+const byId = computed(() => new Map(props.entries.map((entry) => [entry.path, entry])));
 
-function fileAt(event: Event): CommitFileChange | undefined {
+function fileAt(event: Event): FileEntry | undefined {
   if (!(event.target instanceof Element)) return undefined;
   const id = event.target.closest("vscode-tree-item")?.getAttribute("data-id");
   return id === null || id === undefined ? undefined : byId.value.get(id);
@@ -37,9 +38,9 @@ function fileAt(event: Event): CommitFileChange | undefined {
 
 /** 上次跟随的文件：焦点在同一个文件上重复进入时不再跟，免得 diff 标签关了又开。 */
 let followed: string | undefined;
-// 换了一条提交，文件列表整个换了：同名文件也要重新跟。
+// 文件列表整个换了（比如换了一条提交）：同名文件也要重新跟。
 watch(
-  () => props.files,
+  () => props.entries,
   () => {
     followed = undefined;
   },
@@ -47,17 +48,17 @@ watch(
 
 /** 单击和上下键都会把焦点移到某一行上。 */
 function onFocusin(event: FocusEvent): void {
-  const change = fileAt(event);
-  if (change === undefined || change.path === followed) return;
-  followed = change.path;
-  emit("open", change, DiffOpenMode.Follow);
+  const entry = fileAt(event);
+  if (entry === undefined || entry.path === followed) return;
+  followed = entry.path;
+  emit("open", entry, DiffOpenMode.Follow);
 }
 
 function onOpen(event: Event): void {
-  const change = fileAt(event);
-  if (change === undefined) return;
-  followed = change.path;
-  emit("open", change, DiffOpenMode.Open);
+  const entry = fileAt(event);
+  if (entry === undefined) return;
+  followed = entry.path;
+  emit("open", entry, DiffOpenMode.Open);
 }
 
 function onKeydown(event: KeyboardEvent): void {
