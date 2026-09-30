@@ -156,3 +156,22 @@ describe("GIT_TERMINAL_PROMPT=0：认证需求时快速失败而不是挂住", (
     expect(Date.now() - start).toBeLessThan(15_000);
   });
 });
+
+describe("askpass：要密码时拿到空回答（ARCHITECTURE.md 第 16 题）", () => {
+  /** 扩展随包带的空回答脚本。 */
+  const script = join(__dirname, "../../../resources/askpass-empty.sh");
+  /** 让 git 问用户名：不配凭据助手，host 用一个不存在的域名，不联网。 */
+  const ask = { cwd: tmpdir(), input: "protocol=https\nhost=dummygit.invalid\n\n" };
+  const args = ["-c", "credential.helper=", "credential", "fill"];
+
+  it("给了脚本：git 去问脚本，拿到空的用户名与密码", async () => {
+    const r = await new GitCli("git", undefined, script).exec(args, ask);
+    expect(r.exitCode).toBe(0);
+    expect(r.stdout).toContain("username=\npassword=\n");
+  });
+
+  it("没给脚本：只剩 GIT_TERMINAL_PROMPT=0 拦着，直接失败", async () => {
+    const r = await new GitCli("git").exec(args, ask);
+    expect(r.exitCode).not.toBe(0);
+  });
+});

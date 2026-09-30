@@ -50,12 +50,29 @@ const FORCED_ENV = {
   GIT_CONFIG_PARAMETERS: "'core.quotepath=false'",
 } as const;
 
-/** git 进程层。`gitPath` 由外部注入——探测它需要读 VSCode 配置，不属于这一层。 */
+/**
+ * 要密码时给空回答的脚本（ARCHITECTURE.md 第 16 题）。git（HTTPS 账号密码）与 ssh
+ * （私钥口令、主机指纹确认、SSH 签名口令）一要密码就拿到空字符串，认证失败退出，不等人。
+ * `SSH_ASKPASS_REQUIRE=force`：ssh 只走 askpass、不去找终端。GPG 不拦，交给系统 pinentry。
+ */
+function askpassEnv(script: string): Readonly<Record<string, string>> {
+  return { GIT_ASKPASS: script, SSH_ASKPASS: script, SSH_ASKPASS_REQUIRE: "force" };
+}
+
+/**
+ * git 进程层。`gitPath` 由外部注入——探测它需要读 VSCode 配置，不属于这一层。
+ * `askpass` 是空回答脚本的路径，同样由外部给（它在扩展的安装目录里）；不给就不设。
+ */
 export class GitCli {
+  private readonly askpass: Readonly<Record<string, string>>;
+
   constructor(
     private readonly gitPath: string,
     private readonly logger: GitLogger = NOOP_LOGGER,
-  ) {}
+    askpass?: string,
+  ) {
+    this.askpass = askpass === undefined ? {} : askpassEnv(askpass);
+  }
 
   /**
    * 造一个「只记一次」的日志函数，并开始计时。
@@ -92,7 +109,7 @@ export class GitCli {
       shell: false,
       // 必须合并而非替换：git 依赖 PATH 找子命令、HOME 读 ~/.gitconfig、
       // SSH_AUTH_SOCK 做认证。FORCED_ENV 在最后，确保覆盖用户的同名设置。
-      env: { ...process.env, ...options.env, ...FORCED_ENV },
+      env: { ...process.env, ...options.env, ...FORCED_ENV, ...this.askpass },
       // 不给 stdin 管道，git 就无法停下来等输入。
       stdio: [options.input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
       detached,

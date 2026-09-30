@@ -18,8 +18,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const channel = vscode.window.createOutputChannel("Dummy Git");
   context.subscriptions.push(channel);
 
-  // git/ 层不 import vscode（lint 强制），所以路径与日志出口都从这里注入。
-  const cli = new GitCli(resolveGitPath(), createOutputLogger(channel));
+  // git/ 层不 import vscode（lint 强制），所以 git 路径、askpass 脚本路径与日志出口都从这里注入。
+  const askpass = vscode.Uri.joinPath(context.extensionUri, "resources", "askpass-empty.sh").fsPath;
+  const cli = new GitCli(resolveGitPath(), createOutputLogger(channel), askpass);
 
   // 未知错误的统一出口（`ARCHITECTURE.md` 第 15 题）：输出面板写全，弹一条通知，
   // 点「Show Output」跳到输出面板。去重与文案在可在纯 node 下测的 errorGate.ts 里。
