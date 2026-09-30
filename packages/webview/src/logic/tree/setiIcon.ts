@@ -1,4 +1,4 @@
-import setiMap from "../seti/setiMap.json";
+import setiMap from "../../seti/setiMap.json";
 
 /**
  * 按文件名查 Seti 图标（`ARCHITECTURE.md` 第 5 题）。映射表由 `scripts/generate-seti.mjs`

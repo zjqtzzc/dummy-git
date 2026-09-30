@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { DiffOpenMode } from "@dummy-git/shared";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { buildFileTree, type FileEntry, type FileGroup, toTreeNodes } from "./logic/fileTree.js";
-import { branchIds, type TreeNode } from "./logic/tree.js";
+import { buildFileTree, type FileEntry, type FileGroup, toTreeNodes } from "../logic/tree/fileTree.js";
+import { branchIds, type TreeNode } from "../logic/tree/tree.js";
 import Tree from "./Tree.vue";
 
 /**

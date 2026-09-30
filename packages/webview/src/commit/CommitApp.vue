@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { GitDomain } from "@dummy-git/shared";
 import { computed, onMounted, ref } from "vue";
-import FileTree from "./FileTree.vue";
-import { type Client, report } from "./logic/client.js";
-import { type WorkingFile, workingFiles, workingGroups } from "./logic/workingChanges.js";
+import { type Client, report } from "../logic/client.js";
+import { type WorkingFile, workingFiles, workingGroups } from "../logic/commit/workingChanges.js";
+import FileTree from "../tree/FileTree.vue";
 
 /**
  * 侧栏 Commit 面板（`.notes/design/phase-2.md` 第二节第 2 条）。

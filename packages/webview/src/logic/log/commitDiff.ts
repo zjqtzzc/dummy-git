@@ -5,7 +5,7 @@ import {
   DiffSideKind,
   FileStatus,
 } from "@dummy-git/shared";
-import type { FileEntry } from "./fileTree.js";
+import type { FileEntry } from "../tree/fileTree.js";
 
 /** 改动类型 → 右侧字母与 git 装饰色（与资源管理器、源代码管理的配色一致）。 */
 const STATUS: Readonly<Record<FileStatus, { readonly letter: string; readonly color: string }>> = {

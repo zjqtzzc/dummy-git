@@ -4,7 +4,7 @@
  *
  * 与 IDEA 的 `GraphTableModel.getCommitMetadata` 同一个做法（当前行往上 20 行起预取）。
  */
-import type { RowRange } from "./virtualList.js";
+import type { RowRange } from "../virtualList.js";
 
 const MARGIN = 20;
 

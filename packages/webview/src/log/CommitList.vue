@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Commit } from "@dummy-git/shared";
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { formatCommitDate } from "./logic/commitDate.js";
+import { formatCommitDate } from "../logic/log/commitDate.js";
 import {
   keepRowInPlace,
   ROW_HEIGHT,
@@ -9,7 +9,7 @@ import {
   renderRange,
   scrollIntoView,
   scrollToCenter,
-} from "./logic/virtualList.js";
+} from "../logic/virtualList.js";
 
 /**
  * 中间的提交列表：固定三列 Message / Author / Date，虚拟滚动。

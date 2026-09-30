@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { assertNever } from "@dummy-git/shared";
-import { type BranchNode, BranchNodeKind } from "./logic/branchTree.js";
+import { type BranchNode, BranchNodeKind } from "../logic/log/branchTree.js";
 
 /** 分支树的一个节点，递归画出子节点。 */
 defineProps<{ node: BranchNode; expanded: ReadonlySet<string> }>();

@@ -10,8 +10,8 @@ import "@vscode-elements/elements/dist/vscode-toolbar-container/index.js";
 import "@vscode-elements/elements/dist/vscode-tree/index.js";
 import "@vscode-elements/elements/dist/vscode-tree-item/index.js";
 import { type Component, createApp } from "vue";
-import CommitApp from "./CommitApp.vue";
-import LogApp from "./LogApp.vue";
+import CommitApp from "./commit/CommitApp.vue";
+import LogApp from "./log/LogApp.vue";
 import { Client } from "./logic/client.js";
 import { transport } from "./vscodeApi.js";
 

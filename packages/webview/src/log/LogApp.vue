@@ -9,16 +9,16 @@ import {
 } from "@dummy-git/shared";
 import type { VscodeSplitLayout } from "@vscode-elements/elements/dist/vscode-split-layout/vscode-split-layout.js";
 import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
+import { type Client, report } from "../logic/client.js";
+import { commitDiffSides, commitFileEntry } from "../logic/log/commitDiff.js";
+import { type Layout, restoreLayout, splitPosition } from "../logic/log/layout.js";
+import { hashesToFetch } from "../logic/log/prefetch.js";
+import type { FileEntry } from "../logic/tree/fileTree.js";
+import type { RowRange } from "../logic/virtualList.js";
+import FileTree from "../tree/FileTree.vue";
+import { viewState } from "../vscodeApi.js";
 import BranchTree from "./BranchTree.vue";
 import CommitList from "./CommitList.vue";
-import FileTree from "./FileTree.vue";
-import { type Client, report } from "./logic/client.js";
-import { commitDiffSides, commitFileEntry } from "./logic/commitDiff.js";
-import type { FileEntry } from "./logic/fileTree.js";
-import { type Layout, restoreLayout, splitPosition } from "./logic/layout.js";
-import { hashesToFetch } from "./logic/prefetch.js";
-import type { RowRange } from "./logic/virtualList.js";
-import { viewState } from "./vscodeApi.js";
 
 /** Log 面板：左分支（第 10 步）、中提交列表、右文件（第 11 步重做）。 */
 const props = defineProps<{ client: Client }>();

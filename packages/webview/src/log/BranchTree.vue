@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { Ref } from "@dummy-git/shared";
 import { computed, onMounted, onUnmounted, ref } from "vue";
+import { buildBranchTree, defaultExpanded, restoreExpanded } from "../logic/log/branchTree.js";
+import { viewState } from "../vscodeApi.js";
 import BranchTreeNode from "./BranchTreeNode.vue";
-import { buildBranchTree, defaultExpanded, restoreExpanded } from "./logic/branchTree.js";
 import { collapseDescendants } from "./treeCollapse.js";
-import { viewState } from "./vscodeApi.js";
 
 /**
  * 左栏分支树。单击只选中；双击本阶段无反应（第 5 阶段改为按该分支筛选）。

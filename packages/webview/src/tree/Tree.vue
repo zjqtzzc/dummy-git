@@ -10,8 +10,8 @@ import {
   type TreeNode,
   type TreeRow,
   treeKeyAction,
-} from "./logic/tree.js";
-import { ROW_HEIGHT, renderRange, scrollIntoView } from "./logic/virtualList.js";
+} from "../logic/tree/tree.js";
+import { ROW_HEIGHT, renderRange, scrollIntoView } from "../logic/virtualList.js";
 
 /**
  * 所有树共用的基础组件（`.notes/design/phase-2.md` 第一节），外观与交互照 VS Code 原生的树。

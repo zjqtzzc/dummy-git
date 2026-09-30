@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import setiMap from "../../seti/setiMap.json";
+import setiMap from "../../../seti/setiMap.json";
 import { setiIcon } from "../setiIcon.js";
 
 const def = (id: string) => setiMap.defs[id as keyof typeof setiMap.defs];

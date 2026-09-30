@@ -1,5 +1,5 @@
 import { assertNever, ChangeKind, type FileChange, FileStatus } from "@dummy-git/shared";
-import type { FileEntry, FileGroup } from "./fileTree.js";
+import type { FileEntry, FileGroup } from "../tree/fileTree.js";
 
 /**
  * Commit 面板的数据（`.notes/design/phase-2.md` 第二节第 3、5 条）：
