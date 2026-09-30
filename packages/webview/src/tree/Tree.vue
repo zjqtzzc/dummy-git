@@ -56,8 +56,10 @@ onMounted(() => {
 });
 onUnmounted(() => resizes.disconnect());
 
-/** 缩进：每层 8px，与 VS Code 默认的 `workbench.tree.indent` 一致。 */
-const INDENT = 8;
+/** 每层缩进 11px。 */
+const INDENT = 11;
+/** 缩进线画在父节点箭头的正中：箭头格左留白 3 + 箭头宽的一半 8。 */
+const GUIDE_OFFSET = 3 + 8;
 
 function toggle(row: TreeRow): void {
   if (row.expanded === undefined) return;
@@ -167,7 +169,7 @@ function rowId(index: number): string {
           v-for="level in row.depth"
           :key="level"
           class="guide"
-          :style="{ left: `${(level - 1) * INDENT + 16}px` }"
+          :style="{ left: `${(level - 1) * INDENT + GUIDE_OFFSET}px` }"
         />
         <span
           :class="[
@@ -202,7 +204,7 @@ function rowId(index: number): string {
 
 <style scoped>
 /*
- * 尺寸与配色照 VS Code 原生的树（资源管理器）：行高 22px、每层缩进 8px、箭头 16px 宽左留 8px 右留 6px、
+ * 尺寸与配色照 VS Code 原生的树（资源管理器），缩进按我们自己的：行高 22px、每层缩进 11px、箭头格 3 + 16 + 3、
  * 图标 16px 右留 6px；选中、悬停、焦点框、缩进线都用主题的 list / tree 变量。
  */
 .tree {
@@ -253,8 +255,8 @@ function rowId(index: number): string {
 .twistie {
   flex: none;
   width: 16px;
-  padding-left: 8px;
-  padding-right: 6px;
+  padding-left: 3px;
+  padding-right: 3px;
   font-size: 16px;
   color: var(--vscode-icon-foreground);
 }

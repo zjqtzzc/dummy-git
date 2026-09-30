@@ -1,4 +1,5 @@
 import { assertNever, type Ref, RefKind } from "@dummy-git/shared";
+import { TreeIconKind, type TreeNode } from "../tree/tree.js";
 
 /**
  * 左栏分支树（`.notes/design/phase-1.md` 第 3 条）：由 `getRefs` 的结果整理而来。
@@ -175,4 +176,46 @@ export function defaultExpanded(nodes: readonly BranchNode[]): ReadonlySet<strin
 export function restoreExpanded(saved: unknown): ReadonlySet<string> | undefined {
   if (!Array.isArray(saved) || !saved.every((id) => typeof id === "string")) return undefined;
   return new Set(saved);
+}
+
+/**
+ * 分支树 → 基础树的节点。图标是 codicon：HEAD 靶心、两组各自的图标、目录文件夹、分支图标；
+ * 当前分支用主题的图表黄标签、文字加粗，比对勾醒目，跟着主题走不写死颜色。
+ */
+export function toTreeNodes(nodes: readonly BranchNode[]): TreeNode[] {
+  return nodes.map((node): TreeNode => {
+    switch (node.kind) {
+      case BranchNodeKind.Head:
+        return { id: node.id, label: node.label, icon: codicon("target") };
+      case BranchNodeKind.Group:
+        return {
+          id: node.id,
+          label: node.label,
+          icon: codicon(node.id === LOCAL_ID ? "device-desktop" : "cloud"),
+          children: toTreeNodes(node.children),
+        };
+      case BranchNodeKind.Folder:
+        return {
+          id: node.id,
+          label: node.label,
+          icon: { ...codicon("folder"), openedName: "folder-opened" },
+          children: toTreeNodes(node.children),
+        };
+      case BranchNodeKind.Branch:
+        return node.current
+          ? {
+              id: node.id,
+              label: node.label,
+              bold: true,
+              icon: { ...codicon("tag"), color: "var(--vscode-charts-yellow)" },
+            }
+          : { id: node.id, label: node.label, icon: codicon("git-branch") };
+      default:
+        return assertNever(node, "toTreeNodes");
+    }
+  });
+}
+
+function codicon(name: string): { readonly kind: TreeIconKind.Codicon; readonly name: string } {
+  return { kind: TreeIconKind.Codicon, name };
 }
