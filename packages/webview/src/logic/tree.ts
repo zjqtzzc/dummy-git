@@ -1,0 +1,150 @@
+/**
+ * 所有树共用的纯逻辑（`.notes/design/phase-2.md` 第一节）：节点的统一形状、按展开状态压平成行、
+ * 展开 / 收起、键盘。外观与交互照 VS Code 原生的树。
+ */
+
+export enum TreeIconKind {
+  Codicon = "codicon",
+  Seti = "seti",
+}
+
+/** 行首的图标。缺席即没有图标（比如组标题）。 */
+export type TreeIcon =
+  | {
+      readonly kind: TreeIconKind.Codicon;
+      readonly name: string;
+      /** 展开时换成它，比如 `folder-opened`；缺席则不换。 */
+      readonly openedName?: string;
+      readonly color?: string;
+    }
+  | { readonly kind: TreeIconKind.Seti; readonly char: string; readonly color: string };
+
+/** 树的一个节点。各使用方把自己的数据转成它；「类型 → 图标 / 颜色 / 字母」表各自持有。 */
+export interface TreeNode {
+  /** 在这棵树里唯一。展开状态、选中都按它记。 */
+  readonly id: string;
+  readonly label: string;
+  readonly bold?: boolean;
+  readonly icon?: TreeIcon;
+  /** 文字与右侧字母的颜色，CSS 颜色值。 */
+  readonly color?: string;
+  /** 文字后面的灰字，比如 `3 files`、`renamed from a.ts`。 */
+  readonly description?: string;
+  /** 行尾的字母，比如 `M`。 */
+  readonly decoration?: string;
+  /** 有就是可展开的（哪怕是空数组）。 */
+  readonly children?: readonly TreeNode[];
+}
+
+/** 压平之后的一行。 */
+export interface TreeRow {
+  readonly node: TreeNode;
+  /** 顶层是 0。 */
+  readonly depth: number;
+  /** 父节点的 id；顶层缺席。 */
+  readonly parent?: string;
+  /** 可展开的节点才有：是否展开。叶子缺席。 */
+  readonly expanded?: boolean;
+}
+
+/** 按展开状态压平：只列出看得见的行，顺序即显示顺序。 */
+export function flattenTree(nodes: readonly TreeNode[], expanded: ReadonlySet<string>): TreeRow[] {
+  const rows: TreeRow[] = [];
+  const visit = (node: TreeNode, depth: number, parent: string | undefined): void => {
+    const base = parent === undefined ? { node, depth } : { node, depth, parent };
+    if (node.children === undefined) {
+      rows.push(base);
+      return;
+    }
+    const open = expanded.has(node.id);
+    rows.push({ ...base, expanded: open });
+    if (open) for (const child of node.children) visit(child, depth + 1, node.id);
+  };
+  for (const node of nodes) visit(node, 0, undefined);
+  return rows;
+}
+
+/** 所有可展开节点的 id。全部展开就是它。 */
+export function branchIds(nodes: readonly TreeNode[]): string[] {
+  return nodes.flatMap((node) =>
+    node.children === undefined ? [] : [node.id, ...branchIds(node.children)],
+  );
+}
+
+/**
+ * 展开或收起一个节点，返回新的展开集合。
+ * 收起时它下面的节点一起收起，再展开只露出一层（`.notes/REQUIREMENTS.md` 第 2 阶段）。
+ */
+export function setExpanded(
+  expanded: ReadonlySet<string>,
+  node: TreeNode,
+  open: boolean,
+): ReadonlySet<string> {
+  const next = new Set(expanded);
+  if (open) {
+    next.add(node.id);
+    return next;
+  }
+  next.delete(node.id);
+  for (const id of branchIds(node.children ?? [])) next.delete(id);
+  return next;
+}
+
+export enum TreeKeyActionKind {
+  /** 选中第 `index` 行。 */
+  Select = "select",
+  /** 展开或收起这一行的节点。 */
+  Expand = "expand",
+  /** 打开（回车落在叶子上）。 */
+  Activate = "activate",
+}
+
+export type TreeKeyAction =
+  | { readonly kind: TreeKeyActionKind.Select; readonly index: number }
+  | { readonly kind: TreeKeyActionKind.Expand; readonly open: boolean }
+  | { readonly kind: TreeKeyActionKind.Activate };
+
+/**
+ * 按键在第 `index` 行上该做什么，照 VS Code 原生的树：
+ * - 上 / 下：上一行 / 下一行（`index` 为 -1 表示还没有选中，下键选第一行）。
+ * - 左：展开着就收起，否则跳到父节点。
+ * - 右：收起着就展开，展开着就跳到第一个子节点。
+ * - 回车：叶子打开，可展开的节点展开 / 收起。
+ * 返回 `undefined` 表示不处理这个键。
+ */
+export function treeKeyAction(
+  rows: readonly TreeRow[],
+  index: number,
+  key: string,
+): TreeKeyAction | undefined {
+  const last = rows.length - 1;
+  if (key === "ArrowDown") {
+    return last < 0
+      ? undefined
+      : { kind: TreeKeyActionKind.Select, index: Math.min(last, index + 1) };
+  }
+  if (key === "ArrowUp") {
+    return last < 0 ? undefined : { kind: TreeKeyActionKind.Select, index: Math.max(0, index - 1) };
+  }
+  const row = rows[index];
+  if (row === undefined) return undefined;
+  switch (key) {
+    case "ArrowLeft": {
+      if (row.expanded === true) return { kind: TreeKeyActionKind.Expand, open: false };
+      const parent = rows.findIndex((r) => r.node.id === row.parent);
+      return parent === -1 ? undefined : { kind: TreeKeyActionKind.Select, index: parent };
+    }
+    case "ArrowRight":
+      if (row.expanded === false) return { kind: TreeKeyActionKind.Expand, open: true };
+      if (row.expanded === true && rows[index + 1]?.parent === row.node.id) {
+        return { kind: TreeKeyActionKind.Select, index: index + 1 };
+      }
+      return undefined;
+    case "Enter":
+      return row.expanded === undefined
+        ? { kind: TreeKeyActionKind.Activate }
+        : { kind: TreeKeyActionKind.Expand, open: !row.expanded };
+    default:
+      return undefined;
+  }
+}

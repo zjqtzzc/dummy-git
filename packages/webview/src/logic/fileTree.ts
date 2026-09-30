@@ -1,3 +1,7 @@
+import { assertNever } from "@dummy-git/shared";
+import { setiIcon } from "./setiIcon.js";
+import { TreeIconKind, type TreeNode } from "./tree.js";
+
 /**
  * 所有文件树共用的整理逻辑（`.notes/design/phase-2.md` 第一节）：几组文件整理成树。
  *
@@ -159,4 +163,53 @@ function basename(path: string): string {
 function dirname(path: string): string {
   const slash = path.lastIndexOf("/");
   return slash === -1 ? "" : path.slice(0, slash);
+}
+
+/**
+ * 组的 id 前缀。路径里不会有 NUL，所以组的 id 不会和同名目录的路径撞上
+ * （节点 id 在一棵树里必须唯一，见 `tree.ts`）。
+ */
+const GROUP_PREFIX = "\0";
+
+/** 文件树 → 基础树的节点：组没有图标、文字加粗；目录是文件夹图标；文件是 Seti 图标加改动字母。 */
+export function toTreeNodes(nodes: readonly FileNode[], light: boolean): TreeNode[] {
+  return nodes.map((node): TreeNode => {
+    switch (node.kind) {
+      case FileNodeKind.Group:
+        return {
+          id: `${GROUP_PREFIX}${node.id}`,
+          label: node.label,
+          bold: true,
+          description: fileCount(node.count),
+          children: toTreeNodes(node.children, light),
+        };
+      case FileNodeKind.Folder:
+        return {
+          id: node.id,
+          label: node.label,
+          icon: { kind: TreeIconKind.Codicon, name: "folder", openedName: "folder-opened" },
+          description: fileCount(node.count),
+          children: toTreeNodes(node.children, light),
+        };
+      case FileNodeKind.File: {
+        const icon = setiIcon(node.label, light);
+        const base = {
+          id: node.id,
+          label: node.label,
+          icon: { kind: TreeIconKind.Seti, char: icon.char, color: icon.color },
+          color: node.entry.color,
+          decoration: node.entry.letter,
+        } as const;
+        return node.renamedFrom === undefined
+          ? base
+          : { ...base, description: `renamed from ${node.renamedFrom}` };
+      }
+      default:
+        return assertNever(node, "toTreeNodes");
+    }
+  });
+}
+
+function fileCount(count: number): string {
+  return count === 1 ? "1 file" : `${count} files`;
 }
