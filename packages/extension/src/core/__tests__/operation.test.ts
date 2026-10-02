@@ -44,6 +44,28 @@ describe("CommandQueue：读命令不排队", () => {
   });
 });
 
+describe("CommandQueue：两条道", () => {
+  it("远程道串行——两条网络命令不同时跑（否则会撞引用锁）", async () => {
+    const queue = new CommandQueue();
+    const timeline: string[] = [];
+    await Promise.all([
+      queue.run(LockPolicy.Remote, timed("fetch", timeline, 30)),
+      queue.run(LockPolicy.Remote, timed("push", timeline, 30)),
+    ]);
+    expect(timeline).toEqual(["fetch:start", "fetch:end", "push:start", "push:end"]);
+  });
+
+  it("两条道互不等待——慢推送期间本地写命令照样跑", async () => {
+    const queue = new CommandQueue();
+    const timeline: string[] = [];
+    await Promise.all([
+      queue.run(LockPolicy.Remote, timed("push", timeline, 60)),
+      queue.run(LockPolicy.Exclusive, timed("commit", timeline, 10)),
+    ]);
+    expect(timeline).toEqual(["push:start", "commit:start", "commit:end", "push:end"]);
+  });
+});
+
 describe("CommandQueue：失败不断链", () => {
   it("中间一条写命令失败，后面的仍然要跑", async () => {
     const queue = new CommandQueue();
