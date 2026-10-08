@@ -12,7 +12,7 @@ import {
   workingFiles,
   workingGroups,
 } from "../logic/commit/workingChanges.js";
-import { codicon } from "../logic/icons.js";
+import { AppIcon, appIcon, codicon } from "../logic/icons.js";
 import { type FileEntry, keepChecked } from "../logic/tree/fileTree.js";
 import FileTree from "../tree/FileTree.vue";
 import ToolButton from "../ui/ToolButton.vue";
@@ -269,20 +269,20 @@ onMounted(async () => {
         @click="rollbackChecked"
       />
       <ToolButton
-        :icon="codicon('archive')"
+        :icon="appIcon(AppIcon.Stash)"
         :title="checked.size > 0 ? 'Stash Selected' : 'Stash All'"
         :disabled="!canStash"
         @click="stashChecked"
       />
       <!-- 没有改动时置灰（第二节第 13 条）。 -->
       <ToolButton
-        :icon="codicon('expand-all')"
+        :icon="appIcon(AppIcon.ExpandAll)"
         title="Expand All"
         :disabled="files.length === 0"
         @click="tree?.expandAll()"
       />
       <ToolButton
-        :icon="codicon('collapse-all')"
+        :icon="appIcon(AppIcon.CollapseAll)"
         title="Collapse All"
         :disabled="files.length === 0"
         @click="tree?.collapseAll()"

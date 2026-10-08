@@ -48,6 +48,14 @@ export enum AppIcon {
   Pull = "pull",
   /** 实线 ↗：把本地分支推到远程。 */
   Push = "push",
+  /** 箭头向下落进托盘：把改动存进 stash。 */
+  Stash = "stash",
+  /** 箭头从托盘里向上出来：把 stash 取回工作区。 */
+  Unstash = "unstash",
+  /** 上下两个向外的尖角：全部展开。 */
+  ExpandAll = "expandAll",
+  /** 上下两个向里的尖角：全部收起。 */
+  CollapseAll = "collapseAll",
 }
 
 /** 一条线：SVG path 的 `d`；`dashed` 为虚线。 */
@@ -59,6 +67,9 @@ export interface IconStroke {
 /** ↙ 的箭头部分：直角折线，尖在左下。 */
 const INCOMING_HEAD = "M3.5 6.5V12.5H9.5";
 
+/** 托盘：方框，顶边中间凹下去一块，Stash / Unstash 的箭头从这里进出。 */
+const TRAY = "M1.5 8.5H4.2L5.2 10.5H10.8L11.8 8.5H14.5V13.5H1.5Z";
+
 export const ICON_STROKES: Readonly<Record<AppIcon, readonly IconStroke[]>> = {
   [AppIcon.Fetch]: [
     { d: "M12.5 3.5L3.5 12.5", dashed: true },
@@ -66,4 +77,8 @@ export const ICON_STROKES: Readonly<Record<AppIcon, readonly IconStroke[]>> = {
   ],
   [AppIcon.Pull]: [{ d: "M12.5 3.5L3.5 12.5" }, { d: INCOMING_HEAD }],
   [AppIcon.Push]: [{ d: "M3.5 12.5L12.5 3.5" }, { d: "M6.5 3.5H12.5V9.5" }],
+  [AppIcon.Stash]: [{ d: "M8 1.5V8.5" }, { d: "M5 5.5L8 8.5L11 5.5" }, { d: TRAY }],
+  [AppIcon.Unstash]: [{ d: "M8 8.5V1.5" }, { d: "M5 4.5L8 1.5L11 4.5" }, { d: TRAY }],
+  [AppIcon.ExpandAll]: [{ d: "M4.5 5.5L8 2L11.5 5.5" }, { d: "M4.5 10.5L8 14L11.5 10.5" }],
+  [AppIcon.CollapseAll]: [{ d: "M4.5 2.5L8 6L11.5 2.5" }, { d: "M4.5 13.5L8 10L11.5 13.5" }],
 };
