@@ -58,27 +58,28 @@ export enum AppIcon {
   CollapseAll = "collapseAll",
 }
 
-/** 一条线：SVG path 的 `d`；`dashed` 为虚线。 */
-export interface IconStroke {
-  readonly d: string;
-  readonly dashed?: boolean;
-}
-
-/** ↙ 的箭头部分：直角折线，尖在左下。 */
-const INCOMING_HEAD = "M3.5 6.5V12.5H9.5";
-
 /** 托盘：方框，顶边中间凹下去一块，Stash / Unstash 的箭头从这里进出。 */
 const TRAY = "M1.5 8.5H4.2L5.2 10.5H10.8L11.8 8.5H14.5V13.5H1.5Z";
 
-export const ICON_STROKES: Readonly<Record<AppIcon, readonly IconStroke[]>> = {
+/**
+ * 每个图标是几条线，每条是 SVG path 的 `d`。
+ *
+ * Fetch、Pull、Push 的箭头头部一样大（直角两边各 7）。Fetch 的虚线逐段排（照 IDEA）：
+ * 拐角是实的，线头是整段。不用 `stroke-dasharray`——它从哪里断由线长决定，拐角可能落在空白里。
+ */
+export const ICON_STROKES: Readonly<Record<AppIcon, readonly string[]>> = {
   [AppIcon.Fetch]: [
-    { d: "M12.5 3.5L3.5 12.5", dashed: true },
-    { d: INCOMING_HEAD, dashed: true },
+    "M12.5 3.5L11.1 4.9",
+    "M9.7 6.3L8.3 7.7",
+    "M6.8 9.2L5.4 10.6",
+    "M3.5 5.5V7.5",
+    "M3.5 9.5V12.5H6.5",
+    "M8.5 12.5H10.5",
   ],
-  [AppIcon.Pull]: [{ d: "M12.5 3.5L3.5 12.5" }, { d: INCOMING_HEAD }],
-  [AppIcon.Push]: [{ d: "M3.5 12.5L12.5 3.5" }, { d: "M6.5 3.5H12.5V9.5" }],
-  [AppIcon.Stash]: [{ d: "M8 1.5V8.5" }, { d: "M5 5.5L8 8.5L11 5.5" }, { d: TRAY }],
-  [AppIcon.Unstash]: [{ d: "M8 8.5V1.5" }, { d: "M5 4.5L8 1.5L11 4.5" }, { d: TRAY }],
-  [AppIcon.ExpandAll]: [{ d: "M4.5 5.5L8 2L11.5 5.5" }, { d: "M4.5 10.5L8 14L11.5 10.5" }],
-  [AppIcon.CollapseAll]: [{ d: "M4.5 2.5L8 6L11.5 2.5" }, { d: "M4.5 13.5L8 10L11.5 13.5" }],
+  [AppIcon.Pull]: ["M12.5 3.5L3.5 12.5", "M3.5 5.5V12.5H10.5"],
+  [AppIcon.Push]: ["M3.5 12.5L12.5 3.5", "M5.5 3.5H12.5V10.5"],
+  [AppIcon.Stash]: ["M8 1.5V8.5", "M5 5.5L8 8.5L11 5.5", TRAY],
+  [AppIcon.Unstash]: ["M8 8.5V1.5", "M5 4.5L8 1.5L11 4.5", TRAY],
+  [AppIcon.ExpandAll]: ["M4.5 5.5L8 2L11.5 5.5", "M4.5 10.5L8 14L11.5 10.5"],
+  [AppIcon.CollapseAll]: ["M4.5 2.5L8 6L11.5 2.5", "M4.5 13.5L8 10L11.5 13.5"],
 };

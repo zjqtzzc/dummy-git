@@ -20,9 +20,6 @@ const SIZE_PX: Readonly<Record<IconSize, number>> = {
   [IconSize.Inline]: 12,
 };
 
-/** 虚线的「实 空」长度。太密会看起来和实线差不多。 */
-const DASH = "3 2";
-
 const px = computed(() => SIZE_PX[props.size]);
 
 /** 字体图标的方框与字号。 */
@@ -57,10 +54,9 @@ function codiconClass(icon: IconRef): string {
     aria-hidden="true"
   >
     <path
-      v-for="(stroke, index) in ICON_STROKES[icon.name]"
+      v-for="(d, index) in ICON_STROKES[icon.name]"
       :key="index"
-      :d="stroke.d"
-      :stroke-dasharray="stroke.dashed ? DASH : undefined"
+      :d="d"
     />
   </svg>
   <span
