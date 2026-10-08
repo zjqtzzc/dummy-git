@@ -27,6 +27,8 @@
  * | `fastForward` | `merge --ff-only <远程分支记录>`（拉取当前分支第二步） | — | — |
  * | `switchBranch` | `switch <分支>` | `git switch` | 2.23 |
  * | `createTrackingBranch` | `switch -c <分支> --track <远程分支>` | `git switch` | 2.23 |
+ * | `createBranch` | `switch -c <分支> --no-track <起点>` | `git switch` | 2.23 |
+ * | `isValidBranchName` | `check-ref-format --branch <名字>` | — | — |
  * | `rollback` | `restore --source=HEAD --staged --worktree -- <路径…>` | `git restore` | **2.23** |
  * | `getSkeleton` | `-c log.showSignature=false log --format=… --max-count=10000 HEAD --branches --remotes --tags --date-order` | — | — |
  * | `getCommitDetails` | `-c log.showSignature=false log --format=… --no-walk --stdin` | — | — |
@@ -38,7 +40,12 @@
  * `-c log.showSignature=false` 在不认识这个配置的旧 git 上是无害的空设置，不构成版本要求。
  */
 
-export { createTrackingBranch, switchBranch } from "./branch.js";
+export {
+  createBranch,
+  createTrackingBranch,
+  isValidBranchName,
+  switchBranch,
+} from "./branch.js";
 export { checkIgnore } from "./checkIgnore.js";
 export type { GitCommand } from "./command.js";
 export { amendCommit, commit } from "./commit.js";

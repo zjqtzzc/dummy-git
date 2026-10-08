@@ -15,6 +15,10 @@ export const MenuContextKey = {
   Branch: "dummyGit.branch",
   /** 是不是当前分支（`true` / `false`）。 */
   Current: "dummyGit.current",
+  /** 从这里建新分支时的起点：完整引用名或提交 hash。有它的节点才有 New Branch from Here…。 */
+  Start: "dummyGit.start",
+  /** 起点显示给人看的名字（输入框标题）。 */
+  StartName: "dummyGit.startName",
 } as const;
 
 /** `MenuContextKey.Node` 的取值。 */

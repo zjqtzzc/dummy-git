@@ -8,6 +8,7 @@ import {
   defaultExpanded,
   localBranchOf,
   restoreExpanded,
+  startOf,
   TrackingKind,
   trackingOf,
 } from "../branchTree.js";
@@ -151,6 +152,35 @@ describe("localBranchOf：选中的是不是本地分支", () => {
   it("远程分支、目录、分组都不是", () => {
     expect(of("remote/origin/main")).toBeUndefined();
     expect(of("local/feat")).toBeUndefined();
+    expect(of("local")).toBeUndefined();
+  });
+});
+
+describe("startOf：新分支的起点", () => {
+  const tree = buildBranchTree([head("main"), local("main"), remote("origin", "feat/x")]);
+  const byId = branchNodesById(tree);
+  const of = (id: string) => {
+    const node = byId.get(id);
+    if (node === undefined) throw new Error(`没有 ${id}`);
+    return startOf(node);
+  };
+
+  it("分支给完整引用名，不让 git 在同名的本地与远程分支之间猜", () => {
+    expect(of("local/main")).toEqual({ start: "refs/heads/main", name: "main" });
+    expect(of("remote/origin/feat/x")).toEqual({
+      start: "refs/remotes/origin/feat/x",
+      name: "origin/feat/x",
+    });
+  });
+
+  it("HEAD 那行：在分支上给分支，detached 给提交", () => {
+    expect(of("head")).toEqual({ start: "refs/heads/main", name: "main" });
+    const detached = branchNodesById(buildBranchTree([head()])).get("head");
+    expect(detached && startOf(detached)).toEqual({ start: T, name: T.slice(0, 7) });
+  });
+
+  it("目录、分组不能当起点", () => {
+    expect(of("remote/origin/feat")).toBeUndefined();
     expect(of("local")).toBeUndefined();
   });
 });

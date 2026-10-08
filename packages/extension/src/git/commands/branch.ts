@@ -36,6 +36,35 @@ export const createTrackingBranch: GitCommand<
   },
 };
 
+/**
+ * 从起点建一个新分支并切过去：`git switch -c <B> --no-track <起点>`。返回 git 自己说的那句。
+ *
+ * `--no-track`：从远程分支建时 git 默认跟踪起点，新分支一 Push 就推到别人的分支上；
+ * 不跟踪，第一次推送按推送规则推到同名并设上游。工作区改动挡住时连分支都不建。
+ * 起点是完整引用名或提交 hash，不让 git 在同名的本地分支与远程分支之间猜。
+ */
+export const createBranch: GitCommand<[repository: string, branch: string, start: string], string> =
+  {
+    lock: LockPolicy.Exclusive,
+
+    execute: async (cli, repository, branch, start) => {
+      const { stderr } = await run(cli, ["switch", "-c", branch, "--no-track", start], {
+        cwd: repository,
+      });
+      return firstLine(stderr);
+    },
+  };
+
+/** 名字能不能当分支名：`git check-ref-format --branch`，只看退出码。读命令，不排队。 */
+export const isValidBranchName: GitCommand<[repository: string, name: string], boolean> = {
+  lock: LockPolicy.None,
+
+  execute: async (cli, repository, name) => {
+    const result = await cli.exec(["check-ref-format", "--branch", name], { cwd: repository });
+    return result.exitCode === 0;
+  },
+};
+
 function firstLine(text: string): string {
   return text.split("\n")[0]?.trim() ?? "";
 }

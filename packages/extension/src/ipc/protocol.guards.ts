@@ -152,6 +152,14 @@ const PARAM_GUARDS = {
       ? { repo, remote, branch }
       : undefined;
   },
+  newBranch: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const start = raw["start"];
+    const startName = raw["startName"];
+    return typeof repo === "string" && typeof start === "string" && typeof startName === "string"
+      ? { repo, start, startName }
+      : undefined;
+  },
   push: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const branch = raw["branch"];

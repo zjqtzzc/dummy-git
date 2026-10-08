@@ -7,6 +7,8 @@ import {
   defaultExpanded,
   localBranchOf,
   restoreExpanded,
+  type StartPoint,
+  startOf,
   type Tracking,
   toTreeNodes,
   trackingOf,
@@ -22,8 +24,11 @@ import TrackingBadge from "./TrackingBadge.vue";
  */
 const props = defineProps<{ refs: readonly Ref[]; repo: string }>();
 const emit = defineEmits<{
-  /** 选中的本地分支名（拉取、推送的对象）；选中的不是本地分支时是 `undefined`。 */
-  select: [branch: string | undefined];
+  /**
+   * 选中的本地分支名（拉取、推送的对象），选中的不是本地分支时是 `undefined`；
+   * 选中节点的起点（新建分支），目录与分组是 `undefined`。
+   */
+  select: [branch: string | undefined, start: StartPoint | undefined];
 }>();
 
 const tree = computed(() => buildBranchTree(props.refs));
@@ -38,7 +43,11 @@ function tracking(node: TreeNode): Tracking | undefined {
 
 function onSelect(node: TreeNode): void {
   const branch = byId.value.get(node.id);
-  emit("select", branch === undefined ? undefined : localBranchOf(branch));
+  emit(
+    "select",
+    branch === undefined ? undefined : localBranchOf(branch),
+    branch === undefined ? undefined : startOf(branch),
+  );
 }
 
 /**

@@ -11,6 +11,7 @@ import type { Repository } from "../core/repository.js";
 import {
   amendCommit,
   commit,
+  createBranch,
   createTrackingBranch,
   FastForwardKind,
   type FastForwardResult,
@@ -24,6 +25,7 @@ import {
   getRefs,
   getSkeleton,
   getStatus,
+  isValidBranchName,
   listRemotes,
   PushKind,
   push,
@@ -72,6 +74,14 @@ export interface HandlerUi {
     task: () => Promise<T>,
     done: (value: T) => string,
   ) => Promise<T>;
+  /**
+   * 问一个分支名（`vscode/input.ts`）：`validate` 返回问题描述时确定点不了。取消是 `undefined`。
+   */
+  readonly askBranchName: (
+    title: string,
+    value: string,
+    validate: (name: string) => Promise<string | undefined>,
+  ) => Promise<string | undefined>;
   readonly openDiff: (
     root: string,
     left: DiffSide,
@@ -81,6 +91,27 @@ export interface HandlerUi {
 }
 
 export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMap {
+  /**
+   * 弹输入框问一个新分支名，边输入边校验：git 认不认这个名字、和已有的本地分支重不重名。
+   * 空着点确定、取消，都是 `undefined`。分支列表在弹框前取一次，输入期间不再问。
+   */
+  async function askNewBranchName(title: string, value: string): Promise<string | undefined> {
+    const root = repository.location.root;
+    const taken = new Set(
+      (await repository.run(getRefs, root)).flatMap((ref) =>
+        ref.kind === RefKind.LocalBranch ? [ref.name] : [],
+      ),
+    );
+    const name = await ui.askBranchName(title, value, async (input) => {
+      if (input === "") return undefined;
+      if (!(await repository.run(isValidBranchName, root, input))) {
+        return `'${input}' is not a valid branch name.`;
+      }
+      return taken.has(input) ? `A branch named '${input}' already exists.` : undefined;
+    });
+    return name === "" ? undefined : name;
+  }
+
   /**
    * 按当前的 `git status` 看勾选的路径：哪些是未跟踪文件（提交前要先 `add`；Rollback 不管），
    * 哪些是已跟踪的；`withOldPaths` 给改名的补上旧路径——界面上只有新路径一行，
@@ -279,6 +310,16 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
             : said;
         },
         (message) => message,
+      );
+      return null;
+    },
+    newBranch: async ({ start, startName }) => {
+      const name = await askNewBranchName(`New branch from ${startName}`, "");
+      if (name === undefined) return null;
+      await ui.withProgress(
+        `Creating ${name}…`,
+        () => repository.run(createBranch, repository.location.root, name, start),
+        (said) => said,
       );
       return null;
     },

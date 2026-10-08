@@ -7,6 +7,7 @@ import { confirmRollback } from "./vscode/confirm.js";
 import { openDiff } from "./vscode/diff.js";
 import { ErrorGate } from "./vscode/errorGate.js";
 import { resolveGitPath } from "./vscode/gitPath.js";
+import { askBranchName } from "./vscode/input.js";
 import { createOutputLogger } from "./vscode/logger.js";
 import { registerMenuCommands } from "./vscode/menu.js";
 import { describeStartup, discoverRepositories, StartupKind } from "./vscode/open.js";
@@ -42,10 +43,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
   // 一次展开配一个 Router。收起再展开，握手会带来新代号，上一代的回复自动作废。
   const createRouter = (repository: Repository, transport: Transport): Router =>
-    new Router(transport, createHandlers(repository, { confirmRollback, openDiff, withProgress }), {
-      log: (line) => channel.appendLine(line),
-      report: (error) => errors.report(error),
-    });
+    new Router(
+      transport,
+      createHandlers(repository, { askBranchName, confirmRollback, openDiff, withProgress }),
+      {
+        log: (line) => channel.appendLine(line),
+        report: (error) => errors.report(error),
+      },
+    );
   for (const viewType of ["dummyGit.log", "dummyGit.commit"]) {
     context.subscriptions.push(registerWebviewView(context, viewType, source, createRouter));
   }
@@ -74,7 +79,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // 原生右键菜单：协议的第二个入口，用同一套 handler（`vscode/menu.ts`）。
   context.subscriptions.push(
     registerMenuCommands(
-      createHandlers(repository, { confirmRollback, openDiff, withProgress }),
+      createHandlers(repository, { askBranchName, confirmRollback, openDiff, withProgress }),
       errors,
     ),
   );

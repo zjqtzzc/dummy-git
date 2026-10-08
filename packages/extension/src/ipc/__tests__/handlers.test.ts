@@ -28,6 +28,7 @@ import { UserFacingError } from "../userFacingError.js";
 const NO_UI: HandlerUi = {
   confirmRollback: () => Promise.reject(new Error("测试里不该弹确认")),
   withProgress: (_title, task) => task(),
+  askBranchName: () => Promise.reject(new Error("测试里不该弹输入框")),
   openDiff: () => Promise.reject(new Error("测试里不该打开 diff")),
 };
 
@@ -475,5 +476,73 @@ describe("handlers.checkoutRemote", () => {
       "A local branch named feat already exists and doesn't track origin/feat.",
     );
     expect(current(repo)).toBe("main");
+  });
+});
+
+describe("handlers.newBranch", () => {
+  afterAll(cleanupTempRepos);
+  /**
+   * 从 `start` 建分支，输入框回答 `answer`。输入框开着时把 `probes` 逐个喂给校验函数，
+   * 返回输入框的标题与每个探针的校验结果。
+   */
+  const newBranch = async (
+    path: string,
+    start: string,
+    startName: string,
+    answer: string | undefined,
+    probes: readonly string[] = [],
+  ) => {
+    const repository = new Repository(plainLocation(path), cli);
+    let title = "";
+    const problems: (string | undefined)[] = [];
+    const ui: HandlerUi = {
+      ...NO_UI,
+      askBranchName: async (asked, _value, validate) => {
+        title = asked;
+        for (const probe of probes) problems.push(await validate(probe));
+        return answer;
+      },
+    };
+    try {
+      await createHandlers(repository, ui).newBranch({ repo: path, start, startName });
+      return { title, problems };
+    } finally {
+      repository.dispose();
+    }
+  };
+
+  it("从远程分支建：切过去，不跟踪起点", async () => {
+    const { remote, repo } = makeTrackingRepos();
+    git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
+    git(repo, ["fetch", "-q", "origin"]);
+    const { title } = await newBranch(repo, "refs/remotes/origin/main", "origin/main", "fix");
+    expect(title).toBe("New branch from origin/main");
+    expect(git(repo, ["branch", "--show-current"]).trim()).toBe("fix");
+    expect(git(repo, ["rev-parse", "fix"])).toBe(git(remote, ["rev-parse", "main"]));
+    expect(() => git(repo, ["rev-parse", "--abbrev-ref", "fix@{u}"])).toThrow();
+  });
+
+  it("取消或空着确定：什么都不做", async () => {
+    const repo = makeTempRepo("new-branch-cancel");
+    await newBranch(repo, "refs/heads/main", "main", undefined);
+    await newBranch(repo, "refs/heads/main", "main", "");
+    expect(git(repo, ["branch", "--format=%(refname:short)"]).trim()).toBe("main");
+  });
+
+  it("校验：不合法、重名给出问题；合法与空着不给", async () => {
+    const repo = makeTempRepo("new-branch-validate");
+    git(repo, ["branch", "-q", "feat"]);
+    const { problems } = await newBranch(repo, "refs/heads/main", "main", undefined, [
+      "a b",
+      "feat",
+      "feat-2",
+      "",
+    ]);
+    expect(problems).toEqual([
+      "'a b' is not a valid branch name.",
+      "A branch named 'feat' already exists.",
+      undefined,
+      undefined,
+    ]);
   });
 });

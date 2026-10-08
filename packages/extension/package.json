@@ -58,6 +58,10 @@
       {
         "command": "dummyGit.checkoutRemote",
         "title": "Checkout"
+      },
+      {
+        "command": "dummyGit.newBranch",
+        "title": "New Branch from Here…"
       }
     ],
     "menus": {
@@ -71,6 +75,11 @@
           "command": "dummyGit.checkoutRemote",
           "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'remoteBranch'",
           "group": "1_switch@1"
+        },
+        {
+          "command": "dummyGit.newBranch",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.start",
+          "group": "2_edit@1"
         }
       ],
       "commandPalette": [
@@ -80,6 +89,10 @@
         },
         {
           "command": "dummyGit.checkoutRemote",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.newBranch",
           "when": "false"
         }
       ]

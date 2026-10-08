@@ -46,6 +46,11 @@ const MENU_COMMANDS: readonly MenuCommand[] = [
     remote: context[MenuContextKey.Remote],
     branch: context[MenuContextKey.Branch],
   })),
+  menuCommand("dummyGit.newBranch", "newBranch", (context) => ({
+    repo: context[MenuContextKey.Repo],
+    start: context[MenuContextKey.Start],
+    startName: context[MenuContextKey.StartName],
+  })),
 ];
 
 export function registerMenuCommands(handlers: HandlerMap, errors: ErrorGate): vscode.Disposable {

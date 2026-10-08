@@ -30,6 +30,8 @@ export type BranchNode =
       readonly kind: BranchNodeKind.Head;
       readonly id: string;
       readonly label: string;
+      /** HEAD 指向的提交。 */
+      readonly target: string;
       /** HEAD 所在的本地分支；detached 时缺席。 */
       readonly branch?: string;
     }
@@ -88,11 +90,13 @@ export function buildBranchTree(refs: readonly Ref[]): readonly BranchNode[] {
             kind: BranchNodeKind.Head,
             id: HEAD_ID,
             label: `HEAD (detached at ${head.target.slice(0, 7)})`,
+            target: head.target,
           }
         : {
             kind: BranchNodeKind.Head,
             id: HEAD_ID,
             label: `HEAD → ${head.branch}`,
+            target: head.target,
             branch: head.branch,
           },
     );
@@ -220,14 +224,12 @@ export function toTreeNodes(nodes: readonly BranchNode[], repo: string): TreeNod
   return nodes.map((node): TreeNode => {
     switch (node.kind) {
       case BranchNodeKind.Head:
-        return node.branch === undefined
-          ? { id: node.id, label: node.label, icon: codicon("target") }
-          : {
-              id: node.id,
-              label: node.label,
-              icon: codicon("target"),
-              menu: localBranchMenu(repo, node.branch, true),
-            };
+        return {
+          id: node.id,
+          label: node.label,
+          icon: codicon("target"),
+          menu: menuOf(node, repo),
+        };
       case BranchNodeKind.Group:
         return {
           id: node.id,
@@ -244,7 +246,7 @@ export function toTreeNodes(nodes: readonly BranchNode[], repo: string): TreeNod
           children: toTreeNodes(node.children, repo),
         };
       case BranchNodeKind.Branch: {
-        const menu = { menu: branchMenu(repo, node.ref, node.current) };
+        const menu = { menu: menuOf(node, repo) };
         return node.current
           ? {
               id: node.id,
@@ -329,36 +331,86 @@ export function trackingOf(node: BranchNode): Tracking | undefined {
   }
 }
 
-/** 分支的右键菜单上下文：和 `package.json` 菜单项的 `when` 条件对应。 */
-function branchMenu(
-  repo: string,
-  ref: BranchRef,
-  current: boolean,
-): Readonly<Record<string, string | boolean>> {
+/** HEAD 那行与分支：能从它建新分支、有右键菜单的节点。 */
+type PointNode = Extract<BranchNode, { kind: BranchNodeKind.Head | BranchNodeKind.Branch }>;
+
+/** 从这里建新分支时的起点。 */
+export interface StartPoint {
+  /** 给 git 的：完整引用名或提交 hash，不让 git 在同名的本地分支与远程分支之间猜。 */
+  readonly start: string;
+  /** 给人看的。 */
+  readonly name: string;
+}
+
+/** 选中的节点能不能当新分支的起点，能就给出起点。目录与分组不能。 */
+export function startOf(node: BranchNode): StartPoint | undefined {
+  switch (node.kind) {
+    case BranchNodeKind.Head:
+    case BranchNodeKind.Branch:
+      return pointOf(node);
+    case BranchNodeKind.Group:
+    case BranchNodeKind.Folder:
+      return undefined;
+    default:
+      return assertNever(node, "startOf");
+  }
+}
+
+function pointOf(node: PointNode): StartPoint {
+  if (node.kind === BranchNodeKind.Head) {
+    return node.branch === undefined
+      ? { start: node.target, name: node.target.slice(0, 7) }
+      : { start: `refs/heads/${node.branch}`, name: node.branch };
+  }
+  const ref = node.ref;
   switch (ref.kind) {
     case RefKind.LocalBranch:
-      return localBranchMenu(repo, ref.name, current);
+      return { start: `refs/heads/${ref.name}`, name: ref.name };
+    case RefKind.RemoteBranch:
+      return { start: `refs/remotes/${ref.remote}/${ref.name}`, name: `${ref.remote}/${ref.name}` };
+    default:
+      return assertNever(ref, "pointOf");
+  }
+}
+
+/**
+ * 右键菜单上下文：和 `package.json` 菜单项的 `when` 条件对应。
+ * 都带起点（New Branch from Here…）；本地分支（含 HEAD 行代表的当前分支）与远程分支再各带自己的。
+ */
+function menuOf(node: PointNode, repo: string): Readonly<Record<string, string | boolean>> {
+  const { start, name } = pointOf(node);
+  const common = {
+    [MenuContextKey.Repo]: repo,
+    [MenuContextKey.Start]: start,
+    [MenuContextKey.StartName]: name,
+  };
+  if (node.kind === BranchNodeKind.Head) {
+    return node.branch === undefined ? common : localBranchMenu(common, node.branch, true);
+  }
+  const ref = node.ref;
+  switch (ref.kind) {
+    case RefKind.LocalBranch:
+      return localBranchMenu(common, ref.name, node.current);
     case RefKind.RemoteBranch:
       return {
+        ...common,
         [MenuContextKey.Node]: MenuNodeValue.RemoteBranch,
-        [MenuContextKey.Repo]: repo,
         [MenuContextKey.Remote]: ref.remote,
         [MenuContextKey.Branch]: ref.name,
       };
     default:
-      return assertNever(ref, "branchMenu");
+      return assertNever(ref, "menuOf");
   }
 }
 
-/** 本地分支（含 HEAD 行代表的当前分支）的右键菜单上下文。 */
 function localBranchMenu(
-  repo: string,
+  common: Readonly<Record<string, string>>,
   branch: string,
   current: boolean,
 ): Readonly<Record<string, string | boolean>> {
   return {
+    ...common,
     [MenuContextKey.Node]: MenuNodeValue.LocalBranch,
-    [MenuContextKey.Repo]: repo,
     [MenuContextKey.Branch]: branch,
     [MenuContextKey.Current]: current,
   };

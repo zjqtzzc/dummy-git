@@ -146,6 +146,14 @@ export interface Commands {
     params: { repo: string; remote: string; branch: string };
     result: null;
   };
+  /**
+   * 从 `start` 建新分支并切过去，名字由扩展弹输入框问。
+   * `start` 是完整引用名（`refs/heads/x`、`refs/remotes/origin/x`）或提交 hash；`startName` 只用来显示。
+   */
+  newBranch: {
+    params: { repo: string; start: string; startName: string };
+    result: null;
+  };
 }
 
 export type CommandName = keyof Commands;

@@ -10,7 +10,8 @@ import {
 import type { VscodeSplitLayout } from "@vscode-elements/elements/dist/vscode-split-layout/vscode-split-layout.js";
 import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { type Client, report } from "../logic/client.js";
-import { AppIcon, appIcon } from "../logic/icons.js";
+import { AppIcon, appIcon, codicon } from "../logic/icons.js";
+import type { StartPoint } from "../logic/log/branchTree.js";
 import { commitDiffSides, commitFileEntry } from "../logic/log/commitDiff.js";
 import { type Layout, restoreLayout, splitPosition } from "../logic/log/layout.js";
 import { hashesToFetch } from "../logic/log/prefetch.js";
@@ -122,6 +123,13 @@ async function load(repository: string): Promise<void> {
 
 /** 分支树里选中的本地分支：Pull / Push 的对象。选中的不是本地分支时两个按钮置灰。 */
 const selectedBranch = ref<string>();
+/** 分支树里选中节点的起点：New Branch 的起点。选中的是目录、分组或没选时置灰。 */
+const selectedStart = ref<StartPoint>();
+
+function onBranchSelect(branch: string | undefined, start: StartPoint | undefined): void {
+  selectedBranch.value = branch;
+  selectedStart.value = start;
+}
 
 /**
  * 分支树左边竖按钮区的 Fetch：取全部远程。进度与完成消息由扩展侧显示在状态栏；
@@ -151,6 +159,17 @@ async function pushSelected(): Promise<void> {
   if (repo.value === undefined || selectedBranch.value === undefined) return;
   try {
     await props.client.request("push", { repo: repo.value, branch: selectedBranch.value });
+  } catch (cause) {
+    report(cause);
+  }
+}
+
+/** New Branch from Selected：名字由扩展弹输入框问，与右键菜单的 New Branch from Here… 同一条命令。 */
+async function newBranchFromSelected(): Promise<void> {
+  if (repo.value === undefined || selectedStart.value === undefined) return;
+  const { start, name } = selectedStart.value;
+  try {
+    await props.client.request("newBranch", { repo: repo.value, start, startName: name });
   } catch (cause) {
     report(cause);
   }
@@ -241,6 +260,12 @@ onMounted(async () => {
   >
     <div slot="start" class="branches">
       <div class="sync-bar">
+        <ToolButton
+          :icon="codicon('add')"
+          title="New Branch from Selected"
+          :disabled="selectedStart === undefined"
+          @click="newBranchFromSelected"
+        />
         <ToolButton :icon="appIcon(AppIcon.Fetch)" title="Fetch" @click="fetchRemotes" />
         <ToolButton
           :icon="appIcon(AppIcon.Pull)"
@@ -256,7 +281,7 @@ onMounted(async () => {
         />
       </div>
       <div class="pane">
-        <BranchTree :refs="refs" :repo="repo ?? ''" @select="(branch) => (selectedBranch = branch)" />
+        <BranchTree :refs="refs" :repo="repo ?? ''" @select="onBranchSelect" />
       </div>
     </div>
 

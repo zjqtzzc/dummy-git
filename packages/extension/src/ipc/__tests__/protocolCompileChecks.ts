@@ -69,6 +69,7 @@ export const _baseline = defineHandlers({
   push: openDiffStub,
   checkout: openDiffStub,
   checkoutRemote: openDiffStub,
+  newBranch: openDiffStub,
 });
 
 /**
