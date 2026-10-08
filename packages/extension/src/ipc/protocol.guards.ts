@@ -33,7 +33,7 @@ import {
   MessageKind,
 } from "@dummy-git/shared";
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
@@ -138,6 +138,11 @@ const PARAM_GUARDS = {
       paths.length > 0
       ? { repo, message, paths }
       : undefined;
+  },
+  checkout: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const branch = raw["branch"];
+    return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;
   },
   push: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];

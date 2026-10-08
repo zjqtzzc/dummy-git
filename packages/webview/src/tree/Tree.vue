@@ -131,6 +131,12 @@ function onDblclick(event: MouseEvent): void {
   if (row !== undefined && row.expanded === undefined) emit("activate", row.node);
 }
 
+/** 右键：先选中那一行（同 VS Code 原生的树），菜单由 VS Code 按这一行的 `data-vscode-context` 弹出。 */
+function onContextmenu(event: MouseEvent): void {
+  const index = rowAt(event);
+  if (index !== undefined && index !== selectedIndex.value) select(index);
+}
+
 /**
  * 鼠标按下不让行抢焦点，焦点交给树本身（同提交列表）：
  * 行是虚拟滚动渲染的，滚出范围就被删掉，焦点若在行上，行一删焦点就丢了。
@@ -185,6 +191,7 @@ function rowId(index: number): string {
   <div
     ref="scroller"
     class="tree"
+    data-vscode-context='{"preventDefaultContextMenuItems": true}'
     role="tree"
     tabindex="0"
     :aria-activedescendant="selectedIndex === -1 ? undefined : rowId(selectedIndex)"
@@ -192,6 +199,7 @@ function rowId(index: number): string {
     @mousedown="onMousedown"
     @click="onClick"
     @dblclick="onDblclick"
+    @contextmenu="onContextmenu"
     @keydown="onKeydown"
   >
     <div :style="{ height: `${rows.length * ROW_HEIGHT}px`, position: 'relative' }">
@@ -200,6 +208,7 @@ function rowId(index: number): string {
         :id="rowId(index)"
         :key="row.node.id"
         role="treeitem"
+        :data-vscode-context="row.node.menu === undefined ? undefined : JSON.stringify(row.node.menu)"
         tabindex="-1"
         :aria-level="row.depth + 1"
         :aria-expanded="row.expanded"

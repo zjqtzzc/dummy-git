@@ -387,3 +387,16 @@ describe("handlers.push", () => {
     expect(error instanceof UserFacingError && error.detail).toContain("[rejected]");
   });
 });
+
+describe("handlers.checkout", () => {
+  afterAll(cleanupTempRepos);
+
+  it("切到选中的本地分支", async () => {
+    const path = makeTempRepo("checkout-handler");
+    git(path, ["branch", "-q", "feat"]);
+    const repository = new Repository(plainLocation(path), cli);
+    await createHandlers(repository, NO_UI).checkout({ repo: path, branch: "feat" });
+    repository.dispose();
+    expect(git(path, ["branch", "--show-current"]).trim()).toBe("feat");
+  });
+});

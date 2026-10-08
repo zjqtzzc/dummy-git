@@ -27,6 +27,7 @@ import {
   PushKind,
   push,
   rollback,
+  switchBranch,
 } from "../git/commands/index.js";
 import { defineHandlers, type HandlerMap } from "./router.js";
 import { UserFacingError } from "./userFacingError.js";
@@ -236,6 +237,14 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         },
         (kind) =>
           kind === PushKind.UpToDate ? `${tracked} is up to date` : `Pushed ${branch} → ${tracked}`,
+      );
+      return null;
+    },
+    checkout: async ({ branch }) => {
+      await ui.withProgress(
+        `Checking out ${branch}…`,
+        () => repository.run(switchBranch, repository.location.root, branch),
+        (said) => said,
       );
       return null;
     },

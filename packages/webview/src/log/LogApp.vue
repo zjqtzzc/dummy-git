@@ -256,7 +256,7 @@ onMounted(async () => {
         />
       </div>
       <div class="pane">
-        <BranchTree :refs="refs" @select="(branch) => (selectedBranch = branch)" />
+        <BranchTree :refs="refs" :repo="repo ?? ''" @select="(branch) => (selectedBranch = branch)" />
       </div>
     </div>
 

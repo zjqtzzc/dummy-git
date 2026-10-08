@@ -1,4 +1,11 @@
-import { assertNever, type Ref, RefKind, UpstreamState } from "@dummy-git/shared";
+import {
+  assertNever,
+  MenuContextKey,
+  MenuNodeValue,
+  type Ref,
+  RefKind,
+  UpstreamState,
+} from "@dummy-git/shared";
 import { codicon } from "../icons.js";
 import type { TreeNode } from "../tree/tree.js";
 
@@ -209,17 +216,24 @@ export function restoreExpanded(saved: unknown): ReadonlySet<string> | undefined
  * 分支树 → 基础树的节点。图标是 codicon：HEAD 靶心、两组各自的图标、目录文件夹、分支图标；
  * 当前分支用主题的图表黄标签、文字加粗，比对勾醒目，跟着主题走不写死颜色。
  */
-export function toTreeNodes(nodes: readonly BranchNode[]): TreeNode[] {
+export function toTreeNodes(nodes: readonly BranchNode[], repo: string): TreeNode[] {
   return nodes.map((node): TreeNode => {
     switch (node.kind) {
       case BranchNodeKind.Head:
-        return { id: node.id, label: node.label, icon: codicon("target") };
+        return node.branch === undefined
+          ? { id: node.id, label: node.label, icon: codicon("target") }
+          : {
+              id: node.id,
+              label: node.label,
+              icon: codicon("target"),
+              menu: localBranchMenu(repo, node.branch, true),
+            };
       case BranchNodeKind.Group:
         return {
           id: node.id,
           label: node.label,
           icon: codicon(node.id === LOCAL_ID ? "device-desktop" : "cloud"),
-          children: toTreeNodes(node.children),
+          children: toTreeNodes(node.children, repo),
         };
       case BranchNodeKind.Folder:
         return {
@@ -227,9 +241,13 @@ export function toTreeNodes(nodes: readonly BranchNode[]): TreeNode[] {
           label: node.label,
           icon: codicon("folder"),
           openedIcon: codicon("folder-opened"),
-          children: toTreeNodes(node.children),
+          children: toTreeNodes(node.children, repo),
         };
-      case BranchNodeKind.Branch:
+      case BranchNodeKind.Branch: {
+        const menu =
+          node.ref.kind === RefKind.LocalBranch
+            ? { menu: localBranchMenu(repo, node.ref.name, node.current) }
+            : {};
         return node.current
           ? {
               id: node.id,
@@ -237,8 +255,10 @@ export function toTreeNodes(nodes: readonly BranchNode[]): TreeNode[] {
               bold: true,
               icon: codicon("tag"),
               iconColor: "var(--vscode-charts-yellow)",
+              ...menu,
             }
-          : { id: node.id, label: node.label, icon: codicon("git-branch") };
+          : { id: node.id, label: node.label, icon: codicon("git-branch"), ...menu };
+      }
       default:
         return assertNever(node, "toTreeNodes");
     }
@@ -310,4 +330,18 @@ export function trackingOf(node: BranchNode): Tracking | undefined {
     default:
       return assertNever(upstream.state, "trackingOf");
   }
+}
+
+/** 本地分支的右键菜单上下文：和 `package.json` 菜单项的 `when` 条件对应。 */
+function localBranchMenu(
+  repo: string,
+  branch: string,
+  current: boolean,
+): Readonly<Record<string, string | boolean>> {
+  return {
+    [MenuContextKey.Node]: MenuNodeValue.LocalBranch,
+    [MenuContextKey.Repo]: repo,
+    [MenuContextKey.Branch]: branch,
+    [MenuContextKey.Current]: current,
+  };
 }

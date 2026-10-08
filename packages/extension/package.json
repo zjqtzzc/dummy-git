@@ -49,6 +49,27 @@
           "name": "Log"
         }
       ]
+    },
+    "commands": [
+      {
+        "command": "dummyGit.checkout",
+        "title": "Checkout"
+      }
+    ],
+    "menus": {
+      "webview/context": [
+        {
+          "command": "dummyGit.checkout",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'localBranch' && !dummyGit.current",
+          "group": "1_switch@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "dummyGit.checkout",
+          "when": "false"
+        }
+      ]
     }
   },
   "scripts": {

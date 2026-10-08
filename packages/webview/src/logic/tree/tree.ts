@@ -23,6 +23,11 @@ export interface TreeNode {
   readonly description?: string;
   /** 行尾的字母，比如 `M`。 */
   readonly decoration?: string;
+  /**
+   * 原生右键菜单的上下文，写成这一行的 `data-vscode-context`（键见 `shared/src/menu.ts`）。
+   * 缺席即这一行没有菜单。
+   */
+  readonly menu?: Readonly<Record<string, string | boolean>>;
   /** 有就是可展开的（哪怕是空数组）。 */
   readonly children?: readonly TreeNode[];
 }

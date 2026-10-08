@@ -11,6 +11,7 @@ export type { Commit, CommitSkeleton, Signature } from "./commit.js";
 export { DiffOpenMode, type DiffSide, DiffSideKind } from "./diff.js";
 export { GitDomain } from "./domain.js";
 export { GitErrorCode } from "./error.js";
+export { MenuContextKey, MenuNodeValue } from "./menu.js";
 export {
   type CommandName,
   type CommandParams,

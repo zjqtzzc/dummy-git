@@ -136,6 +136,11 @@ export interface Commands {
     params: { repo: string; branch: string };
     result: null;
   };
+  /** 切到一个本地分支。入口是分支树的右键菜单（协议的第二个入口，见 `extension/src/vscode/menu.ts`）。 */
+  checkout: {
+    params: { repo: string; branch: string };
+    result: null;
+  };
 }
 
 export type CommandName = keyof Commands;

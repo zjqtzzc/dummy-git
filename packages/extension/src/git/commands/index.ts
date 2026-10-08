@@ -25,6 +25,7 @@
  * | `fetchInto` | `fetch <远程> refs/heads/<M>:refs/heads/<B>`（拉取非当前分支） | — | — |
  * | `fetchBranch` | `fetch <远程> refs/heads/<M>`（拉取当前分支第一步） | — | — |
  * | `fastForward` | `merge --ff-only <远程分支记录>`（拉取当前分支第二步） | — | — |
+ * | `switchBranch` | `switch <分支>` | `git switch` | 2.23 |
  * | `rollback` | `restore --source=HEAD --staged --worktree -- <路径…>` | `git restore` | **2.23** |
  * | `getSkeleton` | `-c log.showSignature=false log --format=… --max-count=10000 HEAD --branches --remotes --tags --date-order` | — | — |
  * | `getCommitDetails` | `-c log.showSignature=false log --format=… --no-walk --stdin` | — | — |
@@ -36,6 +37,7 @@
  * `-c log.showSignature=false` 在不认识这个配置的旧 git 上是无害的空设置，不构成版本要求。
  */
 
+export { switchBranch } from "./branch.js";
 export { checkIgnore } from "./checkIgnore.js";
 export type { GitCommand } from "./command.js";
 export { amendCommit, commit } from "./commit.js";

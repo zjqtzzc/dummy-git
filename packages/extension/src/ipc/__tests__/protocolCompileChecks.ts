@@ -67,6 +67,7 @@ export const _baseline = defineHandlers({
   fetch: openDiffStub,
   pull: openDiffStub,
   push: openDiffStub,
+  checkout: openDiffStub,
 });
 
 /**
