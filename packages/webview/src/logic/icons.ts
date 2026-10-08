@@ -1,8 +1,9 @@
 /**
  * 图标：「是什么」与「多大」分开，任意组合，统一由 `Icon.vue` 画。
  *
- * - 是什么：`IconRef`。来源有两种——我们自己画的 SVG（`AppIcon`）与 codicon 字体。
- *   两种的画法不同（SVG 用宽高，字体用字号），对外一样。
+ * - 是什么：`IconRef`。来源有三种——我们自己画的 SVG（`AppIcon`）、codicon 字体、Seti 文件图标字体。
+ *   画法各不相同（SVG 用宽高，字体用字号，Seti 还要放大），对外一样。
+ *   纯数据、不依赖 Vue，所以放在 `logic/`：构造树节点的纯逻辑也要用它。
  * - 多大：`IconSize`，按用途命名，「用途 → 像素」的表在 `Icon.vue`。新用途加一档。
  */
 
@@ -16,11 +17,14 @@ export enum IconSize {
 export enum IconKind {
   App = "app",
   Codicon = "codicon",
+  Seti = "seti",
 }
 
 export type IconRef =
   | { readonly kind: IconKind.App; readonly name: AppIcon }
-  | { readonly kind: IconKind.Codicon; readonly name: string };
+  | { readonly kind: IconKind.Codicon; readonly name: string }
+  /** Seti 文件图标：字形与它自带的颜色由 `setiIcon(文件名, 浅色主题?)` 查出。 */
+  | { readonly kind: IconKind.Seti; readonly char: string; readonly color: string };
 
 export function appIcon(name: AppIcon): IconRef {
   return { kind: IconKind.App, name };

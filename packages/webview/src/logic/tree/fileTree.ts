@@ -1,6 +1,7 @@
 import { assertNever } from "@dummy-git/shared";
+import { codicon, IconKind } from "../icons.js";
 import { setiIcon } from "./setiIcon.js";
-import { TreeIconKind, type TreeNode } from "./tree.js";
+import type { TreeNode } from "./tree.js";
 
 /**
  * 所有文件树共用的整理逻辑（`.notes/design/phase-2.md` 第一节）：几组文件整理成树。
@@ -187,16 +188,16 @@ export function toTreeNodes(nodes: readonly FileNode[], light: boolean): TreeNod
         return {
           id: node.id,
           label: node.label,
-          icon: { kind: TreeIconKind.Codicon, name: "folder", openedName: "folder-opened" },
+          icon: codicon("folder"),
+          openedIcon: codicon("folder-opened"),
           description: fileCount(node.count),
           children: toTreeNodes(node.children, light),
         };
       case FileNodeKind.File: {
-        const icon = setiIcon(node.label, light);
         const base = {
           id: node.id,
           label: node.label,
-          icon: { kind: TreeIconKind.Seti, char: icon.char, color: icon.color },
+          icon: { kind: IconKind.Seti, ...setiIcon(node.label, light) },
           color: node.entry.color,
           decoration: node.entry.letter,
         } as const;

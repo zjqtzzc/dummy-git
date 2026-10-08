@@ -1,5 +1,6 @@
 import { assertNever, type Ref, RefKind, UpstreamState } from "@dummy-git/shared";
-import { TreeIconKind, type TreeNode } from "../tree/tree.js";
+import { codicon } from "../icons.js";
+import type { TreeNode } from "../tree/tree.js";
 
 /**
  * 左栏分支树（`.notes/design/phase-1.md` 第 3 条）：由 `getRefs` 的结果整理而来。
@@ -224,7 +225,8 @@ export function toTreeNodes(nodes: readonly BranchNode[]): TreeNode[] {
         return {
           id: node.id,
           label: node.label,
-          icon: { ...codicon("folder"), openedName: "folder-opened" },
+          icon: codicon("folder"),
+          openedIcon: codicon("folder-opened"),
           children: toTreeNodes(node.children),
         };
       case BranchNodeKind.Branch:
@@ -233,17 +235,14 @@ export function toTreeNodes(nodes: readonly BranchNode[]): TreeNode[] {
               id: node.id,
               label: node.label,
               bold: true,
-              icon: { ...codicon("tag"), color: "var(--vscode-charts-yellow)" },
+              icon: codicon("tag"),
+              iconColor: "var(--vscode-charts-yellow)",
             }
           : { id: node.id, label: node.label, icon: codicon("git-branch") };
       default:
         return assertNever(node, "toTreeNodes");
     }
   });
-}
-
-function codicon(name: string): { readonly kind: TreeIconKind.Codicon; readonly name: string } {
-  return { kind: TreeIconKind.Codicon, name };
 }
 
 /**

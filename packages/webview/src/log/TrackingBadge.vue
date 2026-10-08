@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { AppIcon, appIcon, IconSize } from "../logic/icons.js";
 import { type Tracking, TrackingKind } from "../logic/log/branchTree.js";
 import Icon from "../ui/Icon.vue";
-import { AppIcon, appIcon, IconSize } from "../ui/icons.js";
 
 /**
  * 分支名后面的同步状态，同 IDEA：蓝色 ↙ 落后（远程有、本地没有），绿色 ↗ 领先（本地有、还没推），

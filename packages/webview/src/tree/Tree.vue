@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { assertNever } from "@dummy-git/shared";
 import { computed, onMounted, onUnmounted, ref } from "vue";
+import type { IconRef } from "../logic/icons.js";
 import {
   CheckState,
   checkState,
   flattenTree,
   leafIds,
   setExpanded,
-  type TreeIcon,
-  TreeIconKind,
   TreeKeyActionKind,
   type TreeNode,
   type TreeRow,
@@ -16,7 +15,6 @@ import {
 } from "../logic/tree/tree.js";
 import { ROW_HEIGHT, renderRange, scrollIntoView } from "../logic/virtualList.js";
 import Icon from "../ui/Icon.vue";
-import { codicon, type IconRef } from "../ui/icons.js";
 
 /**
  * 所有树共用的基础组件（`.notes/design/phase-2.md` 第一节），外观与交互照 VS Code 原生的树。
@@ -68,6 +66,7 @@ const visible = computed(() => {
     row,
     index: range.start + i,
     check: checked === undefined ? undefined : checkState(row.node, checked),
+    icon: iconOf(row),
   }));
 });
 
@@ -169,9 +168,11 @@ const CHECK_ICON: Readonly<Record<CheckState, string>> = {
   [CheckState.Unchecked]: "",
 };
 
-/** codicon 图标。展开着且有 `openedName` 时换成它。 */
-function codiconOf(icon: Extract<TreeIcon, { kind: TreeIconKind.Codicon }>, row: TreeRow): IconRef {
-  return codicon(row.expanded === true && icon.openedName !== undefined ? icon.openedName : icon.name);
+/** 行首的图标：展开着且有 `openedIcon` 时换成它。 */
+function iconOf(row: TreeRow): IconRef | undefined {
+  return row.expanded === true && row.node.openedIcon !== undefined
+    ? row.node.openedIcon
+    : row.node.icon;
 }
 
 /** 行的 DOM id，给 `aria-activedescendant` 用。 */
@@ -195,7 +196,7 @@ function rowId(index: number): string {
   >
     <div :style="{ height: `${rows.length * ROW_HEIGHT}px`, position: 'relative' }">
       <div
-        v-for="{ row, index, check } in visible"
+        v-for="{ row, index, check, icon } in visible"
         :id="rowId(index)"
         :key="row.node.id"
         role="treeitem"
@@ -221,18 +222,9 @@ function rowId(index: number): string {
           ]"
         />
         <span v-if="check !== undefined" :class="['check', 'codicon', CHECK_ICON[check]]" />
-        <template v-if="row.node.icon !== undefined">
-          <span
-            v-if="row.node.icon.kind === TreeIconKind.Codicon"
-            class="icon"
-            :style="{ color: row.node.icon.color }"
-          >
-            <Icon :icon="codiconOf(row.node.icon, row)" />
-          </span>
-          <span v-else class="icon seti" :style="{ color: row.node.icon.color }">{{
-            row.node.icon.char
-          }}</span>
-        </template>
+        <span v-if="icon !== undefined" class="icon" :style="{ color: row.node.iconColor }">
+          <Icon :icon="icon" />
+        </span>
         <span :class="['label', { bold: row.node.bold }]" :style="{ color: row.node.color }">{{
           row.node.label
         }}</span>
@@ -326,25 +318,7 @@ function rowId(index: number): string {
 .icon {
   flex: none;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
   margin-right: 6px;
-  font-size: 16px;
-}
-/*
- * Seti 图标：
- * - 16×16 的方框里 flex 居中，行高 1；字形上下位置不靠 22px 行高去撑；
- * - 字号 150%：Seti 主题文件的规定，字形四周留了空白，放大后才和资源管理器里一样大；
- * - 灰度抗锯齿：macOS 默认的次像素抗锯齿会让图标字体发粗，VS Code 同样关掉了它。
- */
-.seti {
-  font-family: "seti", sans-serif;
-  font-size: 150%;
-  line-height: 1;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 .label {
   overflow: hidden;

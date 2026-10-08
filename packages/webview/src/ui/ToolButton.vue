@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import type { IconRef } from "../logic/icons.js";
 import Icon from "./Icon.vue";
-import type { IconRef } from "./icons.js";
 
 /**
  * 工具按钮。`vscode-toolbar-button` 只认 codicon、也没有 `disabled`，所以自己做一个，

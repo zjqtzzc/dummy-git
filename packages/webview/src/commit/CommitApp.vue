@@ -12,9 +12,9 @@ import {
   workingFiles,
   workingGroups,
 } from "../logic/commit/workingChanges.js";
+import { codicon } from "../logic/icons.js";
 import { type FileEntry, keepChecked } from "../logic/tree/fileTree.js";
 import FileTree from "../tree/FileTree.vue";
-import { codicon } from "../ui/icons.js";
 import ToolButton from "../ui/ToolButton.vue";
 import { viewState } from "../vscodeApi.js";
 

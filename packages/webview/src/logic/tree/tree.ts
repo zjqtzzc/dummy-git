@@ -1,23 +1,9 @@
+import type { IconRef } from "../icons.js";
+
 /**
  * 所有树共用的纯逻辑（`.notes/design/phase-2.md` 第一节）：节点的统一形状、按展开状态压平成行、
  * 展开 / 收起、键盘。外观与交互照 VS Code 原生的树。
  */
-
-export enum TreeIconKind {
-  Codicon = "codicon",
-  Seti = "seti",
-}
-
-/** 行首的图标。缺席即没有图标（比如组标题）。 */
-export type TreeIcon =
-  | {
-      readonly kind: TreeIconKind.Codicon;
-      readonly name: string;
-      /** 展开时换成它，比如 `folder-opened`；缺席则不换。 */
-      readonly openedName?: string;
-      readonly color?: string;
-    }
-  | { readonly kind: TreeIconKind.Seti; readonly char: string; readonly color: string };
 
 /** 树的一个节点。各使用方把自己的数据转成它；「类型 → 图标 / 颜色 / 字母」表各自持有。 */
 export interface TreeNode {
@@ -25,7 +11,12 @@ export interface TreeNode {
   readonly id: string;
   readonly label: string;
   readonly bold?: boolean;
-  readonly icon?: TreeIcon;
+  /** 行首的图标；缺席即没有图标（比如组标题）。 */
+  readonly icon?: IconRef;
+  /** 展开时换成它，比如打开的文件夹；缺席则不换。 */
+  readonly openedIcon?: IconRef;
+  /** 图标的颜色（比如当前分支的黄色标签）；缺席则跟着行的颜色。Seti 图标自带颜色。 */
+  readonly iconColor?: string;
   /** 文字与右侧字母的颜色，CSS 颜色值。 */
   readonly color?: string;
   /** 文字后面的灰字，比如 `3 files`、`renamed from a.ts`。 */

@@ -10,13 +10,13 @@ import {
 import type { VscodeSplitLayout } from "@vscode-elements/elements/dist/vscode-split-layout/vscode-split-layout.js";
 import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { type Client, report } from "../logic/client.js";
+import { AppIcon, appIcon } from "../logic/icons.js";
 import { commitDiffSides, commitFileEntry } from "../logic/log/commitDiff.js";
 import { type Layout, restoreLayout, splitPosition } from "../logic/log/layout.js";
 import { hashesToFetch } from "../logic/log/prefetch.js";
 import type { FileEntry } from "../logic/tree/fileTree.js";
 import type { RowRange } from "../logic/virtualList.js";
 import FileTree from "../tree/FileTree.vue";
-import { AppIcon, appIcon } from "../ui/icons.js";
 import ToolButton from "../ui/ToolButton.vue";
 import { viewState } from "../vscodeApi.js";
 import BranchTree from "./BranchTree.vue";
