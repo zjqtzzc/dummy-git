@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   type BranchNode,
   BranchNodeKind,
+  branchNodesById,
   buildBranchTree,
   defaultExpanded,
+  localBranchOf,
   restoreExpanded,
 } from "../branchTree.js";
 
@@ -116,5 +118,37 @@ describe("restoreExpanded", () => {
     );
     expect(restoreExpanded(undefined)).toBeUndefined();
     expect(restoreExpanded([1, 2])).toBeUndefined();
+  });
+});
+
+describe("localBranchOf：选中的是不是本地分支", () => {
+  const tree = buildBranchTree([
+    head("main"),
+    local("main"),
+    local("feat/x"),
+    remote("origin", "main"),
+  ]);
+  const byId = branchNodesById(tree);
+  const of = (id: string) => {
+    const node = byId.get(id);
+    if (node === undefined) throw new Error(`没有 ${id}`);
+    return localBranchOf(node);
+  };
+
+  it("本地分支：给出全名", () => {
+    expect(of("local/main")).toBe("main");
+    expect(of("local/feat/x")).toBe("feat/x");
+  });
+
+  it("HEAD 那行代表当前分支；detached 时不是", () => {
+    expect(of("head")).toBe("main");
+    const detached = branchNodesById(buildBranchTree([head(), local("main")])).get("head");
+    expect(detached && localBranchOf(detached)).toBeUndefined();
+  });
+
+  it("远程分支、目录、分组都不是", () => {
+    expect(of("remote/origin/main")).toBeUndefined();
+    expect(of("local/feat")).toBeUndefined();
+    expect(of("local")).toBeUndefined();
   });
 });

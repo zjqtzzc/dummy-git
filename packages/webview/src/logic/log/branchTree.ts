@@ -14,8 +14,17 @@ export enum BranchNodeKind {
   Branch = "branch",
 }
 
+/** 分支树里的一个分支对应的引用：本地分支或远程分支。 */
+type BranchRef = Extract<Ref, { kind: RefKind.LocalBranch | RefKind.RemoteBranch }>;
+
 export type BranchNode =
-  | { readonly kind: BranchNodeKind.Head; readonly id: string; readonly label: string }
+  | {
+      readonly kind: BranchNodeKind.Head;
+      readonly id: string;
+      readonly label: string;
+      /** HEAD 所在的本地分支；detached 时缺席。 */
+      readonly branch?: string;
+    }
   | {
       readonly kind: BranchNodeKind.Group | BranchNodeKind.Folder;
       /** 展开状态按它记。同一层级结构下稳定：`local`、`remote/origin/feat`。 */
@@ -30,6 +39,7 @@ export type BranchNode =
       readonly label: string;
       /** HEAD 当前所在的分支。 */
       readonly current: boolean;
+      readonly ref: BranchRef;
     };
 
 const HEAD_ID = "head";
@@ -38,8 +48,8 @@ const REMOTE_ID = "remote";
 
 export function buildBranchTree(refs: readonly Ref[]): readonly BranchNode[] {
   let head: Extract<Ref, { kind: RefKind.Head }> | undefined;
-  const local: string[] = [];
-  const remotes = new Map<string, string[]>();
+  const local: Leaf[] = [];
+  const remotes = new Map<string, Leaf[]>();
 
   for (const ref of refs) {
     switch (ref.kind) {
@@ -47,12 +57,12 @@ export function buildBranchTree(refs: readonly Ref[]): readonly BranchNode[] {
         head = ref;
         break;
       case RefKind.LocalBranch:
-        local.push(ref.name);
+        local.push({ path: ref.name, ref });
         break;
       case RefKind.RemoteBranch:
         // `origin/HEAD` 只是指向远程默认分支的指针，不是一个分支。
         if (ref.name !== "HEAD")
-          remotes.set(ref.remote, [...(remotes.get(ref.remote) ?? []), ref.name]);
+          remotes.set(ref.remote, [...(remotes.get(ref.remote) ?? []), { path: ref.name, ref }]);
         break;
       case RefKind.Tag:
         break;
@@ -64,14 +74,20 @@ export function buildBranchTree(refs: readonly Ref[]): readonly BranchNode[] {
   const current = head?.branch;
   const nodes: BranchNode[] = [];
   if (head !== undefined) {
-    nodes.push({
-      kind: BranchNodeKind.Head,
-      id: HEAD_ID,
-      label:
-        head.branch === undefined
-          ? `HEAD (detached at ${head.target.slice(0, 7)})`
-          : `HEAD → ${head.branch}`,
-    });
+    nodes.push(
+      head.branch === undefined
+        ? {
+            kind: BranchNodeKind.Head,
+            id: HEAD_ID,
+            label: `HEAD (detached at ${head.target.slice(0, 7)})`,
+          }
+        : {
+            kind: BranchNodeKind.Head,
+            id: HEAD_ID,
+            label: `HEAD → ${head.branch}`,
+            branch: head.branch,
+          },
+    );
   }
   nodes.push({
     kind: BranchNodeKind.Group,
@@ -95,22 +111,29 @@ export function buildBranchTree(refs: readonly Ref[]): readonly BranchNode[] {
   return nodes;
 }
 
-/** 一组分支名按 `/` 折叠成目录。`current` 是要标出的当前分支全名（只在 Local 里有）。 */
+/** 待折叠的一个分支：`path` 是还没折进目录的那部分名字，`ref` 是它对应的引用。 */
+interface Leaf {
+  readonly path: string;
+  readonly ref: BranchRef;
+}
+
+/** 一组分支按 `/` 折叠成目录。`current` 是要标出的当前分支全名（只在 Local 里有）。 */
 function folderize(
   parentId: string,
-  names: readonly string[],
+  leaves: readonly Leaf[],
   current: string | undefined,
   prefix = "",
 ): readonly BranchNode[] {
-  const folders = new Map<string, string[]>();
-  const leaves: string[] = [];
-  for (const name of names) {
-    const slash = name.indexOf("/");
+  const folders = new Map<string, Leaf[]>();
+  const here: Leaf[] = [];
+  for (const leaf of leaves) {
+    const slash = leaf.path.indexOf("/");
     if (slash === -1) {
-      leaves.push(name);
+      here.push(leaf);
     } else {
-      const folder = name.slice(0, slash);
-      folders.set(folder, [...(folders.get(folder) ?? []), name.slice(slash + 1)]);
+      const folder = leaf.path.slice(0, slash);
+      const rest = { path: leaf.path.slice(slash + 1), ref: leaf.ref };
+      folders.set(folder, [...(folders.get(folder) ?? []), rest]);
     }
   }
   return [
@@ -127,14 +150,17 @@ function folderize(
         ),
       }),
     ),
-    ...leaves.sort(byName).map(
-      (leaf): BranchNode => ({
-        kind: BranchNodeKind.Branch,
-        id: `${parentId}/${leaf}`,
-        label: leaf,
-        current: `${prefix}${leaf}` === current,
-      }),
-    ),
+    ...here
+      .sort((a, b) => byName(a.path, b.path))
+      .map(
+        (leaf): BranchNode => ({
+          kind: BranchNodeKind.Branch,
+          id: `${parentId}/${leaf.path}`,
+          label: leaf.path,
+          current: `${prefix}${leaf.path}` === current,
+          ref: leaf.ref,
+        }),
+      ),
   ];
 }
 
@@ -218,4 +244,36 @@ export function toTreeNodes(nodes: readonly BranchNode[]): TreeNode[] {
 
 function codicon(name: string): { readonly kind: TreeIconKind.Codicon; readonly name: string } {
   return { kind: TreeIconKind.Codicon, name };
+}
+
+/**
+ * 选中的节点是不是一个本地分支，是就给出它的全名（拉取、推送的对象）。
+ * 顶上那行 HEAD 代表当前分支（detached 时不是）；远程分支、目录、分组都不是。
+ * 是不是当前分支、上游是什么，由扩展执行时自己问 git，不用这里可能过时的状态。
+ */
+export function localBranchOf(node: BranchNode): string | undefined {
+  switch (node.kind) {
+    case BranchNodeKind.Head:
+      return node.branch;
+    case BranchNodeKind.Branch:
+      return node.ref.kind === RefKind.LocalBranch ? node.ref.name : undefined;
+    case BranchNodeKind.Group:
+    case BranchNodeKind.Folder:
+      return undefined;
+    default:
+      return assertNever(node, "localBranchOf");
+  }
+}
+
+/** 节点 id → 节点。基础树只告诉我们选中了哪个 id。 */
+export function branchNodesById(nodes: readonly BranchNode[]): ReadonlyMap<string, BranchNode> {
+  const index = new Map<string, BranchNode>();
+  const visit = (node: BranchNode): void => {
+    index.set(node.id, node);
+    if (node.kind === BranchNodeKind.Group || node.kind === BranchNodeKind.Folder) {
+      for (const child of node.children) visit(child);
+    }
+  };
+  for (const node of nodes) visit(node);
+  return index;
 }

@@ -2,11 +2,14 @@
 import type { Ref } from "@dummy-git/shared";
 import { computed, ref, watch } from "vue";
 import {
+  branchNodesById,
   buildBranchTree,
   defaultExpanded,
+  localBranchOf,
   restoreExpanded,
   toTreeNodes,
 } from "../logic/log/branchTree.js";
+import type { TreeNode } from "../logic/tree/tree.js";
 import Tree from "../tree/Tree.vue";
 import { viewState } from "../vscodeApi.js";
 
@@ -15,9 +18,19 @@ import { viewState } from "../vscodeApi.js";
  * 展开状态存进 `viewState`，收起再展开、重新加载窗口都恢复。
  */
 const props = defineProps<{ refs: readonly Ref[] }>();
+const emit = defineEmits<{
+  /** 选中的本地分支名（拉取、推送的对象）；选中的不是本地分支时是 `undefined`。 */
+  select: [branch: string | undefined];
+}>();
 
 const tree = computed(() => buildBranchTree(props.refs));
 const nodes = computed(() => toTreeNodes(tree.value));
+const byId = computed(() => branchNodesById(tree.value));
+
+function onSelect(node: TreeNode): void {
+  const branch = byId.value.get(node.id);
+  emit("select", branch === undefined ? undefined : localBranchOf(branch));
+}
 
 /**
  * 当前展开的节点。第一次有分支数据时定下来：存过就用存的，没存过按默认值（`defaultExpanded`）。
@@ -42,5 +55,5 @@ function onExpanded(next: ReadonlySet<string>): void {
 </script>
 
 <template>
-  <Tree :nodes="nodes" :expanded="expanded" @update:expanded="onExpanded" />
+  <Tree :nodes="nodes" :expanded="expanded" @update:expanded="onExpanded" @select="onSelect" />
 </template>

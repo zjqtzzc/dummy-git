@@ -118,6 +118,9 @@ async function load(repository: string): Promise<void> {
   }
 }
 
+/** 分支树里选中的本地分支：Pull / Push 的对象。选中的不是本地分支时两个按钮置灰。 */
+const selectedBranch = ref<string>();
+
 /**
  * 分支树左边竖按钮区的 Fetch：取全部远程。进度与完成消息由扩展侧显示在状态栏；
  * 按钮本身不转圈、不置灰——连点只是在远程道里排队。
@@ -217,9 +220,22 @@ onMounted(async () => {
     <div slot="start" class="branches">
       <div class="sync-bar">
         <vscode-toolbar-button icon="repo-fetch" label="Fetch" title="Fetch" @click="fetchRemotes" />
+        <!-- 这个按钮组件没有 disabled，用样式表示置灰。 -->
+        <vscode-toolbar-button
+          icon="repo-pull"
+          label="Pull Selected"
+          title="Pull Selected"
+          :class="{ disabled: selectedBranch === undefined }"
+        />
+        <vscode-toolbar-button
+          icon="repo-push"
+          label="Push Selected"
+          title="Push Selected"
+          :class="{ disabled: selectedBranch === undefined }"
+        />
       </div>
       <div class="pane">
-        <BranchTree :refs="refs" />
+        <BranchTree :refs="refs" @select="(branch) => (selectedBranch = branch)" />
       </div>
     </div>
 
@@ -266,6 +282,10 @@ onMounted(async () => {
   gap: 2px;
   padding: 4px 2px;
   border-right: 1px solid var(--vscode-panel-border);
+}
+.disabled {
+  opacity: 0.4;
+  pointer-events: none;
 }
 .branches > .pane {
   flex: 1;
