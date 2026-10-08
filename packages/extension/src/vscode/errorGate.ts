@@ -47,9 +47,10 @@ export function describeError(error: unknown): { summary: string; detail: string
     const command = error.args
       .map((arg) => (arg.startsWith("--format=") ? "--format=..." : arg))
       .join(" ");
+    const failed = `git ${command} failed (exit ${error.exitCode}):`;
     const firstLine = error.stderr.split("\n")[0] ?? "";
-    const summary = `git ${command} failed (exit ${error.exitCode}): ${firstLine}`;
-    return { summary, detail: `${summary}\n${error.stderr}` };
+    // 输出面板写 stderr 全文，开头那句不再带第一行，免得它出现两次。
+    return { summary: `${failed} ${firstLine}`, detail: `${failed}\n${error.stderr}` };
   }
   if (error instanceof Error) {
     return { summary: error.message, detail: error.stack ?? error.message };

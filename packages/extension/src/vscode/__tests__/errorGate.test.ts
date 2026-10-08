@@ -63,7 +63,9 @@ describe("describeError：通知一行、输出面板写全", () => {
     );
     const { summary, detail } = describeError(error);
     expect(summary).toBe("git log --format=... -1 failed (exit 128): fatal: bad revision");
-    expect(detail).toContain("hint: line two");
+    expect(detail).toBe(
+      "git log --format=... -1 failed (exit 128):\nfatal: bad revision\nhint: line two",
+    );
   });
 
   it("普通 Error：摘要是 message，详情是堆栈", () => {
