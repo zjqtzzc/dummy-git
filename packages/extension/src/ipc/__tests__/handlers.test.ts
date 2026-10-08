@@ -16,11 +16,13 @@ import {
   fixtures,
   git,
   makeTempRepo,
+  makeTrackingRepos,
   plainLocation,
 } from "../../__tests__/support.js";
 import { Repository } from "../../core/repository.js";
 import { getRepositoryLocation } from "../../git/commands/index.js";
 import { createHandlers, type HandlerUi } from "../handlers.js";
+import { UserFacingError } from "../userFacingError.js";
 
 /** 不涉及界面的测试用它：真调到就说明测错了东西。 */
 const NO_UI: HandlerUi = {
@@ -294,5 +296,47 @@ describe("handlers.rollback", () => {
     });
     repository.dispose();
     expect(git(path, ["status", "--porcelain"]).trim()).toBe("M f1");
+  });
+});
+
+describe("handlers.pull", () => {
+  afterAll(cleanupTempRepos);
+  const pull = async (path: string, branch: string) => {
+    const repository = new Repository(plainLocation(path), cli);
+    try {
+      await createHandlers(repository, NO_UI).pull({ repo: path, branch });
+    } finally {
+      repository.dispose();
+    }
+  };
+
+  it("当前分支与非当前分支都能快进到远程", async () => {
+    const { remote, repo } = makeTrackingRepos();
+    git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
+    await pull(repo, "main");
+    await pull(repo, "other");
+    const tip = git(remote, ["rev-parse", "main"]);
+    expect(git(repo, ["rev-parse", "main"])).toBe(tip);
+    expect(git(repo, ["rev-parse", "other"])).toBe(tip);
+  });
+
+  it("没有上游：给一句说明，不跑 git", async () => {
+    const { repo } = makeTrackingRepos();
+    git(repo, ["branch", "-q", "lonely"]);
+    await expect(pull(repo, "lonely")).rejects.toThrow(
+      "lonely has no upstream branch. Push it first.",
+    );
+  });
+
+  it("两边各有新提交：给一句说明，git 原文留在 detail", async () => {
+    const { remote, repo } = makeTrackingRepos();
+    git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
+    const error = await pull(repo, "main").catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(UserFacingError);
+    expect(error instanceof UserFacingError && error.message).toBe(
+      "Cannot fast-forward main: it and origin/main have both changed. Merging is not supported yet.",
+    );
+    expect(error instanceof UserFacingError && error.detail).toContain("fast-forward");
   });
 });

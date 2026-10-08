@@ -1,9 +1,14 @@
-import { ChangeKind, type DiffOpenMode, type DiffSide } from "@dummy-git/shared";
+import { ChangeKind, type DiffOpenMode, type DiffSide, type Ref, RefKind } from "@dummy-git/shared";
 import type { Repository } from "../core/repository.js";
 import {
   amendCommit,
   commit,
+  FastForwardKind,
+  type FastForwardResult,
+  fastForward,
   fetchAll,
+  fetchBranch,
+  fetchInto,
   getCommitDetails,
   getCommitFiles,
   getHead,
@@ -13,6 +18,7 @@ import {
   rollback,
 } from "../git/commands/index.js";
 import { defineHandlers, type HandlerMap } from "./router.js";
+import { UserFacingError } from "./userFacingError.js";
 
 /**
  * 协议表的另一半：每条命令**怎么执行**。
@@ -139,6 +145,43 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       );
       return null;
     },
+    pull: async ({ branch }) => {
+      const root = repository.location.root;
+      const [head, refs] = await Promise.all([
+        repository.run(getHead, root),
+        repository.run(getRefs, root),
+      ]);
+      const before = localBranch(refs, branch);
+      if (before === undefined) throw new UserFacingError(`Branch ${branch} no longer exists.`);
+      const upstream = before.upstream;
+      if (upstream === undefined) {
+        throw new UserFacingError(`${branch} has no upstream branch. Push it first.`);
+      }
+      const tracked = `${upstream.remote}/${upstream.name}`;
+      const current = head.kind === RefKind.Head && head.branch === branch;
+      await ui.withProgress(
+        `Pulling ${branch}…`,
+        async () => {
+          // 当前分支：git 不许 fetch 直接更新检出的分支，拆成远程道的 fetch + 本地道的快进。
+          let result: FastForwardResult;
+          if (current) {
+            await repository.run(fetchBranch, root, upstream.remote, upstream.name);
+            result = await repository.run(fastForward, root, `refs/remotes/${tracked}`);
+          } else {
+            result = await repository.run(fetchInto, root, upstream.remote, upstream.name, branch);
+          }
+          if (result.kind === FastForwardKind.Diverged) {
+            throw new UserFacingError(
+              `Cannot fast-forward ${branch}: it and ${tracked} have both changed. Merging is not supported yet.`,
+              result.stderr,
+            );
+          }
+          return localBranch(await repository.run(getRefs, root), branch)?.target !== before.target;
+        },
+        (moved) => (moved ? `Pulled ${branch} from ${tracked}` : `${branch} is up to date`),
+      );
+      return null;
+    },
     rollback: async ({ paths }) => {
       // 未跟踪文件不归 Rollback 管（第 7 阶段右键 Delete）。一个已跟踪的都没有就什么都不做。
       const { tracked, withOldPaths } = await inspect(paths);
@@ -147,4 +190,15 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       return null;
     },
   });
+}
+
+/** 按名字找本地分支。 */
+function localBranch(
+  refs: readonly Ref[],
+  name: string,
+): Extract<Ref, { kind: RefKind.LocalBranch }> | undefined {
+  for (const ref of refs) {
+    if (ref.kind === RefKind.LocalBranch && ref.name === name) return ref;
+  }
+  return undefined;
 }

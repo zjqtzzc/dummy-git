@@ -121,6 +121,14 @@ export interface Commands {
     params: { repo: string };
     result: null;
   };
+  /**
+   * 拉取选中的本地分支：只更新它和它跟踪的远程分支，只快进。
+   * 是不是当前分支、上游是什么由扩展自己问 git。
+   */
+  pull: {
+    params: { repo: string; branch: string };
+    result: null;
+  };
 }
 
 export type CommandName = keyof Commands;

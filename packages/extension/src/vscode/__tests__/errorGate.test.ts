@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GitFailureError } from "../../git/failure.js";
+import { UserFacingError } from "../../ipc/userFacingError.js";
 import { describeError, ErrorGate } from "../errorGate.js";
 
 /** 一个可手动「关掉通知」的出口。 */
@@ -72,5 +73,15 @@ describe("describeError：通知一行、输出面板写全", () => {
 
   it("抛出来的不是 Error 也能说清楚", () => {
     expect(describeError("plain")).toEqual({ summary: "plain", detail: "plain" });
+  });
+});
+
+describe("describeError：已知失败换成的一句话", () => {
+  it("通知只显示那句话；输出面板写那句话加 git 原文", () => {
+    const { summary, detail } = describeError(
+      new UserFacingError("Push rejected: …", "To github.com:a/b.git\n ! [rejected] main -> main"),
+    );
+    expect(summary).toBe("Push rejected: …");
+    expect(detail).toBe("Push rejected: …\nTo github.com:a/b.git\n ! [rejected] main -> main");
   });
 });

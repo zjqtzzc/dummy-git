@@ -139,6 +139,11 @@ const PARAM_GUARDS = {
       ? { repo, message, paths }
       : undefined;
   },
+  pull: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const branch = raw["branch"];
+    return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;
+  },
   fetch: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     return typeof repo === "string" ? { repo } : undefined;
