@@ -86,6 +86,14 @@
       {
         "command": "dummyGit.dropStash",
         "title": "Delete"
+      },
+      {
+        "command": "dummyGit.pullBranch",
+        "title": "Pull"
+      },
+      {
+        "command": "dummyGit.pushBranch",
+        "title": "Push"
       }
     ],
     "menus": {
@@ -103,22 +111,22 @@
         {
           "command": "dummyGit.newBranch",
           "when": "webviewId == 'dummyGit.log' && dummyGit.start",
-          "group": "2_edit@1"
+          "group": "3_edit@1"
         },
         {
           "command": "dummyGit.renameBranch",
           "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'localBranch'",
-          "group": "2_edit@2"
+          "group": "3_edit@2"
         },
         {
           "command": "dummyGit.deleteBranch",
           "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'localBranch' && !dummyGit.current",
-          "group": "3_delete@1"
+          "group": "4_delete@1"
         },
         {
           "command": "dummyGit.deleteRemoteBranch",
           "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'remoteBranch'",
-          "group": "3_delete@1"
+          "group": "4_delete@1"
         },
         {
           "command": "dummyGit.popStash",
@@ -133,7 +141,17 @@
         {
           "command": "dummyGit.dropStash",
           "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'stash'",
-          "group": "3_delete@1"
+          "group": "4_delete@1"
+        },
+        {
+          "command": "dummyGit.pullBranch",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'localBranch'",
+          "group": "2_sync@1"
+        },
+        {
+          "command": "dummyGit.pushBranch",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'localBranch'",
+          "group": "2_sync@2"
         }
       ],
       "commandPalette": [
@@ -171,6 +189,14 @@
         },
         {
           "command": "dummyGit.dropStash",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.pullBranch",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.pushBranch",
           "when": "false"
         }
       ]
