@@ -73,6 +73,7 @@ export const _baseline = defineHandlers({
   renameBranch: openDiffStub,
   deleteBranch: openDiffStub,
   deleteRemoteBranch: openDiffStub,
+  stash: openDiffStub,
 });
 
 /**

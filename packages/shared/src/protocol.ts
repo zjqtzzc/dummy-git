@@ -159,6 +159,14 @@ export interface Commands {
     params: { repo: string; branch: string };
     result: null;
   };
+  /**
+   * 存 stash，未跟踪文件一起存，说明用 git 自动生成的。`paths` 是勾选的文件；
+   * **空 = 全部改动**（什么都没勾时点 Stash）。
+   */
+  stash: {
+    params: { repo: string; paths: readonly string[] };
+    result: null;
+  };
   /** 删本地分支（不能是当前分支）。没合并时扩展先问用户。 */
   deleteBranch: {
     params: { repo: string; branch: string };

@@ -199,6 +199,11 @@ const PARAM_GUARDS = {
       ? { repo, paths }
       : undefined;
   },
+  stash: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const paths = asStringArray(raw["paths"]);
+    return typeof repo === "string" && paths !== undefined ? { repo, paths } : undefined;
+  },
   amend: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const message = raw["message"];

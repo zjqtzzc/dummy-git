@@ -696,3 +696,57 @@ describe("handlers.deleteBranch / deleteRemoteBranch", () => {
     expect(branches(remote)).toEqual(["feat", "main"]);
   });
 });
+
+describe("handlers.stash", () => {
+  afterAll(cleanupTempRepos);
+  const stash = async (path: string, paths: readonly string[]) => {
+    const repository = new Repository(plainLocation(path), cli);
+    let said = "";
+    const ui: HandlerUi = {
+      ...NO_UI,
+      withProgress: async (_title, task, done) => {
+        const value = await task();
+        said = done(value);
+        return value;
+      },
+    };
+    try {
+      await createHandlers(repository, ui).stash({ repo: path, paths });
+      return said;
+    } finally {
+      repository.dispose();
+    }
+  };
+  const status = (repo: string) => git(repo, ["status", "--porcelain"]).trimEnd().split("\n");
+  const stashes = (repo: string) => git(repo, ["stash", "list"]).trim().split("\n").filter(Boolean);
+
+  /** 改名 a → a2、`git rm` 掉 b、新建未跟踪的 u、改了 keep。 */
+  const scene = (name: string) => {
+    const repo = makeTempRepo(name);
+    for (const file of ["a", "b", "keep"]) writeFileSync(join(repo, file), `${file}\n`);
+    git(repo, ["add", "-A"]);
+    git(repo, ["commit", "-qm", "files"]);
+    git(repo, ["mv", "a", "a2"]);
+    git(repo, ["rm", "-q", "b"]);
+    writeFileSync(join(repo, "u"), "new\n");
+    writeFileSync(join(repo, "keep"), "changed\n");
+    return repo;
+  };
+
+  it("存勾选的：改名、暂存的删除、未跟踪都存走，没勾的留下", async () => {
+    const repo = scene("stash-selected");
+    const said = await stash(repo, ["a2", "b", "u"]);
+    expect(said).toMatch(/^Saved working directory and index state WIP on main: /);
+    expect(stashes(repo)).toHaveLength(1);
+    expect(status(repo)).toEqual([" M keep"]);
+    git(repo, ["stash", "apply", "-q"]);
+    expect(status(repo).sort()).toEqual([" D a", " D b", " M keep", "?? u", "A  a2"].sort());
+  });
+
+  it("什么都没勾：存全部改动，含未跟踪", async () => {
+    const repo = scene("stash-all");
+    await stash(repo, []);
+    expect(stashes(repo)).toHaveLength(1);
+    expect(status(repo)).toEqual([""]);
+  });
+});

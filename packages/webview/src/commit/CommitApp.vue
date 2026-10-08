@@ -117,7 +117,9 @@ async function onAmendChange(event: Event): Promise<void> {
 const committing = ref(false);
 /** 正在 Rollback。提交与 Rollback 进行中，两个按钮都置灰（第二节第 12 条）。 */
 const rollingBack = ref(false);
-const busy = computed(() => committing.value || rollingBack.value);
+/** 正在存 stash。同上，和提交、Rollback 互相置灰。 */
+const stashing = ref(false);
+const busy = computed(() => committing.value || rollingBack.value || stashing.value);
 /**
  * 说明为空（只有空白也算）不能提交；普通提交还要至少勾一个文件，
  * Amend 不勾文件也行（只改说明）。
@@ -174,6 +176,22 @@ async function rollbackChecked(): Promise<void> {
     report(cause);
   } finally {
     rollingBack.value = false;
+  }
+}
+
+/** 有改动就能存：勾了文件存勾选的，什么都没勾存全部。 */
+const canStash = computed(() => !busy.value && files.value.length > 0);
+
+/** 存 stash：路径为空时扩展存全部改动。完成消息由扩展显示在状态栏，失败由错误关口报。 */
+async function stashChecked(): Promise<void> {
+  if (repo.value === undefined || !canStash.value) return;
+  stashing.value = true;
+  try {
+    await props.client.request("stash", { repo: repo.value, paths: [...checked.value] });
+  } catch (cause) {
+    report(cause);
+  } finally {
+    stashing.value = false;
   }
 }
 
@@ -249,6 +267,12 @@ onMounted(async () => {
         title="Rollback"
         :disabled="!canRollback"
         @click="rollbackChecked"
+      />
+      <ToolButton
+        :icon="codicon('archive')"
+        :title="checked.size > 0 ? 'Stash Selected' : 'Stash All'"
+        :disabled="!canStash"
+        @click="stashChecked"
       />
       <!-- 没有改动时置灰（第二节第 13 条）。 -->
       <ToolButton

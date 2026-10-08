@@ -3,6 +3,7 @@ import {
   ChangeKind,
   type DiffOpenMode,
   type DiffSide,
+  FileStatus,
   type Ref,
   RefKind,
 } from "@dummy-git/shared";
@@ -35,7 +36,10 @@ import {
   push,
   renameBranch,
   rollback,
+  stashAll,
+  stashPaths,
   switchBranch,
+  unstage,
 } from "../git/commands/index.js";
 import { defineHandlers, type HandlerMap } from "./router.js";
 import { UserFacingError } from "./userFacingError.js";
@@ -132,10 +136,14 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
     const { changes } = await repository.run(getStatus, repository.location.root);
     const untracked = new Set<string>();
     const renamedFrom = new Map<string, string>();
+    const deleted = new Set<string>();
     for (const change of changes) {
       if (change.kind === ChangeKind.Untracked) untracked.add(change.path);
       if (change.kind === ChangeKind.Tracked && change.oldPath !== undefined) {
         renamedFrom.set(change.path, change.oldPath);
+      }
+      if (change.kind === ChangeKind.Tracked && change.index === FileStatus.Deleted) {
+        deleted.add(change.path);
       }
     }
     return {
@@ -145,6 +153,12 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         list.flatMap((path) => {
           const old = renamedFrom.get(path);
           return old === undefined ? [path] : [path, old];
+        }),
+      /** 这些路径里已暂存的删除：改名的旧路径、暂存区里删掉的文件。 */
+      stagedDeletions: (list: readonly string[]): string[] =>
+        list.flatMap((path) => {
+          const old = renamedFrom.get(path);
+          return [...(old === undefined ? [] : [old]), ...(deleted.has(path) ? [path] : [])];
         }),
     };
   };
@@ -372,6 +386,30 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         `Deleting ${tracked}…`,
         () => repository.run(deleteRemoteBranch, repository.location.root, remote, branch),
         () => `Deleted ${tracked}`,
+      );
+      return null;
+    },
+    stash: async ({ paths }) => {
+      const root = repository.location.root;
+      if (paths.length === 0) {
+        await ui.withProgress(
+          "Stashing all changes…",
+          () => repository.run(stashAll, root),
+          (said) => said,
+        );
+        return null;
+      }
+      const { withOldPaths, stagedDeletions } = await inspect(paths);
+      const deletions = stagedDeletions(paths);
+      await ui.withProgress(
+        "Stashing selected changes…",
+        async () => {
+          // 已暂存的删除先退回成未暂存的，`stash push -- <路径>` 才不会存了一半（见 `stashPaths`）。
+          // 代价：Apply 回来后改名显示成新增 + 删除两行（不带 --index 的 Apply 本来就不还原暂存状态）。
+          if (deletions.length > 0) await repository.run(unstage, root, deletions);
+          return repository.run(stashPaths, root, withOldPaths(paths));
+        },
+        (said) => said,
       );
       return null;
     },
