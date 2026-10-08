@@ -54,6 +54,10 @@
       {
         "command": "dummyGit.checkout",
         "title": "Checkout"
+      },
+      {
+        "command": "dummyGit.checkoutRemote",
+        "title": "Checkout"
       }
     ],
     "menus": {
@@ -62,11 +66,20 @@
           "command": "dummyGit.checkout",
           "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'localBranch' && !dummyGit.current",
           "group": "1_switch@1"
+        },
+        {
+          "command": "dummyGit.checkoutRemote",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'remoteBranch'",
+          "group": "1_switch@1"
         }
       ],
       "commandPalette": [
         {
           "command": "dummyGit.checkout",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.checkoutRemote",
           "when": "false"
         }
       ]

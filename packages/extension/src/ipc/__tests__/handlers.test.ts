@@ -400,3 +400,80 @@ describe("handlers.checkout", () => {
     expect(git(path, ["branch", "--show-current"]).trim()).toBe("feat");
   });
 });
+
+describe("handlers.checkoutRemote", () => {
+  afterAll(cleanupTempRepos);
+  /** 检出 `origin/<branch>`，返回进度出口最后显示的那句。 */
+  const checkoutRemote = async (path: string, branch: string): Promise<string> => {
+    const repository = new Repository(plainLocation(path), cli);
+    let said = "";
+    const ui: HandlerUi = {
+      ...NO_UI,
+      withProgress: async (_title, task, done) => {
+        const value = await task();
+        said = done(value);
+        return value;
+      },
+    };
+    try {
+      await createHandlers(repository, ui).checkoutRemote({ repo: path, remote: "origin", branch });
+    } finally {
+      repository.dispose();
+    }
+    return said;
+  };
+  const current = (repo: string) => git(repo, ["branch", "--show-current"]).trim();
+  const tip = (repo: string, ref: string) => git(repo, ["rev-parse", ref]).trim();
+
+  it("本地没有同名分支：建一个跟踪它的并切过去", async () => {
+    const { remote, repo } = makeTrackingRepos();
+    git(remote, ["branch", "-q", "feat"]);
+    git(repo, ["fetch", "-q", "origin"]);
+    expect(await checkoutRemote(repo, "feat")).toBe("Switched to a new branch 'feat'");
+    expect(current(repo)).toBe("feat");
+    expect(git(repo, ["rev-parse", "--abbrev-ref", "feat@{u}"]).trim()).toBe("origin/feat");
+  });
+
+  it("本地同名分支跟踪它且落后：切过去并快进", async () => {
+    const { remote, repo } = makeTrackingRepos();
+    git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
+    git(repo, ["fetch", "-q", "origin"]);
+    git(repo, ["switch", "-q", "other"]);
+    expect(await checkoutRemote(repo, "main")).toBe("Switched to branch 'main'");
+    expect(current(repo)).toBe("main");
+    expect(tip(repo, "main")).toBe(tip(remote, "main"));
+  });
+
+  it("本地同名分支跟踪它且领先：只切过去", async () => {
+    const { repo } = makeTrackingRepos();
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
+    const before = tip(repo, "main");
+    git(repo, ["switch", "-q", "other"]);
+    expect(await checkoutRemote(repo, "main")).toBe("Switched to branch 'main'");
+    expect(current(repo)).toBe("main");
+    expect(tip(repo, "main")).toBe(before);
+  });
+
+  it("本地同名分支跟踪它但已分叉：切过去、不动它，提醒分叉", async () => {
+    const { remote, repo } = makeTrackingRepos();
+    git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
+    git(repo, ["fetch", "-q", "origin"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
+    const before = tip(repo, "main");
+    git(repo, ["switch", "-q", "other"]);
+    expect(await checkoutRemote(repo, "main")).toBe("main and origin/main have diverged");
+    expect(current(repo)).toBe("main");
+    expect(tip(repo, "main")).toBe(before);
+  });
+
+  it("本地同名分支不跟踪它：不切，说明原因", async () => {
+    const { remote, repo } = makeTrackingRepos();
+    git(remote, ["branch", "-q", "feat"]);
+    git(repo, ["fetch", "-q", "origin"]);
+    git(repo, ["branch", "-q", "feat"]);
+    await expect(checkoutRemote(repo, "feat")).rejects.toThrow(
+      "A local branch named feat already exists and doesn't track origin/feat.",
+    );
+    expect(current(repo)).toBe("main");
+  });
+});

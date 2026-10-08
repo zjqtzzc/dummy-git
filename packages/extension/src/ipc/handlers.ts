@@ -11,6 +11,7 @@ import type { Repository } from "../core/repository.js";
 import {
   amendCommit,
   commit,
+  createTrackingBranch,
   FastForwardKind,
   type FastForwardResult,
   fastForward,
@@ -245,6 +246,39 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         `Checking out ${branch}…`,
         () => repository.run(switchBranch, repository.location.root, branch),
         (said) => said,
+      );
+      return null;
+    },
+    checkoutRemote: async ({ remote, branch }) => {
+      const root = repository.location.root;
+      const tracked = `${remote}/${branch}`;
+      const local = localBranch(await repository.run(getRefs, root), branch);
+      if (local === undefined) {
+        await ui.withProgress(
+          `Checking out ${tracked}…`,
+          () => repository.run(createTrackingBranch, root, remote, branch),
+          (said) => said,
+        );
+        return null;
+      }
+      const upstream = local.upstream;
+      if (upstream === undefined || upstream.remote !== remote || upstream.name !== branch) {
+        throw new UserFacingError(
+          `A local branch named ${branch} already exists and doesn't track ${tracked}.`,
+        );
+      }
+      // 本地分支已跟踪它：切过去再快进。一样或领先时 git 说 `Already up to date.`，落后就快进；
+      // 分叉时不动它，只提醒（以后让用户选 rebase 还是丢弃本地）。
+      await ui.withProgress(
+        `Checking out ${branch}…`,
+        async () => {
+          const said = await repository.run(switchBranch, root, branch);
+          const result = await repository.run(fastForward, root, `refs/remotes/${tracked}`);
+          return result.kind === FastForwardKind.Diverged
+            ? `${branch} and ${tracked} have diverged`
+            : said;
+        },
+        (message) => message,
       );
       return null;
     },

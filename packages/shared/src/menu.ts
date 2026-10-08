@@ -9,6 +9,8 @@ export const MenuContextKey = {
   Node: "dummyGit.node",
   /** 仓库根，菜单命令拼协议参数用。 */
   Repo: "dummyGit.repo",
+  /** 远程名，只有远程分支有。 */
+  Remote: "dummyGit.remote",
   /** 分支名（本地分支是全名；远程分支是不带远程名的那段）。 */
   Branch: "dummyGit.branch",
   /** 是不是当前分支（`true` / `false`）。 */
@@ -18,4 +20,5 @@ export const MenuContextKey = {
 /** `MenuContextKey.Node` 的取值。 */
 export const MenuNodeValue = {
   LocalBranch: "localBranch",
+  RemoteBranch: "remoteBranch",
 } as const;

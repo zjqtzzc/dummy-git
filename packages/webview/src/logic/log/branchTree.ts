@@ -244,10 +244,7 @@ export function toTreeNodes(nodes: readonly BranchNode[], repo: string): TreeNod
           children: toTreeNodes(node.children, repo),
         };
       case BranchNodeKind.Branch: {
-        const menu =
-          node.ref.kind === RefKind.LocalBranch
-            ? { menu: localBranchMenu(repo, node.ref.name, node.current) }
-            : {};
+        const menu = { menu: branchMenu(repo, node.ref, node.current) };
         return node.current
           ? {
               id: node.id,
@@ -332,7 +329,28 @@ export function trackingOf(node: BranchNode): Tracking | undefined {
   }
 }
 
-/** 本地分支的右键菜单上下文：和 `package.json` 菜单项的 `when` 条件对应。 */
+/** 分支的右键菜单上下文：和 `package.json` 菜单项的 `when` 条件对应。 */
+function branchMenu(
+  repo: string,
+  ref: BranchRef,
+  current: boolean,
+): Readonly<Record<string, string | boolean>> {
+  switch (ref.kind) {
+    case RefKind.LocalBranch:
+      return localBranchMenu(repo, ref.name, current);
+    case RefKind.RemoteBranch:
+      return {
+        [MenuContextKey.Node]: MenuNodeValue.RemoteBranch,
+        [MenuContextKey.Repo]: repo,
+        [MenuContextKey.Remote]: ref.remote,
+        [MenuContextKey.Branch]: ref.name,
+      };
+    default:
+      return assertNever(ref, "branchMenu");
+  }
+}
+
+/** 本地分支（含 HEAD 行代表的当前分支）的右键菜单上下文。 */
 function localBranchMenu(
   repo: string,
   branch: string,

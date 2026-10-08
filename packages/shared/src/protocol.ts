@@ -141,6 +141,11 @@ export interface Commands {
     params: { repo: string; branch: string };
     result: null;
   };
+  /** 检出远程分支 `remote/branch`：本地同名分支没有就建一个跟踪它的，有且跟踪它就切过去并快进。 */
+  checkoutRemote: {
+    params: { repo: string; remote: string; branch: string };
+    result: null;
+  };
 }
 
 export type CommandName = keyof Commands;
