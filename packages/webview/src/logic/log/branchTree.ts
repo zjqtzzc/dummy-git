@@ -1,4 +1,4 @@
-import { assertNever, type Ref, RefKind } from "@dummy-git/shared";
+import { assertNever, type Ref, RefKind, UpstreamState } from "@dummy-git/shared";
 import { TreeIconKind, type TreeNode } from "../tree/tree.js";
 
 /**
@@ -276,4 +276,39 @@ export function branchNodesById(nodes: readonly BranchNode[]): ReadonlyMap<strin
   };
   for (const node of nodes) visit(node);
   return index;
+}
+
+export enum TrackingKind {
+  /** 领先 / 落后，至少一边不为 0。 */
+  Counts = "counts",
+  /** 上游配置还在，但远程分支已被删除。 */
+  Gone = "gone",
+}
+
+/** 分支名后面要显示的同步状态。 */
+export type Tracking =
+  | { readonly kind: TrackingKind.Counts; readonly ahead: number; readonly behind: number }
+  | { readonly kind: TrackingKind.Gone };
+
+/**
+ * 本地分支相对上游的同步状态（`.notes/design/phase-3.md` 第一节第 5 条）。
+ * 完全同步、没有上游、远程分支、HEAD 那行、目录与分组都不显示，返回 `undefined`。
+ * 数字是和本地记录的远程分支比的，Fetch 之后才准。
+ */
+export function trackingOf(node: BranchNode): Tracking | undefined {
+  if (node.kind !== BranchNodeKind.Branch || node.ref.kind !== RefKind.LocalBranch) {
+    return undefined;
+  }
+  const upstream = node.ref.upstream;
+  if (upstream === undefined) return undefined;
+  switch (upstream.state.kind) {
+    case UpstreamState.Gone:
+      return { kind: TrackingKind.Gone };
+    case UpstreamState.Tracking: {
+      const { ahead, behind } = upstream.state;
+      return ahead === 0 && behind === 0 ? undefined : { kind: TrackingKind.Counts, ahead, behind };
+    }
+    default:
+      return assertNever(upstream.state, "trackingOf");
+  }
 }

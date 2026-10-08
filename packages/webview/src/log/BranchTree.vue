@@ -7,11 +7,14 @@ import {
   defaultExpanded,
   localBranchOf,
   restoreExpanded,
+  type Tracking,
   toTreeNodes,
+  trackingOf,
 } from "../logic/log/branchTree.js";
 import type { TreeNode } from "../logic/tree/tree.js";
 import Tree from "../tree/Tree.vue";
 import { viewState } from "../vscodeApi.js";
+import TrackingBadge from "./TrackingBadge.vue";
 
 /**
  * 左栏分支树，建在基础树 `Tree.vue` 上。单击只选中；双击本阶段无反应（第 5 阶段改为按该分支筛选）。
@@ -26,6 +29,12 @@ const emit = defineEmits<{
 const tree = computed(() => buildBranchTree(props.refs));
 const nodes = computed(() => toTreeNodes(tree.value));
 const byId = computed(() => branchNodesById(tree.value));
+
+/** 一行的同步状态（ahead / behind / gone），画在分支名后面。 */
+function tracking(node: TreeNode): Tracking | undefined {
+  const branch = byId.value.get(node.id);
+  return branch === undefined ? undefined : trackingOf(branch);
+}
 
 function onSelect(node: TreeNode): void {
   const branch = byId.value.get(node.id);
@@ -55,5 +64,10 @@ function onExpanded(next: ReadonlySet<string>): void {
 </script>
 
 <template>
-  <Tree :nodes="nodes" :expanded="expanded" @update:expanded="onExpanded" @select="onSelect" />
+  <Tree :nodes="nodes" :expanded="expanded" @update:expanded="onExpanded" @select="onSelect">
+    <template #after="{ node }">
+      <TrackingBadge :state="tracking(node)" />
+    </template>
+  </Tree>
 </template>
+

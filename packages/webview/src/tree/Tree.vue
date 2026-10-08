@@ -21,7 +21,7 @@ import { codicon, type IconRef } from "../ui/icons.js";
 /**
  * 所有树共用的基础组件（`.notes/design/phase-2.md` 第一节），外观与交互照 VS Code 原生的树。
  *
- * 一行从左到右：缩进、箭头（没有下级时隐藏但占位）、复选框（可选）、图标（可选）、文字、说明（可选）、
+ * 一行从左到右：缩进、箭头（没有下级时隐藏但占位）、复选框（可选）、图标（可选）、文字、说明（可选）、使用方插槽 `after`（可选）、
  * 右侧字母（可选）。
  * 行高固定 22px，虚拟滚动，只渲染看得见的行。
  *
@@ -45,6 +45,12 @@ const emit = defineEmits<{
   /** 点了复选框：把这些叶子改成勾（`true`）或不勾。 */
   check: [ids: readonly string[], value: boolean];
 }>();
+
+/**
+ * 留给使用方的个性化出口：`after` 插槽画在说明后面（比如分支树的 ahead / behind）。
+ * 基础组件不认识里面是什么；不用它的树不受影响。
+ */
+const slots = defineSlots<{ after?(props: { node: TreeNode }): unknown }>();
 
 const rows = computed(() => flattenTree(props.nodes, props.expanded));
 
@@ -233,6 +239,9 @@ function rowId(index: number): string {
         <span v-if="row.node.description !== undefined" class="description">{{
           row.node.description
         }}</span>
+        <span v-if="slots.after !== undefined" class="after">
+          <slot name="after" :node="row.node" />
+        </span>
         <span v-if="row.node.decoration !== undefined" class="decoration" :style="{ color: row.node.color }">{{
           row.node.decoration
         }}</span>
@@ -352,6 +361,14 @@ function rowId(index: number): string {
   margin-left: 0.5em;
   font-size: 0.9em;
   opacity: 0.7;
+}
+.after {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 0.5em;
+  font-size: 0.9em;
 }
 .decoration {
   flex: none;

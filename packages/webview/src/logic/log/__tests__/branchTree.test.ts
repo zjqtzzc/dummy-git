@@ -1,4 +1,4 @@
-import { type Ref, RefKind } from "@dummy-git/shared";
+import { type Ref, RefKind, UpstreamState } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
 import {
   type BranchNode,
@@ -8,6 +8,8 @@ import {
   defaultExpanded,
   localBranchOf,
   restoreExpanded,
+  TrackingKind,
+  trackingOf,
 } from "../branchTree.js";
 
 const T = "a".repeat(40);
@@ -150,5 +152,54 @@ describe("localBranchOf：选中的是不是本地分支", () => {
     expect(of("remote/origin/main")).toBeUndefined();
     expect(of("local/feat")).toBeUndefined();
     expect(of("local")).toBeUndefined();
+  });
+});
+
+describe("trackingOf：分支名后面的同步状态", () => {
+  const tracked = (name: string, ahead: number, behind: number): Ref => ({
+    kind: RefKind.LocalBranch,
+    name,
+    target: T,
+    upstream: {
+      remote: "origin",
+      name,
+      state: { kind: UpstreamState.Tracking, ahead, behind },
+    },
+  });
+  const gone: Ref = {
+    kind: RefKind.LocalBranch,
+    name: "old",
+    target: T,
+    upstream: { remote: "origin", name: "old", state: { kind: UpstreamState.Gone } },
+  };
+  const byId = branchNodesById(
+    buildBranchTree([
+      head("main"),
+      tracked("main", 2, 1),
+      tracked("synced", 0, 0),
+      gone,
+      local("lonely"),
+      remote("origin", "main"),
+    ]),
+  );
+  const of = (id: string) => {
+    const node = byId.get(id);
+    if (node === undefined) throw new Error(`没有 ${id}`);
+    return trackingOf(node);
+  };
+
+  it("领先 / 落后：两边的数", () => {
+    expect(of("local/main")).toEqual({ kind: TrackingKind.Counts, ahead: 2, behind: 1 });
+  });
+
+  it("上游已删：gone", () => {
+    expect(of("local/old")).toEqual({ kind: TrackingKind.Gone });
+  });
+
+  it("完全同步、没有上游、远程分支、HEAD 那行：不显示", () => {
+    expect(of("local/synced")).toBeUndefined();
+    expect(of("local/lonely")).toBeUndefined();
+    expect(of("remote/origin/main")).toBeUndefined();
+    expect(of("head")).toBeUndefined();
   });
 });
