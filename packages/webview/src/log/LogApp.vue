@@ -16,6 +16,8 @@ import { hashesToFetch } from "../logic/log/prefetch.js";
 import type { FileEntry } from "../logic/tree/fileTree.js";
 import type { RowRange } from "../logic/virtualList.js";
 import FileTree from "../tree/FileTree.vue";
+import { AppIcon } from "../ui/icons.js";
+import ToolButton from "../ui/ToolButton.vue";
 import { viewState } from "../vscodeApi.js";
 import BranchTree from "./BranchTree.vue";
 import CommitList from "./CommitList.vue";
@@ -134,6 +136,16 @@ async function fetchRemotes(): Promise<void> {
   }
 }
 
+/** Pull Selected：只更新选中的本地分支和它跟踪的远程分支，只快进。 */
+async function pullSelected(): Promise<void> {
+  if (repo.value === undefined || selectedBranch.value === undefined) return;
+  try {
+    await props.client.request("pull", { repo: repo.value, branch: selectedBranch.value });
+  } catch (cause) {
+    report(cause);
+  }
+}
+
 /** 右栏的文件：双击或回车打开，单击或上下键跟随（由 `mode` 区分）。 */
 async function openFile(entry: FileEntry, mode: DiffOpenMode): Promise<void> {
   const commit = selected.value === undefined ? undefined : details.value.get(selected.value);
@@ -219,19 +231,17 @@ onMounted(async () => {
   >
     <div slot="start" class="branches">
       <div class="sync-bar">
-        <vscode-toolbar-button icon="repo-fetch" label="Fetch" title="Fetch" @click="fetchRemotes" />
-        <!-- 这个按钮组件没有 disabled，用样式表示置灰。 -->
-        <vscode-toolbar-button
-          icon="repo-pull"
-          label="Pull Selected"
+        <ToolButton :icon="AppIcon.Fetch" title="Fetch" @click="fetchRemotes" />
+        <ToolButton
+          :icon="AppIcon.Pull"
           title="Pull Selected"
-          :class="{ disabled: selectedBranch === undefined }"
+          :disabled="selectedBranch === undefined"
+          @click="pullSelected"
         />
-        <vscode-toolbar-button
-          icon="repo-push"
-          label="Push Selected"
+        <ToolButton
+          :icon="AppIcon.Push"
           title="Push Selected"
-          :class="{ disabled: selectedBranch === undefined }"
+          :disabled="selectedBranch === undefined"
         />
       </div>
       <div class="pane">
@@ -282,10 +292,6 @@ onMounted(async () => {
   gap: 2px;
   padding: 4px 2px;
   border-right: 1px solid var(--vscode-panel-border);
-}
-.disabled {
-  opacity: 0.4;
-  pointer-events: none;
 }
 .branches > .pane {
   flex: 1;
