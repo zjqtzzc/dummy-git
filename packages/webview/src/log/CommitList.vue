@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Commit } from "@dummy-git/shared";
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { formatCommitDate } from "../logic/log/commitDate.js";
+import { formatTime } from "../logic/utils/time.js";
 import {
   keepRowInPlace,
   ROW_HEIGHT,
@@ -160,7 +160,7 @@ defineExpose({
           <template v-if="row.commit !== undefined">
             <span class="cell">{{ subject(row.commit.message) }}</span>
             <span class="cell dim">{{ row.commit.author.name }}</span>
-            <span class="cell dim">{{ formatCommitDate(row.commit.author.at, now) }}</span>
+            <span class="cell dim">{{ formatTime(row.commit.author.at, now) }}</span>
           </template>
           <template v-else>
             <span class="cell placeholder" />
