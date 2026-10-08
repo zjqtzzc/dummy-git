@@ -15,6 +15,8 @@ import {
   treeKeyAction,
 } from "../logic/tree/tree.js";
 import { ROW_HEIGHT, renderRange, scrollIntoView } from "../logic/virtualList.js";
+import Icon from "../ui/Icon.vue";
+import { codicon, type IconRef } from "../ui/icons.js";
 
 /**
  * 所有树共用的基础组件（`.notes/design/phase-2.md` 第一节），外观与交互照 VS Code 原生的树。
@@ -161,9 +163,9 @@ const CHECK_ICON: Readonly<Record<CheckState, string>> = {
   [CheckState.Unchecked]: "",
 };
 
-/** codicon 的类名。展开着且有 `openedName` 时换成它。 */
-function codicon(icon: Extract<TreeIcon, { kind: TreeIconKind.Codicon }>, row: TreeRow): string {
-  return `codicon-${row.expanded === true && icon.openedName !== undefined ? icon.openedName : icon.name}`;
+/** codicon 图标。展开着且有 `openedName` 时换成它。 */
+function codiconOf(icon: Extract<TreeIcon, { kind: TreeIconKind.Codicon }>, row: TreeRow): IconRef {
+  return codicon(row.expanded === true && icon.openedName !== undefined ? icon.openedName : icon.name);
 }
 
 /** 行的 DOM id，给 `aria-activedescendant` 用。 */
@@ -216,9 +218,11 @@ function rowId(index: number): string {
         <template v-if="row.node.icon !== undefined">
           <span
             v-if="row.node.icon.kind === TreeIconKind.Codicon"
-            :class="['icon', 'codicon', codicon(row.node.icon, row)]"
+            class="icon"
             :style="{ color: row.node.icon.color }"
-          />
+          >
+            <Icon :icon="codiconOf(row.node.icon, row)" />
+          </span>
           <span v-else class="icon seti" :style="{ color: row.node.icon.color }">{{
             row.node.icon.char
           }}</span>

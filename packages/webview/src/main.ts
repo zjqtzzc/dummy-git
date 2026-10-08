@@ -5,8 +5,6 @@ import "@vscode-elements/elements/dist/vscode-checkbox/index.js";
 import "@vscode-elements/elements/dist/vscode-icon/index.js";
 import "@vscode-elements/elements/dist/vscode-split-layout/index.js";
 import "@vscode-elements/elements/dist/vscode-textarea/index.js";
-import "@vscode-elements/elements/dist/vscode-toolbar-button/index.js";
-import "@vscode-elements/elements/dist/vscode-toolbar-container/index.js";
 import { type Component, createApp } from "vue";
 import CommitApp from "./commit/CommitApp.vue";
 import LogApp from "./log/LogApp.vue";

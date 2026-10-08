@@ -1,4 +1,37 @@
 /**
+ * 图标：「是什么」与「多大」分开，任意组合，统一由 `Icon.vue` 画。
+ *
+ * - 是什么：`IconRef`。来源有两种——我们自己画的 SVG（`AppIcon`）与 codicon 字体。
+ *   两种的画法不同（SVG 用宽高，字体用字号），对外一样。
+ * - 多大：`IconSize`，按用途命名，「用途 → 像素」的表在 `Icon.vue`。新用途加一档。
+ */
+
+export enum IconSize {
+  /** 按钮、行首图标。 */
+  Standard = "standard",
+  /** 嵌在文字里、和数字或文字排在一行。 */
+  Inline = "inline",
+}
+
+export enum IconKind {
+  App = "app",
+  Codicon = "codicon",
+}
+
+export type IconRef =
+  | { readonly kind: IconKind.App; readonly name: AppIcon }
+  | { readonly kind: IconKind.Codicon; readonly name: string };
+
+export function appIcon(name: AppIcon): IconRef {
+  return { kind: IconKind.App, name };
+}
+
+/** codicon 的名字，比如 `discard`、`folder-opened`。 */
+export function codicon(name: string): IconRef {
+  return { kind: IconKind.Codicon, name };
+}
+
+/**
  * 我们自己画的图标（codicon 里没有的）。全部集中在这一张表里，加图标就加一行。
  *
  * 每个图标是 16×16 坐标系里的几条线，线宽 1、颜色 `currentColor`（跟着主题的图标色或外面给的颜色）。

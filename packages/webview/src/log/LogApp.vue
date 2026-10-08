@@ -16,7 +16,7 @@ import { hashesToFetch } from "../logic/log/prefetch.js";
 import type { FileEntry } from "../logic/tree/fileTree.js";
 import type { RowRange } from "../logic/virtualList.js";
 import FileTree from "../tree/FileTree.vue";
-import { AppIcon } from "../ui/icons.js";
+import { AppIcon, appIcon } from "../ui/icons.js";
 import ToolButton from "../ui/ToolButton.vue";
 import { viewState } from "../vscodeApi.js";
 import BranchTree from "./BranchTree.vue";
@@ -241,15 +241,15 @@ onMounted(async () => {
   >
     <div slot="start" class="branches">
       <div class="sync-bar">
-        <ToolButton :icon="AppIcon.Fetch" title="Fetch" @click="fetchRemotes" />
+        <ToolButton :icon="appIcon(AppIcon.Fetch)" title="Fetch" @click="fetchRemotes" />
         <ToolButton
-          :icon="AppIcon.Pull"
+          :icon="appIcon(AppIcon.Pull)"
           title="Pull Selected"
           :disabled="selectedBranch === undefined"
           @click="pullSelected"
         />
         <ToolButton
-          :icon="AppIcon.Push"
+          :icon="appIcon(AppIcon.Push)"
           title="Push Selected"
           :disabled="selectedBranch === undefined"
           @click="pushSelected"

@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import Icon from "./Icon.vue";
-import type { AppIcon } from "./icons.js";
+import type { IconRef } from "./icons.js";
 
 /**
- * 放我们自己图标的工具按钮。`vscode-toolbar-button` 只认 codicon 的名字，所以自己做一个，
- * 样式照它：22px 见方、悬停用主题的悬停背景、圆角。`title` 同时是提示文字与读屏名称。
+ * 工具按钮。`vscode-toolbar-button` 只认 codicon、也没有 `disabled`，所以自己做一个，
+ * 样式照它：22px 见方、悬停用主题的悬停背景、圆角。图标两种来源都行（`IconRef`）。
+ * `title` 同时是提示文字与读屏名称。
  */
-defineProps<{ icon: AppIcon; title: string; disabled?: boolean }>();
+defineProps<{ icon: IconRef; title: string; disabled?: boolean }>();
 </script>
 
 <template>
   <button type="button" class="tool" :title="title" :aria-label="title" :disabled="disabled">
-    <Icon :name="icon" />
+    <Icon :icon="icon" />
   </button>
 </template>
 

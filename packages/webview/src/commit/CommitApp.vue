@@ -14,6 +14,8 @@ import {
 } from "../logic/commit/workingChanges.js";
 import { type FileEntry, keepChecked } from "../logic/tree/fileTree.js";
 import FileTree from "../tree/FileTree.vue";
+import { codicon } from "../ui/icons.js";
+import ToolButton from "../ui/ToolButton.vue";
 import { viewState } from "../vscodeApi.js";
 
 /**
@@ -241,27 +243,27 @@ onMounted(async () => {
       <button type="button" class="mode" disabled>Stash</button>
     </div>
 
-    <vscode-toolbar-container class="toolbar">
-      <vscode-toolbar-button
-        icon="discard"
-        label="Rollback"
-        :class="{ disabled: !canRollback }"
+    <div class="toolbar">
+      <ToolButton
+        :icon="codicon('discard')"
+        title="Rollback"
+        :disabled="!canRollback"
         @click="rollbackChecked"
       />
-      <!-- 没有改动时置灰（第二节第 13 条）。这个按钮组件没有 disabled，用样式表示。 -->
-      <vscode-toolbar-button
-        icon="expand-all"
-        label="Expand All"
-        :class="{ disabled: files.length === 0 }"
+      <!-- 没有改动时置灰（第二节第 13 条）。 -->
+      <ToolButton
+        :icon="codicon('expand-all')"
+        title="Expand All"
+        :disabled="files.length === 0"
         @click="tree?.expandAll()"
       />
-      <vscode-toolbar-button
-        icon="collapse-all"
-        label="Collapse All"
-        :class="{ disabled: files.length === 0 }"
+      <ToolButton
+        :icon="codicon('collapse-all')"
+        title="Collapse All"
+        :disabled="files.length === 0"
         @click="tree?.collapseAll()"
       />
-    </vscode-toolbar-container>
+    </div>
 
     <div class="files">
       <p v-if="!loaded" class="dim note">Loading…</p>
@@ -324,12 +326,11 @@ onMounted(async () => {
   cursor: default;
 }
 .toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   padding: 2px 8px;
   border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, transparent);
-}
-.disabled {
-  opacity: 0.4;
-  pointer-events: none;
 }
 .files {
   flex: 1;
