@@ -56,6 +56,12 @@ export enum AppIcon {
   ExpandAll = "expandAll",
   /** 上下两个向里的尖角：全部收起。 */
   CollapseAll = "collapseAll",
+  /** 放大镜：搜索。 */
+  Search = "search",
+  /** ×：清除、关闭。 */
+  Close = "close",
+  /** ▾：下拉。 */
+  Dropdown = "dropdown",
 }
 
 /** 托盘：方框，顶边中间凹下去一块，Stash / Unstash 的箭头从这里进出。 */
@@ -82,4 +88,7 @@ export const ICON_STROKES: Readonly<Record<AppIcon, readonly string[]>> = {
   [AppIcon.Unstash]: ["M8 8.5V1.5", "M5 4.5L8 1.5L11 4.5", TRAY],
   [AppIcon.ExpandAll]: ["M4.5 5.5L8 2L11.5 5.5", "M4.5 10.5L8 14L11.5 10.5"],
   [AppIcon.CollapseAll]: ["M4.5 2.5L8 6L11.5 2.5", "M4.5 13.5L8 10L11.5 13.5"],
+  [AppIcon.Search]: ["M11.5 7A4.5 4.5 0 1 1 2.5 7A4.5 4.5 0 1 1 11.5 7Z", "M10.2 10.2L13.5 13.5"],
+  [AppIcon.Close]: ["M4.5 11.5L11.5 4.5", "M11.5 11.5L4.5 4.5"],
+  [AppIcon.Dropdown]: ["M4 6L8 10L12 6"],
 };
