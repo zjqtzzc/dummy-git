@@ -29,6 +29,8 @@ const NO_UI: HandlerUi = {
   confirmRollback: () => Promise.reject(new Error("测试里不该弹确认")),
   withProgress: (_title, task) => task(),
   askBranchName: () => Promise.reject(new Error("测试里不该弹输入框")),
+  confirm: () => Promise.reject(new Error("测试里不该弹确认")),
+  notify: () => undefined,
   openDiff: () => Promise.reject(new Error("测试里不该打开 diff")),
 };
 
@@ -598,5 +600,99 @@ describe("handlers.renameBranch", () => {
     git(repo, ["branch", "-q", "feat"]);
     const { problems } = await rename(repo, "main", undefined, ["main", "feat"]);
     expect(problems).toEqual([undefined, "A branch named 'feat' already exists."]);
+  });
+});
+
+describe("handlers.deleteBranch / deleteRemoteBranch", () => {
+  afterAll(cleanupTempRepos);
+  /** 跑一次删除，确认框回答 `sure`；返回问了什么、状态栏说了什么。 */
+  const run = async (
+    path: string,
+    act: (handlers: ReturnType<typeof createHandlers>) => Promise<unknown>,
+    sure: boolean,
+  ) => {
+    const repository = new Repository(plainLocation(path), cli);
+    const asked: string[] = [];
+    const said: string[] = [];
+    const ui: HandlerUi = {
+      ...NO_UI,
+      confirm: async (message) => {
+        asked.push(message);
+        return sure;
+      },
+      notify: (message) => said.push(message),
+      withProgress: async (_title, task, done) => {
+        const value = await task();
+        said.push(done(value));
+        return value;
+      },
+    };
+    try {
+      await act(createHandlers(repository, ui));
+      return { asked, said };
+    } finally {
+      repository.dispose();
+    }
+  };
+  const branches = (repo: string, args: readonly string[] = []) =>
+    git(repo, ["branch", ...args, "--format=%(refname:short)"])
+      .trim()
+      .split("\n");
+
+  it("已合并：直接删，不问，状态栏是 git 那句", async () => {
+    const repo = makeTempRepo("delete-merged");
+    git(repo, ["branch", "-q", "feat"]);
+    const { asked, said } = await run(repo, (h) => h.deleteBranch({ repo, branch: "feat" }), false);
+    expect(asked).toEqual([]);
+    expect(said[0]).toMatch(/^Deleted branch feat \(was [0-9a-f]+\)\.$/);
+    expect(branches(repo)).toEqual(["main"]);
+  });
+
+  it("没合并：问一次，确认后强删", async () => {
+    const repo = makeTempRepo("delete-unmerged");
+    git(repo, ["switch", "-q", "-c", "feat"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "only here"]);
+    git(repo, ["switch", "-q", "main"]);
+    const { asked, said } = await run(repo, (h) => h.deleteBranch({ repo, branch: "feat" }), true);
+    expect(asked).toEqual(["feat has commits that are not merged anywhere. Delete it anyway?"]);
+    expect(said[0]).toMatch(/^Deleted branch feat \(was [0-9a-f]+\)\.$/);
+    expect(branches(repo)).toEqual(["main"]);
+  });
+
+  it("没合并、取消：留着", async () => {
+    const repo = makeTempRepo("delete-unmerged-cancel");
+    git(repo, ["switch", "-q", "-c", "feat"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "only here"]);
+    git(repo, ["switch", "-q", "main"]);
+    const { said } = await run(repo, (h) => h.deleteBranch({ repo, branch: "feat" }), false);
+    expect(said).toEqual([]);
+    expect(branches(repo)).toEqual(["feat", "main"]);
+  });
+
+  it("远程分支：确认后删远程的，本地同名分支不动", async () => {
+    const { remote, repo } = makeTrackingRepos();
+    git(remote, ["branch", "-q", "feat"]);
+    git(repo, ["fetch", "-q", "origin"]);
+    git(repo, ["branch", "-q", "feat"]);
+    const { asked, said } = await run(
+      repo,
+      (h) => h.deleteRemoteBranch({ repo, remote: "origin", branch: "feat" }),
+      true,
+    );
+    expect(asked).toEqual([
+      "Delete feat on origin? This removes it for everyone using the remote.",
+    ]);
+    expect(said).toEqual(["Deleted origin/feat"]);
+    expect(branches(remote)).toEqual(["main"]);
+    expect(branches(repo, ["-r"])).toEqual(["origin/main"]);
+    expect(branches(repo)).toContain("feat");
+  });
+
+  it("远程分支、取消：远程不动", async () => {
+    const { remote, repo } = makeTrackingRepos();
+    git(remote, ["branch", "-q", "feat"]);
+    git(repo, ["fetch", "-q", "origin"]);
+    await run(repo, (h) => h.deleteRemoteBranch({ repo, remote: "origin", branch: "feat" }), false);
+    expect(branches(remote)).toEqual(["feat", "main"]);
   });
 });

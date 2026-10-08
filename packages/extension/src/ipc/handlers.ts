@@ -13,12 +13,16 @@ import {
   commit,
   createBranch,
   createTrackingBranch,
+  DeleteBranchKind,
+  deleteBranch,
+  deleteRemoteBranch,
   FastForwardKind,
   type FastForwardResult,
   fastForward,
   fetchAll,
   fetchBranch,
   fetchInto,
+  forceDeleteBranch,
   getCommitDetails,
   getCommitFiles,
   getHead,
@@ -64,6 +68,10 @@ import { UserFacingError } from "./userFacingError.js";
  * 这样 handler 的测试能在纯 node 下跑。
  */
 export interface HandlerUi {
+  /** 删除前的确认（原生模态框）：`action` 是确认按钮，`true` 是确认。 */
+  readonly confirm: (message: string, action: string) => Promise<boolean>;
+  /** 状态栏上几秒的一句话：立刻完成、不走进度出口的操作说做完了什么。 */
+  readonly notify: (message: string) => void;
   /** Rollback 前的确认：`true` 是确认。只列勾选的已跟踪文件（不含补上的旧路径）。 */
   readonly confirmRollback: (paths: readonly string[]) => Promise<boolean>;
   /**
@@ -330,6 +338,41 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       if (name === undefined) return null;
       // 只改一个引用，立刻看得见，不走进度出口；git 也不说话，没有完成消息。
       await repository.run(renameBranch, repository.location.root, branch, name);
+      return null;
+    },
+    deleteBranch: async ({ branch }) => {
+      // 只改一个引用、立刻看得见，不走进度出口；完成消息是 git 那句（带短 hash，留着找回）。
+      const root = repository.location.root;
+      const result = await repository.run(deleteBranch, root, branch);
+      switch (result.kind) {
+        case DeleteBranchKind.Deleted:
+          ui.notify(result.said);
+          return null;
+        case DeleteBranchKind.NotMerged: {
+          const sure = await ui.confirm(
+            `${branch} has commits that are not merged anywhere. Delete it anyway?`,
+            "Delete",
+          );
+          if (sure) ui.notify(await repository.run(forceDeleteBranch, root, branch));
+          return null;
+        }
+        default:
+          return assertNever(result, "delete branch");
+      }
+    },
+    deleteRemoteBranch: async ({ remote, branch }) => {
+      const tracked = `${remote}/${branch}`;
+      const sure = await ui.confirm(
+        `Delete ${branch} on ${remote}? This removes it for everyone using the remote.`,
+        "Delete",
+      );
+      if (!sure) return null;
+      // git 只说 `To <地址>` 与 ` - [deleted] feat`，没有能直接用的一句，完成消息自己写。
+      await ui.withProgress(
+        `Deleting ${tracked}…`,
+        () => repository.run(deleteRemoteBranch, repository.location.root, remote, branch),
+        () => `Deleted ${tracked}`,
+      );
       return null;
     },
     rollback: async ({ paths }) => {

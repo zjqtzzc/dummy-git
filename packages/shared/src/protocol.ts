@@ -159,6 +159,16 @@ export interface Commands {
     params: { repo: string; branch: string };
     result: null;
   };
+  /** 删本地分支（不能是当前分支）。没合并时扩展先问用户。 */
+  deleteBranch: {
+    params: { repo: string; branch: string };
+    result: null;
+  };
+  /** 删远程分支 `remote/branch`，扩展先问用户。 */
+  deleteRemoteBranch: {
+    params: { repo: string; remote: string; branch: string };
+    result: null;
+  };
 }
 
 export type CommandName = keyof Commands;

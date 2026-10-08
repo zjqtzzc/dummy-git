@@ -29,6 +29,9 @@
  * | `createTrackingBranch` | `switch -c <分支> --track <远程分支>` | `git switch` | 2.23 |
  * | `createBranch` | `switch -c <分支> --no-track <起点>` | `git switch` | 2.23 |
  * | `renameBranch` | `branch -m <旧名> <新名>` | — | — |
+ * | `deleteBranch` | `branch -d <分支>` | — | — |
+ * | `forceDeleteBranch` | `branch -D <分支>` | — | — |
+ * | `deleteRemoteBranch` | `push <远程> --delete refs/heads/<分支>` | — | — |
  * | `isValidBranchName` | `check-ref-format --branch <名字>` | — | — |
  * | `rollback` | `restore --source=HEAD --staged --worktree -- <路径…>` | `git restore` | **2.23** |
  * | `getSkeleton` | `-c log.showSignature=false log --format=… --max-count=10000 HEAD --branches --remotes --tags --date-order` | — | — |
@@ -44,6 +47,11 @@
 export {
   createBranch,
   createTrackingBranch,
+  DeleteBranchKind,
+  type DeleteBranchResult,
+  deleteBranch,
+  deleteRemoteBranch,
+  forceDeleteBranch,
   isValidBranchName,
   renameBranch,
   switchBranch,

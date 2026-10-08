@@ -19,3 +19,8 @@ export async function confirmRollback(paths: readonly string[]): Promise<boolean
   );
   return pick === "Rollback";
 }
+
+/** 删除这类找不回或影响别人的操作前的确认：原生模态框，`action` 是确认按钮，另有自带的取消。 */
+export async function confirm(message: string, action: string): Promise<boolean> {
+  return (await vscode.window.showWarningMessage(message, { modal: true }, action)) === action;
+}

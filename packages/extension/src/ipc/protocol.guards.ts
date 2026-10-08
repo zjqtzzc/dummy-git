@@ -165,6 +165,19 @@ const PARAM_GUARDS = {
     const branch = raw["branch"];
     return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;
   },
+  deleteBranch: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const branch = raw["branch"];
+    return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;
+  },
+  deleteRemoteBranch: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const remote = raw["remote"];
+    const branch = raw["branch"];
+    return typeof repo === "string" && typeof remote === "string" && typeof branch === "string"
+      ? { repo, remote, branch }
+      : undefined;
+  },
   push: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const branch = raw["branch"];

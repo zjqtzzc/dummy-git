@@ -41,14 +41,19 @@ function tracking(node: TreeNode): Tracking | undefined {
   return branch === undefined ? undefined : trackingOf(branch);
 }
 
-function onSelect(node: TreeNode): void {
-  const branch = byId.value.get(node.id);
+/**
+ * 选中的节点 id。分支数据每次变化都按它重新报一次选中的是什么：节点没了（比如删掉了选中的分支）
+ * 就报「没选」，Pull / Push 随之置灰；HEAD 那行在 Checkout 后报新的当前分支。
+ */
+const selectedId = ref<string>();
+watch([selectedId, byId], ([id, index]) => {
+  const node = id === undefined ? undefined : index.get(id);
   emit(
     "select",
-    branch === undefined ? undefined : localBranchOf(branch),
-    branch === undefined ? undefined : startOf(branch),
+    node === undefined ? undefined : localBranchOf(node),
+    node === undefined ? undefined : startOf(node),
   );
-}
+});
 
 /**
  * 当前展开的节点。第一次有分支数据时定下来：存过就用存的，没存过按默认值（`defaultExpanded`）。
@@ -73,7 +78,7 @@ function onExpanded(next: ReadonlySet<string>): void {
 </script>
 
 <template>
-  <Tree :nodes="nodes" :expanded="expanded" @update:expanded="onExpanded" @select="onSelect">
+  <Tree :nodes="nodes" :expanded="expanded" @update:expanded="onExpanded" @select="(node) => (selectedId = node.id)">
     <template #after="{ node }">
       <TrackingBadge :state="tracking(node)" />
     </template>

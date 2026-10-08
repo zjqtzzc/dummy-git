@@ -20,6 +20,11 @@ export async function withProgress<T>(
     { location: vscode.ProgressLocation.Window, title },
     task,
   );
-  vscode.window.setStatusBarMessage(done(value), DONE_MS);
+  notify(done(value));
   return value;
+}
+
+/** 状态栏上几秒的一句话：做完了什么。立刻完成、不值得转圈的操作直接用它。 */
+export function notify(message: string): void {
+  vscode.window.setStatusBarMessage(message, DONE_MS);
 }

@@ -71,6 +71,8 @@ export const _baseline = defineHandlers({
   checkoutRemote: openDiffStub,
   newBranch: openDiffStub,
   renameBranch: openDiffStub,
+  deleteBranch: openDiffStub,
+  deleteRemoteBranch: openDiffStub,
 });
 
 /**

@@ -55,6 +55,15 @@ const MENU_COMMANDS: readonly MenuCommand[] = [
     repo: context[MenuContextKey.Repo],
     branch: context[MenuContextKey.Branch],
   })),
+  menuCommand("dummyGit.deleteBranch", "deleteBranch", (context) => ({
+    repo: context[MenuContextKey.Repo],
+    branch: context[MenuContextKey.Branch],
+  })),
+  menuCommand("dummyGit.deleteRemoteBranch", "deleteRemoteBranch", (context) => ({
+    repo: context[MenuContextKey.Repo],
+    remote: context[MenuContextKey.Remote],
+    branch: context[MenuContextKey.Branch],
+  })),
 ];
 
 export function registerMenuCommands(handlers: HandlerMap, errors: ErrorGate): vscode.Disposable {

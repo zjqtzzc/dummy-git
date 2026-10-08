@@ -1,4 +1,4 @@
-import { run } from "../failure.js";
+import { classifyError, GitFailureError, run } from "../failure.js";
 import type { GitCommand } from "./command.js";
 import { LockPolicy } from "./lock.js";
 
@@ -64,6 +64,60 @@ export const renameBranch: GitCommand<[repository: string, branch: string, name:
 
   execute: async (cli, repository, branch, name) => {
     await run(cli, ["branch", "-m", branch, name], { cwd: repository });
+  },
+};
+
+/** 删本地分支的结果。没合并是已知结果，不是异常：由 handler 问用户要不要强删。 */
+export enum DeleteBranchKind {
+  /** `said` 是 git 自己说的那句（`Deleted branch feat (was 1a2b3c4).`），短 hash 留着找回。 */
+  Deleted = "deleted",
+  NotMerged = "notMerged",
+}
+
+export type DeleteBranchResult =
+  | { readonly kind: DeleteBranchKind.Deleted; readonly said: string }
+  | { readonly kind: DeleteBranchKind.NotMerged };
+
+/**
+ * 删本地分支：`git branch -d <B>`。改本地引用，走本地道。
+ * 没合并时 git 以 1 退出，说 `the branch 'B' is not fully merged`（旧版本首字母大写）。
+ */
+export const deleteBranch: GitCommand<[repository: string, branch: string], DeleteBranchResult> = {
+  lock: LockPolicy.Exclusive,
+
+  execute: async (cli, repository, branch) => {
+    const args = ["branch", "-d", branch];
+    const result = await cli.exec(args, { cwd: repository });
+    if (result.exitCode === 0) {
+      return { kind: DeleteBranchKind.Deleted, said: firstLine(result.stdout) };
+    }
+    if (result.stderr.includes("is not fully merged")) return { kind: DeleteBranchKind.NotMerged };
+    throw new GitFailureError(args, result.exitCode, result.stderr, classifyError(result.stderr));
+  },
+};
+
+/** 不管合没合并都删：`git branch -D <B>`。返回 git 自己说的那句。用户确认过才用。 */
+export const forceDeleteBranch: GitCommand<[repository: string, branch: string], string> = {
+  lock: LockPolicy.Exclusive,
+
+  execute: async (cli, repository, branch) => {
+    const { stdout } = await run(cli, ["branch", "-D", branch], { cwd: repository });
+    return firstLine(stdout);
+  },
+};
+
+/**
+ * 删远程分支：`git push <remote> --delete refs/heads/<B>`。git 顺带删掉本地记录的 `<remote>/<B>`。
+ * 网络命令，走远程道。远程名与分支名分开传，不会删成同名的本地分支。
+ */
+export const deleteRemoteBranch: GitCommand<
+  [repository: string, remote: string, branch: string],
+  void
+> = {
+  lock: LockPolicy.Remote,
+
+  execute: async (cli, repository, remote, branch) => {
+    await run(cli, ["push", remote, "--delete", `refs/heads/${branch}`], { cwd: repository });
   },
 };
 

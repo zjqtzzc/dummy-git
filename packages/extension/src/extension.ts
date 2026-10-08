@@ -3,7 +3,7 @@ import { Repository } from "./core/repository.js";
 import { GitCli } from "./git/cli.js";
 import { createHandlers } from "./ipc/handlers.js";
 import { Router, type Transport } from "./ipc/router.js";
-import { confirmRollback } from "./vscode/confirm.js";
+import { confirm, confirmRollback } from "./vscode/confirm.js";
 import { openDiff } from "./vscode/diff.js";
 import { ErrorGate } from "./vscode/errorGate.js";
 import { resolveGitPath } from "./vscode/gitPath.js";
@@ -11,7 +11,7 @@ import { askBranchName } from "./vscode/input.js";
 import { createOutputLogger } from "./vscode/logger.js";
 import { registerMenuCommands } from "./vscode/menu.js";
 import { describeStartup, discoverRepositories, StartupKind } from "./vscode/open.js";
-import { withProgress } from "./vscode/progress.js";
+import { notify, withProgress } from "./vscode/progress.js";
 import { registerRevisionFileSystem } from "./vscode/revisionFileSystem.js";
 import { watchRepository } from "./vscode/watcher.js";
 import { registerWebviewView, type ViewSource, ViewSourceKind } from "./vscode/webviewView.js";
@@ -45,7 +45,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const createRouter = (repository: Repository, transport: Transport): Router =>
     new Router(
       transport,
-      createHandlers(repository, { askBranchName, confirmRollback, openDiff, withProgress }),
+      createHandlers(repository, {
+        askBranchName,
+        confirm,
+        confirmRollback,
+        notify,
+        openDiff,
+        withProgress,
+      }),
       {
         log: (line) => channel.appendLine(line),
         report: (error) => errors.report(error),
@@ -79,7 +86,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // 原生右键菜单：协议的第二个入口，用同一套 handler（`vscode/menu.ts`）。
   context.subscriptions.push(
     registerMenuCommands(
-      createHandlers(repository, { askBranchName, confirmRollback, openDiff, withProgress }),
+      createHandlers(repository, {
+        askBranchName,
+        confirm,
+        confirmRollback,
+        notify,
+        openDiff,
+        withProgress,
+      }),
       errors,
     ),
   );
