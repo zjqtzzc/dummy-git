@@ -13,4 +13,5 @@ export {
   skeletonArgs,
 } from "./log.js";
 export { headArgs, parseHead, parseRefs, refsArgs } from "./refs.js";
+export { parseStashList, stashListArgs } from "./stash.js";
 export { parseStatus, STATUS_ENV, statusArgs } from "./status.js";

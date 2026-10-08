@@ -39,6 +39,7 @@ import type {
   CommitFileChange,
   CommitSkeleton,
   Ref,
+  Stash,
   StatusSnapshot,
 } from "@dummy-git/shared";
 import { defineHandlers } from "../router.js";
@@ -74,6 +75,7 @@ export const _baseline = defineHandlers({
   deleteBranch: openDiffStub,
   deleteRemoteBranch: openDiffStub,
   stash: openDiffStub,
+  getStashes: async (): Promise<Stash[]> => [],
 });
 
 /**

@@ -29,6 +29,7 @@ import {
   getHead,
   getRefs,
   getSkeleton,
+  getStashes,
   getStatus,
   isValidBranchName,
   listRemotes,
@@ -182,6 +183,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       return null;
     },
     getCommitFiles: ({ hash }) => repository.run(getCommitFiles, repository.location.root, hash),
+    getStashes: () => repository.run(getStashes, repository.location.root),
     getStatus: () => repository.run(getStatus, repository.location.root),
     commit: async ({ message, paths }) => {
       const { untracked, withOldPaths } = await inspect(paths);

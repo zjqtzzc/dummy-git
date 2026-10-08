@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { DiffOpenMode } from "@dummy-git/shared";
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { buildFileTree, type FileEntry, type FileGroup, toTreeNodes } from "../logic/tree/fileTree.js";
 import { branchIds, type TreeNode } from "../logic/tree/tree.js";
+import { useLightTheme } from "../ui/lightTheme.js";
 import Tree from "./Tree.vue";
 
 /**
@@ -22,19 +23,7 @@ const emit = defineEmits<{
   check: [paths: readonly string[], value: boolean];
 }>();
 
-/** 浅色主题用 Seti 的 `_light` 那一套。VS Code 切主题时改 body 的类名，跟着它走。 */
-const light = ref(false);
-function readTheme(): void {
-  const classes = document.body.classList;
-  light.value = classes.contains("vscode-light") || classes.contains("vscode-high-contrast-light");
-}
-const themeWatch = new MutationObserver(readTheme);
-onMounted(() => {
-  readTheme();
-  themeWatch.observe(document.body, { attributes: true, attributeFilter: ["class"] });
-});
-onUnmounted(() => themeWatch.disconnect());
-
+const light = useLightTheme();
 const nodes = computed(() => toTreeNodes(buildFileTree(props.groups), light.value));
 
 /**

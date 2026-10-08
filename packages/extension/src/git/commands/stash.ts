@@ -1,6 +1,18 @@
-import { run } from "../failure.js";
+import type { Stash } from "@dummy-git/shared";
+import { run, runRaw } from "../failure.js";
+import { parseStashList, stashListArgs } from "../parsers/index.js";
 import type { GitCommand } from "./command.js";
 import { LockPolicy } from "./lock.js";
+
+/** 全部 stash，最新的在最前。读命令，不排队。 */
+export const getStashes: GitCommand<[repository: string], Stash[]> = {
+  lock: LockPolicy.None,
+
+  execute: async (cli, repository) => {
+    const result = await runRaw(cli, stashListArgs(), { cwd: repository });
+    return parseStashList(result.stdout);
+  },
+};
 
 /**
  * 存全部改动：`git stash push -u`，未跟踪文件一起存。说明用 git 自动生成的。

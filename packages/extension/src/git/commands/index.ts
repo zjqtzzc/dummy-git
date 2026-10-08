@@ -33,6 +33,7 @@
  * | `forceDeleteBranch` | `branch -D <分支>` | — | — |
  * | `deleteRemoteBranch` | `push <远程> --delete refs/heads/<分支>` | — | — |
  * | `isValidBranchName` | `check-ref-format --branch <名字>` | — | — |
+ * | `getStashes` | `stash list -z --format=…` | — | — |
  * | `stashAll` | `stash push -u` | — | — |
  * | `stashPaths` | `stash push -u -- <路径…>` | — | — |
  * | `unstage` | `restore --staged -- <路径…>` | `git restore` | 2.23 |
@@ -77,5 +78,5 @@ export { PushKind, type PushResult, push } from "./push.js";
 export { getHead, getRefs } from "./refs.js";
 export { fetchAll, listRemotes } from "./remote.js";
 export { rollback } from "./rollback.js";
-export { stashAll, stashPaths, unstage } from "./stash.js";
+export { getStashes, stashAll, stashPaths, unstage } from "./stash.js";
 export { getStatus } from "./status.js";

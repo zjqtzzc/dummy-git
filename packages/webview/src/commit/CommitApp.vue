@@ -17,14 +17,23 @@ import { type FileEntry, keepChecked } from "../logic/tree/fileTree.js";
 import FileTree from "../tree/FileTree.vue";
 import ToolButton from "../ui/ToolButton.vue";
 import { viewState } from "../vscodeApi.js";
+import StashView from "./StashView.vue";
 
 /**
  * 侧栏 Commit 面板（`.notes/design/phase-2.md` 第二节第 2 条）。
  *
  * 从上到下：Commit / Stash 切换、工具栏、文件树、底部固定区（Amend、说明、提交）。
+ * Stash 模式（`StashView`）只换掉切换栏以下的部分，底部固定区不显示。
  * 文件树占满中间，底部固定区始终贴底。
  */
 const props = defineProps<{ client: Client }>();
+
+enum Mode {
+  Commit = "commit",
+  Stash = "stash",
+}
+/** 顶部切换栏：Commit 模式（提交、存 stash）与 Stash 模式（看、取回 stash）。 */
+const mode = ref(Mode.Commit);
 
 const repo = ref<string>();
 /** HEAD 的完整 hash，diff 左边用。还没有任何提交时缺席。 */
@@ -256,10 +265,25 @@ onMounted(async () => {
 <template>
   <div class="commit-app">
     <div class="modes">
-      <button type="button" class="mode active">Commit</button>
-      <!-- 第 4 阶段接上。先占位：它决定顶部的高度。 -->
-      <button type="button" class="mode" disabled>Stash</button>
+      <button
+        type="button"
+        :class="['mode', { active: mode === Mode.Commit }]"
+        @click="mode = Mode.Commit"
+      >
+        Commit
+      </button>
+      <button
+        type="button"
+        :class="['mode', { active: mode === Mode.Stash }]"
+        @click="mode = Mode.Stash"
+      >
+        Stash
+      </button>
     </div>
+
+    <StashView v-show="mode === Mode.Stash" :client="client" :repo="repo" />
+
+    <div v-show="mode === Mode.Commit" class="commit-mode">
 
     <div class="toolbar">
       <ToolButton
@@ -319,12 +343,19 @@ onMounted(async () => {
         committing ? "Committing…" : "Commit"
       }}</vscode-button>
     </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .commit-app {
   height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.commit-mode {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -344,10 +375,6 @@ onMounted(async () => {
 }
 .mode.active {
   border-color: var(--vscode-focusBorder);
-}
-.mode:disabled {
-  color: var(--vscode-disabledForeground);
-  cursor: default;
 }
 .toolbar {
   display: flex;

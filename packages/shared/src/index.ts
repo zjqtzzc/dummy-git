@@ -32,3 +32,4 @@ export {
   type ResponseMessage,
 } from "./protocol.js";
 export { type Ref, RefKind, type Upstream, UpstreamState } from "./ref.js";
+export type { Stash } from "./stash.js";

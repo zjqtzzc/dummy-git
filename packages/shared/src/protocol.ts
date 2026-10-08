@@ -4,6 +4,7 @@ import type { DiffOpenMode, DiffSide } from "./diff.js";
 import type { GitDomain } from "./domain.js";
 import type { GitErrorCode } from "./error.js";
 import type { Ref } from "./ref.js";
+import type { Stash } from "./stash.js";
 
 /**
  * extension ↔ webview 的全部对话内容。**这张表是唯一来源。**
@@ -85,6 +86,14 @@ export interface Commands {
   getCommitFiles: {
     params: { repo: string; hash: string };
     result: CommitFileChange[];
+  };
+  /**
+   * 全部 stash，最新的在最前。每条里改了哪些文件用 `getCommitFiles` 问：
+   * 已跟踪的问 stash 本身（对第一个父提交），未跟踪的问 `untracked` 那条附属提交。
+   */
+  getStashes: {
+    params: { repo: string };
+    result: Stash[];
   };
   /**
    * 工作区的未提交改动（含未跟踪），加上 HEAD 的 hash，Commit 面板用。

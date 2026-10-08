@@ -123,6 +123,10 @@ const PARAM_GUARDS = {
     const hash = raw["hash"];
     return typeof repo === "string" && typeof hash === "string" ? { repo, hash } : undefined;
   },
+  getStashes: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    return typeof repo === "string" ? { repo } : undefined;
+  },
   getStatus: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     return typeof repo === "string" ? { repo } : undefined;
