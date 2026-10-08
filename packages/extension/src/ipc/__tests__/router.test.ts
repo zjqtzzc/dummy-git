@@ -40,6 +40,7 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     checkout: async (): Promise<null> => null,
     checkoutRemote: async (): Promise<null> => null,
     newBranch: async (): Promise<null> => null,
+    renameBranch: async (): Promise<null> => null,
     ...overrides,
   });
 }
@@ -298,6 +299,10 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
           return null;
         },
         newBranch: async () => {
+          ran = true;
+          return null;
+        },
+        renameBranch: async () => {
           ran = true;
           return null;
         },

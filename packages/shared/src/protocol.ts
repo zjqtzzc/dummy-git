@@ -154,6 +154,11 @@ export interface Commands {
     params: { repo: string; start: string; startName: string };
     result: null;
   };
+  /** 改本地分支名，新名字由扩展弹输入框问。 */
+  renameBranch: {
+    params: { repo: string; branch: string };
+    result: null;
+  };
 }
 
 export type CommandName = keyof Commands;

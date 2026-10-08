@@ -160,6 +160,11 @@ const PARAM_GUARDS = {
       ? { repo, start, startName }
       : undefined;
   },
+  renameBranch: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const branch = raw["branch"];
+    return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;
+  },
   push: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const branch = raw["branch"];

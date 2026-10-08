@@ -55,6 +55,18 @@ export const createBranch: GitCommand<[repository: string, branch: string, start
     },
   };
 
+/**
+ * 改分支名：`git branch -m <旧名> <新名>`。当前分支也行。上游照 git 默认随改名带过去
+ * （仍跟踪原来的远程分支）；远程分支不跟着改。改本地引用，走本地道。
+ */
+export const renameBranch: GitCommand<[repository: string, branch: string, name: string], void> = {
+  lock: LockPolicy.Exclusive,
+
+  execute: async (cli, repository, branch, name) => {
+    await run(cli, ["branch", "-m", branch, name], { cwd: repository });
+  },
+};
+
 /** 名字能不能当分支名：`git check-ref-format --branch`，只看退出码。读命令，不排队。 */
 export const isValidBranchName: GitCommand<[repository: string, name: string], boolean> = {
   lock: LockPolicy.None,

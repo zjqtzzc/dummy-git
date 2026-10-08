@@ -546,3 +546,57 @@ describe("handlers.newBranch", () => {
     ]);
   });
 });
+
+describe("handlers.renameBranch", () => {
+  afterAll(cleanupTempRepos);
+  /** 改 `branch` 的名字，输入框回答 `answer`；返回输入框收到的预填值与每个探针的校验结果。 */
+  const rename = async (
+    path: string,
+    branch: string,
+    answer: string | undefined,
+    probes: readonly string[] = [],
+  ) => {
+    const repository = new Repository(plainLocation(path), cli);
+    let prefilled = "";
+    const problems: (string | undefined)[] = [];
+    const ui: HandlerUi = {
+      ...NO_UI,
+      askBranchName: async (_title, value, validate) => {
+        prefilled = value;
+        for (const probe of probes) problems.push(await validate(probe));
+        return answer;
+      },
+    };
+    try {
+      await createHandlers(repository, ui).renameBranch({ repo: path, branch });
+      return { prefilled, problems };
+    } finally {
+      repository.dispose();
+    }
+  };
+  const branches = (repo: string) =>
+    git(repo, ["branch", "--format=%(refname:short)"]).trim().split("\n");
+
+  it("改当前分支：仍是当前分支，上游带过去", async () => {
+    const { repo } = makeTrackingRepos();
+    const { prefilled } = await rename(repo, "main", "trunk");
+    expect(prefilled).toBe("main");
+    expect(git(repo, ["branch", "--show-current"]).trim()).toBe("trunk");
+    expect(git(repo, ["rev-parse", "--abbrev-ref", "trunk@{u}"]).trim()).toBe("origin/main");
+  });
+
+  it("没改、空着、取消：什么都不做", async () => {
+    const repo = makeTempRepo("rename-unchanged");
+    await rename(repo, "main", "main");
+    await rename(repo, "main", "");
+    await rename(repo, "main", undefined);
+    expect(branches(repo)).toEqual(["main"]);
+  });
+
+  it("校验：旧名不算重名，别的分支算", async () => {
+    const repo = makeTempRepo("rename-validate");
+    git(repo, ["branch", "-q", "feat"]);
+    const { problems } = await rename(repo, "main", undefined, ["main", "feat"]);
+    expect(problems).toEqual([undefined, "A branch named 'feat' already exists."]);
+  });
+});

@@ -70,6 +70,7 @@ export const _baseline = defineHandlers({
   checkout: openDiffStub,
   checkoutRemote: openDiffStub,
   newBranch: openDiffStub,
+  renameBranch: openDiffStub,
 });
 
 /**

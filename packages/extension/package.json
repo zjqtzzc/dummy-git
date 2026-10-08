@@ -62,6 +62,10 @@
       {
         "command": "dummyGit.newBranch",
         "title": "New Branch from Here…"
+      },
+      {
+        "command": "dummyGit.renameBranch",
+        "title": "Rename…"
       }
     ],
     "menus": {
@@ -80,6 +84,11 @@
           "command": "dummyGit.newBranch",
           "when": "webviewId == 'dummyGit.log' && dummyGit.start",
           "group": "2_edit@1"
+        },
+        {
+          "command": "dummyGit.renameBranch",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'localBranch'",
+          "group": "2_edit@2"
         }
       ],
       "commandPalette": [
@@ -93,6 +102,10 @@
         },
         {
           "command": "dummyGit.newBranch",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.renameBranch",
           "when": "false"
         }
       ]

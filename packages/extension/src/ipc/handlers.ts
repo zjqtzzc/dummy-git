@@ -29,6 +29,7 @@ import {
   listRemotes,
   PushKind,
   push,
+  renameBranch,
   rollback,
   switchBranch,
 } from "../git/commands/index.js";
@@ -92,24 +93,25 @@ export interface HandlerUi {
 
 export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMap {
   /**
-   * 弹输入框问一个新分支名，边输入边校验：git 认不认这个名字、和已有的本地分支重不重名。
-   * 空着点确定、取消，都是 `undefined`。分支列表在弹框前取一次，输入期间不再问。
+   * 弹输入框问一个分支名，`value` 预填。边输入边校验：git 认不认这个名字、和已有的本地分支重不重名
+   * （预填的那个不算重名，改名时它就是自己）。空着点确定、没改、取消，都是 `undefined`。
+   * 分支列表在弹框前取一次，输入期间不再问。
    */
-  async function askNewBranchName(title: string, value: string): Promise<string | undefined> {
+  async function askBranchName(title: string, value: string): Promise<string | undefined> {
     const root = repository.location.root;
     const taken = new Set(
       (await repository.run(getRefs, root)).flatMap((ref) =>
-        ref.kind === RefKind.LocalBranch ? [ref.name] : [],
+        ref.kind === RefKind.LocalBranch && ref.name !== value ? [ref.name] : [],
       ),
     );
     const name = await ui.askBranchName(title, value, async (input) => {
-      if (input === "") return undefined;
+      if (input === "" || input === value) return undefined;
       if (!(await repository.run(isValidBranchName, root, input))) {
         return `'${input}' is not a valid branch name.`;
       }
       return taken.has(input) ? `A branch named '${input}' already exists.` : undefined;
     });
-    return name === "" ? undefined : name;
+    return name === "" || name === value ? undefined : name;
   }
 
   /**
@@ -314,13 +316,20 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       return null;
     },
     newBranch: async ({ start, startName }) => {
-      const name = await askNewBranchName(`New branch from ${startName}`, "");
+      const name = await askBranchName(`New branch from ${startName}`, "");
       if (name === undefined) return null;
       await ui.withProgress(
         `Creating ${name}…`,
         () => repository.run(createBranch, repository.location.root, name, start),
         (said) => said,
       );
+      return null;
+    },
+    renameBranch: async ({ branch }) => {
+      const name = await askBranchName(`Rename branch ${branch}`, branch);
+      if (name === undefined) return null;
+      // 只改一个引用，立刻看得见，不走进度出口；git 也不说话，没有完成消息。
+      await repository.run(renameBranch, repository.location.root, branch, name);
       return null;
     },
     rollback: async ({ paths }) => {

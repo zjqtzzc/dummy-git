@@ -28,6 +28,7 @@
  * | `switchBranch` | `switch <分支>` | `git switch` | 2.23 |
  * | `createTrackingBranch` | `switch -c <分支> --track <远程分支>` | `git switch` | 2.23 |
  * | `createBranch` | `switch -c <分支> --no-track <起点>` | `git switch` | 2.23 |
+ * | `renameBranch` | `branch -m <旧名> <新名>` | — | — |
  * | `isValidBranchName` | `check-ref-format --branch <名字>` | — | — |
  * | `rollback` | `restore --source=HEAD --staged --worktree -- <路径…>` | `git restore` | **2.23** |
  * | `getSkeleton` | `-c log.showSignature=false log --format=… --max-count=10000 HEAD --branches --remotes --tags --date-order` | — | — |
@@ -44,6 +45,7 @@ export {
   createBranch,
   createTrackingBranch,
   isValidBranchName,
+  renameBranch,
   switchBranch,
 } from "./branch.js";
 export { checkIgnore } from "./checkIgnore.js";
