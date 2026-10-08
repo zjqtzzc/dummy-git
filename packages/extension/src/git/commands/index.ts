@@ -20,6 +20,8 @@
  * | `commit` | `add -- <未跟踪…>`（有才跑）+ `commit --only -F - -- <路径…>` | — | — |
  * | `amendCommit` | 同上，`commit --amend --only …`；路径可为空（只改说明） | — | — |
  * | `fetchAll` | `fetch --all --prune` | — | — |
+ * | `listRemotes` | `remote` | — | — |
+ * | `push` | `push [-u] <远程> refs/heads/<B>:refs/heads/<M>` | — | — |
  * | `fetchInto` | `fetch <远程> refs/heads/<M>:refs/heads/<B>`（拉取非当前分支） | — | — |
  * | `fetchBranch` | `fetch <远程> refs/heads/<M>`（拉取当前分支第一步） | — | — |
  * | `fastForward` | `merge --ff-only <远程分支记录>`（拉取当前分支第二步） | — | — |
@@ -48,7 +50,8 @@ export {
   fetchBranch,
   fetchInto,
 } from "./pull.js";
+export { PushKind, type PushResult, push } from "./push.js";
 export { getHead, getRefs } from "./refs.js";
-export { fetchAll } from "./remote.js";
+export { fetchAll, listRemotes } from "./remote.js";
 export { rollback } from "./rollback.js";
 export { getStatus } from "./status.js";

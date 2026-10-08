@@ -129,6 +129,13 @@ export interface Commands {
     params: { repo: string; branch: string };
     result: null;
   };
+  /**
+   * 推送选中的本地分支。推到哪里由扩展算：上游 → 唯一的远程 → `origin`（后两种推到同名并设为上游）。
+   */
+  push: {
+    params: { repo: string; branch: string };
+    result: null;
+  };
 }
 
 export type CommandName = keyof Commands;

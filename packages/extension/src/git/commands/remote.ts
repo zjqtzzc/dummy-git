@@ -15,3 +15,13 @@ export const fetchAll: GitCommand<[repository: string], void> = {
     await run(cli, ["fetch", "--all", "--prune"], { cwd: repository });
   },
 };
+
+/** 全部远程的名字（`git remote`）。推送一个没有上游的分支、要挑远程时才问。只读。 */
+export const listRemotes: GitCommand<[repository: string], string[]> = {
+  lock: LockPolicy.None,
+
+  execute: async (cli, repository) => {
+    const { stdout } = await run(cli, ["remote"], { cwd: repository });
+    return stdout.split("\n").filter((line) => line !== "");
+  },
+};

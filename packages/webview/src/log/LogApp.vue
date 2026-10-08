@@ -146,6 +146,16 @@ async function pullSelected(): Promise<void> {
   }
 }
 
+/** Push Selected：推到哪里由扩展算（上游 → 唯一的远程 → origin）。 */
+async function pushSelected(): Promise<void> {
+  if (repo.value === undefined || selectedBranch.value === undefined) return;
+  try {
+    await props.client.request("push", { repo: repo.value, branch: selectedBranch.value });
+  } catch (cause) {
+    report(cause);
+  }
+}
+
 /** 右栏的文件：双击或回车打开，单击或上下键跟随（由 `mode` 区分）。 */
 async function openFile(entry: FileEntry, mode: DiffOpenMode): Promise<void> {
   const commit = selected.value === undefined ? undefined : details.value.get(selected.value);
@@ -242,6 +252,7 @@ onMounted(async () => {
           :icon="AppIcon.Push"
           title="Push Selected"
           :disabled="selectedBranch === undefined"
+          @click="pushSelected"
         />
       </div>
       <div class="pane">

@@ -340,3 +340,50 @@ describe("handlers.pull", () => {
     expect(error instanceof UserFacingError && error.detail).toContain("fast-forward");
   });
 });
+
+describe("handlers.push", () => {
+  afterAll(cleanupTempRepos);
+  const pushBranch = async (path: string, branch: string) => {
+    const repository = new Repository(plainLocation(path), cli);
+    try {
+      await createHandlers(repository, NO_UI).push({ repo: path, branch });
+    } finally {
+      repository.dispose();
+    }
+  };
+  const repos = () => {
+    const { remote, repo } = makeTrackingRepos();
+    git(remote, ["config", "receive.denyCurrentBranch", "ignore"]);
+    return { remote, repo };
+  };
+
+  it("没有上游的新分支：推到唯一远程的同名分支，并设为上游", async () => {
+    const { remote, repo } = repos();
+    git(repo, ["branch", "-q", "feat"]);
+    await pushBranch(repo, "feat");
+    expect(git(remote, ["rev-parse", "feat"])).toBe(git(repo, ["rev-parse", "feat"]));
+    expect(git(repo, ["rev-parse", "--abbrev-ref", "feat@{upstream}"]).trim()).toBe("origin/feat");
+  });
+
+  it("没有上游、多个远程且没有 origin：给一句说明，不推", async () => {
+    const { repo } = repos();
+    git(repo, ["remote", "rename", "origin", "a"]);
+    git(repo, ["remote", "add", "b", "https://example.invalid/b.git"]);
+    git(repo, ["branch", "-q", "feat"]);
+    await expect(pushBranch(repo, "feat")).rejects.toThrow(
+      "Cannot choose a remote for feat: the repository has several remotes and none is named origin.",
+    );
+  });
+
+  it("被拒绝：给一句说明，git 原文留在 detail", async () => {
+    const { remote, repo } = repos();
+    git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
+    const error = await pushBranch(repo, "main").catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(UserFacingError);
+    expect(error instanceof UserFacingError && error.message).toBe(
+      "Push rejected: origin/main has commits that main doesn't have. Pull first.",
+    );
+    expect(error instanceof UserFacingError && error.detail).toContain("[rejected]");
+  });
+});

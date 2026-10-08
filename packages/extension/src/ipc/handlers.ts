@@ -1,4 +1,12 @@
-import { ChangeKind, type DiffOpenMode, type DiffSide, type Ref, RefKind } from "@dummy-git/shared";
+import {
+  assertNever,
+  ChangeKind,
+  type DiffOpenMode,
+  type DiffSide,
+  type Ref,
+  RefKind,
+} from "@dummy-git/shared";
+import { defaultPushTarget, PushTargetKind } from "../core/pushTarget.js";
 import type { Repository } from "../core/repository.js";
 import {
   amendCommit,
@@ -15,6 +23,9 @@ import {
   getRefs,
   getSkeleton,
   getStatus,
+  listRemotes,
+  PushKind,
+  push,
   rollback,
 } from "../git/commands/index.js";
 import { defineHandlers, type HandlerMap } from "./router.js";
@@ -179,6 +190,52 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
           return localBranch(await repository.run(getRefs, root), branch)?.target !== before.target;
         },
         (moved) => (moved ? `Pulled ${branch} from ${tracked}` : `${branch} is up to date`),
+      );
+      return null;
+    },
+    push: async ({ branch }) => {
+      const root = repository.location.root;
+      const local = localBranch(await repository.run(getRefs, root), branch);
+      if (local === undefined) throw new UserFacingError(`Branch ${branch} no longer exists.`);
+      // 有上游就用不到远程列表，不去问 git。
+      const remotes = local.upstream === undefined ? await repository.run(listRemotes, root) : [];
+      const target = defaultPushTarget(branch, local.upstream, remotes);
+      switch (target.kind) {
+        case PushTargetKind.Target:
+          break;
+        case PushTargetKind.Ambiguous:
+          throw new UserFacingError(
+            `Cannot choose a remote for ${branch}: the repository has several remotes and none is named origin.`,
+          );
+        case PushTargetKind.NoRemote:
+          throw new UserFacingError(
+            `Cannot choose a remote for ${branch}: the repository has no remotes.`,
+          );
+        default:
+          return assertNever(target, "push target");
+      }
+      const tracked = `${target.remote}/${target.remoteBranch}`;
+      await ui.withProgress(
+        `Pushing ${branch}…`,
+        async () => {
+          const result = await repository.run(
+            push,
+            root,
+            target.remote,
+            branch,
+            target.remoteBranch,
+            target.setUpstream,
+          );
+          if (result.kind === PushKind.Rejected) {
+            throw new UserFacingError(
+              `Push rejected: ${tracked} has commits that ${branch} doesn't have. Pull first.`,
+              result.stderr,
+            );
+          }
+          return result.kind;
+        },
+        (kind) =>
+          kind === PushKind.UpToDate ? `${tracked} is up to date` : `Pushed ${branch} → ${tracked}`,
       );
       return null;
     },
