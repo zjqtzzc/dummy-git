@@ -5,7 +5,7 @@
  * 形状照 IDEA：↙ 是「从远程进来」，↗ 是「推到远程去」。
  */
 export enum AppIcon {
-  /** 虚线 ↙：取回远程的记录，不动本地分支。 */
+  /** 整个虚线的 ↙：取回远程的记录，不动本地分支。 */
   Fetch = "fetch",
   /** 实线 ↙：把远程的提交拉进本地分支。 */
   Pull = "pull",
@@ -23,7 +23,10 @@ export interface IconStroke {
 const INCOMING_HEAD = "M3.5 6.5V12.5H9.5";
 
 export const ICON_STROKES: Readonly<Record<AppIcon, readonly IconStroke[]>> = {
-  [AppIcon.Fetch]: [{ d: "M12.5 3.5L3.5 12.5", dashed: true }, { d: INCOMING_HEAD }],
+  [AppIcon.Fetch]: [
+    { d: "M12.5 3.5L3.5 12.5", dashed: true },
+    { d: INCOMING_HEAD, dashed: true },
+  ],
   [AppIcon.Pull]: [{ d: "M12.5 3.5L3.5 12.5" }, { d: INCOMING_HEAD }],
   [AppIcon.Push]: [{ d: "M3.5 12.5L12.5 3.5" }, { d: "M6.5 3.5H12.5V9.5" }],
 };
