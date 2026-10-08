@@ -74,6 +74,18 @@
       {
         "command": "dummyGit.deleteRemoteBranch",
         "title": "Delete"
+      },
+      {
+        "command": "dummyGit.popStash",
+        "title": "Pop"
+      },
+      {
+        "command": "dummyGit.applyStash",
+        "title": "Apply"
+      },
+      {
+        "command": "dummyGit.dropStash",
+        "title": "Delete"
       }
     ],
     "menus": {
@@ -107,6 +119,21 @@
           "command": "dummyGit.deleteRemoteBranch",
           "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'remoteBranch'",
           "group": "3_delete@1"
+        },
+        {
+          "command": "dummyGit.popStash",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'stash'",
+          "group": "1_apply@1"
+        },
+        {
+          "command": "dummyGit.applyStash",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'stash'",
+          "group": "1_apply@2"
+        },
+        {
+          "command": "dummyGit.dropStash",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'stash'",
+          "group": "3_delete@1"
         }
       ],
       "commandPalette": [
@@ -132,6 +159,18 @@
         },
         {
           "command": "dummyGit.deleteRemoteBranch",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.popStash",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.applyStash",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.dropStash",
           "when": "false"
         }
       ]

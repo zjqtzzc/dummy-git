@@ -45,6 +45,9 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     deleteRemoteBranch: async (): Promise<null> => null,
     stash: async (): Promise<null> => null,
     getStashes: async () => [],
+    applyStash: async (): Promise<null> => null,
+    popStash: async (): Promise<null> => null,
+    dropStash: async (): Promise<null> => null,
     ...overrides,
   });
 }
@@ -325,6 +328,18 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
         getStashes: async () => {
           ran = true;
           return [];
+        },
+        applyStash: async () => {
+          ran = true;
+          return null;
+        },
+        popStash: async () => {
+          ran = true;
+          return null;
+        },
+        dropStash: async () => {
+          ran = true;
+          return null;
         },
       }),
     );

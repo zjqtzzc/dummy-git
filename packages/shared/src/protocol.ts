@@ -176,6 +176,21 @@ export interface Commands {
     params: { repo: string; paths: readonly string[] };
     result: null;
   };
+  /** 把 `hash` 那条 stash 取回工作区，stash 保留。 */
+  applyStash: {
+    params: { repo: string; hash: string };
+    result: null;
+  };
+  /** 取回并删掉（取回成功才删）。 */
+  popStash: {
+    params: { repo: string; hash: string };
+    result: null;
+  };
+  /** 删掉 `hash` 那条 stash，扩展先问用户。 */
+  dropStash: {
+    params: { repo: string; hash: string };
+    result: null;
+  };
   /** 删本地分支（不能是当前分支）。没合并时扩展先问用户。 */
   deleteBranch: {
     params: { repo: string; branch: string };

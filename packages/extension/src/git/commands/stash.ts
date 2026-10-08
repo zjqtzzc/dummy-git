@@ -1,4 +1,5 @@
 import type { Stash } from "@dummy-git/shared";
+import type { GitCli } from "../cli.js";
 import { run, runRaw } from "../failure.js";
 import { parseStashList, stashListArgs } from "../parsers/index.js";
 import type { GitCommand } from "./command.js";
@@ -54,6 +55,50 @@ export const unstage: GitCommand<[repository: string, paths: readonly string[]],
     await run(cli, ["restore", "--staged", "--", ...paths], { cwd: repository });
   },
 };
+
+/**
+ * 把这条 stash 取回工作区，stash 保留：`git stash apply <hash>`。冲突时 git 报错（原样抛出），
+ * 工作区里留下冲突标记，stash 仍在。改工作区，走本地道。
+ */
+export const applyStash: GitCommand<[repository: string, hash: string], void> = {
+  lock: LockPolicy.Exclusive,
+
+  execute: async (cli, repository, hash) => {
+    await run(cli, ["stash", "apply", hash], { cwd: repository });
+  },
+};
+
+/**
+ * 取回并删掉：`git stash pop stash@{n}`。git 自己保证只在取回成功时删，冲突时 stash 留着。
+ * pop / drop 只认 `stash@{n}`、不认 hash，序号又会随增删而变，所以在同一条命令里先按 hash 找序号再执行，
+ * 中间插不进我们自己的别的写操作。
+ */
+export const popStash: GitCommand<[repository: string, hash: string], void> = {
+  lock: LockPolicy.Exclusive,
+
+  execute: async (cli, repository, hash) => {
+    await run(cli, ["stash", "pop", await stashRef(cli, repository, hash)], { cwd: repository });
+  },
+};
+
+/** 删掉这条 stash：`git stash drop stash@{n}`（序号同 `popStash` 按 hash 找）。返回 git 自己说的那句。 */
+export const dropStash: GitCommand<[repository: string, hash: string], string> = {
+  lock: LockPolicy.Exclusive,
+
+  execute: async (cli, repository, hash) => {
+    const ref = await stashRef(cli, repository, hash);
+    const { stdout } = await run(cli, ["stash", "drop", ref], { cwd: repository });
+    return firstLine(stdout);
+  },
+};
+
+/** 这条 stash 现在的 `stash@{n}`。已经不在（别处删了）时抛出。 */
+async function stashRef(cli: GitCli, repository: string, hash: string): Promise<string> {
+  const result = await runRaw(cli, stashListArgs(), { cwd: repository });
+  const index = parseStashList(result.stdout).findIndex((stash) => stash.hash === hash);
+  if (index === -1) throw new Error(`The stash ${hash.slice(0, 7)} no longer exists.`);
+  return `stash@{${index}}`;
+}
 
 function firstLine(text: string): string {
   return text.split("\n")[0]?.trim() ?? "";

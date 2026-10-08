@@ -750,3 +750,72 @@ describe("handlers.stash", () => {
     expect(status(repo)).toEqual([""]);
   });
 });
+
+describe("handlers.applyStash / popStash / dropStash", () => {
+  afterAll(cleanupTempRepos);
+  /** 两条 stash：较早的改了 f1，较新的新建了 f2（未跟踪）。返回两条的 hash。 */
+  const scene = (name: string) => {
+    const repo = makeTempRepo(name);
+    writeFileSync(join(repo, "f1"), "older\n");
+    git(repo, ["stash", "push", "-q"]);
+    writeFileSync(join(repo, "f2"), "newer\n");
+    git(repo, ["stash", "push", "-q", "-u"]);
+    const hash = (ref: string) => git(repo, ["rev-parse", ref]).trim();
+    return { repo, newer: hash("stash@{0}"), older: hash("stash@{1}") };
+  };
+  const stashes = (repo: string) =>
+    git(repo, ["stash", "list", "--format=%H"]).trim().split("\n").filter(Boolean);
+  const act = async (
+    repo: string,
+    run: (h: ReturnType<typeof createHandlers>) => Promise<unknown>,
+    sure = true,
+  ) => {
+    const repository = new Repository(plainLocation(repo), cli);
+    const said: string[] = [];
+    const ui: HandlerUi = {
+      ...NO_UI,
+      confirm: async () => sure,
+      notify: (message) => said.push(message),
+      withProgress: async (_title, task, done) => {
+        const value = await task();
+        said.push(done(value));
+        return value;
+      },
+    };
+    try {
+      await run(createHandlers(repository, ui));
+      return said;
+    } finally {
+      repository.dispose();
+    }
+  };
+
+  it("Apply：取回工作区，stash 保留", async () => {
+    const { repo, older } = scene("stash-apply");
+    const said = await act(repo, (h) => h.applyStash({ repo, hash: older }));
+    expect(said).toEqual([expect.stringMatching(/^Applied WIP on main: /)]);
+    expect(git(repo, ["status", "--porcelain"]).trim()).toBe("M f1");
+    expect(stashes(repo)).toHaveLength(2);
+  });
+
+  it("Pop 较早的那条：取回它、只删它", async () => {
+    const { repo, newer, older } = scene("stash-pop");
+    await act(repo, (h) => h.popStash({ repo, hash: older }));
+    expect(git(repo, ["status", "--porcelain"]).trim()).toBe("M f1");
+    expect(stashes(repo)).toEqual([newer]);
+  });
+
+  it("Delete 较早的那条：确认后只删它，状态栏是 git 那句", async () => {
+    const { repo, newer, older } = scene("stash-drop");
+    const said = await act(repo, (h) => h.dropStash({ repo, hash: older }));
+    expect(said).toEqual([`Dropped stash@{1} (${older})`]);
+    expect(stashes(repo)).toEqual([newer]);
+  });
+
+  it("Delete 取消：留着", async () => {
+    const { repo } = scene("stash-drop-cancel");
+    const [, older] = stashes(repo);
+    await act(repo, (h) => h.dropStash({ repo, hash: older ?? "" }), false);
+    expect(stashes(repo)).toHaveLength(2);
+  });
+});

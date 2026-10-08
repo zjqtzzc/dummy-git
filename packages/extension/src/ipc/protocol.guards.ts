@@ -127,6 +127,21 @@ const PARAM_GUARDS = {
     const repo = raw["repo"];
     return typeof repo === "string" ? { repo } : undefined;
   },
+  applyStash: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const hash = raw["hash"];
+    return typeof repo === "string" && typeof hash === "string" ? { repo, hash } : undefined;
+  },
+  popStash: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const hash = raw["hash"];
+    return typeof repo === "string" && typeof hash === "string" ? { repo, hash } : undefined;
+  },
+  dropStash: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const hash = raw["hash"];
+    return typeof repo === "string" && typeof hash === "string" ? { repo, hash } : undefined;
+  },
   getStatus: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     return typeof repo === "string" ? { repo } : undefined;

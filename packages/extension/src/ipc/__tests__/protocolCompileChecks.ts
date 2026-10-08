@@ -76,6 +76,9 @@ export const _baseline = defineHandlers({
   deleteRemoteBranch: openDiffStub,
   stash: openDiffStub,
   getStashes: async (): Promise<Stash[]> => [],
+  applyStash: openDiffStub,
+  popStash: openDiffStub,
+  dropStash: openDiffStub,
 });
 
 /**

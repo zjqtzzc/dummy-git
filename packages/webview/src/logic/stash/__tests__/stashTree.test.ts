@@ -1,7 +1,7 @@
 import { type CommitFileChange, FileStatus, type Stash } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
 import type { TreeNode } from "../../tree/tree.js";
-import { type StashFiles, stashFilesById, stashTreeNodes } from "../stashTree.js";
+import { type StashFiles, stashByNodeId, stashFilesById, stashTreeNodes } from "../stashTree.js";
 
 const stash = (hash: string, extra: Partial<Stash> = {}): Stash => ({
   hash,
@@ -29,7 +29,7 @@ describe("stashTreeNodes", () => {
   ];
 
   it("每条 stash 一个顶层节点，标题是说明；同一文件在两条里 id 不撞", () => {
-    const nodes = stashTreeNodes(list, false, 0);
+    const nodes = stashTreeNodes(list, "/repo", false, 0);
     expect(nodes.map((n) => n.label)).toEqual(["WIP on main: s1", "WIP on main: s2"]);
     const all = ids(nodes);
     expect(all).toContain("s1/src/a.ts");
@@ -40,11 +40,32 @@ describe("stashTreeNodes", () => {
 
   it("时间写在说明位置，写法与 Log 一样", () => {
     const [first] = stashTreeNodes(
-      [{ ...list[1], stash: stash("s2", { at: 1000 }) } as StashFiles],
+      [{ stash: stash("s2", { at: 1000 }), tracked: [], untracked: [] }],
+      "/repo",
       false,
       1030,
     );
     expect(first?.description).toBe("just now");
+  });
+});
+
+describe("stashByNodeId", () => {
+  it("stash 那一行和它下面的每一行都属于这条 stash", () => {
+    const owners = stashByNodeId(
+      stashTreeNodes(
+        [
+          { stash: stash("s1"), tracked: [modified("src/a.ts")], untracked: [] },
+          { stash: stash("s2"), tracked: [modified("b")], untracked: [] },
+        ],
+        "/repo",
+        false,
+        0,
+      ),
+    );
+    expect(owners.get("s1")).toBe("s1");
+    expect(owners.get("s1/src")).toBe("s1");
+    expect(owners.get("s1/src/a.ts")).toBe("s1");
+    expect(owners.get("s2/b")).toBe("s2");
   });
 });
 

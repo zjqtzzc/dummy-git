@@ -36,6 +36,11 @@ function menuCommand<K extends CommandName>(
   };
 }
 
+/** stash 那一行的菜单项：仓库与 stash 的 hash。 */
+function stashParams(context: Record<string, unknown>): Record<string, unknown> {
+  return { repo: context[MenuContextKey.Repo], hash: context[MenuContextKey.Stash] };
+}
+
 const MENU_COMMANDS: readonly MenuCommand[] = [
   menuCommand("dummyGit.checkout", "checkout", (context) => ({
     repo: context[MenuContextKey.Repo],
@@ -64,6 +69,9 @@ const MENU_COMMANDS: readonly MenuCommand[] = [
     remote: context[MenuContextKey.Remote],
     branch: context[MenuContextKey.Branch],
   })),
+  menuCommand("dummyGit.popStash", "popStash", stashParams),
+  menuCommand("dummyGit.applyStash", "applyStash", stashParams),
+  menuCommand("dummyGit.dropStash", "dropStash", stashParams),
 ];
 
 export function registerMenuCommands(handlers: HandlerMap, errors: ErrorGate): vscode.Disposable {

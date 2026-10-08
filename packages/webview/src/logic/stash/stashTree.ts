@@ -1,4 +1,9 @@
-import type { CommitFileChange, Stash } from "@dummy-git/shared";
+import {
+  type CommitFileChange,
+  MenuContextKey,
+  MenuNodeValue,
+  type Stash,
+} from "@dummy-git/shared";
 import { commitFileEntry } from "../log/commitDiff.js";
 import { buildFileTree, toTreeNodes as fileTreeNodes } from "../tree/fileTree.js";
 import type { TreeNode } from "../tree/tree.js";
@@ -26,9 +31,11 @@ export interface StashFile {
  *
  * 同一个文件可以出现在好几条 stash 里，而节点 id 在一棵树里必须唯一，
  * 所以文件与目录的 id 前面加上 stash 的 hash（`<hash>/<路径>`）。顶层节点的 id 就是 hash。
+ * 顶层节点带右键菜单上下文（Pop、Apply ｜ Delete），和 `package.json` 菜单项的 `when` 条件对应。
  */
 export function stashTreeNodes(
   list: readonly StashFiles[],
+  repo: string,
   light: boolean,
   now: number,
 ): TreeNode[] {
@@ -39,6 +46,11 @@ export function stashTreeNodes(
       id: stash.hash,
       label: stash.message,
       description: formatTime(stash.at, now),
+      menu: {
+        [MenuContextKey.Node]: MenuNodeValue.Stash,
+        [MenuContextKey.Repo]: repo,
+        [MenuContextKey.Stash]: stash.hash,
+      },
       children: scoped(stash.hash, files),
     };
   });
@@ -56,6 +68,17 @@ export function stashFilesById(list: readonly StashFiles[]): ReadonlyMap<string,
       index.set(scopedId(stash.hash, file.path), { hash: stash.untracked, parents: [], file });
     }
   }
+  return index;
+}
+
+/** 节点 id → 它属于哪条 stash（hash）。选中 stash 那一行或它下面的任何一行，都算选中了这条 stash。 */
+export function stashByNodeId(nodes: readonly TreeNode[]): ReadonlyMap<string, string> {
+  const index = new Map<string, string>();
+  const visit = (node: TreeNode, hash: string): void => {
+    index.set(node.id, hash);
+    for (const child of node.children ?? []) visit(child, hash);
+  };
+  for (const node of nodes) visit(node, node.id);
   return index;
 }
 

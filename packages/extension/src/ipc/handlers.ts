@@ -11,12 +11,14 @@ import { defaultPushTarget, PushTargetKind } from "../core/pushTarget.js";
 import type { Repository } from "../core/repository.js";
 import {
   amendCommit,
+  applyStash,
   commit,
   createBranch,
   createTrackingBranch,
   DeleteBranchKind,
   deleteBranch,
   deleteRemoteBranch,
+  dropStash,
   FastForwardKind,
   type FastForwardResult,
   fastForward,
@@ -34,6 +36,7 @@ import {
   isValidBranchName,
   listRemotes,
   PushKind,
+  popStash,
   push,
   renameBranch,
   rollback,
@@ -125,6 +128,14 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       return taken.has(input) ? `A branch named '${input}' already exists.` : undefined;
     });
     return name === "" || name === value ? undefined : name;
+  }
+
+  /** 这条 stash 的说明（确认框与完成消息用）。已经不在时直接说出来。 */
+  async function stashMessage(hash: string): Promise<string> {
+    const stashes = await repository.run(getStashes, repository.location.root);
+    const stash = stashes.find((candidate) => candidate.hash === hash);
+    if (stash === undefined) throw new UserFacingError("The stash no longer exists.");
+    return stash.message;
   }
 
   /**
@@ -413,6 +424,34 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         },
         (said) => said,
       );
+      return null;
+    },
+    applyStash: async ({ hash }) => {
+      // git 的输出是一整段 `git status`，没有能当完成消息的一句，自己写。
+      const message = await stashMessage(hash);
+      await ui.withProgress(
+        "Applying stash…",
+        () => repository.run(applyStash, repository.location.root, hash),
+        () => `Applied ${message}`,
+      );
+      return null;
+    },
+    popStash: async ({ hash }) => {
+      const message = await stashMessage(hash);
+      await ui.withProgress(
+        "Popping stash…",
+        () => repository.run(popStash, repository.location.root, hash),
+        () => `Applied and dropped ${message}`,
+      );
+      return null;
+    },
+    dropStash: async ({ hash }) => {
+      const message = await stashMessage(hash);
+      if (!(await ui.confirm(`Delete the stash "${message}"? This cannot be undone.`, "Delete"))) {
+        return null;
+      }
+      // 只删一个引用，立刻看得见，不走进度出口。
+      ui.notify(await repository.run(dropStash, repository.location.root, hash));
       return null;
     },
     rollback: async ({ paths }) => {

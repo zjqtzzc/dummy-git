@@ -19,10 +19,13 @@ export const MenuContextKey = {
   Start: "dummyGit.start",
   /** 起点显示给人看的名字（输入框标题）。 */
   StartName: "dummyGit.startName",
+  /** stash 的 hash。 */
+  Stash: "dummyGit.stash",
 } as const;
 
 /** `MenuContextKey.Node` 的取值。 */
 export const MenuNodeValue = {
   LocalBranch: "localBranch",
   RemoteBranch: "remoteBranch",
+  Stash: "stash",
 } as const;

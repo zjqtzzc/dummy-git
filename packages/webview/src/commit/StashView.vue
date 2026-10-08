@@ -2,16 +2,24 @@
 import { DiffOpenMode, GitDomain } from "@dummy-git/shared";
 import { computed, onMounted, ref, watch } from "vue";
 import { type Client, report } from "../logic/client.js";
+import { AppIcon, appIcon, codicon } from "../logic/icons.js";
 import { commitDiffSides } from "../logic/log/commitDiff.js";
-import { type StashFiles, stashFilesById, stashTreeNodes } from "../logic/stash/stashTree.js";
+import {
+  type StashFiles,
+  stashByNodeId,
+  stashFilesById,
+  stashTreeNodes,
+} from "../logic/stash/stashTree.js";
 import { branchIds, type TreeNode } from "../logic/tree/tree.js";
 import Tree from "../tree/Tree.vue";
 import { useLightTheme } from "../ui/lightTheme.js";
+import ToolButton from "../ui/ToolButton.vue";
 
 /**
  * Commit 面板的 Stash 模式（`.notes/design/phase-4.md` 第 8 条）：全部 stash，最新的在最上，
  * 每条下面是它改了的文件。单击文件 diff 跟随、双击打开，左边存时所在的提交，右边 stash 里的版本。
  *
+ * 工具栏 Apply、Delete 作用于选中的那条；右键 stash 那一行还有 Pop（菜单项由扩展注册）。
  * 一直挂着（切模式只是隐藏），所以只订阅一次 stash 域的变化。
  */
 const props = defineProps<{ client: Client; repo: string | undefined }>();
@@ -22,8 +30,20 @@ const light = useLightTheme();
 /** 时间按载入那一刻写；stash 列表一变就重新载入。 */
 const now = ref(Date.now() / 1000);
 
-const nodes = computed(() => stashTreeNodes(list.value, light.value, now.value));
+const nodes = computed(() => stashTreeNodes(list.value, props.repo ?? "", light.value, now.value));
 const filesById = computed(() => stashFilesById(list.value));
+const owners = computed(() => stashByNodeId(nodes.value));
+
+/**
+ * 选中的行与它所属的 stash（Apply / Delete 的对象）。选中 stash 那一行或它下面的文件都算。
+ * 列表一变就按 id 重新找：那条 stash 没了（被删、被 Pop），选中落空，两个按钮置灰。
+ */
+const selectedId = ref<string>();
+const selectedStash = computed(() =>
+  selectedId.value === undefined ? undefined : owners.value.get(selectedId.value),
+);
+/** 正在 Apply / Delete：两个按钮置灰，防重复点击。 */
+const busy = ref(false);
 
 /**
  * 展开状态。每条 stash 默认收起；它下面的目录默认展开，展开 stash 就直接看到文件。
@@ -76,6 +96,25 @@ onMounted(() => {
   });
 });
 
+/** Apply 与 Delete（确认框由扩展弹）。完成消息与错误都由扩展侧显示。 */
+async function act(command: "applyStash" | "dropStash"): Promise<void> {
+  const hash = selectedStash.value;
+  if (props.repo === undefined || hash === undefined || busy.value) return;
+  busy.value = true;
+  try {
+    await props.client.request(command, { repo: props.repo, hash });
+  } catch (cause) {
+    report(cause);
+  } finally {
+    busy.value = false;
+  }
+}
+
+function onSelect(node: TreeNode): void {
+  selectedId.value = node.id;
+  void open(node, DiffOpenMode.Follow);
+}
+
 /** 上次跟随的文件：同一个文件重复选中时不再跟，免得 diff 反复打开。 */
 let followed: string | undefined;
 
@@ -95,8 +134,20 @@ async function open(node: TreeNode, mode: DiffOpenMode): Promise<void> {
 
 <template>
   <div class="stash-view">
-    <!-- Apply / Delete 按钮的位置（第 10 条）。先占住这一行，切模式时下面的树不跳。 -->
-    <div class="toolbar" />
+    <div class="toolbar">
+      <ToolButton
+        :icon="appIcon(AppIcon.Unstash)"
+        title="Apply"
+        :disabled="selectedStash === undefined || busy"
+        @click="act('applyStash')"
+      />
+      <ToolButton
+        :icon="codicon('trash')"
+        title="Delete"
+        :disabled="selectedStash === undefined || busy"
+        @click="act('dropStash')"
+      />
+    </div>
     <div class="files">
       <p v-if="!loaded" class="dim note">Loading…</p>
       <p v-else-if="list.length === 0" class="dim note">No stashes</p>
@@ -104,7 +155,7 @@ async function open(node: TreeNode, mode: DiffOpenMode): Promise<void> {
         v-else
         v-model:expanded="expanded"
         :nodes="nodes"
-        @select="(node) => open(node, DiffOpenMode.Follow)"
+        @select="onSelect"
         @activate="(node) => open(node, DiffOpenMode.Open)"
       />
     </div>
@@ -119,7 +170,9 @@ async function open(node: TreeNode, mode: DiffOpenMode): Promise<void> {
   flex-direction: column;
 }
 .toolbar {
-  height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
   padding: 2px 8px;
   border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, transparent);
 }

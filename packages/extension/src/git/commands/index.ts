@@ -36,6 +36,9 @@
  * | `getStashes` | `stash list -z --format=…` | — | — |
  * | `stashAll` | `stash push -u` | — | — |
  * | `stashPaths` | `stash push -u -- <路径…>` | — | — |
+ * | `applyStash` | `stash apply <hash>` | — | — |
+ * | `popStash` | `stash list …` 找序号 + `stash pop stash@{n}` | — | — |
+ * | `dropStash` | `stash list …` 找序号 + `stash drop stash@{n}` | — | — |
  * | `unstage` | `restore --staged -- <路径…>` | `git restore` | 2.23 |
  * | `rollback` | `restore --source=HEAD --staged --worktree -- <路径…>` | `git restore` | **2.23** |
  * | `getSkeleton` | `-c log.showSignature=false log --format=… --max-count=10000 HEAD --branches --remotes --tags --date-order` | — | — |
@@ -78,5 +81,13 @@ export { PushKind, type PushResult, push } from "./push.js";
 export { getHead, getRefs } from "./refs.js";
 export { fetchAll, listRemotes } from "./remote.js";
 export { rollback } from "./rollback.js";
-export { getStashes, stashAll, stashPaths, unstage } from "./stash.js";
+export {
+  applyStash,
+  dropStash,
+  getStashes,
+  popStash,
+  stashAll,
+  stashPaths,
+  unstage,
+} from "./stash.js";
 export { getStatus } from "./status.js";
