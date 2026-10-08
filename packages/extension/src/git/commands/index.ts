@@ -19,6 +19,7 @@
  * | `checkIgnore` | `check-ignore -z --stdin` | — | — |
  * | `commit` | `add -- <未跟踪…>`（有才跑）+ `commit --only -F - -- <路径…>` | — | — |
  * | `amendCommit` | 同上，`commit --amend --only …`；路径可为空（只改说明） | — | — |
+ * | `fetchAll` | `fetch --all --prune` | — | — |
  * | `rollback` | `restore --source=HEAD --staged --worktree -- <路径…>` | `git restore` | **2.23** |
  * | `getSkeleton` | `-c log.showSignature=false log --format=… --max-count=10000 HEAD --branches --remotes --tags --date-order` | — | — |
  * | `getCommitDetails` | `-c log.showSignature=false log --format=… --no-walk --stdin` | — | — |
@@ -38,5 +39,6 @@ export { getRepositoryLocation, type RepositoryLocation } from "./location.js";
 export { LockPolicy } from "./lock.js";
 export { getCommitDetails, getCommitFiles, getSkeleton, SKELETON_LIMIT } from "./log.js";
 export { getHead, getRefs } from "./refs.js";
+export { fetchAll } from "./remote.js";
 export { rollback } from "./rollback.js";
 export { getStatus } from "./status.js";

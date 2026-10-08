@@ -25,6 +25,7 @@ import { createHandlers, type HandlerUi } from "../handlers.js";
 /** 不涉及界面的测试用它：真调到就说明测错了东西。 */
 const NO_UI: HandlerUi = {
   confirmRollback: () => Promise.reject(new Error("测试里不该弹确认")),
+  withProgress: (_title, task) => task(),
   openDiff: () => Promise.reject(new Error("测试里不该打开 diff")),
 };
 

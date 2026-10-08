@@ -9,6 +9,7 @@ import { ErrorGate } from "./vscode/errorGate.js";
 import { resolveGitPath } from "./vscode/gitPath.js";
 import { createOutputLogger } from "./vscode/logger.js";
 import { describeStartup, discoverRepositories, StartupKind } from "./vscode/open.js";
+import { withProgress } from "./vscode/progress.js";
 import { registerRevisionFileSystem } from "./vscode/revisionFileSystem.js";
 import { watchRepository } from "./vscode/watcher.js";
 import { registerWebviewView, type ViewSource, ViewSourceKind } from "./vscode/webviewView.js";
@@ -40,7 +41,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
   // 一次展开配一个 Router。收起再展开，握手会带来新代号，上一代的回复自动作废。
   const createRouter = (repository: Repository, transport: Transport): Router =>
-    new Router(transport, createHandlers(repository, { confirmRollback, openDiff }), {
+    new Router(transport, createHandlers(repository, { confirmRollback, openDiff, withProgress }), {
       log: (line) => channel.appendLine(line),
       report: (error) => errors.report(error),
     });

@@ -118,6 +118,19 @@ async function load(repository: string): Promise<void> {
   }
 }
 
+/**
+ * 分支树左边竖按钮区的 Fetch：取全部远程。进度与完成消息由扩展侧显示在状态栏；
+ * 按钮本身不转圈、不置灰——连点只是在远程道里排队。
+ */
+async function fetchRemotes(): Promise<void> {
+  if (repo.value === undefined) return;
+  try {
+    await props.client.request("fetch", { repo: repo.value });
+  } catch (cause) {
+    report(cause);
+  }
+}
+
 /** 右栏的文件：双击或回车打开，单击或上下键跟随（由 `mode` 区分）。 */
 async function openFile(entry: FileEntry, mode: DiffOpenMode): Promise<void> {
   const commit = selected.value === undefined ? undefined : details.value.get(selected.value);
@@ -201,8 +214,13 @@ onMounted(async () => {
     :initial-handle-position="`${layout.left}px`"
     @vsc-split-layout-change="onLeftSplit"
   >
-    <div slot="start" class="pane">
-      <BranchTree :refs="refs" />
+    <div slot="start" class="branches">
+      <div class="sync-bar">
+        <vscode-toolbar-button icon="repo-fetch" label="Fetch" title="Fetch" @click="fetchRemotes" />
+      </div>
+      <div class="pane">
+        <BranchTree :refs="refs" />
+      </div>
     </div>
 
     <vscode-split-layout
@@ -233,3 +251,24 @@ onMounted(async () => {
     </vscode-split-layout>
   </vscode-split-layout>
 </template>
+
+<style scoped>
+/* 分支树左边的竖按钮区（同 IDEA 的 Log 窗口）。 */
+.branches {
+  display: flex;
+  height: 100%;
+}
+.sync-bar {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 2px;
+  border-right: 1px solid var(--vscode-panel-border);
+}
+.branches > .pane {
+  flex: 1;
+  min-width: 0;
+}
+</style>

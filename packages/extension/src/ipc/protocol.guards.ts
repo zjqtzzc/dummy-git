@@ -139,6 +139,10 @@ const PARAM_GUARDS = {
       ? { repo, message, paths }
       : undefined;
   },
+  fetch: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    return typeof repo === "string" ? { repo } : undefined;
+  },
   rollback: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const paths = asStringArray(raw["paths"]);

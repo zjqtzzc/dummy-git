@@ -3,6 +3,7 @@ import type { Repository } from "../core/repository.js";
 import {
   amendCommit,
   commit,
+  fetchAll,
   getCommitDetails,
   getCommitFiles,
   getHead,
@@ -43,6 +44,15 @@ import { defineHandlers, type HandlerMap } from "./router.js";
 export interface HandlerUi {
   /** Rollback 前的确认：`true` 是确认。只列勾选的已跟踪文件（不含补上的旧路径）。 */
   readonly confirmRollback: (paths: readonly string[]) => Promise<boolean>;
+  /**
+   * 进度出口（`vscode/progress.ts`）：`title` 是正在做什么，`done` 由结果说做完了什么。
+   * 用户点了、要等、界面上不一定马上看得出结果的操作才用它。
+   */
+  readonly withProgress: <T>(
+    title: string,
+    task: () => Promise<T>,
+    done: (value: T) => string,
+  ) => Promise<T>;
   readonly openDiff: (
     root: string,
     left: DiffSide,
@@ -118,6 +128,14 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         message,
         withOldPaths(paths),
         untracked,
+      );
+      return null;
+    },
+    fetch: async () => {
+      await ui.withProgress(
+        "Fetching all remotes…",
+        () => repository.run(fetchAll, repository.location.root),
+        () => "Fetched all remotes",
       );
       return null;
     },

@@ -116,6 +116,11 @@ export interface Commands {
     params: { repo: string; paths: readonly string[] };
     result: null;
   };
+  /** 取全部远程，清掉远程已删除的分支。 */
+  fetch: {
+    params: { repo: string };
+    result: null;
+  };
 }
 
 export type CommandName = keyof Commands;
