@@ -48,6 +48,7 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     applyStash: async (): Promise<null> => null,
     popStash: async (): Promise<null> => null,
     dropStash: async (): Promise<null> => null,
+    pick: async () => null,
     ...overrides,
   });
 }
@@ -338,6 +339,10 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
           return null;
         },
         dropStash: async () => {
+          ran = true;
+          return null;
+        },
+        pick: async () => {
           ran = true;
           return null;
         },

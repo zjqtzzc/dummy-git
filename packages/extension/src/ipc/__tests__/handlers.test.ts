@@ -31,6 +31,7 @@ const NO_UI: HandlerUi = {
   askBranchName: () => Promise.reject(new Error("测试里不该弹输入框")),
   confirm: () => Promise.reject(new Error("测试里不该弹确认")),
   notify: () => undefined,
+  pick: () => Promise.reject(new Error("测试里不该弹选择框")),
   openDiff: () => Promise.reject(new Error("测试里不该打开 diff")),
 };
 
@@ -817,5 +818,32 @@ describe("handlers.applyStash / popStash / dropStash", () => {
     const [, older] = stashes(repo);
     await act(repo, (h) => h.dropStash({ repo, hash: older ?? "" }), false);
     expect(stashes(repo)).toHaveLength(2);
+  });
+});
+
+describe("handlers.pick", () => {
+  afterAll(cleanupTempRepos);
+  const pick = async (answer: number | undefined) => {
+    const path = makeTempRepo("pick");
+    const repository = new Repository(plainLocation(path), cli);
+    const asked: { title: string; items: readonly string[] }[] = [];
+    const ui: HandlerUi = {
+      ...NO_UI,
+      pick: async (title, items) => {
+        asked.push({ title, items });
+        return answer;
+      },
+    };
+    try {
+      const result = await createHandlers(repository, ui).pick({ title: "T", items: ["a", "b"] });
+      return { result, asked };
+    } finally {
+      repository.dispose();
+    }
+  };
+
+  it("把标题与选项交给选择框，返回选中的序号；取消是 null", async () => {
+    expect(await pick(1)).toEqual({ result: 1, asked: [{ title: "T", items: ["a", "b"] }] });
+    expect((await pick(undefined)).result).toBeNull();
   });
 });

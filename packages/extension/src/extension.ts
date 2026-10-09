@@ -11,6 +11,7 @@ import { askBranchName } from "./vscode/input.js";
 import { createOutputLogger } from "./vscode/logger.js";
 import { registerMenuCommands } from "./vscode/menu.js";
 import { describeStartup, discoverRepositories, StartupKind } from "./vscode/open.js";
+import { pick } from "./vscode/pick.js";
 import { notify, withProgress } from "./vscode/progress.js";
 import { registerRevisionFileSystem } from "./vscode/revisionFileSystem.js";
 import { watchRepository } from "./vscode/watcher.js";
@@ -51,6 +52,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         confirmRollback,
         notify,
         openDiff,
+        pick,
         withProgress,
       }),
       {
@@ -92,6 +94,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         confirmRollback,
         notify,
         openDiff,
+        pick,
         withProgress,
       }),
       errors,

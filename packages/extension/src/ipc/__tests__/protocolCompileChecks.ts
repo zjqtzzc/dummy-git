@@ -79,6 +79,7 @@ export const _baseline = defineHandlers({
   applyStash: openDiffStub,
   popStash: openDiffStub,
   dropStash: openDiffStub,
+  pick: async (): Promise<number | null> => null,
 });
 
 /**

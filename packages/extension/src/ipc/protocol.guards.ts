@@ -142,6 +142,11 @@ const PARAM_GUARDS = {
     const hash = raw["hash"];
     return typeof repo === "string" && typeof hash === "string" ? { repo, hash } : undefined;
   },
+  pick: (raw: Record<string, unknown>) => {
+    const title = raw["title"];
+    const items = asStringArray(raw["items"]);
+    return typeof title === "string" && items !== undefined ? { title, items } : undefined;
+  },
   getStatus: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     return typeof repo === "string" ? { repo } : undefined;

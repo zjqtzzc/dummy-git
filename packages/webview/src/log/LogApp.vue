@@ -1,18 +1,29 @@
 <script setup lang="ts">
 import {
+  assertNever,
   type Commit,
   type CommitFileChange,
+  type CommitSkeleton,
   type DiffOpenMode,
   GitDomain,
   type Ref,
   RefKind,
 } from "@dummy-git/shared";
 import type { VscodeSplitLayout } from "@vscode-elements/elements/dist/vscode-split-layout/vscode-split-layout.js";
-import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { type Client, report } from "../logic/client.js";
 import { AppIcon, appIcon, codicon } from "../logic/icons.js";
 import type { StartPoint } from "../logic/log/branchTree.js";
 import { commitDiffSides, commitFileEntry } from "../logic/log/commitDiff.js";
+import {
+  applyFilter,
+  DateRange,
+  FilterKind,
+  isFiltering,
+  type LogFilter,
+  restoreFilter,
+  saveFilter,
+} from "../logic/log/filter.js";
 import { type Layout, restoreLayout, splitPosition } from "../logic/log/layout.js";
 import { hashesToFetch } from "../logic/log/prefetch.js";
 import type { FileEntry } from "../logic/tree/fileTree.js";
@@ -22,14 +33,15 @@ import ToolButton from "../ui/ToolButton.vue";
 import { viewState } from "../vscodeApi.js";
 import BranchTree from "./BranchTree.vue";
 import CommitList from "./CommitList.vue";
+import FilterBar from "./FilterBar.vue";
 
 /** 底部 Log 面板：左分支树、中提交列表、右边选中提交的文件树。 */
 const props = defineProps<{ client: Client }>();
 
 /** `ref`：`.value` 一改，用到它的模板就重画。 */
 const repo = ref<string>();
-/** 骨架的顺序，最多一万条（`ARCHITECTURE.md` 第 8 题）。 */
-const hashes = ref<string[]>([]);
+/** 骨架，最多一万条（`ARCHITECTURE.md` 第 8 题）。 */
+const skeleton = ref<CommitSkeleton[]>([]);
 /** 已经取到的详情。同一个 hash 的内容永远不变，刷新时不清。 */
 const details = ref(new Map<string, Commit>());
 /** 正在路上的详情请求，避免重复要。不参与界面，不用 ref。 */
@@ -51,6 +63,95 @@ const clock = setInterval(() => {
   now.value = Math.floor(Date.now() / 1000);
 }, 30_000);
 onUnmounted(() => clearInterval(clock));
+
+/** 过滤条件（`.notes/design/phase-5.md`）。存进 `viewState`：重新加载窗口后还在。 */
+const filter = ref<LogFilter>(restoreFilter(viewState.read("logFilter")));
+/** 列表里显示的提交：骨架按过滤条件筛过，顺序不变。 */
+const hashes = computed(() => applyFilter(skeleton.value, filter.value, now.value));
+
+const DATE_RANGES: readonly DateRange[] = [DateRange.Day, DateRange.Week, DateRange.Month];
+
+function dateLabel(range: DateRange): string {
+  switch (range) {
+    case DateRange.Day:
+      return "Last 24 Hours";
+    case DateRange.Week:
+      return "Last 7 Days";
+    case DateRange.Month:
+      return "Last Month";
+    default:
+      return assertNever(range, "dateLabel");
+  }
+}
+
+/** 过滤栏按钮上显示的值。 */
+const filterValues = computed(() => {
+  const values: Partial<Record<FilterKind, string>> = {};
+  if (filter.value.date !== undefined) values[FilterKind.Date] = dateLabel(filter.value.date);
+  return values;
+});
+
+function setFilter(next: LogFilter): void {
+  filter.value = next;
+  viewState.write("logFilter", saveFilter(next));
+}
+
+/** 点了过滤栏的按钮：弹原生选择框选一个值。 */
+async function openFilter(kind: FilterKind): Promise<void> {
+  try {
+    switch (kind) {
+      case FilterKind.Date: {
+        const index = await props.client.request("pick", {
+          title: "Filter by Date",
+          items: DATE_RANGES.map(dateLabel),
+        });
+        const date = index === null ? undefined : DATE_RANGES[index];
+        if (date !== undefined) setFilter({ ...filter.value, date });
+        return;
+      }
+      case FilterKind.Branch:
+      case FilterKind.User:
+      case FilterKind.Paths:
+        return;
+      default:
+        return assertNever(kind, "openFilter");
+    }
+  } catch (cause) {
+    report(cause);
+  }
+}
+
+function clearFilter(kind: FilterKind): void {
+  switch (kind) {
+    case FilterKind.Date: {
+      const { date: _, ...rest } = filter.value;
+      setFilter(rest);
+      return;
+    }
+    case FilterKind.Branch:
+    case FilterKind.User:
+    case FilterKind.Paths:
+      return;
+    default:
+      assertNever(kind, "clearFilter");
+  }
+}
+
+/**
+ * 过滤条件变了：原来选中的提交还在就保持选中并滚过去，不在就清空选中（第 9 条）。
+ * 只看条件的变化；骨架刷新后的选中由 `load` 管。
+ */
+watch(filter, async () => {
+  await nextTick();
+  const row = selected.value === undefined ? -1 : hashes.value.indexOf(selected.value);
+  if (row !== -1) {
+    list.value?.reveal(row);
+    return;
+  }
+  selected.value = undefined;
+  files.value = [];
+  list.value?.reveal(0);
+});
 
 /** 可见范围变了：把范围前后还没有详情的提交取回来。 */
 async function fetchVisible(range: RowRange): Promise<void> {
@@ -96,12 +197,12 @@ async function select(hash: string): Promise<void> {
  */
 async function load(repository: string): Promise<void> {
   try {
-    const [skeleton, fetchedRefs] = await Promise.all([
+    const [fetchedSkeleton, fetchedRefs] = await Promise.all([
       props.client.request("getSkeleton", { repo: repository }),
       props.client.request("getRefs", { repo: repository }),
     ]);
     const previous = selected.value === undefined ? -1 : hashes.value.indexOf(selected.value);
-    hashes.value = skeleton.map((commit) => commit.hash);
+    skeleton.value = fetchedSkeleton;
     refs.value = fetchedRefs;
     loaded.value = true;
     await nextTick();
@@ -293,7 +394,11 @@ onMounted(async () => {
       @vsc-split-layout-change="onRightSplit"
     >
       <div slot="start" class="pane">
+        <FilterBar :values="filterValues" @open="openFilter" @clear="clearFilter" />
         <p v-if="!loaded" class="dim loading">Loading…</p>
+        <p v-else-if="isFiltering(filter) && hashes.length === 0" class="dim loading">
+          No commits match the filters
+        </p>
         <CommitList
           v-else
           ref="list"

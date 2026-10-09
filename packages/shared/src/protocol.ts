@@ -176,6 +176,11 @@ export interface Commands {
     params: { repo: string; paths: readonly string[] };
     result: null;
   };
+  /** 从 `items` 里选一项（原生 QuickPick），返回选中的序号；取消是 `null`。 */
+  pick: {
+    params: { title: string; items: readonly string[] };
+    result: number | null;
+  };
   /** 把 `hash` 那条 stash 取回工作区，stash 保留。 */
   applyStash: {
     params: { repo: string; hash: string };
