@@ -77,6 +77,9 @@ const MENU_COMMANDS: readonly MenuCommand[] = [
     remote: context[MenuContextKey.Remote],
     branch: context[MenuContextKey.Branch],
   })),
+  menuCommand("dummyGit.copyHash", "copyText", (context) => ({
+    text: context[MenuContextKey.Hash],
+  })),
   menuCommand("dummyGit.popStash", "popStash", stashParams),
   menuCommand("dummyGit.applyStash", "applyStash", stashParams),
   menuCommand("dummyGit.dropStash", "dropStash", stashParams),

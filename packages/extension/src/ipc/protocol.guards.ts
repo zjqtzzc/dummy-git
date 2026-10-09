@@ -165,6 +165,10 @@ const PARAM_GUARDS = {
     const hashes = asStringArray(raw["hashes"]);
     return typeof repo === "string" && hashes !== undefined ? { repo, hashes } : undefined;
   },
+  copyText: (raw: Record<string, unknown>) => {
+    const text = raw["text"];
+    return typeof text === "string" ? { text } : undefined;
+  },
   pick: (raw: Record<string, unknown>) => {
     const title = raw["title"];
     const items = asStringArray(raw["items"]);

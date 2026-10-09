@@ -17,6 +17,7 @@ import { type Client, report } from "../logic/client.js";
 import { AppIcon, appIcon, codicon } from "../logic/icons.js";
 import { branchFilters, type StartPoint } from "../logic/log/branchTree.js";
 import { commitDiffSides, commitFileEntry } from "../logic/log/commitDiff.js";
+import { commitCopyText } from "../logic/log/copy.js";
 import {
   applyFilter,
   DateRange,
@@ -425,6 +426,27 @@ async function newBranchFromSelected(): Promise<void> {
   }
 }
 
+async function copyText(text: string): Promise<void> {
+  try {
+    await props.client.request("copyText", { text });
+  } catch (cause) {
+    report(cause);
+  }
+}
+
+/** 提交列表上的复制快捷键：说明、作者与日期（`commitCopyText`）。选中的那条一般早已取到详情，没取到就现取。 */
+async function copyCommit(hash: string): Promise<void> {
+  if (repo.value === undefined) return;
+  try {
+    const commit =
+      details.value.get(hash) ??
+      (await props.client.request("getCommitDetails", { repo: repo.value, hashes: [hash] }))[0];
+    if (commit !== undefined) await copyText(commitCopyText(commit));
+  } catch (cause) {
+    report(cause);
+  }
+}
+
 /** 右栏的文件：双击或回车打开，单击或上下键跟随（由 `mode` 区分）。 */
 async function openFile(entry: FileEntry, mode: DiffOpenMode): Promise<void> {
   const commit = selected.value === undefined ? undefined : details.value.get(selected.value);
@@ -536,6 +558,7 @@ onMounted(async () => {
           :repo="repo ?? ''"
           @select="onBranchSelect"
           @filter="(branch) => setFilter({ ...filter, branch })"
+          @copy="copyText"
         />
       </div>
     </div>
@@ -568,6 +591,7 @@ onMounted(async () => {
           :selected="selected"
           :now="now"
           @select="select"
+          @copy="copyCommit"
           @visible="fetchVisible"
         />
       </div>

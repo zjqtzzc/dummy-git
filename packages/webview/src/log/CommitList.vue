@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Commit } from "@dummy-git/shared";
+import { type Commit, MenuContextKey, MenuNodeValue } from "@dummy-git/shared";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { formatTime } from "../logic/utils/time.js";
 import {
@@ -27,6 +27,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   select: [hash: string];
+  /** 选中一行时按了复制快捷键（Ctrl+C / Cmd+C）。复制什么由父组件定。 */
+  copy: [hash: string];
   /** 可见范围变了（滚动、尺寸变化、行数变化后）。 */
   visible: [range: RowRange];
 }>();
@@ -61,6 +63,7 @@ function onScroll(): void {
  * 点击由列表统一处理（行上带 `data-hash`），焦点留在列表本身，用 `aria-activedescendant`
  * 指向选中行——listbox 的标准写法，行不单独挂事件、不单独获得焦点。
  */
+/** 单击选中一行；右键也先选中它，菜单作用的就是看得见的那一行。 */
 function onClick(event: MouseEvent): void {
   if (!(event.target instanceof Element)) return;
   const hash = event.target.closest("[data-hash]")?.getAttribute("data-hash");
@@ -85,8 +88,19 @@ function optionId(hash: string): string {
   return `commit-${hash}`;
 }
 
-/** 上下键：选中相邻一行并让它出现在视口里。 */
+/** 一行的右键菜单上下文（Copy Hash）：和 `package.json` 菜单项的 `when` 条件对应。 */
+function menuOf(hash: string): string {
+  return JSON.stringify({ [MenuContextKey.Node]: MenuNodeValue.Commit, [MenuContextKey.Hash]: hash });
+}
+
+/** 上下键：选中相邻一行并让它出现在视口里。复制快捷键：复制选中的那条。 */
 function onKeydown(event: KeyboardEvent): void {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c") {
+    if (props.selected === undefined) return;
+    event.preventDefault();
+    emit("copy", props.selected);
+    return;
+  }
   const step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
   if (step === 0) return;
   event.preventDefault();
@@ -143,7 +157,9 @@ defineExpose({
       @scroll="onScroll"
       @mousedown="onMousedown"
       @click="onClick"
+      @contextmenu="onClick"
       @keydown="onKeydown"
+      data-vscode-context='{"preventDefaultContextMenuItems": true}'
     >
       <div :style="{ height: `${hashes.length * ROW_HEIGHT}px`, position: 'relative' }">
         <div
@@ -153,6 +169,7 @@ defineExpose({
           role="option"
           tabindex="-1"
           :data-hash="row.hash"
+          :data-vscode-context="menuOf(row.hash)"
           :aria-selected="row.hash === selected"
           :class="['columns', 'row', { selected: row.hash === selected }]"
           :style="{ top: `${row.index * ROW_HEIGHT}px`, height: `${ROW_HEIGHT}px` }"

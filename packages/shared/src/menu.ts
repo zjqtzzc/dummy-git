@@ -21,6 +21,8 @@ export const MenuContextKey = {
   StartName: "dummyGit.startName",
   /** stash 的 hash。 */
   Stash: "dummyGit.stash",
+  /** 提交的 hash（Log 提交列表的一行）。 */
+  Hash: "dummyGit.hash",
 } as const;
 
 /** `MenuContextKey.Node` 的取值。 */
@@ -28,4 +30,5 @@ export const MenuNodeValue = {
   LocalBranch: "localBranch",
   RemoteBranch: "remoteBranch",
   Stash: "stash",
+  Commit: "commit",
 } as const;

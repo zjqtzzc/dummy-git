@@ -14,6 +14,7 @@ import {
   toTreeNodes,
   trackingOf,
 } from "../logic/log/branchTree.js";
+import { branchCopyText } from "../logic/log/copy.js";
 import type { BranchFilter } from "../logic/log/filter.js";
 import type { TreeNode } from "../logic/tree/tree.js";
 import Tree from "../tree/Tree.vue";
@@ -33,6 +34,8 @@ const emit = defineEmits<{
   select: [branch: string | undefined, start: StartPoint | undefined];
   /** 双击（或回车）一个分支：按它过滤 Log。HEAD 那行是当前分支；detached、目录、分组没有反应。 */
   filter: [branch: BranchFilter];
+  /** 选中一行时按了复制快捷键：要复制的分支名（`branchCopyText`）。 */
+  copy: [text: string];
 }>();
 
 const tree = computed(() => buildBranchTree(props.refs));
@@ -58,6 +61,16 @@ watch([selectedId, byId], ([id, index]) => {
     node === undefined ? undefined : startOf(node),
   );
 });
+
+/** 复制快捷键（Ctrl+C / Cmd+C）：复制选中那行的分支名。目录与分组没有。 */
+function onKeydown(event: KeyboardEvent): void {
+  if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "c") return;
+  const node = selectedId.value === undefined ? undefined : byId.value.get(selectedId.value);
+  const text = node === undefined ? undefined : branchCopyText(node);
+  if (text === undefined) return;
+  event.preventDefault();
+  emit("copy", text);
+}
 
 function onActivate(node: TreeNode): void {
   const branch = byId.value.get(node.id);
@@ -89,7 +102,8 @@ function onExpanded(next: ReadonlySet<string>): void {
 
 <template>
   <Tree :nodes="nodes" :expanded="expanded" @update:expanded="onExpanded" @select="(node) => (selectedId = node.id)"
-    @activate="onActivate">
+    @activate="onActivate"
+    @keydown="onKeydown">
     <template #after="{ node }">
       <TrackingBadge :state="tracking(node)" />
     </template>

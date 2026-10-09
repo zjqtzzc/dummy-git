@@ -199,6 +199,11 @@ export interface Commands {
     params: { repo: string };
     result: string | null;
   };
+  /** 把 `text` 写进系统剪贴板（复制提交说明、hash、分支名）。 */
+  copyText: {
+    params: { text: string };
+    result: null;
+  };
   /** 从 `items` 里选一项（原生 QuickPick），返回选中的序号；取消是 `null`。 */
   pick: {
     params: { title: string; items: readonly string[] };

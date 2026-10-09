@@ -32,6 +32,7 @@ const NO_UI: HandlerUi = {
   confirm: () => Promise.reject(new Error("测试里不该弹确认")),
   notify: () => undefined,
   pick: () => Promise.reject(new Error("测试里不该弹选择框")),
+  copyText: () => Promise.reject(new Error("测试里不该写剪贴板")),
   openDiff: () => Promise.reject(new Error("测试里不该打开 diff")),
 };
 
@@ -943,5 +944,26 @@ describe("handlers.pickPath", () => {
     ]);
     expect(picked).toBe("src");
     expect((await run(undefined)).picked).toBeNull();
+  });
+});
+
+describe("handlers.copyText", () => {
+  afterAll(cleanupTempRepos);
+
+  it("原样交给剪贴板", async () => {
+    const path = makeTempRepo("copy");
+    const repository = new Repository(plainLocation(path), cli);
+    const copied: string[] = [];
+    try {
+      await createHandlers(repository, {
+        ...NO_UI,
+        copyText: async (text) => {
+          copied.push(text);
+        },
+      }).copyText({ text: "a\nb" });
+    } finally {
+      repository.dispose();
+    }
+    expect(copied).toEqual(["a\nb"]);
   });
 });

@@ -52,6 +52,7 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     matchCommits: async () => [],
     pickAuthor: async () => null,
     pickPath: async () => null,
+    copyText: async () => null,
     ...overrides,
   });
 }
@@ -358,6 +359,10 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
           return null;
         },
         pickPath: async () => {
+          ran = true;
+          return null;
+        },
+        copyText: async () => {
           ran = true;
           return null;
         },

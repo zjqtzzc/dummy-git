@@ -94,6 +94,10 @@
       {
         "command": "dummyGit.pushBranch",
         "title": "Push"
+      },
+      {
+        "command": "dummyGit.copyHash",
+        "title": "Copy Hash"
       }
     ],
     "menus": {
@@ -152,6 +156,11 @@
           "command": "dummyGit.pushBranch",
           "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'localBranch'",
           "group": "2_sync@2"
+        },
+        {
+          "command": "dummyGit.copyHash",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'commit'",
+          "group": "1_switch@1"
         }
       ],
       "commandPalette": [
@@ -197,6 +206,10 @@
         },
         {
           "command": "dummyGit.pushBranch",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.copyHash",
           "when": "false"
         }
       ]

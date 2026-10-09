@@ -15,10 +15,18 @@ export function formatTime(at: number, now: number): string {
     return minutes === 1 ? "1 minute ago" : `${minutes} minutes ago`;
   }
   const date = new Date(at * 1000);
-  const today = new Date(now * 1000);
-  const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  if (date.toDateString() === today.toDateString()) return `Today ${time}`;
-  return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()} ${time}`;
+  if (date.toDateString() === new Date(now * 1000).toDateString()) return `Today ${clock(date)}`;
+  return formatDateTime(at);
+}
+
+/** 只写绝对时间 `2026/9/20 09:05`（月日不补零，时分补零），本地时区。复制提交时用：贴出去的文字不该写「5 minutes ago」。 */
+export function formatDateTime(at: number): string {
+  const date = new Date(at * 1000);
+  return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()} ${clock(date)}`;
+}
+
+function clock(date: Date): string {
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function pad(n: number): string {
