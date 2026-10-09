@@ -83,6 +83,7 @@ export const _baseline = defineHandlers({
   pick: async (): Promise<number | null> => null,
   matchCommits: async (): Promise<string[]> => [],
   pickAuthor: async (): Promise<PickedAuthor | null> => null,
+  pickPath: async (): Promise<string | null> => null,
 });
 
 /**

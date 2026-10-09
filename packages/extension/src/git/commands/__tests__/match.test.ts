@@ -1,8 +1,11 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { type MatchCondition, MatchKind } from "@dummy-git/shared";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanupTempRepos, cli, git, makeTempRepo } from "../../../__tests__/support.js";
 import { getIdentity } from "../identity.js";
 import { listAuthors, matchCommits } from "../log.js";
+import { listPaths } from "../paths.js";
 
 afterEach(cleanupTempRepos);
 
@@ -100,5 +103,54 @@ describe("按作者", () => {
     expect(await getIdentity.execute(cli, repo)).toEqual({ name: "t", email: "t@example.com" });
     git(repo, ["config", "user.name", ""]);
     expect(await getIdentity.execute(cli, repo)).toBeUndefined();
+  });
+});
+
+describe("按路径", () => {
+  /** src/a/x.txt 改过两次；`b*.txt` 改过一次（名字里的 `*` 若当通配符会误中 `bb.txt`）。 */
+  const scene = () => {
+    const repo = makeTempRepo("paths");
+    mkdirSync(join(repo, "src/a"), { recursive: true });
+    for (const [file, message] of [
+      ["src/a/x.txt", "x1"],
+      ["b*.txt", "star"],
+      ["bb.txt", "bb"],
+      ["src/a/x.txt", "x2"],
+    ] as const) {
+      writeFileSync(join(repo, file), message);
+      git(repo, ["add", "-A"]);
+      git(repo, ["commit", "-q", "-m", message]);
+    }
+    const hashes = git(repo, ["log", "--format=%H"]).trim().split("\n");
+    const subjects = async (path: string) => {
+      const found = new Set(
+        await matchCommits.execute(cli, repo, hashes, { kind: MatchKind.Path, path }),
+      );
+      return git(repo, ["log", "--format=%H %s"])
+        .trim()
+        .split("\n")
+        .filter((line) => found.has(line.split(" ")[0] ?? ""))
+        .map((line) => line.split(" ")[1]);
+    };
+    return { repo, subjects };
+  };
+
+  it("目录与文件都能筛；路径按字面，不当通配符", async () => {
+    const { subjects } = scene();
+    expect(await subjects("src")).toEqual(["x2", "x1"]);
+    expect(await subjects("src/a/x.txt")).toEqual(["x2", "x1"]);
+    expect(await subjects("b*.txt")).toEqual(["star"]);
+  });
+
+  it("listPaths：被跟踪的文件与推出的目录，按路径排序", async () => {
+    const { repo } = scene();
+    expect(await listPaths.execute(cli, repo)).toEqual([
+      { path: "b*.txt", folder: false },
+      { path: "bb.txt", folder: false },
+      { path: "f1", folder: false },
+      { path: "src", folder: true },
+      { path: "src/a", folder: true },
+      { path: "src/a/x.txt", folder: false },
+    ]);
   });
 });

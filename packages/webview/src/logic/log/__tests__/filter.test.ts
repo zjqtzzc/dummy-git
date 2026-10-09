@@ -59,6 +59,15 @@ describe("applyFilter：作者", () => {
   });
 });
 
+describe("applyFilter：路径", () => {
+  it("只留改过这个路径的，与作者取交集", () => {
+    expect(applyFilter(skeleton, {}, NOW, { path: new Set(["b", "c"]) })).toEqual(["b", "c"]);
+    expect(
+      applyFilter(skeleton, {}, NOW, { path: new Set(["b", "c"]), author: new Set(["c"]) }),
+    ).toEqual(["c"]);
+  });
+});
+
 describe("saveFilter / restoreFilter", () => {
   it("存了再读回来一样", () => {
     for (const date of Object.values(DateRange)) {
@@ -69,6 +78,7 @@ describe("saveFilter / restoreFilter", () => {
       date: DateRange.Day,
       text: "fix",
       author: { name: "Ann", email: "a@x", me: true },
+      path: "src/a",
     };
     expect(restoreFilter(saveFilter(full))).toEqual(full);
   });

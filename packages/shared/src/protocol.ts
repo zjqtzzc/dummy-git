@@ -190,6 +190,14 @@ export interface Commands {
     params: { repo: string; hashes: readonly string[] };
     result: PickedAuthor | null;
   };
+  /**
+   * Paths 按钮：弹原生选择框选一个目录或文件（被跟踪的文件与由它们推出的目录），返回相对仓库根的路径。
+   * 取消是 `null`。
+   */
+  pickPath: {
+    params: { repo: string };
+    result: string | null;
+  };
   /** 从 `items` 里选一项（原生 QuickPick），返回选中的序号；取消是 `null`。 */
   pick: {
     params: { title: string; items: readonly string[] };

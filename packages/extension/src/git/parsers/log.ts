@@ -243,6 +243,9 @@ function conditionArgs(condition: MatchCondition): string[] {
       // git 拿 `--author` 去比作者那一行的「名字 <邮箱>」，邮箱为空时是 `名字 <>`。
       // `-F` 下是「包含」：`Bob <b@x>` 也会命中 `JimBob <b@x>`，名字与邮箱同时撞上的极少，接受。
       return [`--author=${condition.name} <${condition.email}>`];
+    case MatchKind.Path:
+      // `:(literal)`：路径里的 `*`、`?` 不当通配符。`--` 之后只能是路径，所以这一项永远排在最后。
+      return ["--", `:(literal)${condition.path}`];
     default:
       return assertNever(condition, "conditionArgs");
   }

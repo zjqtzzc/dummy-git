@@ -152,6 +152,10 @@ const PARAM_GUARDS = {
       ? { repo, hashes, condition }
       : undefined;
   },
+  pickPath: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    return typeof repo === "string" ? { repo } : undefined;
+  },
   pickAuthor: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const hashes = asStringArray(raw["hashes"]);
@@ -347,6 +351,10 @@ function parseMatchCondition(raw: unknown): MatchCondition | undefined {
       return typeof name === "string" && typeof email === "string"
         ? { kind: MatchKind.Author, name, email }
         : undefined;
+    }
+    case MatchKind.Path: {
+      const path = raw["path"];
+      return typeof path === "string" && path !== "" ? { kind: MatchKind.Path, path } : undefined;
     }
     default:
       return undefined;

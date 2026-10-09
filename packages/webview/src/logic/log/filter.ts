@@ -26,6 +26,8 @@ export interface LogFilter {
   readonly text?: string;
   /** 作者（User 按钮选的）。 */
   readonly author?: PickedAuthor;
+  /** 改过这个目录或文件（Paths 按钮选的），相对仓库根。 */
+  readonly path?: string;
 }
 
 /** 要问 git 的那几项的结果。回来之前列表照上一次的结果显示。 */
@@ -33,6 +35,8 @@ export interface Matches {
   readonly text?: TextMatch;
   /** 作者是选中那个人的提交。 */
   readonly author?: ReadonlySet<string>;
+  /** 改过选中路径的提交。 */
+  readonly path?: ReadonlySet<string>;
 }
 
 /**
@@ -71,7 +75,12 @@ function secondsOf(range: DateRange): number {
 
 /** 有没有任何条件在生效。 */
 export function isFiltering(filter: LogFilter): boolean {
-  return filter.date !== undefined || filter.text !== undefined || filter.author !== undefined;
+  return (
+    filter.date !== undefined ||
+    filter.text !== undefined ||
+    filter.author !== undefined ||
+    filter.path !== undefined
+  );
 }
 
 /**
@@ -88,11 +97,12 @@ export function applyFilter(
   matches: Matches,
 ): string[] {
   const since = filter.date === undefined ? undefined : now - secondsOf(filter.date);
-  const { text, author } = matches;
+  const { text, author, path } = matches;
   return skeleton
     .filter((commit) => since === undefined || commit.at >= since)
     .filter((commit) => text === undefined || matchesText(commit.hash, text))
     .filter((commit) => author === undefined || author.has(commit.hash))
+    .filter((commit) => path === undefined || path.has(commit.hash))
     .map((commit) => commit.hash);
 }
 
@@ -111,6 +121,7 @@ export function saveFilter(filter: LogFilter): unknown {
     ...(filter.date === undefined ? {} : { date: SAVED_DATE[filter.date] }),
     ...(filter.text === undefined ? {} : { text: filter.text }),
     ...(filter.author === undefined ? {} : { author: { ...filter.author } }),
+    ...(filter.path === undefined ? {} : { path: filter.path }),
   };
 }
 
@@ -121,10 +132,12 @@ export function restoreFilter(saved: unknown): LogFilter {
   const date = Object.values(DateRange).find((range) => SAVED_DATE[range] === savedDate);
   const text = Reflect.get(saved, "text");
   const author = restoreAuthor(Reflect.get(saved, "author"));
+  const path = Reflect.get(saved, "path");
   return {
     ...(date === undefined ? {} : { date }),
     ...(typeof text === "string" && text !== "" ? { text } : {}),
     ...(author === undefined ? {} : { author }),
+    ...(typeof path === "string" && path !== "" ? { path } : {}),
   };
 }
 

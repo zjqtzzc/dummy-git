@@ -46,8 +46,9 @@
  * | `getRefs` | `for-each-ref --format=… refs/heads refs/remotes refs/tags` | `%(upstream:remotename)` / `%(upstream:remoteref)`（git 2.16.0 发布说明） | 2.16 |
  * | `getHead` | `rev-parse HEAD --symbolic-full-name HEAD` | — | — |
  * | `getFileContent` | `cat-file --filters <提交>:<路径>` | `--filters` | 2.11 |
- * | `matchCommits` | `-c log.showSignature=false log --format=%H --no-walk --stdin -F` + `-i --grep=<文字>` 或 `--author=<名字 <邮箱>>` | — | — |
+ * | `matchCommits` | `-c log.showSignature=false log --format=%H --no-walk --stdin -F` + `-i --grep=<文字>` / `--author=<名字 <邮箱>>` / `-- :(literal)<路径>` | — | — |
  * | `listAuthors` | `-c log.showSignature=false log --format=%an%x00%ae --no-walk --stdin` | — | — |
+ * | `listPaths` | `ls-files -z` | — | — |
  * | `getIdentity` | `config --get user.name` + `config --get user.email` | — | — |
  * | `getCommitFiles` | `-c log.showSignature=false log -1 -M --first-parent --format= --name-status -z <hash>` | — | — |
  *
@@ -81,6 +82,7 @@ export {
   matchCommits,
   SKELETON_LIMIT,
 } from "./log.js";
+export { listPaths, type TrackedPath } from "./paths.js";
 export {
   FastForwardKind,
   type FastForwardResult,

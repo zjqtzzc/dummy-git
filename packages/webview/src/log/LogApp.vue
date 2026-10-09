@@ -114,18 +114,23 @@ const byAuthor = useMatch(() => {
     ? undefined
     : { kind: MatchKind.Author, name: author.name, email: author.email };
 });
+const byPath = useMatch(() =>
+  filter.value.path === undefined ? undefined : { kind: MatchKind.Path, path: filter.value.path },
+);
 /** 正在问 git：过滤栏转圈。 */
-const searching = computed(() => byText.busy.value || byAuthor.busy.value);
+const searching = computed(() => byText.busy.value || byAuthor.busy.value || byPath.busy.value);
 
 /** 生效中的那几项的结果：条件清掉了就没有。搜索框那一项带着它的搜索词，hash 前缀按那个词算。 */
 const matches = computed((): Matches => {
   const text = byText.result.value;
   const author = byAuthor.result.value;
+  const path = byPath.result.value;
   return {
     ...(filter.value.text === undefined || text?.condition.kind !== MatchKind.Text
       ? {}
       : { text: { text: text.condition.text, byMessage: text.hashes } }),
     ...(filter.value.author === undefined || author === undefined ? {} : { author: author.hashes }),
+    ...(filter.value.path === undefined || path === undefined ? {} : { path: path.hashes }),
   };
 });
 /** 列表里显示的提交：骨架按过滤条件筛过，顺序不变。 */
@@ -167,9 +172,11 @@ function dateLabel(range: DateRange): string {
 /** 过滤栏按钮上显示的值。 */
 const filterValues = computed(() => {
   const values: Partial<Record<FilterKind, string>> = {};
-  const { date, author } = filter.value;
+  const { date, author, path } = filter.value;
   if (author !== undefined) values[FilterKind.User] = author.me ? "Me" : author.name;
   if (date !== undefined) values[FilterKind.Date] = dateLabel(date);
+  // 只写最后一段，按钮不被长路径撑开。
+  if (path !== undefined) values[FilterKind.Paths] = path.slice(path.lastIndexOf("/") + 1);
   return values;
 });
 
@@ -200,8 +207,13 @@ async function openFilter(kind: FilterKind): Promise<void> {
         if (author !== null) setFilter({ ...filter.value, author });
         return;
       }
+      case FilterKind.Paths: {
+        if (repo.value === undefined) return;
+        const path = await props.client.request("pickPath", { repo: repo.value });
+        if (path !== null) setFilter({ ...filter.value, path });
+        return;
+      }
       case FilterKind.Branch:
-      case FilterKind.Paths:
         return;
       default:
         return assertNever(kind, "openFilter");
@@ -223,8 +235,12 @@ function clearFilter(kind: FilterKind): void {
       setFilter(rest);
       return;
     }
+    case FilterKind.Paths: {
+      const { path: _, ...rest } = filter.value;
+      setFilter(rest);
+      return;
+    }
     case FilterKind.Branch:
-    case FilterKind.Paths:
       return;
     default:
       assertNever(kind, "clearFilter");
@@ -235,7 +251,14 @@ function clearFilter(kind: FilterKind): void {
  * 生效的过滤条件变了：原来选中的提交还在就保持选中并滚过去，不在就清空选中（第 9 条）。
  * 搜索框那一项看结果回来的时刻，不看敲字的时刻。只看条件的变化；骨架刷新后的选中由 `load` 管。
  */
-watch([() => filter.value.date, () => matches.value.text, () => matches.value.author], async () => {
+watch(
+  [
+    () => filter.value.date,
+    () => matches.value.text,
+    () => matches.value.author,
+    () => matches.value.path,
+  ],
+  async () => {
   await nextTick();
   const row = selected.value === undefined ? -1 : hashes.value.indexOf(selected.value);
   if (row !== -1) {
@@ -245,7 +268,8 @@ watch([() => filter.value.date, () => matches.value.text, () => matches.value.au
   selected.value = undefined;
   files.value = [];
   list.value?.reveal(0);
-});
+  },
+);
 
 /** 可见范围变了：把范围前后还没有详情的提交取回来。 */
 async function fetchVisible(range: RowRange): Promise<void> {

@@ -36,6 +36,7 @@ import {
   getStatus,
   isValidBranchName,
   listAuthors,
+  listPaths,
   listRemotes,
   matchCommits,
   PushKind,
@@ -231,6 +232,15 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         choices.map((choice) => choice.item),
       );
       return (index === undefined ? undefined : choices[index]?.picked) ?? null;
+    },
+    pickPath: async () => {
+      const paths = await repository.run(listPaths, repository.location.root);
+      const index = await ui.pick(
+        "Filter by Path",
+        // QuickPick 的 `$(名字)` 写法画 codicon；搜索时不算这几个字。
+        paths.map(({ path, folder }) => ({ label: `${folder ? "$(folder)" : "$(file)"} ${path}` })),
+      );
+      return (index === undefined ? undefined : paths[index]?.path) ?? null;
     },
     pick: async ({ title, items }) =>
       (await ui.pick(

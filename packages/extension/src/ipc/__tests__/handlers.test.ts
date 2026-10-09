@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   DiffOpenMode,
@@ -907,5 +907,41 @@ describe("handlers.pickAuthor", () => {
     });
     expect((await pickAuthor(repo, 1)).picked).toEqual({ name: "Ann", email: "", me: false });
     expect((await pickAuthor(repo, undefined)).picked).toBeNull();
+  });
+});
+
+describe("handlers.pickPath", () => {
+  afterAll(cleanupTempRepos);
+
+  it("目录与文件带各自的图标；选中的交回路径，取消是 null", async () => {
+    const path = makeTempRepo("pick-path");
+    mkdirSync(join(path, "src"));
+    writeFileSync(join(path, "src/a.ts"), "a");
+    git(path, ["add", "-A"]);
+    git(path, ["commit", "-q", "-m", "a"]);
+    const run = async (answer: number | undefined) => {
+      const repository = new Repository(plainLocation(path), cli);
+      let shown: readonly PickItem[] = [];
+      try {
+        const picked = await createHandlers(repository, {
+          ...NO_UI,
+          pick: async (_title, items) => {
+            shown = items;
+            return answer;
+          },
+        }).pickPath({ repo: path });
+        return { shown, picked };
+      } finally {
+        repository.dispose();
+      }
+    };
+    const { shown, picked } = await run(1);
+    expect(shown).toEqual([
+      { label: "$(file) f1" },
+      { label: "$(folder) src" },
+      { label: "$(file) src/a.ts" },
+    ]);
+    expect(picked).toBe("src");
+    expect((await run(undefined)).picked).toBeNull();
   });
 });
