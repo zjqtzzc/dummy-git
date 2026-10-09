@@ -15,7 +15,7 @@ import type { VscodeSplitLayout } from "@vscode-elements/elements/dist/vscode-sp
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { type Client, report } from "../logic/client.js";
 import { AppIcon, appIcon, codicon } from "../logic/icons.js";
-import type { StartPoint } from "../logic/log/branchTree.js";
+import { branchFilters, type StartPoint } from "../logic/log/branchTree.js";
 import { commitDiffSides, commitFileEntry } from "../logic/log/commitDiff.js";
 import {
   applyFilter,
@@ -172,7 +172,8 @@ function dateLabel(range: DateRange): string {
 /** 过滤栏按钮上显示的值。 */
 const filterValues = computed(() => {
   const values: Partial<Record<FilterKind, string>> = {};
-  const { date, author, path } = filter.value;
+  const { branch, date, author, path } = filter.value;
+  if (branch !== undefined) values[FilterKind.Branch] = branch.name;
   if (author !== undefined) values[FilterKind.User] = author.me ? "Me" : author.name;
   if (date !== undefined) values[FilterKind.Date] = dateLabel(date);
   // 只写最后一段，按钮不被长路径撑开。
@@ -213,8 +214,16 @@ async function openFilter(kind: FilterKind): Promise<void> {
         if (path !== null) setFilter({ ...filter.value, path });
         return;
       }
-      case FilterKind.Branch:
+      case FilterKind.Branch: {
+        const branches = branchFilters(refs.value);
+        const index = await props.client.request("pick", {
+          title: "Filter by Branch",
+          items: branches.map((branch) => branch.name),
+        });
+        const branch = index === null ? undefined : branches[index];
+        if (branch !== undefined) setFilter({ ...filter.value, branch });
         return;
+      }
       default:
         return assertNever(kind, "openFilter");
     }
@@ -240,12 +249,23 @@ function clearFilter(kind: FilterKind): void {
       setFilter(rest);
       return;
     }
-    case FilterKind.Branch:
+    case FilterKind.Branch: {
+      const { branch: _, ...rest } = filter.value;
+      setFilter(rest);
       return;
+    }
     default:
       assertNever(kind, "clearFilter");
   }
 }
+
+/** 按分支过滤换的是骨架的起点：分支变了就重取骨架（其余条件在新骨架上重查）。 */
+watch(
+  () => filter.value.branch?.ref,
+  () => {
+    if (repo.value !== undefined) void load(repo.value);
+  },
+);
 
 /**
  * 生效的过滤条件变了：原来选中的提交还在就保持选中并滚过去，不在就清空选中（第 9 条）。
@@ -315,14 +335,25 @@ async function select(hash: string): Promise<void> {
  */
 async function load(repository: string): Promise<void> {
   try {
+    const branch = filter.value.branch?.ref;
     const [fetchedSkeleton, fetchedRefs] = await Promise.all([
-      props.client.request("getSkeleton", { repo: repository }),
+      props.client.request(
+        "getSkeleton",
+        branch === undefined ? { repo: repository } : { repo: repository, branch },
+      ),
       props.client.request("getRefs", { repo: repository }),
     ]);
     const previous = selected.value === undefined ? -1 : hashes.value.indexOf(selected.value);
     skeleton.value = fetchedSkeleton;
     refs.value = fetchedRefs;
     loaded.value = true;
+    // 正在过滤的分支被删了（`TRAPS.md`）：过滤落空，按全部分支重取。
+    const filtered = filter.value.branch;
+    if (filtered !== undefined && !branchFilters(fetchedRefs).some((b) => b.ref === filtered.ref)) {
+      const { branch: _, ...rest } = filter.value;
+      setFilter(rest);
+      return;
+    }
     await nextTick();
 
     const kept = selected.value === undefined ? -1 : hashes.value.indexOf(selected.value);
@@ -500,7 +531,12 @@ onMounted(async () => {
         />
       </div>
       <div class="pane">
-        <BranchTree :refs="refs" :repo="repo ?? ''" @select="onBranchSelect" />
+        <BranchTree
+          :refs="refs"
+          :repo="repo ?? ''"
+          @select="onBranchSelect"
+          @filter="(branch) => setFilter({ ...filter, branch })"
+        />
       </div>
     </div>
 

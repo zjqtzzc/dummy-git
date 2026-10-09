@@ -9,6 +9,7 @@ import {
   parseHashes,
   parseLog,
   parseSkeleton,
+  type SkeletonOptions,
   skeletonArgs,
 } from "../parsers/log.js";
 import { commitFilesArgs, parseNameStatus } from "../parsers/nameStatus.js";
@@ -38,14 +39,19 @@ import { LockPolicy } from "./lock.js";
  */
 export const SKELETON_LIMIT = 10_000;
 
-export const getSkeleton: GitCommand<[repository: string], CommitSkeleton[]> = {
+export const getSkeleton: GitCommand<
+  [repository: string, options: SkeletonOptions],
+  CommitSkeleton[]
+> = {
   // 只读历史，不碰 index、不碰工作区。
   lock: LockPolicy.None,
 
-  execute: async (cli, repository) => {
+  execute: async (cli, repository, options) => {
     // runRaw：parser 吃 Buffer 不吃字符串。
     // 18 MB 的输出尤其不能先解码成一整个字符串——那正是 V8 sliced string 的陷阱所在。
-    const result = await runRaw(cli, skeletonArgs(SKELETON_LIMIT), { cwd: repository });
+    const result = await runRaw(cli, skeletonArgs(SKELETON_LIMIT, options), {
+      cwd: repository,
+    });
     return parseSkeleton(result.stdout);
   },
 };

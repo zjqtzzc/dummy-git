@@ -8,6 +8,7 @@ import {
 } from "@dummy-git/shared";
 import { codicon } from "../icons.js";
 import type { TreeNode } from "../tree/tree.js";
+import type { BranchFilter } from "./filter.js";
 
 /**
  * 左栏分支树（`.notes/design/phase-1.md` 第 3 条）：由 `getRefs` 的结果整理而来。
@@ -281,6 +282,47 @@ export function localBranchOf(node: BranchNode): string | undefined {
     default:
       return assertNever(node, "localBranchOf");
   }
+}
+
+/**
+ * 双击按分支过滤：这个节点代表哪个分支（完整引用名与显示名）。
+ * HEAD 那行代表当前分支；detached 的 HEAD、目录、分组不是分支，返回 `undefined`。
+ */
+export function branchFilterOf(node: BranchNode): BranchFilter | undefined {
+  switch (node.kind) {
+    case BranchNodeKind.Head:
+      return node.branch === undefined
+        ? undefined
+        : { ref: `refs/heads/${node.branch}`, name: node.branch };
+    case BranchNodeKind.Branch: {
+      const { start, name } = pointOf(node);
+      return { ref: start, name };
+    }
+    case BranchNodeKind.Group:
+    case BranchNodeKind.Folder:
+      return undefined;
+    default:
+      return assertNever(node, "branchFilterOf");
+  }
+}
+
+/**
+ * 能按它过滤的全部分支（Branch 按钮的列表，也用来判断过滤的分支还在不在）：本地在前、远程在后，各按名字排。
+ * 不含 `origin/HEAD`（同分支树）。
+ */
+export function branchFilters(refs: readonly Ref[]): BranchFilter[] {
+  const local: BranchFilter[] = [];
+  const remote: BranchFilter[] = [];
+  for (const ref of refs) {
+    if (ref.kind === RefKind.LocalBranch) {
+      local.push({ ref: `refs/heads/${ref.name}`, name: ref.name });
+    } else if (ref.kind === RefKind.RemoteBranch && ref.name !== "HEAD") {
+      const name = `${ref.remote}/${ref.name}`;
+      remote.push({ ref: `refs/remotes/${name}`, name });
+    }
+  }
+  const byName = (a: BranchFilter, b: BranchFilter) => a.name.localeCompare(b.name);
+  return [...local.sort(byName), ...remote.sort(byName)];
 }
 
 /** 节点 id → 节点。基础树只告诉我们选中了哪个 id。 */

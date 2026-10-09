@@ -4,7 +4,7 @@ import { type MatchCondition, MatchKind } from "@dummy-git/shared";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanupTempRepos, cli, git, makeTempRepo } from "../../../__tests__/support.js";
 import { getIdentity } from "../identity.js";
-import { listAuthors, matchCommits } from "../log.js";
+import { getSkeleton, listAuthors, matchCommits } from "../log.js";
 import { listPaths } from "../paths.js";
 
 afterEach(cleanupTempRepos);
@@ -152,5 +152,25 @@ describe("按路径", () => {
       { path: "src/a", folder: true },
       { path: "src/a/x.txt", folder: false },
     ]);
+  });
+});
+
+describe("getSkeleton 按分支", () => {
+  it("只走这个分支：别的分支独有的提交不在里面", async () => {
+    const repo = makeTempRepo("skeleton-branch");
+    git(repo, ["switch", "-q", "-c", "side"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "side only"]);
+    git(repo, ["switch", "-q", "main"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "main only"]);
+    const subjects = async (options: { branch?: string }) => {
+      const hashes = new Set((await getSkeleton.execute(cli, repo, options)).map((c) => c.hash));
+      return git(repo, ["log", "--all", "--format=%H %s"])
+        .trim()
+        .split("\n")
+        .filter((line) => hashes.has(line.slice(0, 40)))
+        .map((line) => line.slice(41));
+    };
+    expect((await subjects({})).sort()).toEqual(["init", "main only", "side only"]);
+    expect(await subjects({ branch: "refs/heads/side" })).toEqual(["side only", "init"]);
   });
 });

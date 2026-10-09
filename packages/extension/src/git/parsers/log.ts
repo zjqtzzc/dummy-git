@@ -157,17 +157,25 @@ const SK_FIELD_COUNT = 3;
  * 实测代价（18.8 万条提交的大仓库）：1.6 秒 / 18 MB 输出。
  * 带上作者与消息的话是 46 MB，而画图用不到那 28 MB。
  */
-export function skeletonArgs(limit: number): string[] {
-  // HEAD / 分支 / 远程 / 标签。
+/**
+ * 骨架从哪里往下走。可带参数（`ARCHITECTURE.md` 第 8 题）：现在只有起点，以后 `--first-parent` 这类遍历选项也加在这里。
+ */
+export interface SkeletonOptions {
+  /** 只走这一个分支（完整引用名，`refs/heads/x` 或 `refs/remotes/origin/x`）。缺席时走 HEAD 与全部分支、远程、标签。 */
+  readonly branch?: string;
+}
+
+export function skeletonArgs(limit: number, options: SkeletonOptions = {}): string[] {
+  const starts =
+    options.branch === undefined ? ["HEAD", "--branches", "--remotes", "--tags"] : [options.branch];
   return [
     ...LOG_PREFIX,
     `--format=${SKELETON_FORMAT}`,
     `--max-count=${limit}`,
-    "HEAD",
-    "--branches",
-    "--remotes",
-    "--tags",
+    ...starts,
     "--date-order",
+    // 起点之后明确结束「版本」部分：分支名永远不会被当成路径。
+    "--",
   ];
 }
 

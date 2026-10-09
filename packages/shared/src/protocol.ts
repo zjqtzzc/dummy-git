@@ -59,7 +59,8 @@ export interface Commands {
   };
   /** 全量骨架：每条只有 hash / parents / at，用来排图和定位。 */
   getSkeleton: {
-    params: { repo: string };
+    /** `branch`：按分支过滤时只走这一个分支（完整引用名，`refs/` 开头）。 */
+    params: { repo: string; branch?: string };
     result: CommitSkeleton[];
   };
   /** 按 hash 取详情：作者、时间、完整消息。只取要显示的那几十条。 */

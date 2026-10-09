@@ -190,7 +190,8 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
   return defineHandlers({
     // 第一版只有一个仓库。多仓库时这里返回多条，面板与协议都不用改。
     getRepositories: () => Promise.resolve([repository.location.root]),
-    getSkeleton: () => repository.run(getSkeleton, repository.location.root),
+    getSkeleton: ({ branch }) =>
+      repository.run(getSkeleton, repository.location.root, branch === undefined ? {} : { branch }),
     getCommitDetails: ({ hashes }) =>
       repository.run(getCommitDetails, repository.location.root, hashes),
     getRefs: async () => {

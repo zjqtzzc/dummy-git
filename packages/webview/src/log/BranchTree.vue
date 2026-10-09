@@ -2,6 +2,7 @@
 import type { Ref } from "@dummy-git/shared";
 import { computed, ref, watch } from "vue";
 import {
+  branchFilterOf,
   branchNodesById,
   buildBranchTree,
   defaultExpanded,
@@ -13,13 +14,14 @@ import {
   toTreeNodes,
   trackingOf,
 } from "../logic/log/branchTree.js";
+import type { BranchFilter } from "../logic/log/filter.js";
 import type { TreeNode } from "../logic/tree/tree.js";
 import Tree from "../tree/Tree.vue";
 import { viewState } from "../vscodeApi.js";
 import TrackingBadge from "./TrackingBadge.vue";
 
 /**
- * 左栏分支树，建在基础树 `Tree.vue` 上。单击只选中；双击本阶段无反应（第 5 阶段改为按该分支筛选）。
+ * 左栏分支树，建在基础树 `Tree.vue` 上。单击选中；双击按该分支过滤 Log。
  * 展开状态存进 `viewState`，收起再展开、重新加载窗口都恢复。
  */
 const props = defineProps<{ refs: readonly Ref[]; repo: string }>();
@@ -29,6 +31,8 @@ const emit = defineEmits<{
    * 选中节点的起点（新建分支），目录与分组是 `undefined`。
    */
   select: [branch: string | undefined, start: StartPoint | undefined];
+  /** 双击（或回车）一个分支：按它过滤 Log。HEAD 那行是当前分支；detached、目录、分组没有反应。 */
+  filter: [branch: BranchFilter];
 }>();
 
 const tree = computed(() => buildBranchTree(props.refs));
@@ -55,6 +59,12 @@ watch([selectedId, byId], ([id, index]) => {
   );
 });
 
+function onActivate(node: TreeNode): void {
+  const branch = byId.value.get(node.id);
+  const filter = branch === undefined ? undefined : branchFilterOf(branch);
+  if (filter !== undefined) emit("filter", filter);
+}
+
 /**
  * 当前展开的节点。第一次有分支数据时定下来：存过就用存的，没存过按默认值（`defaultExpanded`）。
  * 之前没有分支数据，算不出默认值（当前分支所在的目录要展开）。
@@ -78,7 +88,8 @@ function onExpanded(next: ReadonlySet<string>): void {
 </script>
 
 <template>
-  <Tree :nodes="nodes" :expanded="expanded" @update:expanded="onExpanded" @select="(node) => (selectedId = node.id)">
+  <Tree :nodes="nodes" :expanded="expanded" @update:expanded="onExpanded" @select="(node) => (selectedId = node.id)"
+    @activate="onActivate">
     <template #after="{ node }">
       <TrackingBadge :state="tracking(node)" />
     </template>

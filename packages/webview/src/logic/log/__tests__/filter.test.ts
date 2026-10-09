@@ -75,6 +75,7 @@ describe("saveFilter / restoreFilter", () => {
     }
     expect(restoreFilter(saveFilter({}))).toEqual({});
     const full = {
+      branch: { ref: "refs/remotes/origin/main", name: "origin/main" },
       date: DateRange.Day,
       text: "fix",
       author: { name: "Ann", email: "a@x", me: true },

@@ -97,7 +97,11 @@ const PARAM_GUARDS = {
   getRepositories: () => ({}),
   getSkeleton: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
-    return typeof repo === "string" ? { repo } : undefined;
+    const branch = raw["branch"];
+    if (typeof repo !== "string") return undefined;
+    if (branch === undefined) return { repo };
+    // 会进 git 的命令行：只认完整引用名，`-` 开头的值不能被当成选项。
+    return typeof branch === "string" && branch.startsWith("refs/") ? { repo, branch } : undefined;
   },
   getCommitDetails: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];

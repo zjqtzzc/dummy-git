@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   type BranchNode,
   BranchNodeKind,
+  branchFilterOf,
+  branchFilters,
   branchNodesById,
   buildBranchTree,
   defaultExpanded,
@@ -182,6 +184,40 @@ describe("startOf：新分支的起点", () => {
   it("目录、分组不能当起点", () => {
     expect(of("remote/origin/feat")).toBeUndefined();
     expect(of("local")).toBeUndefined();
+  });
+});
+
+describe("按分支过滤", () => {
+  const refs = [
+    head("main"),
+    local("main"),
+    local("feat/x"),
+    remote("origin", "HEAD"),
+    remote("origin", "main"),
+  ];
+
+  it("branchFilters：本地在前、远程在后，完整引用名，不含 origin/HEAD", () => {
+    expect(branchFilters(refs)).toEqual([
+      { ref: "refs/heads/feat/x", name: "feat/x" },
+      { ref: "refs/heads/main", name: "main" },
+      { ref: "refs/remotes/origin/main", name: "origin/main" },
+    ]);
+  });
+
+  it("branchFilterOf：分支与 HEAD 行是分支；detached、目录、分组不是", () => {
+    const byId = branchNodesById(buildBranchTree(refs));
+    const of = (id: string) => {
+      const node = byId.get(id);
+      return node === undefined ? "missing" : branchFilterOf(node);
+    };
+    expect(of("head")).toEqual({ ref: "refs/heads/main", name: "main" });
+    expect(of("remote/origin/main")).toEqual({
+      ref: "refs/remotes/origin/main",
+      name: "origin/main",
+    });
+    expect(of("local/feat")).toBeUndefined();
+    const detached = branchNodesById(buildBranchTree([head(), local("main")])).get("head");
+    expect(detached && branchFilterOf(detached)).toBeUndefined();
   });
 });
 

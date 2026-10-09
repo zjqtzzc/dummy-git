@@ -43,3 +43,15 @@ describe("amend 的参数校验", () => {
     expect(parseParams("amend", raw)).toEqual(raw);
   });
 });
+
+describe("getSkeleton 的 branch", () => {
+  it("缺席或完整引用名都收；不是 refs/ 开头的拒收（会进 git 的命令行，`-` 开头会被当成选项）", () => {
+    expect(parseParams("getSkeleton", { repo: "/r" })).toEqual({ repo: "/r" });
+    expect(parseParams("getSkeleton", { repo: "/r", branch: "refs/heads/main" })).toEqual({
+      repo: "/r",
+      branch: "refs/heads/main",
+    });
+    expect(parseParams("getSkeleton", { repo: "/r", branch: "--all" })).toBeUndefined();
+    expect(parseParams("getSkeleton", { repo: "/r", branch: "main" })).toBeUndefined();
+  });
+});

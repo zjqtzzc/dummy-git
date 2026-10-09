@@ -14,6 +14,7 @@ export {
   parseHashes,
   parseLog,
   parseSkeleton,
+  type SkeletonOptions,
   type StdinCommand,
   skeletonArgs,
 } from "./log.js";

@@ -20,7 +20,17 @@ export enum DateRange {
   Month = "month",
 }
 
+/** 按分支过滤：只看这一个分支的历史。 */
+export interface BranchFilter {
+  /** 完整引用名（`refs/heads/x`、`refs/remotes/origin/x`），交给骨架命令当起点。 */
+  readonly ref: string;
+  /** 给人看的（`x`、`origin/x`）。 */
+  readonly name: string;
+}
+
 export interface LogFilter {
+  /** 分支不在 `applyFilter` 里筛：它换的是骨架的起点，骨架整个重取。 */
+  readonly branch?: BranchFilter;
   readonly date?: DateRange;
   /** 搜索框里的字：按说明文字或 hash 前缀找。空着就是不按它过滤，不存空串。 */
   readonly text?: string;
@@ -76,6 +86,7 @@ function secondsOf(range: DateRange): number {
 /** 有没有任何条件在生效。 */
 export function isFiltering(filter: LogFilter): boolean {
   return (
+    filter.branch !== undefined ||
     filter.date !== undefined ||
     filter.text !== undefined ||
     filter.author !== undefined ||
@@ -118,6 +129,7 @@ const SAVED_DATE: Readonly<Record<DateRange, string>> = {
 
 export function saveFilter(filter: LogFilter): unknown {
   return {
+    ...(filter.branch === undefined ? {} : { branch: { ...filter.branch } }),
     ...(filter.date === undefined ? {} : { date: SAVED_DATE[filter.date] }),
     ...(filter.text === undefined ? {} : { text: filter.text }),
     ...(filter.author === undefined ? {} : { author: { ...filter.author } }),
@@ -133,12 +145,21 @@ export function restoreFilter(saved: unknown): LogFilter {
   const text = Reflect.get(saved, "text");
   const author = restoreAuthor(Reflect.get(saved, "author"));
   const path = Reflect.get(saved, "path");
+  const branch = restoreBranch(Reflect.get(saved, "branch"));
   return {
+    ...(branch === undefined ? {} : { branch }),
     ...(date === undefined ? {} : { date }),
     ...(typeof text === "string" && text !== "" ? { text } : {}),
     ...(author === undefined ? {} : { author }),
     ...(typeof path === "string" && path !== "" ? { path } : {}),
   };
+}
+
+function restoreBranch(saved: unknown): BranchFilter | undefined {
+  if (typeof saved !== "object" || saved === null) return undefined;
+  const ref = Reflect.get(saved, "ref");
+  const name = Reflect.get(saved, "name");
+  return typeof ref === "string" && typeof name === "string" ? { ref, name } : undefined;
 }
 
 function restoreAuthor(saved: unknown): PickedAuthor | undefined {
