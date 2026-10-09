@@ -46,7 +46,9 @@
  * | `getRefs` | `for-each-ref --format=… refs/heads refs/remotes refs/tags` | `%(upstream:remotename)` / `%(upstream:remoteref)`（git 2.16.0 发布说明） | 2.16 |
  * | `getHead` | `rev-parse HEAD --symbolic-full-name HEAD` | — | — |
  * | `getFileContent` | `cat-file --filters <提交>:<路径>` | `--filters` | 2.11 |
- * | `matchCommits` | `-c log.showSignature=false log --format=%H --no-walk --stdin -F -i --grep=<文字>` | — | — |
+ * | `matchCommits` | `-c log.showSignature=false log --format=%H --no-walk --stdin -F` + `-i --grep=<文字>` 或 `--author=<名字 <邮箱>>` | — | — |
+ * | `listAuthors` | `-c log.showSignature=false log --format=%an%x00%ae --no-walk --stdin` | — | — |
+ * | `getIdentity` | `config --get user.name` + `config --get user.email` | — | — |
  * | `getCommitFiles` | `-c log.showSignature=false log -1 -M --first-parent --format= --name-status -z <hash>` | — | — |
  *
  * `-c log.showSignature=false` 在不认识这个配置的旧 git 上是无害的空设置，不构成版本要求。
@@ -68,12 +70,14 @@ export { checkIgnore } from "./checkIgnore.js";
 export type { GitCommand } from "./command.js";
 export { amendCommit, commit } from "./commit.js";
 export { getFileContent } from "./content.js";
+export { getIdentity, type Identity } from "./identity.js";
 export { getRepositoryLocation, type RepositoryLocation } from "./location.js";
 export { LockPolicy } from "./lock.js";
 export {
   getCommitDetails,
   getCommitFiles,
   getSkeleton,
+  listAuthors,
   matchCommits,
   SKELETON_LIMIT,
 } from "./log.js";

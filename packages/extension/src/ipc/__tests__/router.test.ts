@@ -50,6 +50,7 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     dropStash: async (): Promise<null> => null,
     pick: async () => null,
     matchCommits: async () => [],
+    pickAuthor: async () => null,
     ...overrides,
   });
 }
@@ -350,6 +351,10 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
         matchCommits: async () => {
           ran = true;
           return [];
+        },
+        pickAuthor: async () => {
+          ran = true;
+          return null;
         },
       }),
     );

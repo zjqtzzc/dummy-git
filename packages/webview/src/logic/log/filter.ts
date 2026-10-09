@@ -1,4 +1,4 @@
-import { assertNever, type CommitSkeleton } from "@dummy-git/shared";
+import { assertNever, type CommitSkeleton, type PickedAuthor } from "@dummy-git/shared";
 
 /**
  * Log 的过滤条件（`.notes/design/phase-5.md`）。几种条件取交集；没有的条件就是不按它过滤。
@@ -24,6 +24,15 @@ export interface LogFilter {
   readonly date?: DateRange;
   /** 搜索框里的字：按说明文字或 hash 前缀找。空着就是不按它过滤，不存空串。 */
   readonly text?: string;
+  /** 作者（User 按钮选的）。 */
+  readonly author?: PickedAuthor;
+}
+
+/** 要问 git 的那几项的结果。回来之前列表照上一次的结果显示。 */
+export interface Matches {
+  readonly text?: TextMatch;
+  /** 作者是选中那个人的提交。 */
+  readonly author?: ReadonlySet<string>;
 }
 
 /**
@@ -62,25 +71,28 @@ function secondsOf(range: DateRange): number {
 
 /** 有没有任何条件在生效。 */
 export function isFiltering(filter: LogFilter): boolean {
-  return filter.date !== undefined || filter.text !== undefined;
+  return filter.date !== undefined || filter.text !== undefined || filter.author !== undefined;
 }
 
 /**
  * 骨架里留下哪些（保持骨架的顺序），几种条件取交集。
- * 日期按骨架里的提交时间在这里筛，不问 git；搜索框那一项用 `text`（说明文字或 hash 前缀，取并集），
- * 不用 `filter.text`——git 的结果回来之前，列表照上一次的结果显示。
+ * 日期按骨架里的提交时间在这里筛，不问 git；要问 git 的几项用 `matches`（搜索框那一项是说明文字
+ * 或 hash 前缀，取并集），不看 `filter` 里的值——git 的结果回来之前，列表照上一次的结果显示。
+ * `matches` 里缺席的一项就是不按它过滤，由调用方保证只放生效中的条件。
  * `now` 是 unix 秒，由调用方传入，便于测试。
  */
 export function applyFilter(
   skeleton: readonly CommitSkeleton[],
   filter: LogFilter,
   now: number,
-  text?: TextMatch,
+  matches: Matches,
 ): string[] {
   const since = filter.date === undefined ? undefined : now - secondsOf(filter.date);
+  const { text, author } = matches;
   return skeleton
     .filter((commit) => since === undefined || commit.at >= since)
     .filter((commit) => text === undefined || matchesText(commit.hash, text))
+    .filter((commit) => author === undefined || author.has(commit.hash))
     .map((commit) => commit.hash);
 }
 
@@ -98,6 +110,7 @@ export function saveFilter(filter: LogFilter): unknown {
   return {
     ...(filter.date === undefined ? {} : { date: SAVED_DATE[filter.date] }),
     ...(filter.text === undefined ? {} : { text: filter.text }),
+    ...(filter.author === undefined ? {} : { author: { ...filter.author } }),
   };
 }
 
@@ -107,8 +120,20 @@ export function restoreFilter(saved: unknown): LogFilter {
   const savedDate = Reflect.get(saved, "date");
   const date = Object.values(DateRange).find((range) => SAVED_DATE[range] === savedDate);
   const text = Reflect.get(saved, "text");
+  const author = restoreAuthor(Reflect.get(saved, "author"));
   return {
     ...(date === undefined ? {} : { date }),
     ...(typeof text === "string" && text !== "" ? { text } : {}),
+    ...(author === undefined ? {} : { author }),
   };
+}
+
+function restoreAuthor(saved: unknown): PickedAuthor | undefined {
+  if (typeof saved !== "object" || saved === null) return undefined;
+  const name = Reflect.get(saved, "name");
+  const email = Reflect.get(saved, "email");
+  const me = Reflect.get(saved, "me");
+  return typeof name === "string" && typeof email === "string" && typeof me === "boolean"
+    ? { name, email, me }
+    : undefined;
 }

@@ -6,8 +6,11 @@
  */
 export { GitParseError } from "./errors.js";
 export {
+  type AuthorCount,
+  authorsArgs,
   detailsArgs,
   matchArgs,
+  parseAuthors,
   parseHashes,
   parseLog,
   parseSkeleton,

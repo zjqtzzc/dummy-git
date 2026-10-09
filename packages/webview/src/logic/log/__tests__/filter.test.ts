@@ -13,14 +13,14 @@ const skeleton = [commit("a", 1), commit("b", 30), commit("c", 24 * 10), commit(
 
 describe("applyFilter", () => {
   it("没有条件：全部，顺序不变", () => {
-    expect(applyFilter(skeleton, {}, NOW)).toEqual(["a", "b", "c", "d"]);
+    expect(applyFilter(skeleton, {}, NOW, {})).toEqual(["a", "b", "c", "d"]);
     expect(isFiltering({})).toBe(false);
   });
 
   it("日期：24 小时、7 天、一个月", () => {
-    expect(applyFilter(skeleton, { date: DateRange.Day }, NOW)).toEqual(["a"]);
-    expect(applyFilter(skeleton, { date: DateRange.Week }, NOW)).toEqual(["a", "b"]);
-    expect(applyFilter(skeleton, { date: DateRange.Month }, NOW)).toEqual(["a", "b", "c"]);
+    expect(applyFilter(skeleton, { date: DateRange.Day }, NOW, {})).toEqual(["a"]);
+    expect(applyFilter(skeleton, { date: DateRange.Week }, NOW, {})).toEqual(["a", "b"]);
+    expect(applyFilter(skeleton, { date: DateRange.Month }, NOW, {})).toEqual(["a", "b", "c"]);
   });
 });
 
@@ -33,17 +33,29 @@ describe("applyFilter：搜索框", () => {
 
   it("说明文字命中的与 hash 前缀命中的取并集", () => {
     const text = { text: "ABCD", byMessage: new Set(["beef0000"]) };
-    expect(applyFilter(hashed, { text: "ABCD" }, NOW, text)).toEqual(["abcd1234", "beef0000"]);
+    expect(applyFilter(hashed, { text: "ABCD" }, NOW, { text })).toEqual(["abcd1234", "beef0000"]);
   });
 
   it("不到 4 个十六进制字符、或不是十六进制的，不当 hash 前缀", () => {
-    expect(applyFilter(hashed, {}, NOW, { text: "abc", byMessage: new Set() })).toEqual([]);
-    expect(applyFilter(hashed, {}, NOW, { text: "cafe!", byMessage: new Set() })).toEqual([]);
+    expect(applyFilter(hashed, {}, NOW, { text: { text: "abc", byMessage: new Set() } })).toEqual(
+      [],
+    );
+    expect(applyFilter(hashed, {}, NOW, { text: { text: "cafe!", byMessage: new Set() } })).toEqual(
+      [],
+    );
   });
 
   it("与日期取交集", () => {
     const text = { text: "cafe", byMessage: new Set(["abcd1234"]) };
-    expect(applyFilter(hashed, { date: DateRange.Week }, NOW, text)).toEqual(["abcd1234"]);
+    expect(applyFilter(hashed, { date: DateRange.Week }, NOW, { text })).toEqual(["abcd1234"]);
+  });
+});
+
+describe("applyFilter：作者", () => {
+  it("只留作者命中的，与其他条件取交集", () => {
+    const author = new Set(["a", "c"]);
+    expect(applyFilter(skeleton, {}, NOW, { author })).toEqual(["a", "c"]);
+    expect(applyFilter(skeleton, { date: DateRange.Week }, NOW, { author })).toEqual(["a"]);
   });
 });
 
@@ -53,10 +65,12 @@ describe("saveFilter / restoreFilter", () => {
       expect(restoreFilter(saveFilter({ date }))).toEqual({ date });
     }
     expect(restoreFilter(saveFilter({}))).toEqual({});
-    expect(restoreFilter(saveFilter({ date: DateRange.Day, text: "fix" }))).toEqual({
+    const full = {
       date: DateRange.Day,
       text: "fix",
-    });
+      author: { name: "Ann", email: "a@x", me: true },
+    };
+    expect(restoreFilter(saveFilter(full))).toEqual(full);
   });
 
   it("认不出的当作没有", () => {

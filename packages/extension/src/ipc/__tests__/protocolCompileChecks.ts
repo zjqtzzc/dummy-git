@@ -38,6 +38,7 @@ import type {
   Commit,
   CommitFileChange,
   CommitSkeleton,
+  PickedAuthor,
   Ref,
   Stash,
   StatusSnapshot,
@@ -81,6 +82,7 @@ export const _baseline = defineHandlers({
   dropStash: openDiffStub,
   pick: async (): Promise<number | null> => null,
   matchCommits: async (): Promise<string[]> => [],
+  pickAuthor: async (): Promise<PickedAuthor | null> => null,
 });
 
 /**

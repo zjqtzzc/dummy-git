@@ -29,11 +29,13 @@ import {
   getCommitDetails,
   getCommitFiles,
   getHead,
+  getIdentity,
   getRefs,
   getSkeleton,
   getStashes,
   getStatus,
   isValidBranchName,
+  listAuthors,
   listRemotes,
   matchCommits,
   PushKind,
@@ -76,11 +78,17 @@ import { UserFacingError } from "./userFacingError.js";
  * 要用到 VS Code 界面的动作，由 `extension.ts` 注入。handler 自己不 import vscode，
  * 这样 handler 的测试能在纯 node 下跑。
  */
+/** 选择框的一项：`description` 是同一行后面的灰字。 */
+export interface PickItem {
+  readonly label: string;
+  readonly description?: string;
+}
+
 export interface HandlerUi {
   /** 删除前的确认（原生模态框）：`action` 是确认按钮，`true` 是确认。 */
   readonly confirm: (message: string, action: string) => Promise<boolean>;
   /** 从几项里选一项（`vscode/pick.ts`）：返回选中的序号，取消是 `undefined`。 */
-  readonly pick: (title: string, items: readonly string[]) => Promise<number | undefined>;
+  readonly pick: (title: string, items: readonly PickItem[]) => Promise<number | undefined>;
   /** 状态栏上几秒的一句话：立刻完成、不走进度出口的操作说做完了什么。 */
   readonly notify: (message: string) => void;
   /** Rollback 前的确认：`true` 是确认。只列勾选的已跟踪文件（不含补上的旧路径）。 */
@@ -198,9 +206,37 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
     },
     getCommitFiles: ({ hash }) => repository.run(getCommitFiles, repository.location.root, hash),
     getStashes: () => repository.run(getStashes, repository.location.root),
-    matchCommits: ({ hashes, text }) =>
-      repository.run(matchCommits, repository.location.root, hashes, text),
-    pick: async ({ title, items }) => (await ui.pick(title, items)) ?? null,
+    matchCommits: ({ hashes, condition }) =>
+      repository.run(matchCommits, repository.location.root, hashes, condition),
+    pickAuthor: async ({ hashes }) => {
+      const root = repository.location.root;
+      const [me, authors] = await Promise.all([
+        repository.run(getIdentity, root),
+        repository.run(listAuthors, root, hashes),
+      ]);
+      // 每一项：选择框里怎么写、选中了交回什么。
+      const choices = [
+        ...(me === undefined
+          ? []
+          : [
+              { item: { label: "Me", description: identityText(me) }, picked: { ...me, me: true } },
+            ]),
+        ...authors.map(({ name, email, count }) => ({
+          item: { label: identityText({ name, email }), description: commitCount(count) },
+          picked: { name, email, me: false },
+        })),
+      ];
+      const index = await ui.pick(
+        "Filter by User",
+        choices.map((choice) => choice.item),
+      );
+      return (index === undefined ? undefined : choices[index]?.picked) ?? null;
+    },
+    pick: async ({ title, items }) =>
+      (await ui.pick(
+        title,
+        items.map((label) => ({ label })),
+      )) ?? null,
     getStatus: () => repository.run(getStatus, repository.location.root),
     commit: async ({ message, paths }) => {
       const { untracked, withOldPaths } = await inspect(paths);
@@ -468,6 +504,15 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       return null;
     },
   });
+}
+
+/** 选择框里写一个人：`名字 <邮箱>`，邮箱为空时只写名字。 */
+function identityText({ name, email }: { name: string; email: string }): string {
+  return email === "" ? name : `${name} <${email}>`;
+}
+
+function commitCount(count: number): string {
+  return count === 1 ? "1 commit" : `${count} commits`;
 }
 
 /** 按名字找本地分支。 */

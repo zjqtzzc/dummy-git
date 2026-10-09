@@ -11,7 +11,14 @@
  * 两个查询也放在一起，因为它们共用记录分隔符与「跳过 git 加的换行」这些格式知识——
  * 拆开就要复制常量，那正是漂移的开始。
  */
-import type { Commit, CommitSkeleton, Signature } from "@dummy-git/shared";
+import {
+  assertNever,
+  type Commit,
+  type CommitSkeleton,
+  type MatchCondition,
+  MatchKind,
+  type Signature,
+} from "@dummy-git/shared";
 import { GitParseError } from "./errors.js";
 import { decode, split } from "./scan.js";
 
@@ -211,7 +218,7 @@ export interface StdinCommand {
 export function detailsArgs(hashes: readonly string[]): StdinCommand {
   return {
     args: [...LOG_PREFIX, `--format=${LOG_FORMAT}`, "--no-walk", "--stdin"],
-    input: hashes.length === 0 ? "" : `${hashes.join("\n")}\n`,
+    input: stdinOf(hashes),
   };
 }
 
@@ -219,13 +226,60 @@ export function detailsArgs(hashes: readonly string[]): StdinCommand {
  * 在给定的提交里按条件筛（Log 的过滤，`ARCHITECTURE.md` 第 8 题）：只输出命中的 hash。
  *
  * `--no-walk --stdin` 同 `detailsArgs`：只看喂进去的这些，不顺着父提交走，仓库再大也最多检查这么多条。
- * 说明文字按普通文字、不分大小写（`-F -i`，`-F` 让 `a.b` 不被当成正则）。
+ * 一律 `-F`（按普通文字）：说明里的 `a.b`、名字里的 `.` 都不被当成正则。
  */
-export function matchArgs(hashes: readonly string[], text: string): StdinCommand {
+export function matchArgs(hashes: readonly string[], condition: MatchCondition): StdinCommand {
   return {
-    args: [...LOG_PREFIX, "--format=%H", "--no-walk", "--stdin", "-F", "-i", `--grep=${text}`],
-    input: hashes.length === 0 ? "" : `${hashes.join("\n")}\n`,
+    args: [...LOG_PREFIX, "--format=%H", "--no-walk", "--stdin", "-F", ...conditionArgs(condition)],
+    input: stdinOf(hashes),
   };
+}
+
+function conditionArgs(condition: MatchCondition): string[] {
+  switch (condition.kind) {
+    case MatchKind.Text:
+      return ["-i", `--grep=${condition.text}`];
+    case MatchKind.Author:
+      // git 拿 `--author` 去比作者那一行的「名字 <邮箱>」，邮箱为空时是 `名字 <>`。
+      // `-F` 下是「包含」：`Bob <b@x>` 也会命中 `JimBob <b@x>`，名字与邮箱同时撞上的极少，接受。
+      return [`--author=${condition.name} <${condition.email}>`];
+    default:
+      return assertNever(condition, "conditionArgs");
+  }
+}
+
+/**
+ * 给定提交的作者（User 按钮的列表）：一行一条，名字与邮箱之间 NUL。
+ * 用作者那一行的原样（`%an` / `%ae`），不用 mailmap 之后的（`%aN`）：`--author` 比的是原样，列出来的才选得中。
+ */
+export function authorsArgs(hashes: readonly string[]): StdinCommand {
+  return {
+    args: [...LOG_PREFIX, "--format=%an%x00%ae", "--no-walk", "--stdin"],
+    input: stdinOf(hashes),
+  };
+}
+
+/** `authorsArgs` 的输出 → 每人几条，按条数从多到少，一样多的按名字。 */
+export function parseAuthors(stdout: Buffer): AuthorCount[] {
+  const counts = new Map<string, AuthorCount>();
+  for (const line of stdout.toString("utf8").split("\n")) {
+    if (line === "") continue;
+    const [name = "", email = ""] = line.split("\0");
+    const key = `${name}\0${email}`;
+    const known = counts.get(key);
+    counts.set(key, { name, email, count: (known?.count ?? 0) + 1 });
+  }
+  return [...counts.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+export interface AuthorCount {
+  readonly name: string;
+  readonly email: string;
+  readonly count: number;
+}
+
+function stdinOf(hashes: readonly string[]): string {
+  return hashes.length === 0 ? "" : `${hashes.join("\n")}\n`;
 }
 
 /** `matchArgs` 的输出：一行一个 hash。 */

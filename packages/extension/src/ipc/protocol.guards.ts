@@ -30,6 +30,8 @@ import {
   DiffSideKind,
   type Generation,
   type InboundMessage,
+  type MatchCondition,
+  MatchKind,
   MessageKind,
 } from "@dummy-git/shared";
 
@@ -145,10 +147,15 @@ const PARAM_GUARDS = {
   matchCommits: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const hashes = asStringArray(raw["hashes"]);
-    const text = raw["text"];
-    return typeof repo === "string" && hashes !== undefined && typeof text === "string"
-      ? { repo, hashes, text }
+    const condition = parseMatchCondition(raw["condition"]);
+    return typeof repo === "string" && hashes !== undefined && condition !== undefined
+      ? { repo, hashes, condition }
       : undefined;
+  },
+  pickAuthor: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const hashes = asStringArray(raw["hashes"]);
+    return typeof repo === "string" && hashes !== undefined ? { repo, hashes } : undefined;
   },
   pick: (raw: Record<string, unknown>) => {
     const title = raw["title"];
@@ -324,4 +331,24 @@ export function parseInbound(raw: unknown): Inbound | undefined {
   }
 
   return undefined;
+}
+
+/** Log 过滤的条件：带 `kind` 的联合，按 `kind` 校验各自的字段。 */
+function parseMatchCondition(raw: unknown): MatchCondition | undefined {
+  if (!isRecord(raw)) return undefined;
+  switch (raw["kind"]) {
+    case MatchKind.Text: {
+      const text = raw["text"];
+      return typeof text === "string" ? { kind: MatchKind.Text, text } : undefined;
+    }
+    case MatchKind.Author: {
+      const name = raw["name"];
+      const email = raw["email"];
+      return typeof name === "string" && typeof email === "string"
+        ? { kind: MatchKind.Author, name, email }
+        : undefined;
+    }
+    default:
+      return undefined;
+  }
 }

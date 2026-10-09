@@ -3,6 +3,7 @@ import type { Commit, CommitSkeleton } from "./commit.js";
 import type { DiffOpenMode, DiffSide } from "./diff.js";
 import type { GitDomain } from "./domain.js";
 import type { GitErrorCode } from "./error.js";
+import type { MatchCondition, PickedAuthor } from "./match.js";
 import type { Ref } from "./ref.js";
 import type { Stash } from "./stash.js";
 
@@ -176,13 +177,18 @@ export interface Commands {
     params: { repo: string; paths: readonly string[] };
     result: null;
   };
-  /**
-   * Log 的过滤：在 `hashes`（页面上的骨架）里，哪些的说明含有 `text`（不分大小写、按普通文字）。
-   * 返回命中的 hash，顺序不保证。
-   */
+  /** Log 的过滤：在 `hashes`（页面上的骨架）里，哪些满足 `condition`。返回命中的 hash，顺序不保证。 */
   matchCommits: {
-    params: { repo: string; hashes: readonly string[]; text: string };
+    params: { repo: string; hashes: readonly string[]; condition: MatchCondition };
     result: string[];
+  };
+  /**
+   * User 按钮：弹原生选择框选一个作者。第一项是 Me（git 配置的 `user.name` 与 `user.email`，没配就没有这一项），
+   * 下面是 `hashes` 里出现过的作者，按提交数从多到少。取消是 `null`。
+   */
+  pickAuthor: {
+    params: { repo: string; hashes: readonly string[] };
+    result: PickedAuthor | null;
   };
   /** 从 `items` 里选一项（原生 QuickPick），返回选中的序号；取消是 `null`。 */
   pick: {

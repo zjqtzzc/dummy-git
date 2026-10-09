@@ -1,8 +1,11 @@
-import type { Commit, CommitFileChange, CommitSkeleton } from "@dummy-git/shared";
+import type { Commit, CommitFileChange, CommitSkeleton, MatchCondition } from "@dummy-git/shared";
 import { runRaw } from "../failure.js";
 import {
+  type AuthorCount,
+  authorsArgs,
   detailsArgs,
   matchArgs,
+  parseAuthors,
   parseHashes,
   parseLog,
   parseSkeleton,
@@ -70,19 +73,33 @@ export const getCommitDetails: GitCommand<
 };
 
 /**
- * 在给定的提交里，哪些的说明含有 `text`（不分大小写、按普通文字）。只返回命中的 hash，顺序不保证。
- * 没有命中时 git 要把给的提交全看一遍，一万条约一秒多（`NFR.md` 第 3 节），所以界面要防抖。
+ * 在给定的提交里，哪些满足条件（说明含有某段字、作者是某人）。只返回命中的 hash，顺序不保证。
+ * 没有命中时 git 也要把给的提交全看一遍：只给骨架那一万条，耗时就有上限（`NFR.md` 第 3 节）。
  */
 export const matchCommits: GitCommand<
-  [repository: string, hashes: readonly string[], text: string],
+  [repository: string, hashes: readonly string[], condition: MatchCondition],
   string[]
 > = {
   lock: LockPolicy.None,
 
-  execute: async (cli, repository, hashes, text) => {
-    const { args, input } = matchArgs(hashes, text);
+  execute: async (cli, repository, hashes, condition) => {
+    const { args, input } = matchArgs(hashes, condition);
     const result = await runRaw(cli, args, { cwd: repository, input });
     return parseHashes(result.stdout);
+  },
+};
+
+/** 给定提交里的作者，每人几条，按条数从多到少。User 按钮的列表。 */
+export const listAuthors: GitCommand<
+  [repository: string, hashes: readonly string[]],
+  AuthorCount[]
+> = {
+  lock: LockPolicy.None,
+
+  execute: async (cli, repository, hashes) => {
+    const { args, input } = authorsArgs(hashes);
+    const result = await runRaw(cli, args, { cwd: repository, input });
+    return parseAuthors(result.stdout);
   },
 };
 

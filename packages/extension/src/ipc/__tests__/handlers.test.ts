@@ -21,7 +21,7 @@ import {
 } from "../../__tests__/support.js";
 import { Repository } from "../../core/repository.js";
 import { getRepositoryLocation } from "../../git/commands/index.js";
-import { createHandlers, type HandlerUi } from "../handlers.js";
+import { createHandlers, type HandlerUi, type PickItem } from "../handlers.js";
 import { UserFacingError } from "../userFacingError.js";
 
 /** 不涉及界面的测试用它：真调到就说明测错了东西。 */
@@ -826,7 +826,7 @@ describe("handlers.pick", () => {
   const pick = async (answer: number | undefined) => {
     const path = makeTempRepo("pick");
     const repository = new Repository(plainLocation(path), cli);
-    const asked: { title: string; items: readonly string[] }[] = [];
+    const asked: { title: string; items: readonly PickItem[] }[] = [];
     const ui: HandlerUi = {
       ...NO_UI,
       pick: async (title, items) => {
@@ -843,7 +843,69 @@ describe("handlers.pick", () => {
   };
 
   it("把标题与选项交给选择框，返回选中的序号；取消是 null", async () => {
-    expect(await pick(1)).toEqual({ result: 1, asked: [{ title: "T", items: ["a", "b"] }] });
+    expect(await pick(1)).toEqual({
+      result: 1,
+      asked: [{ title: "T", items: [{ label: "a" }, { label: "b" }] }],
+    });
     expect((await pick(undefined)).result).toBeNull();
+  });
+});
+
+describe("handlers.pickAuthor", () => {
+  afterAll(cleanupTempRepos);
+  const pickAuthor = async (path: string, answer: number | undefined) => {
+    const repository = new Repository(plainLocation(path), cli);
+    let shown: readonly PickItem[] = [];
+    const ui: HandlerUi = {
+      ...NO_UI,
+      pick: async (_title, items) => {
+        shown = items;
+        return answer;
+      },
+    };
+    try {
+      const hashes = git(path, ["log", "--format=%H"]).trim().split("\n");
+      const picked = await createHandlers(repository, ui).pickAuthor({ repo: path, hashes });
+      return { shown, picked };
+    } finally {
+      repository.dispose();
+    }
+  };
+  const scene = () => {
+    const repo = makeTempRepo("pick-author");
+    for (let i = 0; i < 2; i++) {
+      git(repo, [
+        "-c",
+        "user.name=Ann",
+        "-c",
+        "user.email=",
+        "commit",
+        "-q",
+        "--allow-empty",
+        "-m",
+        "a",
+      ]);
+    }
+    return repo;
+  };
+
+  it("第一项是 Me，下面是作者按提交数从多到少；邮箱为空的只写名字", async () => {
+    const { shown } = await pickAuthor(scene(), undefined);
+    expect(shown).toEqual([
+      { label: "Me", description: "t <t@example.com>" },
+      { label: "Ann", description: "2 commits" },
+      { label: "t <t@example.com>", description: "1 commit" },
+    ]);
+  });
+
+  it("选中的交回名字、邮箱与是不是 Me；取消是 null", async () => {
+    const repo = scene();
+    expect((await pickAuthor(repo, 0)).picked).toEqual({
+      name: "t",
+      email: "t@example.com",
+      me: true,
+    });
+    expect((await pickAuthor(repo, 1)).picked).toEqual({ name: "Ann", email: "", me: false });
+    expect((await pickAuthor(repo, undefined)).picked).toBeNull();
   });
 });
