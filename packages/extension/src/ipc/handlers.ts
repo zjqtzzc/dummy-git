@@ -35,6 +35,7 @@ import {
   getStatus,
   isValidBranchName,
   listRemotes,
+  matchCommits,
   PushKind,
   popStash,
   push,
@@ -197,6 +198,8 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
     },
     getCommitFiles: ({ hash }) => repository.run(getCommitFiles, repository.location.root, hash),
     getStashes: () => repository.run(getStashes, repository.location.root),
+    matchCommits: ({ hashes, text }) =>
+      repository.run(matchCommits, repository.location.root, hashes, text),
     pick: async ({ title, items }) => (await ui.pick(title, items)) ?? null,
     getStatus: () => repository.run(getStatus, repository.location.root),
     commit: async ({ message, paths }) => {

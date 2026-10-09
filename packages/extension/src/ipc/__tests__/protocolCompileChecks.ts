@@ -80,6 +80,7 @@ export const _baseline = defineHandlers({
   popStash: openDiffStub,
   dropStash: openDiffStub,
   pick: async (): Promise<number | null> => null,
+  matchCommits: async (): Promise<string[]> => [],
 });
 
 /**

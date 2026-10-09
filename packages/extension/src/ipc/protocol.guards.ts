@@ -142,6 +142,14 @@ const PARAM_GUARDS = {
     const hash = raw["hash"];
     return typeof repo === "string" && typeof hash === "string" ? { repo, hash } : undefined;
   },
+  matchCommits: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const hashes = asStringArray(raw["hashes"]);
+    const text = raw["text"];
+    return typeof repo === "string" && hashes !== undefined && typeof text === "string"
+      ? { repo, hashes, text }
+      : undefined;
+  },
   pick: (raw: Record<string, unknown>) => {
     const title = raw["title"];
     const items = asStringArray(raw["items"]);

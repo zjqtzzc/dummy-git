@@ -215,6 +215,27 @@ export function detailsArgs(hashes: readonly string[]): StdinCommand {
   };
 }
 
+/**
+ * 在给定的提交里按条件筛（Log 的过滤，`ARCHITECTURE.md` 第 8 题）：只输出命中的 hash。
+ *
+ * `--no-walk --stdin` 同 `detailsArgs`：只看喂进去的这些，不顺着父提交走，仓库再大也最多检查这么多条。
+ * 说明文字按普通文字、不分大小写（`-F -i`，`-F` 让 `a.b` 不被当成正则）。
+ */
+export function matchArgs(hashes: readonly string[], text: string): StdinCommand {
+  return {
+    args: [...LOG_PREFIX, "--format=%H", "--no-walk", "--stdin", "-F", "-i", `--grep=${text}`],
+    input: hashes.length === 0 ? "" : `${hashes.join("\n")}\n`,
+  };
+}
+
+/** `matchArgs` 的输出：一行一个 hash。 */
+export function parseHashes(stdout: Buffer): string[] {
+  return stdout
+    .toString("utf8")
+    .split("\n")
+    .filter((line) => line !== "");
+}
+
 export function parseLog(stdout: Buffer): Commit[] {
   return splitRecords(stdout, "parseLog", FIELD_COUNT).map((record) => {
     const author: Signature = {

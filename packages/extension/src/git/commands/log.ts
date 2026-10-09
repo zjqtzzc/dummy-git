@@ -1,6 +1,13 @@
 import type { Commit, CommitFileChange, CommitSkeleton } from "@dummy-git/shared";
 import { runRaw } from "../failure.js";
-import { detailsArgs, parseLog, parseSkeleton, skeletonArgs } from "../parsers/log.js";
+import {
+  detailsArgs,
+  matchArgs,
+  parseHashes,
+  parseLog,
+  parseSkeleton,
+  skeletonArgs,
+} from "../parsers/log.js";
 import { commitFilesArgs, parseNameStatus } from "../parsers/nameStatus.js";
 import type { GitCommand } from "./command.js";
 import { LockPolicy } from "./lock.js";
@@ -59,6 +66,23 @@ export const getCommitDetails: GitCommand<
     const { args, input } = detailsArgs(hashes);
     const result = await runRaw(cli, args, { cwd: repository, input });
     return parseLog(result.stdout);
+  },
+};
+
+/**
+ * 在给定的提交里，哪些的说明含有 `text`（不分大小写、按普通文字）。只返回命中的 hash，顺序不保证。
+ * 没有命中时 git 要把给的提交全看一遍，一万条约一秒多（`NFR.md` 第 3 节），所以界面要防抖。
+ */
+export const matchCommits: GitCommand<
+  [repository: string, hashes: readonly string[], text: string],
+  string[]
+> = {
+  lock: LockPolicy.None,
+
+  execute: async (cli, repository, hashes, text) => {
+    const { args, input } = matchArgs(hashes, text);
+    const result = await runRaw(cli, args, { cwd: repository, input });
+    return parseHashes(result.stdout);
   },
 };
 

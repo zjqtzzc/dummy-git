@@ -7,6 +7,8 @@
 export { GitParseError } from "./errors.js";
 export {
   detailsArgs,
+  matchArgs,
+  parseHashes,
   parseLog,
   parseSkeleton,
   type StdinCommand,

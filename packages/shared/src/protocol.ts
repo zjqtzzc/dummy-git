@@ -176,6 +176,14 @@ export interface Commands {
     params: { repo: string; paths: readonly string[] };
     result: null;
   };
+  /**
+   * Log 的过滤：在 `hashes`（页面上的骨架）里，哪些的说明含有 `text`（不分大小写、按普通文字）。
+   * 返回命中的 hash，顺序不保证。
+   */
+  matchCommits: {
+    params: { repo: string; hashes: readonly string[]; text: string };
+    result: string[];
+  };
   /** 从 `items` 里选一项（原生 QuickPick），返回选中的序号；取消是 `null`。 */
   pick: {
     params: { title: string; items: readonly string[] };

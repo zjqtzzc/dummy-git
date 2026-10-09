@@ -49,6 +49,7 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     popStash: async (): Promise<null> => null,
     dropStash: async (): Promise<null> => null,
     pick: async () => null,
+    matchCommits: async () => [],
     ...overrides,
   });
 }
@@ -345,6 +346,10 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
         pick: async () => {
           ran = true;
           return null;
+        },
+        matchCommits: async () => {
+          ran = true;
+          return [];
         },
       }),
     );

@@ -23,6 +23,7 @@ import {
   type LogFilter,
   restoreFilter,
   saveFilter,
+  type TextMatch,
 } from "../logic/log/filter.js";
 import { type Layout, restoreLayout, splitPosition } from "../logic/log/layout.js";
 import { hashesToFetch } from "../logic/log/prefetch.js";
@@ -66,8 +67,66 @@ onUnmounted(() => clearInterval(clock));
 
 /** 过滤条件（`.notes/design/phase-5.md`）。存进 `viewState`：重新加载窗口后还在。 */
 const filter = ref<LogFilter>(restoreFilter(viewState.read("logFilter")));
+/**
+ * 搜索框那一项的结果（说明文字要问 git）。回来之前列表照上一次的结果显示；搜索框清空时作废。
+ * 带着它对应的搜索词，hash 前缀也按那个词算。
+ */
+const textMatch = ref<TextMatch>();
+/** 正在问 git：过滤栏转圈。 */
+const searching = ref(false);
+/** 生效中的搜索框结果：搜索框空着就没有。 */
+const appliedText = computed(() => (filter.value.text === undefined ? undefined : textMatch.value));
 /** 列表里显示的提交：骨架按过滤条件筛过，顺序不变。 */
-const hashes = computed(() => applyFilter(skeleton.value, filter.value, now.value));
+const hashes = computed(() =>
+  applyFilter(skeleton.value, filter.value, now.value, appliedText.value),
+);
+
+/** 搜索框里正显示的字。改了立刻显示，停 300 毫秒才变成过滤条件（`NFR.md` 第 3 节：查询要防抖）。 */
+const searchText = ref(filter.value.text ?? "");
+const SEARCH_DELAY_MS = 300;
+let searchTimer: ReturnType<typeof setTimeout> | undefined;
+onUnmounted(() => clearTimeout(searchTimer));
+
+function onSearch(text: string): void {
+  searchText.value = text;
+  clearTimeout(searchTimer);
+  const { text: _, ...rest } = filter.value;
+  // 清空不用等：立刻恢复。
+  if (text === "") {
+    setFilter(rest);
+    return;
+  }
+  searchTimer = setTimeout(() => setFilter({ ...rest, text }), SEARCH_DELAY_MS);
+}
+
+/**
+ * 搜索词或骨架变了：问 git 哪些提交的说明含有这个词。只收最新一次的结果（先发的可能后回来）。
+ * 骨架变了（仓库有变化）也重查，同一个词在新的一万条里重新找。
+ */
+let searchSeq = 0;
+watch([() => filter.value.text, skeleton], async ([text, current]) => {
+  const mine = ++searchSeq;
+  if (text === undefined) {
+    textMatch.value = undefined;
+    searching.value = false;
+    return;
+  }
+  if (repo.value === undefined || current.length === 0) return;
+  searching.value = true;
+  try {
+    const found = await props.client.request("matchCommits", {
+      repo: repo.value,
+      hashes: current.map((commit) => commit.hash),
+      text,
+    });
+    if (mine !== searchSeq) return;
+    textMatch.value = { text, byMessage: new Set(found) };
+  } catch (cause) {
+    report(cause);
+  } finally {
+    if (mine === searchSeq) searching.value = false;
+  }
+});
 
 const DATE_RANGES: readonly DateRange[] = [DateRange.Day, DateRange.Week, DateRange.Month];
 
@@ -138,10 +197,10 @@ function clearFilter(kind: FilterKind): void {
 }
 
 /**
- * 过滤条件变了：原来选中的提交还在就保持选中并滚过去，不在就清空选中（第 9 条）。
- * 只看条件的变化；骨架刷新后的选中由 `load` 管。
+ * 生效的过滤条件变了：原来选中的提交还在就保持选中并滚过去，不在就清空选中（第 9 条）。
+ * 搜索框那一项看结果回来的时刻，不看敲字的时刻。只看条件的变化；骨架刷新后的选中由 `load` 管。
  */
-watch(filter, async () => {
+watch([() => filter.value.date, appliedText], async () => {
   await nextTick();
   const row = selected.value === undefined ? -1 : hashes.value.indexOf(selected.value);
   if (row !== -1) {
@@ -394,7 +453,14 @@ onMounted(async () => {
       @vsc-split-layout-change="onRightSplit"
     >
       <div slot="start" class="pane">
-        <FilterBar :values="filterValues" @open="openFilter" @clear="clearFilter" />
+        <FilterBar
+          :values="filterValues"
+          :text="searchText"
+          :busy="searching"
+          @search="onSearch"
+          @open="openFilter"
+          @clear="clearFilter"
+        />
         <p v-if="!loaded" class="dim loading">Loading…</p>
         <p v-else-if="isFiltering(filter) && hashes.length === 0" class="dim loading">
           No commits match the filters

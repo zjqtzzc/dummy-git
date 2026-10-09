@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { assertNever } from "@dummy-git/shared";
-import { AppIcon, appIcon, IconSize } from "../logic/icons.js";
+import { AppIcon, appIcon, codicon, IconSize } from "../logic/icons.js";
 import { FilterKind } from "../logic/log/filter.js";
 import Icon from "../ui/Icon.vue";
 
@@ -11,13 +11,23 @@ import Icon from "../ui/Icon.vue";
 defineProps<{
   /** 生效中的条件，按钮上显示的值。缺席的就是没生效。 */
   values: Readonly<Partial<Record<FilterKind, string>>>;
+  /** 搜索框里的字。 */
+  text: string;
+  /** 查询进行中：搜索框右侧转圈（查询可能要一两秒，静默会被当成卡死）。 */
+  busy: boolean;
 }>();
 const emit = defineEmits<{
+  /** 搜索框每改一个字发一次；防抖由使用方做。 */
+  search: [text: string];
   /** 点了按钮：选一个值。 */
   open: [kind: FilterKind];
   /** 点了 ×：清除这一种条件。 */
   clear: [kind: FilterKind];
 }>();
+
+function onInput(event: Event): void {
+  if (event.target instanceof HTMLInputElement) emit("search", event.target.value);
+}
 
 const KINDS: readonly FilterKind[] = [FilterKind.Branch, FilterKind.User, FilterKind.Date, FilterKind.Paths];
 
@@ -41,7 +51,16 @@ function nameOf(kind: FilterKind): string {
   <div class="filter-bar">
     <label class="search">
       <Icon :icon="appIcon(AppIcon.Search)" :size="IconSize.Inline" />
-      <input type="text" placeholder="Text or hash" aria-label="Search by text or hash" />
+      <input
+        type="text"
+        placeholder="Text or hash"
+        aria-label="Search by text or hash"
+        :value="text"
+        @input="onInput"
+      />
+      <span v-if="busy" class="spin" title="Searching…">
+        <Icon :icon="codicon('loading')" :size="IconSize.Inline" />
+      </span>
     </label>
     <template v-for="kind in KINDS" :key="kind">
       <span v-if="values[kind] === undefined" class="filter">
@@ -101,6 +120,15 @@ function nameOf(kind: FilterKind): string {
   background: none;
   color: var(--vscode-input-foreground);
   font: inherit;
+}
+.spin {
+  display: flex;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .filter {
   flex-shrink: 0;
