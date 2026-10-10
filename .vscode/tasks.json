@@ -2,7 +2,7 @@
   "version": "2.0.0",
   "tasks": [
     {
-      // 调试目标 worktree：不存在就建，存在就重置到当前 HEAD 并清掉上次的改动。
+      // 调试目标仓库：按 .debug-scenario 记下的当前场景从零重建。
       "label": "debug:setup",
       "type": "shell",
       "command": "pnpm debug:setup",
@@ -67,7 +67,7 @@
       "problemMatcher": []
     },
     {
-      // preLaunchTask 用这个：先准备调试目标 worktree，build 阻塞到退出（保证 dist/ 已生成），
+      // preLaunchTask 用这个：先准备调试目标仓库，build 阻塞到退出（保证 dist/ 已生成），
       // 再依次起两个后台 watcher，各自的 matcher 负责标记「首轮编译完成」。
       "label": "dev",
       "dependsOn": ["debug:setup", "build", "watch:extension", "watch:webview"],

@@ -21,3 +21,6 @@ coverage/
 
 # 最近一次测试的完整输出，由 scripts/test.mjs 写入
 /.test-results/
+
+# 当前调试场景，由 scripts/debug/setup.mjs 写入
+/.debug-scenario
