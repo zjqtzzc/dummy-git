@@ -52,7 +52,8 @@ function toUri(root: string, side: DiffSide): vscode.Uri {
     case DiffSideKind.WorkingTree:
       return vscode.Uri.file(join(root, ...side.path.split("/")));
     case DiffSideKind.Revision:
-    case DiffSideKind.Missing: {
+    case DiffSideKind.Missing:
+    case DiffSideKind.Stage: {
       const { fsPath, query } = toRevisionUri(root, side);
       return vscode.Uri.file(fsPath).with({ scheme: REVISION_SCHEME, query });
     }

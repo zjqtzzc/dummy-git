@@ -1,3 +1,4 @@
+import { IndexStage } from "@dummy-git/shared";
 import { runRaw } from "../failure.js";
 import type { GitCommand } from "./command.js";
 import { LockPolicy } from "./lock.js";
@@ -31,4 +32,50 @@ export const getFileContent: GitCommand<
     });
     return result.stdout;
   },
+};
+
+/**
+ * 冲突时暂存区某一栏里的这个文件（合并编辑器的三栏）：`git cat-file --filters :<1|2|3>:<路径>`。
+ * 这一栏不存在时（两边都新增的没有基准）git 报错，调用方先用 `getConflictStages` 问清有哪几栏。
+ *
+ * 和提交里的内容不同，它不是永远不变的：标记已解决（`git add`）后这几栏就没了。
+ */
+export const getStageContent: GitCommand<
+  [repository: string, stage: IndexStage, path: string],
+  Buffer
+> = {
+  lock: LockPolicy.None,
+
+  execute: async (cli, repository, stage, path) => {
+    const result = await runRaw(cli, ["cat-file", "--filters", `:${STAGE_NUMBER[stage]}:${path}`], {
+      cwd: repository,
+    });
+    return result.stdout;
+  },
+};
+
+/** 冲突的这个路径在暂存区里有哪几栏：`git ls-files -u -z -- <路径>`。没有冲突时是空的。 */
+export const getConflictStages: GitCommand<[repository: string, path: string], IndexStage[]> = {
+  lock: LockPolicy.None,
+
+  execute: async (cli, repository, path) => {
+    const result = await runRaw(cli, ["ls-files", "-u", "-z", "--", `:(literal)${path}`], {
+      cwd: repository,
+    });
+    // 每条是 `<mode> <hash> <栏号>\t<路径>`。
+    const numbers = new Set(
+      result.stdout
+        .toString("utf8")
+        .split("\0")
+        .map((record) => record.split("\t")[0]?.split(" ")[2]),
+    );
+    return Object.values(IndexStage).filter((stage) => numbers.has(STAGE_NUMBER[stage]));
+  },
+};
+
+/** 栏在 git 里的编号：`:1:` 基准、`:2:` 我们这边、`:3:` 对方。 */
+const STAGE_NUMBER: Readonly<Record<IndexStage, string>> = {
+  [IndexStage.Base]: "1",
+  [IndexStage.Ours]: "2",
+  [IndexStage.Theirs]: "3",
 };

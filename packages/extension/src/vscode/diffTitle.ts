@@ -1,4 +1,4 @@
-import { assertNever, type DiffSide, DiffSideKind } from "@dummy-git/shared";
+import { assertNever, type DiffSide, DiffSideKind, IndexStage } from "@dummy-git/shared";
 
 /** 标签标题：`a.ts (1a2b3c4 ↔ 9c487b9)`，不存在的一边写 `none`，工作区文件写 `Working Tree`。 */
 export function diffTitle(left: DiffSide, right: DiffSide): string {
@@ -14,7 +14,22 @@ function sideLabel(side: DiffSide): string {
       return "none";
     case DiffSideKind.WorkingTree:
       return "Working Tree";
+    case DiffSideKind.Stage:
+      return stageLabel(side.stage);
     default:
       return assertNever(side, "sideLabel");
+  }
+}
+
+function stageLabel(stage: IndexStage): string {
+  switch (stage) {
+    case IndexStage.Base:
+      return "Base";
+    case IndexStage.Ours:
+      return "Ours";
+    case IndexStage.Theirs:
+      return "Theirs";
+    default:
+      return assertNever(stage, "stageLabel");
   }
 }

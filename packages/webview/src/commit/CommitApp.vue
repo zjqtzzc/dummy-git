@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { type DiffOpenMode, GitDomain } from "@dummy-git/shared";
+import { DiffOpenMode, GitDomain } from "@dummy-git/shared";
 import { VscodeCheckbox } from "@vscode-elements/elements/dist/vscode-checkbox/vscode-checkbox.js";
 import { VscodeTextarea } from "@vscode-elements/elements/dist/vscode-textarea/vscode-textarea.js";
 import { computed, onMounted, onUnmounted, ref } from "vue";
@@ -8,6 +8,7 @@ import { commitMessage, isBlankMessage } from "../logic/commit/message.js";
 import {
   type ConflictFile,
   conflictFiles,
+  opensMergeEditor,
   type WorkingFile,
   WorkingStatus,
   workingDiffSides,
@@ -239,8 +240,20 @@ async function load(repo: string): Promise<void> {
 
 /** 双击或回车打开，单击或上下键跟随（由 `mode` 区分）。 */
 async function openFile(entry: FileEntry, mode: DiffOpenMode): Promise<void> {
+  if (repo.value === undefined) return;
+  const conflict = conflicts.value.find((f) => f.path === entry.path);
+  if (conflict !== undefined) {
+    // 冲突文件只在双击时打开合并编辑器：单击跟随会让它一点就弹出来。
+    if (mode !== DiffOpenMode.Open || !opensMergeEditor(conflict.conflict)) return;
+    try {
+      await props.client.request("openMergeEditor", { repo: repo.value, path: entry.path });
+    } catch (cause) {
+      report(cause);
+    }
+    return;
+  }
   const file = files.value.find((f) => f.path === entry.path);
-  if (repo.value === undefined || file === undefined) return;
+  if (file === undefined) return;
   const { left, right } = workingDiffSides(head.value, file);
   try {
     await props.client.request("openDiff", { repo: repo.value, left, right, mode });

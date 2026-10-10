@@ -8,6 +8,7 @@ import {
 import { describe, expect, it } from "vitest";
 import {
   conflictFiles,
+  opensMergeEditor,
   WorkingStatus,
   workingDiffSides,
   workingFiles,
@@ -90,6 +91,13 @@ describe("workingGroups", () => {
     ]);
     expect(groups.map((g) => g.uncheckable === true)).toEqual([true, false, false]);
     expect(groups[0]?.entries[0]?.description).toBe("deleted by them");
+  });
+});
+
+describe("opensMergeEditor", () => {
+  it("两边都有内容的用合并编辑器，其余不用", () => {
+    const opens = Object.values(ConflictKind).filter(opensMergeEditor);
+    expect(opens).toEqual([ConflictKind.BothModified, ConflictKind.BothAdded]);
   });
 });
 

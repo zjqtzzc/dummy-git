@@ -204,6 +204,11 @@ export interface Commands {
     params: { text: string };
     result: null;
   };
+  /** 用 VS Code 的合并编辑器打开一个冲突文件：三栏取暂存区，结果写回工作区。 */
+  openMergeEditor: {
+    params: { repo: string; path: string };
+    result: null;
+  };
   /** 从 `items` 里选一项（原生 QuickPick），返回选中的序号；取消是 `null`。 */
   pick: {
     params: { title: string; items: readonly string[] };

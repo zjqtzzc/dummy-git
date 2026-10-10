@@ -1,4 +1,4 @@
-import { DiffSideKind } from "@dummy-git/shared";
+import { DiffSideKind, IndexStage } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
 import { parseRevisionUri, type RevisionSide, toRevisionUri } from "../revisionUri.js";
 
@@ -9,6 +9,9 @@ describe("revisionUri：一边 ↔ URI", () => {
     ["某个提交里的文件", { kind: DiffSideKind.Revision, hash: HASH, path: "src/a.ts" }],
     ["不存在", { kind: DiffSideKind.Missing, path: "src/a.ts" }],
     ["中文与空格路径", { kind: DiffSideKind.Revision, hash: HASH, path: "文档/说 明.md" }],
+    ["暂存区的基准栏", { kind: DiffSideKind.Stage, stage: IndexStage.Base, path: "a.ts" }],
+    ["暂存区的我们这边", { kind: DiffSideKind.Stage, stage: IndexStage.Ours, path: "a.ts" }],
+    ["暂存区的对方", { kind: DiffSideKind.Stage, stage: IndexStage.Theirs, path: "a.ts" }],
   ])("%s：拼出来再解析回去，得到原样", (_name, side) => {
     const { fsPath, query } = toRevisionUri("/repo", side);
     expect(parseRevisionUri("/repo", fsPath, query)).toEqual(side);
@@ -31,6 +34,7 @@ describe("revisionUri：一边 ↔ URI", () => {
     ["表达式", "rev=HEAD^"],
     ["不认识的查询", "ref=main"],
     ["空查询", ""],
+    ["不认识的栏", "stage=2"],
   ])("认不出的查询 → undefined，不猜（%s）", (_name, query) => {
     expect(parseRevisionUri("/repo", "/repo/a.ts", query)).toBeUndefined();
   });

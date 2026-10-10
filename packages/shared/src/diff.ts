@@ -4,8 +4,6 @@
  *
  * 放在 shared：左右怎么组合由界面决定，这个类型要跨过 webview ↔ 扩展的边界。
  * `path` 一律相对仓库根、以 `/` 分隔，扩展负责拼成绝对路径。
- *
- * 还会加的一种，在有消费者的阶段加进来：暂存区版本（第 7 阶段，冲突）：`:1:` / `:2:` / `:3:`。
  */
 export enum DiffSideKind {
   /** 某个提交里的这个文件。 */
@@ -14,6 +12,15 @@ export enum DiffSideKind {
   Missing = "missing",
   /** 工作区里的真实文件（Commit 面板）：普通 `file:` URI，能直接编辑保存。 */
   WorkingTree = "workingTree",
+  /** 冲突时暂存区里的某一栏（合并编辑器）。只由扩展构造，页面不发这一种。 */
+  Stage = "stage",
+}
+
+/** 冲突时暂存区里的三栏：基准、我们这边、对方。 */
+export enum IndexStage {
+  Base = "base",
+  Ours = "ours",
+  Theirs = "theirs",
 }
 
 export type DiffSide =
@@ -29,7 +36,8 @@ export type DiffSide =
       /** 只用来显示文件名、判断语言，没有内容。 */
       readonly path: string;
     }
-  | { readonly kind: DiffSideKind.WorkingTree; readonly path: string };
+  | { readonly kind: DiffSideKind.WorkingTree; readonly path: string }
+  | { readonly kind: DiffSideKind.Stage; readonly stage: IndexStage; readonly path: string };
 
 /** 打开 diff 的两种来由（需求第 1 阶段：所有文件树的点击规则）。 */
 export enum DiffOpenMode {

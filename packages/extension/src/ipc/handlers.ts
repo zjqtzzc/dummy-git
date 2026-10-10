@@ -3,7 +3,9 @@ import {
   ChangeKind,
   type DiffOpenMode,
   type DiffSide,
+  DiffSideKind,
   FileStatus,
+  IndexStage,
   type Ref,
   RefKind,
 } from "@dummy-git/shared";
@@ -28,6 +30,7 @@ import {
   forceDeleteBranch,
   getCommitDetails,
   getCommitFiles,
+  getConflictStages,
   getHead,
   getIdentity,
   getRefs,
@@ -49,6 +52,8 @@ import {
   switchBranch,
   unstage,
 } from "../git/commands/index.js";
+import type { MergeSides } from "../vscode/mergeEditor.js";
+import type { RevisionSide } from "../vscode/revisionUri.js";
 import { defineHandlers, type HandlerMap } from "./router.js";
 import { UserFacingError } from "./userFacingError.js";
 
@@ -90,6 +95,8 @@ export interface HandlerUi {
   readonly confirm: (message: string, action: string) => Promise<boolean>;
   /** 从几项里选一项（`vscode/pick.ts`）：返回选中的序号，取消是 `undefined`。 */
   readonly pick: (title: string, items: readonly PickItem[]) => Promise<number | undefined>;
+  /** 打开合并编辑器（`vscode/mergeEditor.ts`）。 */
+  readonly openMergeEditor: (root: string, sides: MergeSides) => Promise<void>;
   /** 写进系统剪贴板（`vscode/clipboard.ts`）。 */
   readonly copyText: (text: string) => Promise<void>;
   /** 状态栏上几秒的一句话：立刻完成、不走进度出口的操作说做完了什么。 */
@@ -244,6 +251,23 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         paths.map(({ path, folder }) => ({ label: `${folder ? "$(folder)" : "$(file)"} ${path}` })),
       );
       return (index === undefined ? undefined : paths[index]?.path) ?? null;
+    },
+    openMergeEditor: async ({ path }) => {
+      const root = repository.location.root;
+      const stages = await repository.run(getConflictStages, root, path);
+      if (stages.length === 0) throw new UserFacingError(`${path} has no conflict.`);
+      // 缺的那一栏（两边都新增的没有基准）给空内容。
+      const side = (stage: IndexStage): RevisionSide =>
+        stages.includes(stage)
+          ? { kind: DiffSideKind.Stage, stage, path }
+          : { kind: DiffSideKind.Missing, path };
+      await ui.openMergeEditor(root, {
+        base: side(IndexStage.Base),
+        current: side(IndexStage.Ours),
+        incoming: side(IndexStage.Theirs),
+        output: path,
+      });
+      return null;
     },
     copyText: async ({ text }) => {
       await ui.copyText(text);

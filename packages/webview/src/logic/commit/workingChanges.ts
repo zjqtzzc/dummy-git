@@ -42,6 +42,26 @@ export function conflictFiles(changes: readonly FileChange[]): ConflictFile[] {
   );
 }
 
+/**
+ * 双击能不能用合并编辑器解决：两边都有内容的才行（两边都改、两边都新增）。
+ * 一边删了一边改了、只有一边有的、两边都删了的，没有两栏可比，改为选保留或删除（`.notes/design/phase-7.md`）。
+ */
+export function opensMergeEditor(conflict: ConflictKind): boolean {
+  switch (conflict) {
+    case ConflictKind.BothModified:
+    case ConflictKind.BothAdded:
+      return true;
+    case ConflictKind.BothDeleted:
+    case ConflictKind.AddedByUs:
+    case ConflictKind.AddedByThem:
+    case ConflictKind.DeletedByUs:
+    case ConflictKind.DeletedByThem:
+      return false;
+    default:
+      return assertNever(conflict, "opensMergeEditor");
+  }
+}
+
 /** 冲突类型 → 文件名后面的灰字，照 `git status` 的叫法。 */
 const CONFLICT_TEXT: Readonly<Record<ConflictKind, string>> = {
   [ConflictKind.BothModified]: "both modified",

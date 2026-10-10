@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { assertNever, type DiffSide, DiffSideKind } from "@dummy-git/shared";
+import { assertNever, type DiffSide, DiffSideKind, IndexStage } from "@dummy-git/shared";
 import { relativeTo } from "./relativePath.js";
 
 /**
@@ -17,6 +17,7 @@ import { relativeTo } from "./relativePath.js";
  * | 边 | URI |
  * |---|---|
  * | 某个提交里的文件 | `dummygit:<绝对路径>?rev=<完整 hash>` |
+ * | 冲突时暂存区的一栏 | `dummygit:<绝对路径>?stage=base` / `ours` / `theirs` |
  * | 不存在 | `dummygit:<绝对路径>?empty` |
  *
  * 路径部分用文件的绝对路径：标签显示真实文件名，语言按扩展名识别。它只是名字，
@@ -24,15 +25,23 @@ import { relativeTo } from "./relativePath.js";
  */
 export const REVISION_SCHEME = "dummygit";
 
-/** 由我们提供内容的两种边。工作区文件用普通 `file:` URI，不经过这里。 */
+/** 由我们提供内容的几种边。工作区文件用普通 `file:` URI，不经过这里。 */
 export type RevisionSide = Extract<
   DiffSide,
-  { kind: DiffSideKind.Revision | DiffSideKind.Missing }
+  { kind: DiffSideKind.Revision | DiffSideKind.Missing | DiffSideKind.Stage }
 >;
 
 /** 查询部分的字样。改它等于让用户已开着的标签失效。 */
 const REV_KEY = "rev";
 const EMPTY_QUERY = "empty";
+const STAGE_KEY = "stage";
+
+/** 暂存区那一栏在 URI 里的写法（对外字符串，不用 `IndexStage` 的值）。 */
+const STAGE_NAME: Readonly<Record<IndexStage, string>> = {
+  [IndexStage.Base]: "base",
+  [IndexStage.Ours]: "ours",
+  [IndexStage.Theirs]: "theirs",
+};
 
 /** 完整 hash：SHA-1 40 位，SHA-256 64 位。不接受缩写与 `HEAD^` 这类表达式。 */
 const FULL_HASH = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
@@ -48,6 +57,8 @@ export function toRevisionUri(
       return { fsPath, query: `${REV_KEY}=${side.hash}` };
     case DiffSideKind.Missing:
       return { fsPath, query: EMPTY_QUERY };
+    case DiffSideKind.Stage:
+      return { fsPath, query: `${STAGE_KEY}=${STAGE_NAME[side.stage]}` };
     default:
       return assertNever(side, "toRevisionUri");
   }
@@ -67,6 +78,13 @@ export function parseRevisionUri(
   if (path === undefined || path === "") return undefined;
 
   if (query === EMPTY_QUERY) return { kind: DiffSideKind.Missing, path };
+
+  const stagePrefix = `${STAGE_KEY}=`;
+  if (query.startsWith(stagePrefix)) {
+    const name = query.slice(stagePrefix.length);
+    const stage = Object.values(IndexStage).find((candidate) => STAGE_NAME[candidate] === name);
+    return stage === undefined ? undefined : { kind: DiffSideKind.Stage, stage, path };
+  }
 
   const prefix = `${REV_KEY}=`;
   if (!query.startsWith(prefix)) return undefined;

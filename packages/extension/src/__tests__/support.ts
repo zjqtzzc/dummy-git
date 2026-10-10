@@ -109,3 +109,26 @@ export function plainLocation(root: string): RepositoryLocation {
   const gitDir = join(root, ".git");
   return { root, gitDir, commonDir: gitDir };
 }
+
+/** stash 取出冲突：`both.txt` 两边都改、`added.txt` 两边都新增、`clean.txt` 没有冲突。 */
+export function stashConflict(name: string): string {
+  const repo = makeTempRepo(name);
+  writeFileSync(join(repo, "both.txt"), "base\n");
+  git(repo, ["add", "-A"]);
+  git(repo, ["commit", "-qm", "base"]);
+  writeFileSync(join(repo, "both.txt"), "stashed\n");
+  writeFileSync(join(repo, "added.txt"), "stashed\n");
+  git(repo, ["add", "-A"]);
+  git(repo, ["stash", "-q"]);
+  writeFileSync(join(repo, "both.txt"), "committed\n");
+  writeFileSync(join(repo, "added.txt"), "committed\n");
+  writeFileSync(join(repo, "clean.txt"), "c\n");
+  git(repo, ["add", "-A"]);
+  git(repo, ["commit", "-qm", "other"]);
+  try {
+    git(repo, ["stash", "pop", "-q"]);
+  } catch {
+    // 冲突时 git 以非 0 退出，这正是要的现场。
+  }
+  return repo;
+}

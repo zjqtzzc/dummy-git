@@ -1,14 +1,15 @@
 import { assertNever, DiffSideKind } from "@dummy-git/shared";
 import * as vscode from "vscode";
 import type { Repository } from "../core/repository.js";
-import { getFileContent } from "../git/commands/index.js";
+import { getFileContent, getStageContent } from "../git/commands/index.js";
 import type { ErrorGate } from "./errorGate.js";
 import { parseRevisionUri, REVISION_SCHEME } from "./revisionUri.js";
 
 /**
- * `dummygit:` URI 的内容由这里提供：diff 里「某个提交里的文件」「不存在」两种边。
+ * `dummygit:` URI 的内容由这里提供：diff 里「某个提交里的文件」「冲突时暂存区的一栏」「不存在」。
  *
- * 只读。历史版本的内容由 hash 唯一决定、永远不变，所以不发任何变更事件。
+ * 只读，不发任何变更事件：历史版本由 hash 唯一决定、永远不变；暂存区的一栏在冲突期间不变，
+ * 解决后就没了（合并编辑器也就该关了）。
  *
  * ## 它是 VS Code 直接调用我们代码的入口
  *
@@ -33,14 +34,25 @@ export class RevisionFileSystem implements vscode.FileSystemProvider {
       case DiffSideKind.Missing:
         return new Uint8Array();
       case DiffSideKind.Revision:
-        try {
-          return await this.repository.run(getFileContent, root, side.hash, side.path);
-        } catch (error) {
-          this.errors.report(error);
-          throw vscode.FileSystemError.Unavailable(uri);
-        }
+        return this.read(uri, () =>
+          this.repository.run(getFileContent, root, side.hash, side.path),
+        );
+      case DiffSideKind.Stage:
+        // 标记已解决后这一栏就没了：还开着的合并编辑器再读会失败，照样交给错误关口。
+        return this.read(uri, () =>
+          this.repository.run(getStageContent, root, side.stage, side.path),
+        );
       default:
         return assertNever(side, "RevisionFileSystem.readFile");
+    }
+  }
+
+  private async read(uri: vscode.Uri, content: () => Promise<Uint8Array>): Promise<Uint8Array> {
+    try {
+      return await content();
+    } catch (error) {
+      this.errors.report(error);
+      throw vscode.FileSystemError.Unavailable(uri);
     }
   }
 

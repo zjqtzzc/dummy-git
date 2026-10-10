@@ -5,6 +5,7 @@ import {
   type DiffSide,
   DiffSideKind,
   GitDomain,
+  IndexStage,
   MessageKind,
   RefKind,
   ResponseKind,
@@ -18,9 +19,11 @@ import {
   makeTempRepo,
   makeTrackingRepos,
   plainLocation,
+  stashConflict,
 } from "../../__tests__/support.js";
 import { Repository } from "../../core/repository.js";
 import { getRepositoryLocation } from "../../git/commands/index.js";
+import type { MergeSides } from "../../vscode/mergeEditor.js";
 import { createHandlers, type HandlerUi, type PickItem } from "../handlers.js";
 import { UserFacingError } from "../userFacingError.js";
 
@@ -33,6 +36,7 @@ const NO_UI: HandlerUi = {
   notify: () => undefined,
   pick: () => Promise.reject(new Error("测试里不该弹选择框")),
   copyText: () => Promise.reject(new Error("测试里不该写剪贴板")),
+  openMergeEditor: () => Promise.reject(new Error("测试里不该打开合并编辑器")),
   openDiff: () => Promise.reject(new Error("测试里不该打开 diff")),
 };
 
@@ -965,5 +969,47 @@ describe("handlers.copyText", () => {
       repository.dispose();
     }
     expect(copied).toEqual(["a\nb"]);
+  });
+});
+
+describe("handlers.openMergeEditor", () => {
+  afterAll(cleanupTempRepos);
+  const open = async (path: string, file: string) => {
+    const repository = new Repository(plainLocation(path), cli);
+    const opened: MergeSides[] = [];
+    try {
+      await createHandlers(repository, {
+        ...NO_UI,
+        openMergeEditor: async (_root, sides) => {
+          opened.push(sides);
+        },
+      }).openMergeEditor({ repo: path, path: file });
+      return opened;
+    } finally {
+      repository.dispose();
+    }
+  };
+
+  it("三栏取暂存区，结果写回工作区的文件", async () => {
+    const repo = stashConflict("merge-editor");
+    expect(await open(repo, "both.txt")).toEqual([
+      {
+        base: { kind: DiffSideKind.Stage, stage: IndexStage.Base, path: "both.txt" },
+        current: { kind: DiffSideKind.Stage, stage: IndexStage.Ours, path: "both.txt" },
+        incoming: { kind: DiffSideKind.Stage, stage: IndexStage.Theirs, path: "both.txt" },
+        output: "both.txt",
+      },
+    ]);
+  });
+
+  it("两边都新增的没有基准：基准给空", async () => {
+    const [sides] = await open(stashConflict("merge-editor-added"), "added.txt");
+    expect(sides?.base).toEqual({ kind: DiffSideKind.Missing, path: "added.txt" });
+  });
+
+  it("没有冲突的文件：说明原因，不打开", async () => {
+    await expect(open(stashConflict("merge-editor-clean"), "clean.txt")).rejects.toThrow(
+      "clean.txt has no conflict.",
+    );
   });
 });

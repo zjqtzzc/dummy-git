@@ -60,6 +60,9 @@ function asDiffSide(value: unknown): DiffSide | undefined {
       return { kind: DiffSideKind.Missing, path };
     case DiffSideKind.WorkingTree:
       return { kind: DiffSideKind.WorkingTree, path };
+    // 暂存区的一栏只由扩展构造（合并编辑器），页面不发。
+    case DiffSideKind.Stage:
+      return undefined;
     default:
       return undefined;
   }
@@ -164,6 +167,11 @@ const PARAM_GUARDS = {
     const repo = raw["repo"];
     const hashes = asStringArray(raw["hashes"]);
     return typeof repo === "string" && hashes !== undefined ? { repo, hashes } : undefined;
+  },
+  openMergeEditor: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const path = raw["path"];
+    return typeof repo === "string" && typeof path === "string" ? { repo, path } : undefined;
   },
   copyText: (raw: Record<string, unknown>) => {
     const text = raw["text"];
