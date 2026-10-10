@@ -9,12 +9,6 @@
       "problemMatcher": []
     },
     {
-      "label": "build",
-      "type": "shell",
-      "command": "pnpm run build",
-      "problemMatcher": []
-    },
-    {
       "label": "watch:extension",
       "type": "shell",
       "command": "pnpm --filter dummy-git run watch",
@@ -44,6 +38,7 @@
       // vite watch 原生日志本身首轮/重建轮文案一致，不需要额外插件打标记。
       // 规则不加 ^ $：在 VS Code 的终端里 vite 输出带颜色码，实际一行是
       // `\e[36mbuilt in 634ms.\e[39m\r`，加了锚定就永远匹配不上，F5 卡在「正在等待 preLaunchTask」。
+      // 时间可能是毫秒也可能是秒（超过 1 秒写 `built in 1.37s.`，冷启动的首轮常这样），两种都要认。
       "problemMatcher": {
         "owner": "vite",
         "fileLocation": ["relative", "${workspaceFolder}/packages/webview"],
@@ -54,7 +49,7 @@
         "background": {
           "activeOnStart": true,
           "beginsPattern": "build started\\.\\.\\.",
-          "endsPattern": "built in \\d+ms\\."
+          "endsPattern": "built in [\\d.]+m?s\\."
         }
       }
     },
@@ -67,10 +62,10 @@
       "problemMatcher": []
     },
     {
-      // preLaunchTask 用这个：先准备调试目标仓库，build 阻塞到退出（保证 dist/ 已生成），
-      // 再依次起两个后台 watcher，各自的 matcher 负责标记「首轮编译完成」。
+      // preLaunchTask 用这个：先准备调试目标仓库，再依次起两个后台 watcher。
+      // 各自的 matcher 等到「首轮编译完成」才放行，dist/ 由它们从零建出，不需要先 build 一遍。
       "label": "dev",
-      "dependsOn": ["debug:setup", "build", "watch:extension", "watch:webview"],
+      "dependsOn": ["debug:setup", "watch:extension", "watch:webview"],
       "dependsOrder": "sequence",
       "problemMatcher": [],
       "group": { "kind": "build", "isDefault": true }
