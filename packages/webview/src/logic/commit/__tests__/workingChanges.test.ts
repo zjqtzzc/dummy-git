@@ -6,7 +6,13 @@ import {
   FileStatus,
 } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
-import { WorkingStatus, workingDiffSides, workingFiles, workingGroups } from "../workingChanges.js";
+import {
+  conflictFiles,
+  WorkingStatus,
+  workingDiffSides,
+  workingFiles,
+  workingGroups,
+} from "../workingChanges.js";
 
 const tracked = (
   path: string,
@@ -69,15 +75,32 @@ describe("workingFiles：只看 HEAD ↔ 工作区，两列合成一个", () => 
 });
 
 describe("workingGroups", () => {
-  it("已跟踪进 Changes，未跟踪进 Unversioned Files", () => {
-    const groups = workingGroups([
-      { path: "a.ts", status: WorkingStatus.Modified },
-      { path: "new.txt", status: WorkingStatus.Untracked },
-    ]);
+  it("冲突在最上面且不可勾选，已跟踪进 Changes，未跟踪进 Unversioned Files", () => {
+    const groups = workingGroups(
+      [{ path: "c.ts", conflict: ConflictKind.DeletedByThem }],
+      [
+        { path: "a.ts", status: WorkingStatus.Modified },
+        { path: "new.txt", status: WorkingStatus.Untracked },
+      ],
+    );
     expect(groups.map((g) => [g.label, g.entries.map((e) => `${e.letter} ${e.path}`)])).toEqual([
+      ["Conflicts", ["! c.ts"]],
       ["Changes", ["M a.ts"]],
       ["Unversioned Files", ["U new.txt"]],
     ]);
+    expect(groups.map((g) => g.uncheckable === true)).toEqual([true, false, false]);
+    expect(groups[0]?.entries[0]?.description).toBe("deleted by them");
+  });
+});
+
+describe("conflictFiles", () => {
+  it("只取未合并条目", () => {
+    expect(
+      conflictFiles([
+        { kind: ChangeKind.Untracked, path: "new.txt" },
+        { kind: ChangeKind.Conflict, path: "c.ts", conflict: ConflictKind.BothModified },
+      ]),
+    ).toEqual([{ path: "c.ts", conflict: ConflictKind.BothModified }]);
   });
 });
 

@@ -65,7 +65,10 @@ const visible = computed(() => {
   return rows.value.slice(range.start, range.end).map((row, i) => ({
     row,
     index: range.start + i,
-    check: checked === undefined ? undefined : checkState(row.node, checked),
+    check:
+      checked === undefined || row.node.uncheckable === true
+        ? undefined
+        : checkState(row.node, checked),
     icon: iconOf(row),
   }));
 });

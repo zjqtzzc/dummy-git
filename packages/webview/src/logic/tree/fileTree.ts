@@ -25,6 +25,8 @@ export interface FileEntry {
   readonly letter: string;
   /** 文件名与字母的颜色，CSS 颜色值。 */
   readonly color: string;
+  /** 文件名后面的灰字（冲突类型）。改名的写「renamed from …」，两者不会同时有。 */
+  readonly description?: string;
 }
 
 /**
@@ -35,6 +37,8 @@ export interface FileGroup {
   readonly id: string;
   readonly label?: string;
   readonly entries: readonly FileEntry[];
+  /** 整组不画复选框，勾选也不保留这组的路径（冲突组）。只对有标题的组有效。 */
+  readonly uncheckable?: boolean;
 }
 
 export enum FileNodeKind {
@@ -51,6 +55,8 @@ export type FileNode =
       readonly label: string;
       /** 组里一共几个文件。 */
       readonly count: number;
+      /** 见 `FileGroup.uncheckable`。 */
+      readonly uncheckable: boolean;
       readonly children: readonly FileNode[];
     }
   | {
@@ -90,6 +96,7 @@ export function buildFileTree(groups: readonly FileGroup[]): readonly FileNode[]
         id: group.id,
         label: group.label,
         count: group.entries.length,
+        uncheckable: group.uncheckable === true,
         children,
       },
     ];
@@ -173,7 +180,13 @@ function dirname(path: string): string {
 const GROUP_PREFIX = "\0";
 
 /** 文件树 → 基础树的节点：组没有图标、文字加粗；目录是文件夹图标；文件是 Seti 图标加改动字母。 */
-export function toTreeNodes(nodes: readonly FileNode[], light: boolean): TreeNode[] {
+export function toTreeNodes(
+  nodes: readonly FileNode[],
+  light: boolean,
+  uncheckable = false,
+): TreeNode[] {
+  // 不可勾选是组定的，组下面的每一层都带上。
+  const flag = uncheckable ? { uncheckable: true } : {};
   return nodes.map((node): TreeNode => {
     switch (node.kind) {
       case FileNodeKind.Group:
@@ -182,7 +195,8 @@ export function toTreeNodes(nodes: readonly FileNode[], light: boolean): TreeNod
           label: node.label,
           bold: true,
           description: fileCount(node.count),
-          children: toTreeNodes(node.children, light),
+          ...(node.uncheckable ? { uncheckable: true } : {}),
+          children: toTreeNodes(node.children, light, node.uncheckable),
         };
       case FileNodeKind.Folder:
         return {
@@ -191,7 +205,8 @@ export function toTreeNodes(nodes: readonly FileNode[], light: boolean): TreeNod
           icon: codicon("folder"),
           openedIcon: codicon("folder-opened"),
           description: fileCount(node.count),
-          children: toTreeNodes(node.children, light),
+          ...flag,
+          children: toTreeNodes(node.children, light, uncheckable),
         };
       case FileNodeKind.File: {
         const base = {
@@ -200,10 +215,13 @@ export function toTreeNodes(nodes: readonly FileNode[], light: boolean): TreeNod
           icon: { kind: IconKind.Seti, ...setiIcon(node.label, light) },
           color: node.entry.color,
           decoration: node.entry.letter,
+          ...flag,
         } as const;
-        return node.renamedFrom === undefined
-          ? base
-          : { ...base, description: `renamed from ${node.renamedFrom}` };
+        const description =
+          node.renamedFrom === undefined
+            ? node.entry.description
+            : `renamed from ${node.renamedFrom}`;
+        return description === undefined ? base : { ...base, description };
       }
       default:
         return assertNever(node, "toTreeNodes");
@@ -223,6 +241,10 @@ export function keepChecked(
   checked: ReadonlySet<string>,
   groups: readonly FileGroup[],
 ): ReadonlySet<string> {
-  const present = new Set(groups.flatMap((group) => group.entries.map((entry) => entry.path)));
+  const present = new Set(
+    groups
+      .filter((group) => group.uncheckable !== true)
+      .flatMap((group) => group.entries.map((entry) => entry.path)),
+  );
   return new Set([...checked].filter((path) => present.has(path)));
 }

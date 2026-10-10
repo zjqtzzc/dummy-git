@@ -6,6 +6,8 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { type Client, report } from "../logic/client.js";
 import { commitMessage, isBlankMessage } from "../logic/commit/message.js";
 import {
+  type ConflictFile,
+  conflictFiles,
   type WorkingFile,
   WorkingStatus,
   workingDiffSides,
@@ -41,7 +43,11 @@ const head = ref<string>();
 const files = ref<WorkingFile[]>([]);
 const tree = ref<InstanceType<typeof FileTree>>();
 const loaded = ref(false);
-const groups = computed(() => workingGroups(files.value));
+/** 冲突文件：单独成组，不能勾。 */
+const conflicts = ref<ConflictFile[]>([]);
+const groups = computed(() => workingGroups(conflicts.value, files.value));
+/** 有没有任何要显示的文件（冲突也算）。 */
+const hasFiles = computed(() => files.value.length > 0 || conflicts.value.length > 0);
 
 /**
  * 勾选的路径。默认都不勾（第二节第 4 条）。存进 `viewState`：面板收起再展开、重新加载窗口都还在。
@@ -223,6 +229,7 @@ async function load(repo: string): Promise<void> {
     if (mine !== latest) return;
     head.value = status.head;
     files.value = workingFiles(status.changes);
+    conflicts.value = conflictFiles(status.changes);
     setChecked(keepChecked(checked.value, groups.value));
     loaded.value = true;
   } catch (cause) {
@@ -302,20 +309,20 @@ onMounted(async () => {
       <ToolButton
         :icon="appIcon(AppIcon.ExpandAll)"
         title="Expand All"
-        :disabled="files.length === 0"
+        :disabled="!hasFiles"
         @click="tree?.expandAll()"
       />
       <ToolButton
         :icon="appIcon(AppIcon.CollapseAll)"
         title="Collapse All"
-        :disabled="files.length === 0"
+        :disabled="!hasFiles"
         @click="tree?.collapseAll()"
       />
     </div>
 
     <div class="files">
       <p v-if="!loaded" class="dim note">Loading…</p>
-      <p v-else-if="files.length === 0" class="dim note">No changes</p>
+      <p v-else-if="!hasFiles" class="dim note">No changes</p>
       <FileTree
         v-else
         ref="tree"

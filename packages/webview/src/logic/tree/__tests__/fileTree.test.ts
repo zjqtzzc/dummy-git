@@ -5,7 +5,9 @@ import {
   type FileNode,
   FileNodeKind,
   keepChecked,
+  toTreeNodes,
 } from "../fileTree.js";
+import type { TreeNode } from "../tree.js";
 
 const m = (path: string): FileEntry => ({ path, letter: "M", color: "red" });
 
@@ -91,6 +93,29 @@ describe("buildFileTree", () => {
       "  src/ (1)",
       "    c.ts",
     ]);
+  });
+});
+
+describe("不可勾选的组", () => {
+  it("组与它下面每一层都标不可勾选；其他组不标", () => {
+    const nodes = toTreeNodes(
+      buildFileTree([
+        { id: "conflicts", label: "Conflicts", entries: [m("src/a.ts")], uncheckable: true },
+        { id: "changes", label: "Changes", entries: [m("b.ts")] },
+      ]),
+      false,
+    );
+    const flags = (list: readonly TreeNode[]): (boolean | undefined)[] =>
+      list.flatMap((node) => [node.uncheckable, ...flags(node.children ?? [])]);
+    expect(flags(nodes)).toEqual([true, true, true, undefined, undefined]);
+  });
+
+  it("勾选不保留不可勾选组里的路径", () => {
+    const kept = keepChecked(new Set(["a.ts", "c.ts"]), [
+      { id: "conflicts", label: "Conflicts", entries: [m("c.ts")], uncheckable: true },
+      { id: "changes", label: "Changes", entries: [m("a.ts")] },
+    ]);
+    expect([...kept]).toEqual(["a.ts"]);
   });
 });
 

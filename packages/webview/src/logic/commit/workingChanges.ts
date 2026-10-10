@@ -1,6 +1,7 @@
 import {
   assertNever,
   ChangeKind,
+  ConflictKind,
   type DiffSide,
   DiffSideKind,
   type FileChange,
@@ -28,8 +29,42 @@ export interface WorkingFile {
   readonly status: WorkingStatus;
 }
 
+/** 一个冲突文件：`git status` 的未合并条目。 */
+export interface ConflictFile {
+  readonly path: string;
+  readonly conflict: ConflictKind;
+}
+
+/** 冲突文件，单独成组（`.notes/design/phase-7.md`）。 */
+export function conflictFiles(changes: readonly FileChange[]): ConflictFile[] {
+  return changes.flatMap((change) =>
+    change.kind === ChangeKind.Conflict ? [{ path: change.path, conflict: change.conflict }] : [],
+  );
+}
+
+/** 冲突类型 → 文件名后面的灰字，照 `git status` 的叫法。 */
+const CONFLICT_TEXT: Readonly<Record<ConflictKind, string>> = {
+  [ConflictKind.BothModified]: "both modified",
+  [ConflictKind.BothAdded]: "both added",
+  [ConflictKind.BothDeleted]: "both deleted",
+  [ConflictKind.AddedByUs]: "added by us",
+  [ConflictKind.AddedByThem]: "added by them",
+  [ConflictKind.DeletedByUs]: "deleted by us",
+  [ConflictKind.DeletedByThem]: "deleted by them",
+};
+
+function conflictEntry(file: ConflictFile): FileEntry {
+  return {
+    path: file.path,
+    // 同资源管理器与源代码管理：冲突是 `!` 加冲突色。
+    letter: "!",
+    color: "var(--vscode-gitDecoration-conflictingResourceForeground)",
+    description: CONFLICT_TEXT[file.conflict],
+  };
+}
+
 /**
- * 两列合成一个。冲突第 7 阶段才显示，这里跳过。
+ * 两列合成一个。冲突另算（`conflictFiles`），这里跳过。
  *
  * - 工作区删了：删除。但新增 / 复制后又在磁盘上删掉（`AD`），HEAD 与工作区都没有，
  *   不显示；改名后又删掉，算删除 HEAD 里的旧路径。
@@ -130,11 +165,22 @@ function toEntry(file: WorkingFile): FileEntry {
   return file.oldPath === undefined ? entry : { ...entry, oldPath: file.oldPath };
 }
 
-/** 分成 `Changes`（已跟踪）与 `Unversioned Files`（未跟踪）两组。空组由树自己不画。 */
-export function workingGroups(files: readonly WorkingFile[]): FileGroup[] {
+/**
+ * 从上到下 `Conflicts`（不可勾选）、`Changes`（已跟踪）、`Unversioned Files`（未跟踪）三组。空组由树自己不画。
+ */
+export function workingGroups(
+  conflicts: readonly ConflictFile[],
+  files: readonly WorkingFile[],
+): FileGroup[] {
   const tracked = files.filter((file) => file.status !== WorkingStatus.Untracked);
   const untracked = files.filter((file) => file.status === WorkingStatus.Untracked);
   return [
+    {
+      id: "conflicts",
+      label: "Conflicts",
+      entries: conflicts.map(conflictEntry),
+      uncheckable: true,
+    },
     { id: "changes", label: "Changes", entries: tracked.map(toEntry) },
     { id: "unversioned", label: "Unversioned Files", entries: untracked.map(toEntry) },
   ];
