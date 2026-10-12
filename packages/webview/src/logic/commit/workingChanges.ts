@@ -6,6 +6,8 @@ import {
   DiffSideKind,
   type FileChange,
   FileStatus,
+  MenuContextKey,
+  MenuNodeValue,
 } from "@dummy-git/shared";
 import type { FileEntry, FileGroup } from "../tree/fileTree.js";
 
@@ -73,8 +75,32 @@ const CONFLICT_TEXT: Readonly<Record<ConflictKind, string>> = {
   [ConflictKind.DeletedByThem]: "deleted by them",
 };
 
-function conflictEntry(file: ConflictFile): FileEntry {
+/** 冲突文件的右键菜单是哪一种：合并编辑器解决的、保留或删除的、只能删除的。 */
+function conflictMenu(conflict: ConflictKind): string {
+  switch (conflict) {
+    case ConflictKind.BothModified:
+    case ConflictKind.BothAdded:
+      return MenuNodeValue.ConflictMerge;
+    case ConflictKind.BothDeleted:
+      return MenuNodeValue.ConflictBothDeleted;
+    case ConflictKind.AddedByUs:
+    case ConflictKind.AddedByThem:
+    case ConflictKind.DeletedByUs:
+    case ConflictKind.DeletedByThem:
+      return MenuNodeValue.ConflictDeleted;
+    default:
+      return assertNever(conflict, "conflictMenu");
+  }
+}
+
+/** 一个文件的右键菜单上下文：和 `package.json` 菜单项的 `when` 条件对应。 */
+function fileMenu(repo: string, path: string, node: string): Readonly<Record<string, string>> {
+  return { [MenuContextKey.Node]: node, [MenuContextKey.Repo]: repo, [MenuContextKey.Path]: path };
+}
+
+function conflictEntry(repo: string, file: ConflictFile): FileEntry {
   return {
+    menu: fileMenu(repo, file.path, conflictMenu(file.conflict)),
     path: file.path,
     // 同资源管理器与源代码管理：冲突是 `!` 加冲突色。
     letter: "!",
@@ -180,8 +206,10 @@ const DISPLAY: Readonly<
   },
 };
 
-function toEntry(file: WorkingFile): FileEntry {
-  const entry = { path: file.path, ...DISPLAY[file.status] };
+function toEntry(repo: string, file: WorkingFile): FileEntry {
+  const node =
+    file.status === WorkingStatus.Untracked ? MenuNodeValue.Untracked : MenuNodeValue.Change;
+  const entry = { path: file.path, ...DISPLAY[file.status], menu: fileMenu(repo, file.path, node) };
   return file.oldPath === undefined ? entry : { ...entry, oldPath: file.oldPath };
 }
 
@@ -189,6 +217,7 @@ function toEntry(file: WorkingFile): FileEntry {
  * 从上到下 `Conflicts`（不可勾选）、`Changes`（已跟踪）、`Unversioned Files`（未跟踪）三组。空组由树自己不画。
  */
 export function workingGroups(
+  repo: string,
   conflicts: readonly ConflictFile[],
   files: readonly WorkingFile[],
 ): FileGroup[] {
@@ -198,11 +227,15 @@ export function workingGroups(
     {
       id: "conflicts",
       label: "Conflicts",
-      entries: conflicts.map(conflictEntry),
+      entries: conflicts.map((file) => conflictEntry(repo, file)),
       uncheckable: true,
     },
-    { id: "changes", label: "Changes", entries: tracked.map(toEntry) },
-    { id: "unversioned", label: "Unversioned Files", entries: untracked.map(toEntry) },
+    { id: "changes", label: "Changes", entries: tracked.map((file) => toEntry(repo, file)) },
+    {
+      id: "unversioned",
+      label: "Unversioned Files",
+      entries: untracked.map((file) => toEntry(repo, file)),
+    },
   ];
 }
 

@@ -4,6 +4,8 @@ import {
   DiffSideKind,
   type FileChange,
   FileStatus,
+  MenuContextKey,
+  MenuNodeValue,
 } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
 import {
@@ -78,6 +80,7 @@ describe("workingFiles：只看 HEAD ↔ 工作区，两列合成一个", () => 
 describe("workingGroups", () => {
   it("冲突在最上面且不可勾选，已跟踪进 Changes，未跟踪进 Unversioned Files", () => {
     const groups = workingGroups(
+      "/repo",
       [{ path: "c.ts", conflict: ConflictKind.DeletedByThem }],
       [
         { path: "a.ts", status: WorkingStatus.Modified },
@@ -91,6 +94,24 @@ describe("workingGroups", () => {
     ]);
     expect(groups.map((g) => g.uncheckable === true)).toEqual([true, false, false]);
     expect(groups[0]?.entries[0]?.description).toBe("deleted by them");
+    // 右键菜单：冲突按类型、已跟踪是 change、未跟踪是 untracked，都带仓库与路径。
+    expect(groups.flatMap((g) => g.entries.map((e) => e.menu))).toEqual([
+      {
+        [MenuContextKey.Node]: MenuNodeValue.ConflictDeleted,
+        [MenuContextKey.Repo]: "/repo",
+        [MenuContextKey.Path]: "c.ts",
+      },
+      {
+        [MenuContextKey.Node]: MenuNodeValue.Change,
+        [MenuContextKey.Repo]: "/repo",
+        [MenuContextKey.Path]: "a.ts",
+      },
+      {
+        [MenuContextKey.Node]: MenuNodeValue.Untracked,
+        [MenuContextKey.Repo]: "/repo",
+        [MenuContextKey.Path]: "new.txt",
+      },
+    ]);
   });
 });
 

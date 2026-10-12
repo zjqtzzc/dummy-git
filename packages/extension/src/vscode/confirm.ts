@@ -24,3 +24,13 @@ export async function confirmRollback(paths: readonly string[]): Promise<boolean
 export async function confirm(message: string, action: string): Promise<boolean> {
   return (await vscode.window.showWarningMessage(message, { modal: true }, action)) === action;
 }
+
+/** 几个按钮选一个（原生模态框，另有自带的取消）：返回按钮的序号，取消是 `undefined`。 */
+export async function choose(
+  message: string,
+  actions: readonly string[],
+): Promise<number | undefined> {
+  const picked = await vscode.window.showWarningMessage(message, { modal: true }, ...actions);
+  const index = picked === undefined ? -1 : actions.indexOf(picked);
+  return index === -1 ? undefined : index;
+}

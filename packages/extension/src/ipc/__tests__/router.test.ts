@@ -54,6 +54,10 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     pickPath: async () => null,
     copyText: async () => null,
     openMergeEditor: async () => null,
+    markResolved: async () => null,
+    removeConflictFile: async () => null,
+    resolveDeletion: async () => null,
+    deleteUntracked: async () => null,
     ...overrides,
   });
 }
@@ -368,6 +372,22 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
           return null;
         },
         openMergeEditor: async () => {
+          ran = true;
+          return null;
+        },
+        markResolved: async () => {
+          ran = true;
+          return null;
+        },
+        removeConflictFile: async () => {
+          ran = true;
+          return null;
+        },
+        resolveDeletion: async () => {
+          ran = true;
+          return null;
+        },
+        deleteUntracked: async () => {
           ran = true;
           return null;
         },

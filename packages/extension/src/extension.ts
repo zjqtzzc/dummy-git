@@ -4,7 +4,7 @@ import { GitCli } from "./git/cli.js";
 import { createHandlers } from "./ipc/handlers.js";
 import { Router, type Transport } from "./ipc/router.js";
 import { copyText } from "./vscode/clipboard.js";
-import { confirm, confirmRollback } from "./vscode/confirm.js";
+import { choose, confirm, confirmRollback } from "./vscode/confirm.js";
 import { openDiff } from "./vscode/diff.js";
 import { ErrorGate } from "./vscode/errorGate.js";
 import { resolveGitPath } from "./vscode/gitPath.js";
@@ -50,6 +50,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       transport,
       createHandlers(repository, {
         askBranchName,
+        choose,
         confirm,
         confirmRollback,
         copyText,
@@ -94,6 +95,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     registerMenuCommands(
       createHandlers(repository, {
         askBranchName,
+        choose,
         confirm,
         confirmRollback,
         copyText,

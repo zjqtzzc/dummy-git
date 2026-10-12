@@ -168,6 +168,26 @@ const PARAM_GUARDS = {
     const hashes = asStringArray(raw["hashes"]);
     return typeof repo === "string" && hashes !== undefined ? { repo, hashes } : undefined;
   },
+  markResolved: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const path = raw["path"];
+    return typeof repo === "string" && typeof path === "string" ? { repo, path } : undefined;
+  },
+  removeConflictFile: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const path = raw["path"];
+    return typeof repo === "string" && typeof path === "string" ? { repo, path } : undefined;
+  },
+  resolveDeletion: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const path = raw["path"];
+    return typeof repo === "string" && typeof path === "string" ? { repo, path } : undefined;
+  },
+  deleteUntracked: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const path = raw["path"];
+    return typeof repo === "string" && typeof path === "string" ? { repo, path } : undefined;
+  },
   openMergeEditor: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const path = raw["path"];

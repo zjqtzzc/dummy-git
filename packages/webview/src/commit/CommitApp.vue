@@ -46,7 +46,7 @@ const tree = ref<InstanceType<typeof FileTree>>();
 const loaded = ref(false);
 /** 冲突文件：单独成组，不能勾。 */
 const conflicts = ref<ConflictFile[]>([]);
-const groups = computed(() => workingGroups(conflicts.value, files.value));
+const groups = computed(() => workingGroups(repo.value ?? "", conflicts.value, files.value));
 /** 有没有任何要显示的文件（冲突也算）。 */
 const hasFiles = computed(() => files.value.length > 0 || conflicts.value.length > 0);
 
@@ -244,9 +244,11 @@ async function openFile(entry: FileEntry, mode: DiffOpenMode): Promise<void> {
   const conflict = conflicts.value.find((f) => f.path === entry.path);
   if (conflict !== undefined) {
     // 冲突文件只在双击时打开合并编辑器：单击跟随会让它一点就弹出来。
-    if (mode !== DiffOpenMode.Open || !opensMergeEditor(conflict.conflict)) return;
+    if (mode !== DiffOpenMode.Open) return;
+    // 两边都有内容的进合并编辑器；一边删了的、两边都删了的，扩展弹框选保留或删除。
+    const command = opensMergeEditor(conflict.conflict) ? "openMergeEditor" : "resolveDeletion";
     try {
-      await props.client.request("openMergeEditor", { repo: repo.value, path: entry.path });
+      await props.client.request(command, { repo: repo.value, path: entry.path });
     } catch (cause) {
       report(cause);
     }

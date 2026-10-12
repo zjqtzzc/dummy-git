@@ -98,6 +98,30 @@
       {
         "command": "dummyGit.copyHash",
         "title": "Copy Hash"
+      },
+      {
+        "command": "dummyGit.openMergeEditor",
+        "title": "Open in Merge Editor"
+      },
+      {
+        "command": "dummyGit.markResolved",
+        "title": "Mark as Resolved"
+      },
+      {
+        "command": "dummyGit.keepFile",
+        "title": "Keep"
+      },
+      {
+        "command": "dummyGit.removeConflictFile",
+        "title": "Delete File"
+      },
+      {
+        "command": "dummyGit.rollbackFile",
+        "title": "Rollback"
+      },
+      {
+        "command": "dummyGit.deleteUntracked",
+        "title": "Delete"
       }
     ],
     "menus": {
@@ -161,6 +185,41 @@
           "command": "dummyGit.copyHash",
           "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'commit'",
           "group": "1_switch@1"
+        },
+        {
+          "command": "dummyGit.openMergeEditor",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'conflictMerge'",
+          "group": "1_switch@1"
+        },
+        {
+          "command": "dummyGit.markResolved",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'conflictMerge'",
+          "group": "3_edit@1"
+        },
+        {
+          "command": "dummyGit.keepFile",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'conflictDeleted'",
+          "group": "3_edit@1"
+        },
+        {
+          "command": "dummyGit.removeConflictFile",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'conflictDeleted'",
+          "group": "4_delete@1"
+        },
+        {
+          "command": "dummyGit.removeConflictFile",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'conflictBothDeleted'",
+          "group": "4_delete@1"
+        },
+        {
+          "command": "dummyGit.rollbackFile",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'change'",
+          "group": "4_delete@1"
+        },
+        {
+          "command": "dummyGit.deleteUntracked",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'untracked'",
+          "group": "4_delete@1"
         }
       ],
       "commandPalette": [
@@ -210,6 +269,30 @@
         },
         {
           "command": "dummyGit.copyHash",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.openMergeEditor",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.markResolved",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.keepFile",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.removeConflictFile",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.rollbackFile",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.deleteUntracked",
           "when": "false"
         }
       ]

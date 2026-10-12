@@ -86,6 +86,10 @@ export const _baseline = defineHandlers({
   pickPath: async (): Promise<string | null> => null,
   copyText: openDiffStub,
   openMergeEditor: openDiffStub,
+  markResolved: openDiffStub,
+  removeConflictFile: openDiffStub,
+  resolveDeletion: openDiffStub,
+  deleteUntracked: openDiffStub,
 });
 
 /**

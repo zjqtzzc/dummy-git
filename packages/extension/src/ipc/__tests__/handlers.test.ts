@@ -33,6 +33,7 @@ const NO_UI: HandlerUi = {
   withProgress: (_title, task) => task(),
   askBranchName: () => Promise.reject(new Error("测试里不该弹输入框")),
   confirm: () => Promise.reject(new Error("测试里不该弹确认")),
+  choose: () => Promise.reject(new Error("测试里不该弹选择")),
   notify: () => undefined,
   pick: () => Promise.reject(new Error("测试里不该弹选择框")),
   copyText: () => Promise.reject(new Error("测试里不该写剪贴板")),
@@ -1011,5 +1012,84 @@ describe("handlers.openMergeEditor", () => {
     await expect(open(stashConflict("merge-editor-clean"), "clean.txt")).rejects.toThrow(
       "clean.txt has no conflict.",
     );
+  });
+});
+
+describe("解决冲突：markResolved / removeConflictFile / resolveDeletion / deleteUntracked", () => {
+  afterAll(cleanupTempRepos);
+  /** 跑一次，确认框回答 `sure`、选择框回答 `pick`；返回问了什么。 */
+  const act = async (
+    path: string,
+    run: (h: ReturnType<typeof createHandlers>) => Promise<unknown>,
+    answers: { sure?: boolean; pick?: number } = {},
+  ) => {
+    const repository = new Repository(plainLocation(path), cli);
+    const asked: string[] = [];
+    try {
+      await run(
+        createHandlers(repository, {
+          ...NO_UI,
+          confirm: async (message) => {
+            asked.push(message);
+            return answers.sure ?? false;
+          },
+          choose: async (message, actions) => {
+            asked.push(`${message} [${actions.join(" / ")}]`);
+            return answers.pick;
+          },
+        }),
+      );
+      return asked;
+    } finally {
+      repository.dispose();
+    }
+  };
+  const status = (repo: string, file: string) =>
+    git(repo, ["status", "--porcelain", "--", file]).trimEnd();
+
+  it("还有冲突标记：先问，取消就不标记", async () => {
+    const repo = stashConflict("resolve-markers");
+    const asked = await act(repo, (h) => h.markResolved({ repo, path: "both.txt" }));
+    expect(asked).toEqual(["both.txt still contains conflict markers. Mark as resolved anyway?"]);
+    expect(status(repo, "both.txt")).toBe("UU both.txt");
+  });
+
+  it("没有冲突标记了：直接标记，移出冲突", async () => {
+    const repo = stashConflict("resolve-clean");
+    writeFileSync(join(repo, "both.txt"), "merged\n");
+    expect(await act(repo, (h) => h.markResolved({ repo, path: "both.txt" }))).toEqual([]);
+    expect(status(repo, "both.txt")).toBe("M  both.txt");
+  });
+
+  it("双击一边删了的：选 Keep 留下工作区那份，选 Delete File 删掉", async () => {
+    const kept = stashConflict("resolve-keep");
+    const asked = await act(kept, (h) => h.resolveDeletion({ repo: kept, path: "gone.txt" }), {
+      pick: 0,
+    });
+    expect(asked).toEqual([
+      "gone.txt was changed on our side and deleted on theirs. [Keep / Delete File]",
+    ]);
+    expect(status(kept, "gone.txt")).toBe("");
+    const removed = stashConflict("resolve-delete");
+    await act(removed, (h) => h.resolveDeletion({ repo: removed, path: "gone.txt" }), { pick: 1 });
+    expect(status(removed, "gone.txt")).toBe("D  gone.txt");
+  });
+
+  it("右键 Delete File：删掉并移出冲突", async () => {
+    const repo = stashConflict("resolve-remove");
+    await act(repo, (h) => h.removeConflictFile({ repo, path: "gone.txt" }));
+    expect(status(repo, "gone.txt")).toBe("D  gone.txt");
+  });
+
+  it("删未跟踪文件：确认后从磁盘删掉，取消就留着", async () => {
+    const repo = makeTempRepo("delete-untracked");
+    writeFileSync(join(repo, "junk.txt"), "x");
+    await act(repo, (h) => h.deleteUntracked({ repo, path: "junk.txt" }));
+    expect(status(repo, "junk.txt")).toBe("?? junk.txt");
+    const asked = await act(repo, (h) => h.deleteUntracked({ repo, path: "junk.txt" }), {
+      sure: true,
+    });
+    expect(asked).toEqual(["Delete junk.txt? This cannot be undone."]);
+    expect(status(repo, "junk.txt")).toBe("");
   });
 });

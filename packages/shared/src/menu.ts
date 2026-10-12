@@ -23,6 +23,8 @@ export const MenuContextKey = {
   Stash: "dummyGit.stash",
   /** 提交的 hash（Log 提交列表的一行）。 */
   Hash: "dummyGit.hash",
+  /** 文件路径，相对仓库根（Commit 面板的一个文件）。 */
+  Path: "dummyGit.path",
 } as const;
 
 /** `MenuContextKey.Node` 的取值。 */
@@ -31,4 +33,14 @@ export const MenuNodeValue = {
   RemoteBranch: "remoteBranch",
   Stash: "stash",
   Commit: "commit",
+  /** 冲突文件，两边都有内容（合并编辑器解决）。 */
+  ConflictMerge: "conflictMerge",
+  /** 冲突文件，一边删了、一边改了或只有一边新增（保留或删除）。 */
+  ConflictDeleted: "conflictDeleted",
+  /** 冲突文件，两边都删了（只能删除）。 */
+  ConflictBothDeleted: "conflictBothDeleted",
+  /** Changes 组里的已跟踪改动。 */
+  Change: "change",
+  /** 未跟踪文件。 */
+  Untracked: "untracked",
 } as const;

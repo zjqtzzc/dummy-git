@@ -36,6 +36,11 @@ function menuCommand<K extends CommandName>(
   };
 }
 
+/** Commit 面板一个文件的菜单项：仓库与路径。 */
+function fileParams(context: Record<string, unknown>): Record<string, unknown> {
+  return { repo: context[MenuContextKey.Repo], path: context[MenuContextKey.Path] };
+}
+
 /** stash 那一行的菜单项：仓库与 stash 的 hash。 */
 function stashParams(context: Record<string, unknown>): Record<string, unknown> {
   return { repo: context[MenuContextKey.Repo], hash: context[MenuContextKey.Stash] };
@@ -80,6 +85,16 @@ const MENU_COMMANDS: readonly MenuCommand[] = [
   menuCommand("dummyGit.copyHash", "copyText", (context) => ({
     text: context[MenuContextKey.Hash],
   })),
+  menuCommand("dummyGit.openMergeEditor", "openMergeEditor", fileParams),
+  menuCommand("dummyGit.markResolved", "markResolved", fileParams),
+  // Keep 就是标记已解决：留下工作区里的那份（一边删了的冲突，文件里本来没有冲突标记）。
+  menuCommand("dummyGit.keepFile", "markResolved", fileParams),
+  menuCommand("dummyGit.removeConflictFile", "removeConflictFile", fileParams),
+  menuCommand("dummyGit.rollbackFile", "rollback", (context) => ({
+    repo: context[MenuContextKey.Repo],
+    paths: [context[MenuContextKey.Path]],
+  })),
+  menuCommand("dummyGit.deleteUntracked", "deleteUntracked", fileParams),
   menuCommand("dummyGit.popStash", "popStash", stashParams),
   menuCommand("dummyGit.applyStash", "applyStash", stashParams),
   menuCommand("dummyGit.dropStash", "dropStash", stashParams),

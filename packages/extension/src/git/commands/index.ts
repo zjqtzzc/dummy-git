@@ -40,6 +40,8 @@
  * | `popStash` | `stash list …` 找序号 + `stash pop stash@{n}` | — | — |
  * | `dropStash` | `stash list …` 找序号 + `stash drop stash@{n}` | — | — |
  * | `unstage` | `restore --staged -- <路径…>` | `git restore` | 2.23 |
+ * | `markResolvedPath` | `add -- :(literal)<路径>` | — | — |
+ * | `removeConflictPath` | `rm -q -- :(literal)<路径>` | — | — |
  * | `rollback` | `restore --source=HEAD --staged --worktree -- <路径…>` | `git restore` | **2.23** |
  * | `getSkeleton` | `-c log.showSignature=false log --format=… --max-count=10000 HEAD --branches --remotes --tags --date-order --`；按分支过滤时起点换成那个分支 | — | — |
  * | `getCommitDetails` | `-c log.showSignature=false log --format=… --no-walk --stdin` | — | — |
@@ -95,6 +97,7 @@ export {
 export { PushKind, type PushResult, push } from "./push.js";
 export { getHead, getRefs } from "./refs.js";
 export { fetchAll, listRemotes } from "./remote.js";
+export { markResolvedPath, removeConflictPath } from "./resolve.js";
 export { rollback } from "./rollback.js";
 export {
   applyStash,

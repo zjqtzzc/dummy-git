@@ -110,18 +110,24 @@ export function plainLocation(root: string): RepositoryLocation {
   return { root, gitDir, commonDir: gitDir };
 }
 
-/** stash 取出冲突：`both.txt` 两边都改、`added.txt` 两边都新增、`clean.txt` 没有冲突。 */
+/**
+ * stash 取出冲突：`both.txt` 两边都改、`added.txt` 两边都新增、`gone.txt` stash 里删了 HEAD 改了（deleted by them）、
+ * `clean.txt` 没有冲突。stash 取出时「我方」是 HEAD，「对方」是 stash。
+ */
 export function stashConflict(name: string): string {
   const repo = makeTempRepo(name);
   writeFileSync(join(repo, "both.txt"), "base\n");
+  writeFileSync(join(repo, "gone.txt"), "base\n");
   git(repo, ["add", "-A"]);
   git(repo, ["commit", "-qm", "base"]);
   writeFileSync(join(repo, "both.txt"), "stashed\n");
   writeFileSync(join(repo, "added.txt"), "stashed\n");
+  git(repo, ["rm", "-q", "gone.txt"]);
   git(repo, ["add", "-A"]);
   git(repo, ["stash", "-q"]);
   writeFileSync(join(repo, "both.txt"), "committed\n");
   writeFileSync(join(repo, "added.txt"), "committed\n");
+  writeFileSync(join(repo, "gone.txt"), "committed\n");
   writeFileSync(join(repo, "clean.txt"), "c\n");
   git(repo, ["add", "-A"]);
   git(repo, ["commit", "-qm", "other"]);

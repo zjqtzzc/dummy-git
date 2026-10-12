@@ -127,6 +127,28 @@ export interface Commands {
     params: { repo: string; paths: readonly string[] };
     result: null;
   };
+  /**
+   * 冲突文件标记已解决（右键 Mark as Resolved、Keep）：`git add`。文件里还有冲突标记时扩展先问。
+   */
+  markResolved: {
+    params: { repo: string; path: string };
+    result: null;
+  };
+  /** 冲突文件删掉（右键 Delete File）：`git rm`，同时标记已解决。 */
+  removeConflictFile: {
+    params: { repo: string; path: string };
+    result: null;
+  };
+  /** 双击一边删了的冲突文件：扩展弹框选 Keep / Delete File（两边都删了的只有 Delete File）。 */
+  resolveDeletion: {
+    params: { repo: string; path: string };
+    result: null;
+  };
+  /** 从磁盘删掉一个未跟踪文件（右键 Delete），扩展先确认。 */
+  deleteUntracked: {
+    params: { repo: string; path: string };
+    result: null;
+  };
   /** 取全部远程，清掉远程已删除的分支。 */
   fetch: {
     params: { repo: string };

@@ -1,6 +1,9 @@
+import { readFile, rm } from "node:fs/promises";
+import { join } from "node:path";
 import {
   assertNever,
   ChangeKind,
+  ConflictKind,
   type DiffOpenMode,
   type DiffSide,
   DiffSideKind,
@@ -9,6 +12,7 @@ import {
   type Ref,
   RefKind,
 } from "@dummy-git/shared";
+import { hasConflictMarkers } from "../core/conflictMarkers.js";
 import { defaultPushTarget, PushTargetKind } from "../core/pushTarget.js";
 import type { Repository } from "../core/repository.js";
 import {
@@ -41,10 +45,12 @@ import {
   listAuthors,
   listPaths,
   listRemotes,
+  markResolvedPath,
   matchCommits,
   PushKind,
   popStash,
   push,
+  removeConflictPath,
   renameBranch,
   rollback,
   stashAll,
@@ -93,6 +99,8 @@ export interface PickItem {
 export interface HandlerUi {
   /** 删除前的确认（原生模态框）：`action` 是确认按钮，`true` 是确认。 */
   readonly confirm: (message: string, action: string) => Promise<boolean>;
+  /** 原生模态框，几个按钮选一个：返回按钮的序号，取消是 `undefined`。 */
+  readonly choose: (message: string, actions: readonly string[]) => Promise<number | undefined>;
   /** 从几项里选一项（`vscode/pick.ts`）：返回选中的序号，取消是 `undefined`。 */
   readonly pick: (title: string, items: readonly PickItem[]) => Promise<number | undefined>;
   /** 打开合并编辑器（`vscode/mergeEditor.ts`）。 */
@@ -149,6 +157,22 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       return taken.has(input) ? `A branch named '${input}' already exists.` : undefined;
     });
     return name === "" || name === value ? undefined : name;
+  }
+
+  /**
+   * 标记已解决（Mark as Resolved、Keep 都走这里）：文件里还有冲突标记就先问；没有这个文件（删了）不查。
+   */
+  async function markResolved(path: string): Promise<void> {
+    const root = repository.location.root;
+    const text = await readFile(join(root, ...path.split("/")), "utf8").catch(() => "");
+    if (hasConflictMarkers(text)) {
+      const sure = await ui.confirm(
+        `${basename(path)} still contains conflict markers. Mark as resolved anyway?`,
+        "Mark as Resolved",
+      );
+      if (!sure) return;
+    }
+    await repository.run(markResolvedPath, root, path);
   }
 
   /** 这条 stash 的说明（确认框与完成消息用）。已经不在时直接说出来。 */
@@ -537,6 +561,40 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       ui.notify(await repository.run(dropStash, repository.location.root, hash));
       return null;
     },
+    markResolved: async ({ path }) => {
+      await markResolved(path);
+      return null;
+    },
+    removeConflictFile: async ({ path }) => {
+      await repository.run(removeConflictPath, repository.location.root, path);
+      return null;
+    },
+    resolveDeletion: async ({ path }) => {
+      const root = repository.location.root;
+      const { changes } = await repository.run(getStatus, root);
+      const change = changes.find((c) => c.kind === ChangeKind.Conflict && c.path === path);
+      if (change?.kind !== ChangeKind.Conflict)
+        throw new UserFacingError(`${path} has no conflict.`);
+      const name = basename(path);
+      if (change.conflict === ConflictKind.BothDeleted) {
+        const index = await ui.choose(`Both sides deleted ${name}.`, ["Delete File"]);
+        if (index === 0) await repository.run(removeConflictPath, root, path);
+        return null;
+      }
+      const index = await ui.choose(deletionQuestion(name, change.conflict), [
+        "Keep",
+        "Delete File",
+      ]);
+      if (index === 0) await markResolved(path);
+      if (index === 1) await repository.run(removeConflictPath, root, path);
+      return null;
+    },
+    deleteUntracked: async ({ path }) => {
+      const sure = await ui.confirm(`Delete ${basename(path)}? This cannot be undone.`, "Delete");
+      // 未跟踪的文件 git 不管，直接删磁盘上的；watcher 看到变化就刷新。
+      if (sure) await rm(join(repository.location.root, ...path.split("/")));
+      return null;
+    },
     rollback: async ({ paths }) => {
       // 未跟踪文件不归 Rollback 管（第 7 阶段右键 Delete）。一个已跟踪的都没有就什么都不做。
       const { tracked, withOldPaths } = await inspect(paths);
@@ -545,6 +603,30 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       return null;
     },
   });
+}
+
+/** 双击一边删了的冲突文件时，弹框里的那句话。 */
+function deletionQuestion(name: string, conflict: ConflictKind): string {
+  switch (conflict) {
+    case ConflictKind.DeletedByUs:
+      return `${name} was deleted on our side and changed on theirs.`;
+    case ConflictKind.DeletedByThem:
+      return `${name} was changed on our side and deleted on theirs.`;
+    case ConflictKind.AddedByUs:
+      return `${name} was added only on our side.`;
+    case ConflictKind.AddedByThem:
+      return `${name} was added only on their side.`;
+    case ConflictKind.BothModified:
+    case ConflictKind.BothAdded:
+    case ConflictKind.BothDeleted:
+      return `${name} is in conflict.`;
+    default:
+      return assertNever(conflict, "deletionQuestion");
+  }
+}
+
+function basename(path: string): string {
+  return path.slice(path.lastIndexOf("/") + 1);
 }
 
 /** 选择框里写一个人：`名字 <邮箱>`，邮箱为空时只写名字。 */
