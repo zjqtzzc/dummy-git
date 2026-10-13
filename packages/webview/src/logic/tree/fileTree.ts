@@ -6,7 +6,7 @@ import type { TreeNode } from "./tree.js";
 /**
  * 所有文件树共用的整理逻辑（`.notes/design/phase-2.md` 第一节）：几组文件整理成树。
  *
- * - 有标题的组画成顶层一行（`Changes  N files`），下面是它自己的目录树；空组不画。
+ * - 有标题的组画成顶层一行（`Changes  N files`），下面是它自己的目录树；空组不画，除非 `keepEmpty`。
  * - 只有一个子目录、自己没有文件的目录链合并成一行（`apps/rgv_calib_parser`）。
  * - 目录带「下面一共几个文件」。
  * - 目录在前、文件在后，各按名字排序。
@@ -41,6 +41,15 @@ export interface FileGroup {
   readonly entries: readonly FileEntry[];
   /** 整组不画复选框，勾选也不保留这组的路径（冲突组）。只对有标题的组有效。 */
   readonly uncheckable?: boolean;
+  /**
+   * 标题后的灰字，替代默认的文件数。空字符串表示不写灰字。
+   * 缺席则写 `N files`。
+   */
+  readonly detail?: string;
+  /** 没有文件也画这组（停在半路、冲突已经清完，标题行还在）。 */
+  readonly keepEmpty?: boolean;
+  /** 这一行的插槽靠右（继续 / 放弃）。 */
+  readonly alignEnd?: boolean;
 }
 
 export enum FileNodeKind {
@@ -59,6 +68,8 @@ export type FileNode =
       readonly count: number;
       /** 见 `FileGroup.uncheckable`。 */
       readonly uncheckable: boolean;
+      readonly detail?: string;
+      readonly alignEnd?: boolean;
       readonly children: readonly FileNode[];
     }
   | {
@@ -89,7 +100,7 @@ interface Draft {
 
 export function buildFileTree(groups: readonly FileGroup[]): readonly FileNode[] {
   return groups.flatMap((group): FileNode[] => {
-    if (group.entries.length === 0) return [];
+    if (group.entries.length === 0 && group.keepEmpty !== true) return [];
     const children = buildEntries(group.entries);
     if (group.label === undefined) return children;
     return [
@@ -99,6 +110,8 @@ export function buildFileTree(groups: readonly FileGroup[]): readonly FileNode[]
         label: group.label,
         count: group.entries.length,
         uncheckable: group.uncheckable === true,
+        ...(group.detail === undefined ? {} : { detail: group.detail }),
+        ...(group.alignEnd === true ? { alignEnd: true } : {}),
         children,
       },
     ];
@@ -181,6 +194,11 @@ function dirname(path: string): string {
  */
 const GROUP_PREFIX = "\0";
 
+/** 组在基础树里的节点 id。页面要把插槽画在某一组上时用它认那一行。 */
+export function groupNodeId(id: string): string {
+  return `${GROUP_PREFIX}${id}`;
+}
+
 /** 文件树 → 基础树的节点：组没有图标、文字加粗；目录是文件夹图标；文件是 Seti 图标加改动字母。 */
 export function toTreeNodes(
   nodes: readonly FileNode[],
@@ -191,15 +209,18 @@ export function toTreeNodes(
   const flag = uncheckable ? { uncheckable: true } : {};
   return nodes.map((node): TreeNode => {
     switch (node.kind) {
-      case FileNodeKind.Group:
+      case FileNodeKind.Group: {
+        const description = groupDescription(node);
         return {
-          id: `${GROUP_PREFIX}${node.id}`,
+          id: groupNodeId(node.id),
           label: node.label,
           bold: true,
-          description: fileCount(node.count),
+          ...(description === undefined ? {} : { description }),
           ...(node.uncheckable ? { uncheckable: true } : {}),
+          ...(node.alignEnd === true ? { alignEnd: true } : {}),
           children: toTreeNodes(node.children, light, node.uncheckable),
         };
+      }
       case FileNodeKind.Folder:
         return {
           id: node.id,
@@ -230,6 +251,14 @@ export function toTreeNodes(
         return assertNever(node, "toTreeNodes");
     }
   });
+}
+
+function groupDescription(node: {
+  readonly detail?: string;
+  readonly count: number;
+}): string | undefined {
+  if (node.detail === undefined) return fileCount(node.count);
+  return node.detail === "" ? undefined : node.detail;
 }
 
 function fileCount(count: number): string {

@@ -9,6 +9,7 @@ import {
   DiffSideKind,
   FileStatus,
   IndexStage,
+  OperationKind,
   type Ref,
   RefKind,
 } from "@dummy-git/shared";
@@ -16,9 +17,12 @@ import { hasConflictMarkers } from "../core/conflictMarkers.js";
 import { defaultPushTarget, PushTargetKind } from "../core/pushTarget.js";
 import type { Repository } from "../core/repository.js";
 import {
+  abortInProgress,
   amendCommit,
   applyStash,
+  ContinueOutcome,
   commit,
+  continueInProgress,
   createBranch,
   createTrackingBranch,
   DeleteBranchKind,
@@ -58,6 +62,7 @@ import {
   switchBranch,
   unstage,
 } from "../git/commands/index.js";
+import { mergeEditorTitles, readHeadBranch, readOperation } from "../git/operationState.js";
 import type { MergeSides } from "../vscode/mergeEditor.js";
 import type { RevisionSide } from "../vscode/revisionUri.js";
 import { defineHandlers, type HandlerMap } from "./router.js";
@@ -285,11 +290,19 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         stages.includes(stage)
           ? { kind: DiffSideKind.Stage, stage, path }
           : { kind: DiffSideKind.Missing, path };
+      const gitDir = repository.location.gitDir;
+      const [operation, branch] = await Promise.all([
+        readOperation(gitDir),
+        readHeadBranch(gitDir),
+      ]);
+      const titles = mergeEditorTitles(operation, branch);
       await ui.openMergeEditor(root, {
         base: side(IndexStage.Base),
         current: side(IndexStage.Ours),
         incoming: side(IndexStage.Theirs),
         output: path,
+        currentTitle: titles.current,
+        incomingTitle: titles.incoming,
       });
       return null;
     },
@@ -303,6 +316,29 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         items.map((label) => ({ label })),
       )) ?? null,
     getStatus: () => repository.run(getStatus, repository.location.root),
+    getOperation: () => readOperation(repository.location.gitDir),
+    continueOperation: async ({ message }) => {
+      const { root, gitDir } = repository.location;
+      const current = await readOperation(gitDir);
+      if (current === null) throw new UserFacingError("No operation in progress.");
+      await ui.withProgress(
+        "Continuing…",
+        () => repository.run(continueInProgress, root, gitDir, message),
+        (outcome) => continueDone(current.kind, outcome),
+      );
+      return null;
+    },
+    abortOperation: async () => {
+      const current = await readOperation(repository.location.gitDir);
+      if (current === null) throw new UserFacingError("No operation in progress.");
+      if (!(await ui.confirm(abortQuestion(current.kind), "Abort"))) return null;
+      await ui.withProgress(
+        "Aborting…",
+        () => repository.run(abortInProgress, repository.location.root, current.kind),
+        () => "Aborted",
+      );
+      return null;
+    },
     commit: async ({ message, paths }) => {
       const { untracked, withOldPaths } = await inspect(paths);
       await repository.run(
@@ -603,6 +639,37 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       return null;
     },
   });
+}
+
+function continueDone(kind: OperationKind, outcome: ContinueOutcome): string {
+  if (outcome === ContinueOutcome.Stopped) return "Stopped for conflicts";
+  switch (kind) {
+    case OperationKind.Merge:
+      return "Merge completed";
+    case OperationKind.Rebase:
+      return "Rebase completed";
+    case OperationKind.CherryPick:
+      return "Cherry-pick completed";
+    case OperationKind.Revert:
+      return "Revert completed";
+    default:
+      return assertNever(kind, "continueDone");
+  }
+}
+
+function abortQuestion(kind: OperationKind): string {
+  switch (kind) {
+    case OperationKind.Merge:
+      return "Abort the merge?";
+    case OperationKind.Rebase:
+      return "Abort the rebase?";
+    case OperationKind.CherryPick:
+      return "Abort the cherry-pick?";
+    case OperationKind.Revert:
+      return "Abort the revert?";
+    default:
+      return assertNever(kind, "abortQuestion");
+  }
 }
 
 /** 双击一边删了的冲突文件时，弹框里的那句话。 */

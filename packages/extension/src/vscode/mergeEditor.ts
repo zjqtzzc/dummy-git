@@ -9,6 +9,10 @@ export interface MergeSides {
   readonly incoming: RevisionSide;
   /** 相对仓库根：结果写回工作区里的这个文件。 */
   readonly output: string;
+  /** 左栏标题，比如 `Current (main)`。 */
+  readonly currentTitle: string;
+  /** 右栏标题，比如 `Incoming (feature)`。 */
+  readonly incomingTitle: string;
 }
 
 /**
@@ -27,8 +31,8 @@ export async function openMergeEditor(root: string, sides: MergeSides): Promise<
   };
   await vscode.commands.executeCommand("_open.mergeEditor", {
     base: uri(sides.base),
-    input1: { uri: uri(sides.current), title: "Current" },
-    input2: { uri: uri(sides.incoming), title: "Incoming" },
+    input1: { uri: uri(sides.current), title: sides.currentTitle },
+    input2: { uri: uri(sides.incoming), title: sides.incomingTitle },
     output: vscode.Uri.file(join(root, ...sides.output.split("/"))),
   });
 }

@@ -90,6 +90,9 @@ export const _baseline = defineHandlers({
   removeConflictFile: openDiffStub,
   resolveDeletion: openDiffStub,
   deleteUntracked: openDiffStub,
+  getOperation: async () => null,
+  continueOperation: openDiffStub,
+  abortOperation: openDiffStub,
 });
 
 /**

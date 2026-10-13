@@ -112,23 +112,31 @@ function rowAt(event: MouseEvent): number | undefined {
 
 /**
  * 单击：点在复选框上只切换勾选（全勾时全不勾，否则全勾），不选中、不展开；
+ * 点在插槽上什么都不做（按钮自己处理，不能顺带选中或展开这一行）；
  * 点在别处选中这一行，可展开的节点同时展开 / 收起（VS Code 默认的单击展开）。
  */
+function hit(event: MouseEvent, selector: string): boolean {
+  return event.target instanceof Element && event.target.closest(selector) !== null;
+}
+
 function onClick(event: MouseEvent): void {
   const index = rowAt(event);
   const row = index === undefined ? undefined : rows.value[index];
   if (index === undefined || row === undefined) return;
-  if (props.checked !== undefined && event.target instanceof Element && event.target.closest(".check")) {
-    emit("check", leafIds(row.node), checkState(row.node, props.checked) !== CheckState.Checked);
+  if (hit(event, ".check")) {
+    if (props.checked !== undefined) {
+      emit("check", leafIds(row.node), checkState(row.node, props.checked) !== CheckState.Checked);
+    }
     return;
   }
+  if (hit(event, ".after")) return;
   select(index);
   toggle(row);
 }
 
 function onDblclick(event: MouseEvent): void {
-  // 连点两下复选框是勾了又取消，不是打开。
-  if (event.target instanceof Element && event.target.closest(".check")) return;
+  // 连点两下复选框是勾了又取消，不是打开。插槽上的按钮也不是打开。
+  if (hit(event, ".check") || hit(event, ".after")) return;
   const index = rowAt(event);
   const row = index === undefined ? undefined : rows.value[index];
   if (row !== undefined && row.expanded === undefined) emit("activate", row.node);
@@ -146,6 +154,8 @@ function onContextmenu(event: MouseEvent): void {
  */
 function onMousedown(event: MouseEvent): void {
   if (rowAt(event) === undefined) return;
+  // 插槽里的按钮要自己呈现按下。取消这次按下的话，按钮的按下态不会出现。
+  if (hit(event, ".after")) return;
   event.preventDefault();
   scroller.value?.focus();
 }
@@ -243,7 +253,7 @@ function rowId(index: number): string {
         <span v-if="row.node.description !== undefined" class="description">{{
           row.node.description
         }}</span>
-        <span v-if="slots.after !== undefined" class="after">
+        <span v-if="slots.after !== undefined" :class="['after', { end: row.node.alignEnd }]">
           <slot name="after" :node="row.node" />
         </span>
         <span v-if="row.node.decoration !== undefined" class="decoration" :style="{ color: row.node.color }">{{
@@ -355,6 +365,9 @@ function rowId(index: number): string {
   gap: 6px;
   margin-left: 0.5em;
   font-size: 0.9em;
+}
+.after.end {
+  margin-left: auto;
 }
 .decoration {
   flex: none;

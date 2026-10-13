@@ -58,6 +58,9 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     removeConflictFile: async () => null,
     resolveDeletion: async () => null,
     deleteUntracked: async () => null,
+    getOperation: async () => null,
+    continueOperation: async () => null,
+    abortOperation: async () => null,
     ...overrides,
   });
 }
@@ -388,6 +391,18 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
           return null;
         },
         deleteUntracked: async () => {
+          ran = true;
+          return null;
+        },
+        getOperation: async () => {
+          ran = true;
+          return null;
+        },
+        continueOperation: async () => {
+          ran = true;
+          return null;
+        },
+        abortOperation: async () => {
           ran = true;
           return null;
         },

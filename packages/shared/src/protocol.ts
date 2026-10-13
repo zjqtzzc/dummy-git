@@ -4,6 +4,7 @@ import type { DiffOpenMode, DiffSide } from "./diff.js";
 import type { GitDomain } from "./domain.js";
 import type { GitErrorCode } from "./error.js";
 import type { MatchCondition, PickedAuthor } from "./match.js";
+import type { OngoingOperation } from "./operation.js";
 import type { Ref } from "./ref.js";
 import type { Stash } from "./stash.js";
 
@@ -104,6 +105,27 @@ export interface Commands {
   getStatus: {
     params: { repo: string };
     result: StatusSnapshot;
+  };
+  /**
+   * 停在半路的操作。没有是 `null`。
+   * 哪些文件有冲突不在这里，从 `getStatus` 的未合并条目取。
+   */
+  getOperation: {
+    params: { repo: string };
+    result: OngoingOperation | null;
+  };
+  /**
+   * 继续停着的操作。`message` 是面板里的说明（用户可能改过预填的那份）。
+   * 不把别的文件标成已解决：还有冲突时 git 拒绝。下一条又冲突时照常返回，界面再读一次。
+   */
+  continueOperation: {
+    params: { repo: string; message: string };
+    result: null;
+  };
+  /** 放弃停着的操作。扩展先确认，再按类型调对应的 abort。 */
+  abortOperation: {
+    params: { repo: string };
+    result: null;
   };
   /**
    * 提交勾选的文件（按工作区现状整个提交，其余路径的暂存区不动）。`paths` 不能为空——

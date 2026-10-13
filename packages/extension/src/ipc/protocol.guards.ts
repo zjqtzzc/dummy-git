@@ -206,6 +206,19 @@ const PARAM_GUARDS = {
     const repo = raw["repo"];
     return typeof repo === "string" ? { repo } : undefined;
   },
+  getOperation: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    return typeof repo === "string" ? { repo } : undefined;
+  },
+  continueOperation: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const message = raw["message"];
+    return typeof repo === "string" && typeof message === "string" ? { repo, message } : undefined;
+  },
+  abortOperation: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    return typeof repo === "string" ? { repo } : undefined;
+  },
   commit: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const message = raw["message"];

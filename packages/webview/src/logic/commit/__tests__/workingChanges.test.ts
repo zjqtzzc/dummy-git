@@ -6,10 +6,12 @@ import {
   FileStatus,
   MenuContextKey,
   MenuNodeValue,
+  OperationKind,
 } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
 import {
   conflictFiles,
+  conflictHeading,
   opensMergeEditor,
   WorkingStatus,
   workingDiffSides,
@@ -112,6 +114,49 @@ describe("workingGroups", () => {
         [MenuContextKey.Path]: "new.txt",
       },
     ]);
+  });
+});
+
+describe("conflictHeading", () => {
+  const merge = {
+    kind: OperationKind.Merge,
+    id: "a".repeat(40),
+    subject: "feature",
+    incoming: "feature",
+    message: "Merge branch 'feature'",
+  } as const;
+
+  it("只有冲突：Conflicts · N，没有按钮", () => {
+    expect(conflictHeading(null, 2)).toEqual({
+      label: "Conflicts",
+      detail: "· 2",
+      keepEmpty: false,
+      actions: false,
+      canContinue: false,
+    });
+  });
+
+  it("停着且还有冲突：不能继续", () => {
+    expect(conflictHeading(merge, 1)).toEqual({
+      label: "Merging feature",
+      detail: "· 1 conflict",
+      keepEmpty: false,
+      actions: true,
+      canContinue: false,
+    });
+  });
+
+  it("停着且冲突已清完：标题还在，可以继续", () => {
+    expect(conflictHeading(merge, 0)).toMatchObject({
+      label: "Merging feature",
+      detail: "",
+      keepEmpty: true,
+      canContinue: true,
+    });
+  });
+
+  it("什么都没有：不画标题", () => {
+    expect(conflictHeading(null, 0)).toBeUndefined();
   });
 });
 

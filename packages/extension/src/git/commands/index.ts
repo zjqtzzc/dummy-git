@@ -42,6 +42,8 @@
  * | `unstage` | `restore --staged -- <路径…>` | `git restore` | 2.23 |
  * | `markResolvedPath` | `add -- :(literal)<路径>` | — | — |
  * | `removeConflictPath` | `rm -q -- :(literal)<路径>` | — | — |
+ * | `continueInProgress` | `merge` / `rebase` / `cherry-pick` / `revert --continue`，环境 `GIT_EDITOR=true` | — | — |
+ * | `abortInProgress` | 同上四种的 `--abort` | — | — |
  * | `rollback` | `restore --source=HEAD --staged --worktree -- <路径…>` | `git restore` | **2.23** |
  * | `getSkeleton` | `-c log.showSignature=false log --format=… --max-count=10000 HEAD --branches --remotes --tags --date-order --`；按分支过滤时起点换成那个分支 | — | — |
  * | `getCommitDetails` | `-c log.showSignature=false log --format=… --no-walk --stdin` | — | — |
@@ -86,6 +88,7 @@ export {
   matchCommits,
   SKELETON_LIMIT,
 } from "./log.js";
+export { abortInProgress, ContinueOutcome, continueInProgress } from "./operation.js";
 export { listPaths, type TrackedPath } from "./paths.js";
 export {
   FastForwardKind,

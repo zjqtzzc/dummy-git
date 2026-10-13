@@ -31,6 +31,8 @@ export interface TreeNode {
   /** 有就是可展开的（哪怕是空数组）。 */
   /** 给了勾选集合的树里，这个节点也不画复选框（Commit 面板的冲突组：冲突文件不能勾去提交）。 */
   readonly uncheckable?: boolean;
+  /** 使用方插槽靠右。 */
+  readonly alignEnd?: boolean;
   readonly children?: readonly TreeNode[];
 }
 

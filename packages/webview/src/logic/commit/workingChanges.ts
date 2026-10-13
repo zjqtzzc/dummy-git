@@ -8,6 +8,8 @@ import {
   FileStatus,
   MenuContextKey,
   MenuNodeValue,
+  type OngoingOperation,
+  OperationKind,
 } from "@dummy-git/shared";
 import type { FileEntry, FileGroup } from "../tree/fileTree.js";
 
@@ -213,22 +215,92 @@ function toEntry(repo: string, file: WorkingFile): FileEntry {
   return file.oldPath === undefined ? entry : { ...entry, oldPath: file.oldPath };
 }
 
+/** 冲突组的 id。标题行上的按钮靠它认出这一行。 */
+export const CONFLICTS_GROUP = "conflicts";
+
 /**
- * 从上到下 `Conflicts`（不可勾选）、`Changes`（已跟踪）、`Unversioned Files`（未跟踪）三组。空组由树自己不画。
+ * 冲突组标题（`.notes/design/phase-7.md` 四种情况）。
+ * 没有操作也没有冲突时缺席，组不画。
+ */
+export interface ConflictHeading {
+  readonly label: string;
+  /** 标题后的灰字。空字符串表示不写。 */
+  readonly detail: string;
+  /** 冲突已经清完，标题行还在。 */
+  readonly keepEmpty: boolean;
+  /** 继续 / 放弃。stash 取出冲突没有这两个按钮。 */
+  readonly actions: boolean;
+  /** 没有冲突文件时才能继续。 */
+  readonly canContinue: boolean;
+}
+
+export function conflictHeading(
+  operation: OngoingOperation | null,
+  conflictCount: number,
+): ConflictHeading | undefined {
+  if (operation === null && conflictCount === 0) return undefined;
+  if (operation === null) {
+    return {
+      label: "Conflicts",
+      detail: `· ${conflictCount}`,
+      keepEmpty: false,
+      actions: false,
+      canContinue: false,
+    };
+  }
+  return {
+    label: operationTitle(operation),
+    detail:
+      conflictCount === 0
+        ? ""
+        : `· ${conflictCount} ${conflictCount === 1 ? "conflict" : "conflicts"}`,
+    keepEmpty: conflictCount === 0,
+    actions: true,
+    canContinue: conflictCount === 0,
+  };
+}
+
+function operationTitle(operation: OngoingOperation): string {
+  switch (operation.kind) {
+    case OperationKind.Merge:
+      return `Merging ${operation.subject}`;
+    case OperationKind.Rebase:
+      return `Rebasing ${operation.subject}`;
+    case OperationKind.CherryPick:
+      return `Cherry-picking ${operation.subject}`;
+    case OperationKind.Revert:
+      return `Reverting ${operation.subject}`;
+    default:
+      return assertNever(operation.kind, "operationTitle");
+  }
+}
+
+/**
+ * 从上到下 `Conflicts`（不可勾选）、`Changes`（已跟踪）、`Unversioned Files`（未跟踪）三组。
+ * 空组由树自己不画；停在半路且冲突已清完时冲突组仍留着标题行。
  */
 export function workingGroups(
   repo: string,
   conflicts: readonly ConflictFile[],
   files: readonly WorkingFile[],
+  operation: OngoingOperation | null = null,
 ): FileGroup[] {
   const tracked = files.filter((file) => file.status !== WorkingStatus.Untracked);
   const untracked = files.filter((file) => file.status === WorkingStatus.Untracked);
+  const heading = conflictHeading(operation, conflicts.length);
   return [
     {
-      id: "conflicts",
-      label: "Conflicts",
+      id: CONFLICTS_GROUP,
+      label: heading?.label ?? "Conflicts",
       entries: conflicts.map((file) => conflictEntry(repo, file)),
       uncheckable: true,
+      ...(heading === undefined
+        ? {}
+        : {
+            detail: heading.detail,
+            ...(heading.keepEmpty ? { keepEmpty: true } : {}),
+            ...(heading.actions ? { alignEnd: true } : {}),
+          }),
     },
     { id: "changes", label: "Changes", entries: tracked.map((file) => toEntry(repo, file)) },
     {

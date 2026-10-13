@@ -13,6 +13,7 @@ export { GitDomain } from "./domain.js";
 export { GitErrorCode } from "./error.js";
 export { type MatchCondition, MatchKind, type PickedAuthor } from "./match.js";
 export { MenuContextKey, MenuNodeValue } from "./menu.js";
+export { type OngoingOperation, OperationKind } from "./operation.js";
 export {
   type CommandName,
   type CommandParams,

@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { DiffOpenMode, GitDomain } from "@dummy-git/shared";
+import { DiffOpenMode, GitDomain, type OngoingOperation } from "@dummy-git/shared";
 import { VscodeCheckbox } from "@vscode-elements/elements/dist/vscode-checkbox/vscode-checkbox.js";
 import { VscodeTextarea } from "@vscode-elements/elements/dist/vscode-textarea/vscode-textarea.js";
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { type Client, report } from "../logic/client.js";
 import { commitMessage, isBlankMessage } from "../logic/commit/message.js";
+import { MessageUpdate, messageUpdate } from "../logic/commit/operationMessage.js";
 import {
+  CONFLICTS_GROUP,
   type ConflictFile,
   conflictFiles,
+  conflictHeading,
   opensMergeEditor,
   type WorkingFile,
   WorkingStatus,
@@ -16,8 +19,9 @@ import {
   workingGroups,
 } from "../logic/commit/workingChanges.js";
 import { AppIcon, appIcon, codicon } from "../logic/icons.js";
-import { type FileEntry, keepChecked } from "../logic/tree/fileTree.js";
+import { type FileEntry, groupNodeId, keepChecked } from "../logic/tree/fileTree.js";
 import FileTree from "../tree/FileTree.vue";
+import Icon from "../ui/Icon.vue";
 import ToolButton from "../ui/ToolButton.vue";
 import { viewState } from "../vscodeApi.js";
 import StashView from "./StashView.vue";
@@ -46,9 +50,17 @@ const tree = ref<InstanceType<typeof FileTree>>();
 const loaded = ref(false);
 /** 冲突文件：单独成组，不能勾。 */
 const conflicts = ref<ConflictFile[]>([]);
-const groups = computed(() => workingGroups(repo.value ?? "", conflicts.value, files.value));
-/** 有没有任何要显示的文件（冲突也算）。 */
-const hasFiles = computed(() => files.value.length > 0 || conflicts.value.length > 0);
+/** 停在半路的操作。没有是 `null`（stash 取出冲突也是 `null`）。 */
+const operation = ref<OngoingOperation | null>(null);
+const groups = computed(() =>
+  workingGroups(repo.value ?? "", conflicts.value, files.value, operation.value),
+);
+const heading = computed(() => conflictHeading(operation.value, conflicts.value.length));
+/** 有没有任何要显示的文件（冲突也算）。停在半路时标题行也要画，哪怕文件已经清完。 */
+const hasFiles = computed(
+  () => files.value.length > 0 || conflicts.value.length > 0 || operation.value !== null,
+);
+const conflictRow = groupNodeId(CONFLICTS_GROUP);
 
 /**
  * 勾选的路径。默认都不勾（第二节第 4 条）。存进 `viewState`：面板收起再展开、重新加载窗口都还在。
@@ -88,6 +100,17 @@ const saved = {
 const message = ref(typeof saved.message === "string" ? saved.message : "");
 const draft = ref(typeof saved.draft === "string" ? saved.draft : "");
 const amend = ref(saved.amend === true);
+/**
+ * 不把 `message` 绑在元素的 `value` 上。这个组件每次重画都会把 `value` 再写进去，
+ * 自定义元素会拿这次写入重置内部文字——文件列表一刷新，刚改的说明就没了。
+ * 只在说明和框里的字不一样时才写进去。
+ */
+const messageBox = ref<VscodeTextarea>();
+watch([messageBox, message], () => {
+  const box = messageBox.value;
+  if (box === undefined || box.value === message.value) return;
+  box.value = message.value;
+});
 let saving: ReturnType<typeof setTimeout> | undefined;
 function save(): void {
   clearTimeout(saving);
@@ -101,8 +124,10 @@ function saveLater(): void {
 }
 onUnmounted(() => clearTimeout(saving));
 function onInput(event: Event): void {
-  if (!(event.target instanceof VscodeTextarea)) return;
-  message.value = event.target.value;
+  const box = event.currentTarget;
+  if (!(box instanceof VscodeTextarea)) return;
+  // 读里面那个真正的输入框。宿主上的 value 在这次输入之后不一定已经跟上。
+  message.value = box.wrappedElement.value;
   saveLater();
 }
 
@@ -143,6 +168,7 @@ const busy = computed(() => committing.value || rollingBack.value || stashing.va
 const canCommit = computed(
   () =>
     !busy.value &&
+    operation.value === null &&
     !isBlankMessage(message.value) &&
     (amend.value || checked.value.size > 0),
 );
@@ -219,6 +245,70 @@ function onMessageKeydown(event: KeyboardEvent): void {
 }
 
 /**
+ * 上一停的身份。`undefined` 是还没读过：第一次读到没有操作时，不覆盖面板里存着的说明。
+ * 存进 `viewState`：这个视图收起再展开会整页重建，内存里的身份没了，
+ * 不存的话下一次读会被当成第一次，把改过的说明盖掉。
+ * 进入一停（或换到下一条提交）时：取消 Amend、丢掉草稿、说明换成 git 准备的。
+ * 操作结束时清空说明，同提交成功。
+ */
+let seenOperation = savedOperationId();
+function savedOperationId(): string | null | undefined {
+  const saved = viewState.read("operationId");
+  return typeof saved === "string" || saved === null ? saved : undefined;
+}
+function applyOperation(next: OngoingOperation | null): void {
+  const id = next?.id ?? null;
+  const previous = seenOperation;
+  operation.value = next;
+  if (seenOperation !== id) {
+    seenOperation = id;
+    viewState.write("operationId", id);
+  }
+  const action = messageUpdate(previous, id);
+  if (action === MessageUpdate.Fill && next !== null) fillOperationMessage(next);
+  if (action === MessageUpdate.Clear) clearMessage();
+}
+function fillOperationMessage(next: OngoingOperation): void {
+  amend.value = false;
+  draft.value = "";
+  message.value = next.message;
+  save();
+}
+function clearMessage(): void {
+  amend.value = false;
+  draft.value = "";
+  message.value = "";
+  save();
+}
+
+const operating = ref(false);
+async function continueOp(): Promise<void> {
+  if (repo.value === undefined || heading.value?.canContinue !== true || operating.value) return;
+  operating.value = true;
+  try {
+    await props.client.request("continueOperation", {
+      repo: repo.value,
+      message: commitMessage(message.value),
+    });
+  } catch (cause) {
+    report(cause);
+  } finally {
+    operating.value = false;
+  }
+}
+async function abortOp(): Promise<void> {
+  if (repo.value === undefined || heading.value?.actions !== true || operating.value) return;
+  operating.value = true;
+  try {
+    await props.client.request("abortOperation", { repo: repo.value });
+  } catch (cause) {
+    report(cause);
+  } finally {
+    operating.value = false;
+  }
+}
+
+/**
  * 最近一次请求的序号。`git status` 不排队、可以并发，先发的可能后回来；
  * 只收最新那次的结果，免得旧结果盖掉新的。
  */
@@ -226,11 +316,15 @@ let latest = 0;
 async function load(repo: string): Promise<void> {
   const mine = ++latest;
   try {
-    const status = await props.client.request("getStatus", { repo });
+    const [status, op] = await Promise.all([
+      props.client.request("getStatus", { repo }),
+      props.client.request("getOperation", { repo }),
+    ]);
     if (mine !== latest) return;
     head.value = status.head;
     files.value = workingFiles(status.changes);
     conflicts.value = conflictFiles(status.changes);
+    applyOperation(op);
     setChecked(keepChecked(checked.value, groups.value));
     loaded.value = true;
   } catch (cause) {
@@ -273,7 +367,11 @@ onMounted(async () => {
     repo.value = first;
     // 工作区与暂存区的变化归 worktree 域；HEAD 移动归 refs 域（diff 左边要跟着换）。
     props.client.onDomainsChanged((_changed, domains) => {
-      if (domains.includes(GitDomain.Worktree) || domains.includes(GitDomain.Refs)) {
+      if (
+        domains.includes(GitDomain.Worktree) ||
+        domains.includes(GitDomain.Refs) ||
+        domains.includes(GitDomain.Operation)
+      ) {
         void load(first);
       }
     });
@@ -341,7 +439,34 @@ onMounted(async () => {
       <FileTree
         v-else
         ref="tree"
-        :groups="groups" :checked="checked" @check="onCheck" @open="openFile" />
+        :groups="groups"
+        :checked="checked"
+        @check="onCheck"
+        @open="openFile"
+      >
+        <template v-if="heading?.actions" #after="{ node }">
+          <span v-if="node.id === conflictRow" class="ops">
+            <button
+              type="button"
+              class="op"
+              :disabled="!heading.canContinue || operating"
+              :title="heading.canContinue ? 'Continue' : 'Resolve conflicts first'"
+              @click="continueOp"
+            >
+              <Icon :icon="codicon('arrow-right')" />
+            </button>
+            <button
+              type="button"
+              class="op abort"
+              title="Abort"
+              :disabled="operating"
+              @click="abortOp"
+            >
+              <Icon :icon="codicon('close')" />
+            </button>
+          </span>
+        </template>
+      </FileTree>
     </div>
 
     <div class="footer">
@@ -349,15 +474,15 @@ onMounted(async () => {
       <vscode-checkbox
         label="Amend"
         :checked="amend"
-        :disabled="head === undefined"
+        :disabled="head === undefined || operation !== null"
         @change="onAmendChange"
       />
       <vscode-textarea
+        ref="messageBox"
         class="message"
         rows="4"
         resize="vertical"
         placeholder="Commit Message"
-        :value="message"
         @input="onInput"
         @keydown="onMessageKeydown"
       />
@@ -425,5 +550,46 @@ onMounted(async () => {
 }
 .message {
   width: 100%;
+}
+.ops {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.op {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: #1f883d;
+  color: #fff;
+  cursor: pointer;
+}
+.op:hover:not(:disabled) {
+  background: #2da44e;
+}
+.op:active:not(:disabled) {
+  background: #116329;
+}
+.op.abort {
+  background: #cf222e;
+}
+.op.abort:hover:not(:disabled) {
+  background: #e5534b;
+}
+.op.abort:active:not(:disabled) {
+  background: #a40e26;
+}
+.op:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+.op:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 </style>

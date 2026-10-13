@@ -78,6 +78,16 @@ describe("buildFileTree", () => {
     expect(flat([])).toEqual([]);
   });
 
+  it("keepEmpty：没有文件也留着组", () => {
+    expect(
+      outline(
+        buildFileTree([
+          { id: "conflicts", label: "Merging feature", entries: [], keepEmpty: true, detail: "" },
+        ]),
+      ),
+    ).toEqual(["[Merging feature] (0)"]);
+  });
+
   it("有标题的组画成顶层一行，带文件数，下面各自一棵目录树；空组不画", () => {
     const tree = buildFileTree([
       { id: "changes", label: "Changes", entries: [m("src/a.ts"), m("b.ts")] },

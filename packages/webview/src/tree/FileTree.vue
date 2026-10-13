@@ -22,6 +22,9 @@ const emit = defineEmits<{
   /** 叶子的 id 就是文件路径。 */
   check: [paths: readonly string[], value: boolean];
 }>();
+const slots = defineSlots<{
+  after?(props: { node: TreeNode }): unknown;
+}>();
 
 const light = useLightTheme();
 const nodes = computed(() => toTreeNodes(buildFileTree(props.groups), light.value));
@@ -91,5 +94,9 @@ function onActivate(node: TreeNode): void {
     @select="onSelect"
     @activate="onActivate"
     @check="(paths, value) => emit('check', paths, value)"
-  />
+  >
+    <template v-if="slots.after" #after="slotProps">
+      <slot name="after" v-bind="slotProps" />
+    </template>
+  </Tree>
 </template>

@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   DiffOpenMode,
@@ -7,6 +7,7 @@ import {
   GitDomain,
   IndexStage,
   MessageKind,
+  OperationKind,
   RefKind,
   ResponseKind,
 } from "@dummy-git/shared";
@@ -999,6 +1000,8 @@ describe("handlers.openMergeEditor", () => {
         current: { kind: DiffSideKind.Stage, stage: IndexStage.Ours, path: "both.txt" },
         incoming: { kind: DiffSideKind.Stage, stage: IndexStage.Theirs, path: "both.txt" },
         output: "both.txt",
+        currentTitle: "Current (main)",
+        incomingTitle: "Incoming (Stashed Changes)",
       },
     ]);
   });
@@ -1091,5 +1094,144 @@ describe("解决冲突：markResolved / removeConflictFile / resolveDeletion / d
     });
     expect(asked).toEqual(["Delete junk.txt? This cannot be undone."]);
     expect(status(repo, "junk.txt")).toBe("");
+  });
+});
+
+describe("停在半路：继续与放弃", () => {
+  afterAll(cleanupTempRepos);
+
+  /** 停在 merge 冲突：main 与 feature 改了同一个文件。 */
+  const conflictedMerge = (name: string): string => {
+    const repo = makeTempRepo(name);
+    writeFileSync(join(repo, "f.txt"), "base\n");
+    git(repo, ["add", "f.txt"]);
+    git(repo, ["commit", "-qm", "base"]);
+    git(repo, ["switch", "-q", "-c", "feature"]);
+    writeFileSync(join(repo, "f.txt"), "feature\n");
+    git(repo, ["commit", "-qam", "feature side"]);
+    git(repo, ["switch", "-q", "main"]);
+    writeFileSync(join(repo, "f.txt"), "main\n");
+    git(repo, ["commit", "-qam", "main side"]);
+    // 冲突是这个场景的前提；合上了就测不到继续和放弃。
+    expect(() => git(repo, ["merge", "feature"])).toThrow();
+    return repo;
+  };
+
+  const act = async (
+    repo: string,
+    run: (h: ReturnType<typeof createHandlers>) => Promise<unknown>,
+    sure = true,
+  ) => {
+    const repository = new Repository(plainLocation(repo), cli);
+    const asked: string[] = [];
+    const said: string[] = [];
+    const ui: HandlerUi = {
+      ...NO_UI,
+      confirm: async (message) => {
+        asked.push(message);
+        return sure;
+      },
+      withProgress: async (title, task, done) => {
+        said.push(title);
+        const value = await task();
+        said.push(done(value));
+        return value;
+      },
+    };
+    try {
+      await run(createHandlers(repository, ui));
+      return { asked, said };
+    } finally {
+      repository.dispose();
+    }
+  };
+
+  it("读到正在合并的分支和说明", async () => {
+    const repo = conflictedMerge("op-read");
+    const repository = new Repository(plainLocation(repo), cli);
+    try {
+      const operation = await createHandlers(repository, NO_UI).getOperation({ repo });
+      expect(operation?.kind).toBe(OperationKind.Merge);
+      expect(operation?.subject).toBe("feature");
+      expect(operation?.message).toContain("Merge branch 'feature'");
+    } finally {
+      repository.dispose();
+    }
+  });
+
+  it("放弃先确认：取消就留着，确认才中止", async () => {
+    const kept = conflictedMerge("op-abort-cancel");
+    const cancelled = await act(kept, (h) => h.abortOperation({ repo: kept }), false);
+    expect(cancelled.asked).toEqual(["Abort the merge?"]);
+    expect(cancelled.said).toEqual([]);
+    expect(existsSync(join(kept, ".git", "MERGE_HEAD"))).toBe(true);
+
+    const dropped = conflictedMerge("op-abort");
+    const confirmed = await act(dropped, (h) => h.abortOperation({ repo: dropped }));
+    expect(confirmed.asked).toEqual(["Abort the merge?"]);
+    expect(confirmed.said).toEqual(["Aborting…", "Aborted"]);
+    expect(existsSync(join(dropped, ".git", "MERGE_HEAD"))).toBe(false);
+  });
+
+  it("冲突解决后继续：用说明框里的那句提交，不带走别的改动", async () => {
+    const repo = conflictedMerge("op-continue");
+    writeFileSync(join(repo, "f.txt"), "resolved\n");
+    git(repo, ["add", "f.txt"]);
+    // 继续不能 git add 其它文件：这个已跟踪的改动该留在工作区。
+    writeFileSync(join(repo, "f1"), "still dirty\n");
+    const { said } = await act(repo, (h) => h.continueOperation({ repo, message: "edited merge" }));
+    expect(said).toEqual(["Continuing…", "Merge completed"]);
+    expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe("edited merge");
+    expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe(" M f1");
+  });
+
+  it("继续到下一条又冲突：不报错，停在新的那条", async () => {
+    const repo = makeTempRepo("op-pick-next");
+    writeFileSync(join(repo, "f.txt"), "base\n");
+    writeFileSync(join(repo, "g.txt"), "g\n");
+    git(repo, ["add", "-A"]);
+    git(repo, ["commit", "-qm", "base"]);
+    git(repo, ["switch", "-q", "-c", "feature"]);
+    writeFileSync(join(repo, "f.txt"), "one\n");
+    git(repo, ["commit", "-qam", "one"]);
+    writeFileSync(join(repo, "g.txt"), "two\n");
+    git(repo, ["commit", "-qam", "two"]);
+    git(repo, ["switch", "-q", "main"]);
+    writeFileSync(join(repo, "f.txt"), "mainf\n");
+    writeFileSync(join(repo, "g.txt"), "maing\n");
+    git(repo, ["commit", "-qam", "mainboth"]);
+    expect(() => git(repo, ["cherry-pick", "feature~1", "feature"])).toThrow();
+
+    const repository = new Repository(plainLocation(repo), cli);
+    try {
+      const handlers = createHandlers(repository, {
+        ...NO_UI,
+        withProgress: (_title, task) => task(),
+      });
+      const first = await handlers.getOperation({ repo });
+      expect(first?.kind).toBe(OperationKind.CherryPick);
+      writeFileSync(join(repo, "f.txt"), "resolved\n");
+      git(repo, ["add", "f.txt"]);
+      const { said } = await act(repo, (h) =>
+        h.continueOperation({ repo, message: "edited pick" }),
+      );
+      expect(said).toEqual(["Continuing…", "Stopped for conflicts"]);
+      const second = await handlers.getOperation({ repo });
+      expect(second?.kind).toBe(OperationKind.CherryPick);
+      expect(second?.id).not.toBe(first?.id);
+      expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe("edited pick");
+    } finally {
+      repository.dispose();
+    }
+  });
+
+  it("没有进行中的操作：直接说明，不跑 git", async () => {
+    const repo = makeTempRepo("op-none");
+    await expect(act(repo, (h) => h.continueOperation({ repo, message: "x" }))).rejects.toThrow(
+      "No operation in progress.",
+    );
+    await expect(act(repo, (h) => h.abortOperation({ repo }))).rejects.toThrow(
+      "No operation in progress.",
+    );
   });
 });
