@@ -121,6 +121,11 @@ export interface HandlerUi {
   readonly copyText: (text: string) => Promise<void>;
   /** 状态栏上几秒的一句话：立刻完成、不走进度出口的操作说做完了什么。 */
   readonly notify: (message: string) => void;
+  /** 原生通知上几个按钮选一个（不是模态框）。关掉通知是 `undefined`。 */
+  readonly notifyChoice: (
+    message: string,
+    actions: readonly string[],
+  ) => Promise<number | undefined>;
   /** Rollback 前的确认：`true` 是确认。只列勾选的已跟踪文件（不含补上的旧路径）。 */
   readonly confirmRollback: (paths: readonly string[]) => Promise<boolean>;
   /**
@@ -377,7 +382,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       return null;
     },
     pull: async ({ branch }) => {
-      const root = repository.location.root;
+      const { root, gitDir } = repository.location;
       const [head, refs] = await Promise.all([
         repository.run(getHead, root),
         repository.run(getRefs, root),
@@ -390,7 +395,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       }
       const tracked = `${upstream.remote}/${upstream.name}`;
       const current = head.kind === RefKind.Head && head.branch === branch;
-      await ui.withProgress(
+      const step = await ui.withProgress(
         `Pulling ${branch}…`,
         async () => {
           // 当前分支：git 不许 fetch 直接更新检出的分支，拆成远程道的 fetch + 本地道的快进。
@@ -401,16 +406,53 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
           } else {
             result = await repository.run(fetchInto, root, upstream.remote, upstream.name, branch);
           }
-          if (result.kind === FastForwardKind.Diverged) {
-            throw new UserFacingError(
-              `Cannot fast-forward ${branch}: it and ${tracked} have both changed. Merging is not supported yet.`,
-              result.stderr,
-            );
-          }
-          return localBranch(await repository.run(getRefs, root), branch)?.target !== before.target;
+          // 分叉时远程分支记录已经更新。后面的变基或合并用这份记录，不再取一次。
+          if (result.kind === FastForwardKind.Diverged) return { kind: "diverged" as const };
+          const moved =
+            localBranch(await repository.run(getRefs, root), branch)?.target !== before.target;
+          return { kind: "done" as const, moved };
         },
-        (moved) => (moved ? `Pulled ${branch} from ${tracked}` : `${branch} is up to date`),
+        (finished) => {
+          switch (finished.kind) {
+            case "diverged":
+              return "";
+            case "done":
+              return finished.moved
+                ? `Pulled ${branch} from ${tracked}`
+                : `${branch} is up to date`;
+            default:
+              return assertNever(finished, "pull");
+          }
+        },
       );
+      if (step.kind === "done") return null;
+      // 关掉通知就停在这里：本地分支不动。
+      const choice = await ui.notifyChoice(`${branch} and ${tracked} have diverged.`, [
+        "Rebase",
+        "Merge",
+      ]);
+      const onto = `refs/remotes/${tracked}`;
+      if (choice === 0) {
+        await ui.withProgress(
+          `Rebasing onto ${tracked}…`,
+          () => repository.run(rebaseOnto, root, gitDir, onto, current ? undefined : branch),
+          (outcome) => rebaseDone(outcome, tracked),
+        );
+      } else if (choice === 1) {
+        // 合并只改当前检出的分支，所以先切过去。变基可以在参数里指名分支。
+        if (!current) {
+          await ui.withProgress(
+            `Checking out ${branch}…`,
+            () => repository.run(switchBranch, root, branch),
+            (said) => said,
+          );
+        }
+        await ui.withProgress(
+          `Merging ${tracked}…`,
+          () => repository.run(mergeRef, root, gitDir, onto, tracked),
+          (outcome) => mergeDone(outcome, tracked),
+        );
+      }
       return null;
     },
     push: async ({ branch }) => {
@@ -472,7 +514,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       const { root, gitDir } = repository.location;
       await ui.withProgress(
         `Rebasing onto ${startName}…`,
-        () => repository.run(rebaseOnto, root, gitDir, start),
+        () => repository.run(rebaseOnto, root, gitDir, start, undefined),
         (outcome) => rebaseDone(outcome, startName),
       );
       return null;

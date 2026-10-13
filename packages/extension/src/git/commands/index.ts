@@ -45,7 +45,7 @@
  * | `continueInProgress` | `merge` / `rebase` / `cherry-pick` / `revert --continue`，环境 `GIT_EDITOR=true` | — | — |
  * | `abortInProgress` | 同上四种的 `--abort` | — | — |
  * | `mergeRef` | `merge -m <说明> <引用>` | — | — |
- * | `rebaseOnto` | `rebase --autostash <引用>` | `--autostash` | 2.6 |
+ * | `rebaseOnto` | `rebase --autostash <引用> [<分支>]` | `--autostash` | 2.6 |
  * | `cherryPickCommit` | `cherry-pick --no-edit <hash>` | — | — |
  * | `revertCommit` | `revert --no-edit <hash>` | — | — |
  * | `rollback` | `restore --source=HEAD --staged --worktree -- <路径…>` | `git restore` | **2.23** |

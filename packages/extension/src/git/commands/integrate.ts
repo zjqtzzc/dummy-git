@@ -61,19 +61,23 @@ function merged(stdout: string): MergeOutcome {
 const AUTOSTASH_CONFLICT = "Applying autostash resulted in conflicts.";
 
 /**
- * 把当前分支变基到另一个分支上：`git rebase --autostash <引用>`。改工作区，走本地道。
+ * 把当前分支变基到另一个分支上：`git rebase --autostash <引用> [<分支>]`。改工作区，走本地道。
  *
+ * 给了分支名，git 先切到那条再变基；不给就用现在检出的这条。
  * `--autostash` 先收起已跟踪的改动，变基结束后再取回。未跟踪的文件不收。
  * 变基本身冲突时退出码非 0，状态目录还在。
  */
 export const rebaseOnto: GitCommand<
-  [repository: string, gitDir: string, start: string],
+  [repository: string, gitDir: string, start: string, branch: string | undefined],
   RebaseOutcome
 > = {
   lock: LockPolicy.Exclusive,
 
-  execute: async (cli, repository, gitDir, start) => {
-    const args = ["rebase", "--autostash", start];
+  execute: async (cli, repository, gitDir, start, branch) => {
+    const args =
+      branch === undefined
+        ? ["rebase", "--autostash", start]
+        : ["rebase", "--autostash", start, branch];
     const result = await cli.exec(args, { cwd: repository });
     if (result.exitCode === 0) return rebased(result.stdout, result.stderr);
     if ((await readOperation(gitDir))?.kind === OperationKind.Rebase) return RebaseOutcome.Stopped;

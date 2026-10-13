@@ -25,6 +25,19 @@ export async function confirm(message: string, action: string): Promise<boolean>
   return (await vscode.window.showWarningMessage(message, { modal: true }, action)) === action;
 }
 
+/**
+ * 几个按钮选一个（原生通知，不挡窗口）。关掉通知是 `undefined`。
+ * 模态框会拦住后面的操作；这里用户可以先不理。
+ */
+export async function notifyChoice(
+  message: string,
+  actions: readonly string[],
+): Promise<number | undefined> {
+  const picked = await vscode.window.showInformationMessage(message, ...actions);
+  const index = picked === undefined ? -1 : actions.indexOf(picked);
+  return index === -1 ? undefined : index;
+}
+
 /** 几个按钮选一个（原生模态框，另有自带的取消）：返回按钮的序号，取消是 `undefined`。 */
 export async function choose(
   message: string,

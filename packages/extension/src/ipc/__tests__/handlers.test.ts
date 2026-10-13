@@ -34,6 +34,7 @@ const NO_UI: HandlerUi = {
   withProgress: (_title, task) => task(),
   askBranchName: () => Promise.reject(new Error("测试里不该弹输入框")),
   confirm: () => Promise.reject(new Error("测试里不该弹确认")),
+  notifyChoice: () => Promise.reject(new Error("测试里不该弹通知")),
   choose: () => Promise.reject(new Error("测试里不该弹选择")),
   notify: () => undefined,
   pick: () => Promise.reject(new Error("测试里不该弹选择框")),
@@ -321,6 +322,53 @@ describe("handlers.pull", () => {
     }
   };
 
+  /** 分叉后选一个按钮。`undefined` 是关掉通知。返回问过的话和进度出口说过的话。 */
+  const pullDiverged = async (path: string, branch: string, choice: number | undefined) => {
+    const repository = new Repository(plainLocation(path), cli);
+    const asked: string[] = [];
+    const said: string[] = [];
+    try {
+      await createHandlers(repository, {
+        ...NO_UI,
+        notifyChoice: async (message, actions) => {
+          asked.push(`${message} [${actions.join(" / ")}]`);
+          return choice;
+        },
+        withProgress: async (title, task, done) => {
+          said.push(title);
+          const value = await task();
+          const message = done(value);
+          if (message !== "") said.push(message);
+          return value;
+        },
+      }).pull({ repo: path, branch });
+      return { asked, said };
+    } finally {
+      repository.dispose();
+    }
+  };
+
+  /**
+   * 本地 `branch` 与 origin/main 各多一个文件。
+   * `other` 时先在那条上提交，再切回 main，让它不是当前分支。
+   */
+  const diverge = (remote: string, repo: string, branch: "main" | "other"): void => {
+    if (branch === "other") {
+      git(repo, ["switch", "-q", "other"]);
+      writeFileSync(join(repo, "other.txt"), "other\n");
+      git(repo, ["add", "other.txt"]);
+      git(repo, ["commit", "-qm", "other"]);
+      git(repo, ["switch", "-q", "main"]);
+    } else {
+      writeFileSync(join(repo, "local.txt"), "local\n");
+      git(repo, ["add", "local.txt"]);
+      git(repo, ["commit", "-qm", "local"]);
+    }
+    writeFileSync(join(remote, "remote.txt"), "remote\n");
+    git(remote, ["add", "remote.txt"]);
+    git(remote, ["commit", "-qm", "remote"]);
+  };
+
   it("当前分支与非当前分支都能快进到远程", async () => {
     const { remote, repo } = makeTrackingRepos();
     git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
@@ -339,16 +387,108 @@ describe("handlers.pull", () => {
     );
   });
 
-  it("两边各有新提交：给一句说明，git 原文留在 detail", async () => {
+  it("关掉通知：本地分支不动，远程记录已经是新的", async () => {
     const { remote, repo } = makeTrackingRepos();
-    git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
-    git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
-    const error = await pull(repo, "main").catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(UserFacingError);
-    expect(error instanceof UserFacingError && error.message).toBe(
-      "Cannot fast-forward main: it and origin/main have both changed. Merging is not supported yet.",
+    diverge(remote, repo, "main");
+    const local = git(repo, ["rev-parse", "main"]);
+    const { asked, said } = await pullDiverged(repo, "main", undefined);
+    expect(asked).toEqual(["main and origin/main have diverged. [Rebase / Merge]"]);
+    expect(said).toEqual(["Pulling main…"]);
+    expect(git(repo, ["rev-parse", "main"])).toBe(local);
+    expect(git(repo, ["rev-parse", "origin/main"])).toBe(git(remote, ["rev-parse", "main"]));
+  });
+
+  it("选 Rebase：当前分支接到远程之上，未提交的改动还在", async () => {
+    const { remote, repo } = makeTrackingRepos();
+    diverge(remote, repo, "main");
+    writeFileSync(join(repo, "f1"), "dirty\n");
+    const { said } = await pullDiverged(repo, "main", 0);
+    expect(said).toEqual([
+      "Pulling main…",
+      "Rebasing onto origin/main…",
+      "Rebased onto origin/main",
+    ]);
+    expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe("local");
+    git(repo, ["merge-base", "--is-ancestor", git(remote, ["rev-parse", "main"]).trim(), "HEAD"]);
+    expect(readFileSync(join(repo, "remote.txt"), "utf8")).toBe("remote\n");
+    expect(readFileSync(join(repo, "local.txt"), "utf8")).toBe("local\n");
+    expect(readFileSync(join(repo, "f1"), "utf8")).toBe("dirty\n");
+    expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe(" M f1");
+  });
+
+  it("选 Merge：合成合并提交，说明用远程分支的显示名", async () => {
+    const { remote, repo } = makeTrackingRepos();
+    diverge(remote, repo, "main");
+    const { said } = await pullDiverged(repo, "main", 1);
+    expect(said).toEqual(["Pulling main…", "Merging origin/main…", "Merged origin/main"]);
+    expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe(
+      "Merge remote-tracking branch 'origin/main'",
     );
-    expect(error instanceof UserFacingError && error.detail).toContain("fast-forward");
+    expect(readFileSync(join(repo, "remote.txt"), "utf8")).toBe("remote\n");
+    expect(readFileSync(join(repo, "local.txt"), "utf8")).toBe("local\n");
+  });
+
+  it("选 Merge 且文件撞上：停在冲突，不当成失败", async () => {
+    const { remote, repo } = makeTrackingRepos();
+    writeFileSync(join(remote, "f1"), "remote\n");
+    git(remote, ["add", "f1"]);
+    git(remote, ["commit", "-qm", "remote"]);
+    writeFileSync(join(repo, "f1"), "local\n");
+    git(repo, ["add", "f1"]);
+    git(repo, ["commit", "-qm", "local"]);
+    const { said } = await pullDiverged(repo, "main", 1);
+    expect(said).toEqual(["Pulling main…", "Merging origin/main…", "Stopped for conflicts"]);
+    expect(existsSync(join(repo, ".git", "MERGE_HEAD"))).toBe(true);
+  });
+
+  it("非当前分支选 Rebase：先切到那条，原来的当前分支不动", async () => {
+    const { remote, repo } = makeTrackingRepos();
+    diverge(remote, repo, "other");
+    const main = git(repo, ["rev-parse", "main"]);
+    const { said } = await pullDiverged(repo, "other", 0);
+    expect(said).toEqual([
+      "Pulling other…",
+      "Rebasing onto origin/main…",
+      "Rebased onto origin/main",
+    ]);
+    expect(git(repo, ["branch", "--show-current"]).trim()).toBe("other");
+    expect(git(repo, ["rev-parse", "main"])).toBe(main);
+    expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe("other");
+    expect(readFileSync(join(repo, "other.txt"), "utf8")).toBe("other\n");
+    expect(readFileSync(join(repo, "remote.txt"), "utf8")).toBe("remote\n");
+  });
+
+  it("非当前分支选 Merge：先切过去再合并", async () => {
+    const { remote, repo } = makeTrackingRepos();
+    diverge(remote, repo, "other");
+    const main = git(repo, ["rev-parse", "main"]);
+    const { said } = await pullDiverged(repo, "other", 1);
+    expect(said).toEqual([
+      "Pulling other…",
+      "Checking out other…",
+      "Switched to branch 'other'",
+      "Merging origin/main…",
+      "Merged origin/main",
+    ]);
+    expect(git(repo, ["branch", "--show-current"]).trim()).toBe("other");
+    expect(git(repo, ["rev-parse", "main"])).toBe(main);
+    expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe(
+      "Merge remote-tracking branch 'origin/main'",
+    );
+    expect(readFileSync(join(repo, "other.txt"), "utf8")).toBe("other\n");
+    expect(readFileSync(join(repo, "remote.txt"), "utf8")).toBe("remote\n");
+  });
+
+  it("非当前分支关掉通知：那条分支不动，远程记录已经是新的", async () => {
+    const { remote, repo } = makeTrackingRepos();
+    diverge(remote, repo, "other");
+    const other = git(repo, ["rev-parse", "other"]);
+    const { asked, said } = await pullDiverged(repo, "other", undefined);
+    expect(asked).toEqual(["other and origin/main have diverged. [Rebase / Merge]"]);
+    expect(said).toEqual(["Pulling other…"]);
+    expect(git(repo, ["branch", "--show-current"]).trim()).toBe("main");
+    expect(git(repo, ["rev-parse", "other"])).toBe(other);
+    expect(git(repo, ["rev-parse", "origin/main"])).toBe(git(remote, ["rev-parse", "main"]));
   });
 });
 

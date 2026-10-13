@@ -20,7 +20,8 @@ export async function withProgress<T>(
     { location: vscode.ProgressLocation.Window, title },
     task,
   );
-  notify(done(value));
+  const message = done(value);
+  if (message !== "") notify(message);
   return value;
 }
 
