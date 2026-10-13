@@ -85,6 +85,58 @@ function asStringArray(value: unknown): readonly string[] | undefined {
 }
 
 /**
+ * 会进 git 命令行的引用。只认 `refs/` 开头：`-` 开头的值会被当成选项。
+ */
+function asRef(value: unknown): string | undefined {
+  return typeof value === "string" && value.startsWith("refs/") ? value : undefined;
+}
+
+/**
+ * 一条提交的完整 hash。40 位是 SHA-1，64 位是 SHA-256。短 hash 可能对上别的提交，不收。
+ * 十六进制不会被 git 当成选项。
+ */
+function asCommit(value: unknown): string | undefined {
+  return typeof value === "string" && /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/i.test(value)
+    ? value
+    : undefined;
+}
+
+/** 仓库、起点、显示名。起点由调用方决定认引用还是也认 hash。 */
+function asNamedStart(
+  raw: Record<string, unknown>,
+  start: string | undefined,
+): { repo: string; start: string; startName: string } | undefined {
+  const repo = raw["repo"];
+  const startName = raw["startName"];
+  return typeof repo === "string" &&
+    start !== undefined &&
+    typeof startName === "string" &&
+    startName !== ""
+    ? { repo, start, startName }
+    : undefined;
+}
+
+function asRefTarget(
+  raw: Record<string, unknown>,
+): { repo: string; start: string; startName: string } | undefined {
+  return asNamedStart(raw, asRef(raw["start"]));
+}
+
+/** 变基的起点：分支的完整引用，或一条提交的完整 hash。 */
+function asRebaseTarget(
+  raw: Record<string, unknown>,
+): { repo: string; start: string; startName: string } | undefined {
+  return asNamedStart(raw, asRef(raw["start"]) ?? asCommit(raw["start"]));
+}
+
+/** 摘一条提交、做反向提交：仓库和完整 hash。 */
+function asCommitTarget(raw: Record<string, unknown>): { repo: string; hash: string } | undefined {
+  const repo = raw["repo"];
+  const hash = asCommit(raw["hash"]);
+  return typeof repo === "string" && hash !== undefined ? { repo, hash } : undefined;
+}
+
+/**
  * 每条命令怎么把 `unknown` 变成它的参数类型。
  *
  * **与 `Commands` 是两张表，但回答的是两个不同的问题**：`Commands` 说
@@ -179,6 +231,11 @@ const PARAM_GUARDS = {
     return typeof repo === "string" && typeof path === "string" ? { repo, path } : undefined;
   },
   resolveDeletion: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const path = raw["path"];
+    return typeof repo === "string" && typeof path === "string" ? { repo, path } : undefined;
+  },
+  addUntracked: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const path = raw["path"];
     return typeof repo === "string" && typeof path === "string" ? { repo, path } : undefined;
@@ -280,6 +337,10 @@ const PARAM_GUARDS = {
     const branch = raw["branch"];
     return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;
   },
+  merge: asRefTarget,
+  rebase: asRebaseTarget,
+  cherryPick: asCommitTarget,
+  revert: asCommitTarget,
   fetch: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     return typeof repo === "string" ? { repo } : undefined;

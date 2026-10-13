@@ -37,6 +37,10 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     fetch: async (): Promise<null> => null,
     pull: async (): Promise<null> => null,
     push: async (): Promise<null> => null,
+    merge: async (): Promise<null> => null,
+    rebase: async (): Promise<null> => null,
+    cherryPick: async (): Promise<null> => null,
+    revert: async (): Promise<null> => null,
     checkout: async (): Promise<null> => null,
     checkoutRemote: async (): Promise<null> => null,
     newBranch: async (): Promise<null> => null,
@@ -57,6 +61,7 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     markResolved: async () => null,
     removeConflictFile: async () => null,
     resolveDeletion: async () => null,
+    addUntracked: async () => null,
     deleteUntracked: async () => null,
     getOperation: async () => null,
     continueOperation: async () => null,
@@ -310,6 +315,22 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
           ran = true;
           return null;
         },
+        merge: async () => {
+          ran = true;
+          return null;
+        },
+        rebase: async () => {
+          ran = true;
+          return null;
+        },
+        cherryPick: async () => {
+          ran = true;
+          return null;
+        },
+        revert: async () => {
+          ran = true;
+          return null;
+        },
         checkout: async () => {
           ran = true;
           return null;
@@ -390,6 +411,10 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
           ran = true;
           return null;
         },
+        addUntracked: async () => {
+          ran = true;
+          return null;
+        },
         deleteUntracked: async () => {
           ran = true;
           return null;
@@ -420,7 +445,7 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
 
 describe("Router：读得出 id 的不合法请求回一个错误，不让前端一直等", () => {
   it.each([
-    ["命令名不在协议表里（webview 比扩展宿主新）", "cherryPick", {}],
+    ["命令名不在协议表里（webview 比扩展宿主新）", "notACommand", {}],
     ["参数缺字段", "getCommitFiles", { repo: "/r" }],
     ["参数类型不对", "getCommitDetails", { repo: "/r", hashes: [1, 2] }],
   ])("%s", async (_name, command, params) => {

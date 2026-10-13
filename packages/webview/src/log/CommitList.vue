@@ -23,6 +23,8 @@ const props = defineProps<{
   selected: string | undefined;
   /** 「现在」，秒。父组件定时刷新它，相对时间才会走。 */
   now: number;
+  /** 仓库根。菜单命令拿它拼协议参数。还没打开仓库时缺席。 */
+  repo: string | undefined;
 }>();
 
 const emit = defineEmits<{
@@ -88,9 +90,13 @@ function optionId(hash: string): string {
   return `commit-${hash}`;
 }
 
-/** 一行的右键菜单上下文（Copy Hash）：和 `package.json` 菜单项的 `when` 条件对应。 */
+/** 一行的右键菜单上下文：和 `package.json` 菜单项的 `when` 条件对应。 */
 function menuOf(hash: string): string {
-  return JSON.stringify({ [MenuContextKey.Node]: MenuNodeValue.Commit, [MenuContextKey.Hash]: hash });
+  return JSON.stringify({
+    [MenuContextKey.Node]: MenuNodeValue.Commit,
+    [MenuContextKey.Hash]: hash,
+    ...(props.repo === undefined ? {} : { [MenuContextKey.Repo]: props.repo }),
+  });
 }
 
 /** 上下键：选中相邻一行并让它出现在视口里。复制快捷键：复制选中的那条。 */

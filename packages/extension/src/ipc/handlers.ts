@@ -21,6 +21,7 @@ import {
   amendCommit,
   applyStash,
   ContinueOutcome,
+  cherryPickCommit,
   commit,
   continueInProgress,
   createBranch,
@@ -49,13 +50,19 @@ import {
   listAuthors,
   listPaths,
   listRemotes,
+  MergeOutcome,
   markResolvedPath,
   matchCommits,
+  mergeRef,
   PushKind,
   popStash,
   push,
+  RebaseOutcome,
+  ReplayOutcome,
+  rebaseOnto,
   removeConflictPath,
   renameBranch,
+  revertCommit,
   rollback,
   stashAll,
   stashPaths,
@@ -452,6 +459,44 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       );
       return null;
     },
+    merge: async ({ start, startName }) => {
+      const { root, gitDir } = repository.location;
+      await ui.withProgress(
+        `Merging ${startName}…`,
+        () => repository.run(mergeRef, root, gitDir, start, startName),
+        (outcome) => mergeDone(outcome, startName),
+      );
+      return null;
+    },
+    rebase: async ({ start, startName }) => {
+      const { root, gitDir } = repository.location;
+      await ui.withProgress(
+        `Rebasing onto ${startName}…`,
+        () => repository.run(rebaseOnto, root, gitDir, start),
+        (outcome) => rebaseDone(outcome, startName),
+      );
+      return null;
+    },
+    cherryPick: async ({ hash }) => {
+      const { root, gitDir } = repository.location;
+      const name = hash.slice(0, 7);
+      await ui.withProgress(
+        `Cherry-picking ${name}…`,
+        () => repository.run(cherryPickCommit, root, gitDir, hash),
+        (outcome) => replayDone(outcome, `Cherry-picked ${name}`, "Cherry-pick is now empty"),
+      );
+      return null;
+    },
+    revert: async ({ hash }) => {
+      const { root, gitDir } = repository.location;
+      const name = hash.slice(0, 7);
+      await ui.withProgress(
+        `Reverting ${name}…`,
+        () => repository.run(revertCommit, root, gitDir, hash),
+        (outcome) => replayDone(outcome, `Reverted ${name}`, "Revert is now empty"),
+      );
+      return null;
+    },
     checkout: async ({ branch }) => {
       await ui.withProgress(
         `Checking out ${branch}…`,
@@ -625,6 +670,11 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       if (index === 1) await repository.run(removeConflictPath, root, path);
       return null;
     },
+    addUntracked: async ({ path }) => {
+      // 和标记已解决是同一条 git add：把工作区里的这一份写进暂存区。不确认。
+      await repository.run(markResolvedPath, repository.location.root, path);
+      return null;
+    },
     deleteUntracked: async ({ path }) => {
       const sure = await ui.confirm(`Delete ${basename(path)}? This cannot be undone.`, "Delete");
       // 未跟踪的文件 git 不管，直接删磁盘上的；watcher 看到变化就刷新。
@@ -639,6 +689,49 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       return null;
     },
   });
+}
+
+function mergeDone(outcome: MergeOutcome, name: string): string {
+  switch (outcome) {
+    case MergeOutcome.UpToDate:
+      return "Already up to date";
+    case MergeOutcome.FastForward:
+      return `Fast-forwarded to ${name}`;
+    case MergeOutcome.Merged:
+      return `Merged ${name}`;
+    case MergeOutcome.Stopped:
+      return "Stopped for conflicts";
+    default:
+      return assertNever(outcome, "mergeDone");
+  }
+}
+
+function replayDone(outcome: ReplayOutcome, done: string, empty: string): string {
+  switch (outcome) {
+    case ReplayOutcome.Done:
+      return done;
+    case ReplayOutcome.Stopped:
+      return "Stopped for conflicts";
+    case ReplayOutcome.Empty:
+      return empty;
+    default:
+      return assertNever(outcome, "replayDone");
+  }
+}
+
+function rebaseDone(outcome: RebaseOutcome, name: string): string {
+  switch (outcome) {
+    case RebaseOutcome.UpToDate:
+      return "Already up to date";
+    case RebaseOutcome.Rebased:
+      return `Rebased onto ${name}`;
+    case RebaseOutcome.Stopped:
+      return "Stopped for conflicts";
+    case RebaseOutcome.StashConflict:
+      return `Rebased onto ${name}. Applying the stashed changes has conflicts.`;
+    default:
+      return assertNever(outcome, "rebaseDone");
+  }
 }
 
 function continueDone(kind: OperationKind, outcome: ContinueOutcome): string {

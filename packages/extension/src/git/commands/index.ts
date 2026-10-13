@@ -44,6 +44,10 @@
  * | `removeConflictPath` | `rm -q -- :(literal)<路径>` | — | — |
  * | `continueInProgress` | `merge` / `rebase` / `cherry-pick` / `revert --continue`，环境 `GIT_EDITOR=true` | — | — |
  * | `abortInProgress` | 同上四种的 `--abort` | — | — |
+ * | `mergeRef` | `merge -m <说明> <引用>` | — | — |
+ * | `rebaseOnto` | `rebase --autostash <引用>` | `--autostash` | 2.6 |
+ * | `cherryPickCommit` | `cherry-pick --no-edit <hash>` | — | — |
+ * | `revertCommit` | `revert --no-edit <hash>` | — | — |
  * | `rollback` | `restore --source=HEAD --staged --worktree -- <路径…>` | `git restore` | **2.23** |
  * | `getSkeleton` | `-c log.showSignature=false log --format=… --max-count=10000 HEAD --branches --remotes --tags --date-order --`；按分支过滤时起点换成那个分支 | — | — |
  * | `getCommitDetails` | `-c log.showSignature=false log --format=… --no-walk --stdin` | — | — |
@@ -78,6 +82,15 @@ export type { GitCommand } from "./command.js";
 export { amendCommit, commit } from "./commit.js";
 export { getConflictStages, getFileContent, getStageContent } from "./content.js";
 export { getIdentity, type Identity } from "./identity.js";
+export {
+  cherryPickCommit,
+  MergeOutcome,
+  mergeRef,
+  RebaseOutcome,
+  ReplayOutcome,
+  rebaseOnto,
+  revertCommit,
+} from "./integrate.js";
 export { getRepositoryLocation, type RepositoryLocation } from "./location.js";
 export { LockPolicy } from "./lock.js";
 export {

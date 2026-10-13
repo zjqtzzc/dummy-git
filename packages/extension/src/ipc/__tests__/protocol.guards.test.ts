@@ -55,3 +55,37 @@ describe("getSkeleton 的 branch", () => {
     expect(parseParams("getSkeleton", { repo: "/r", branch: "main" })).toBeUndefined();
   });
 });
+
+describe("cherry-pick / revert 的提交", () => {
+  it("收完整 hash；短 hash 和选项拒收", () => {
+    const hash = "ab".repeat(20);
+    const ok = { repo: "/r", hash };
+    expect(parseParams("cherryPick", ok)).toEqual(ok);
+    expect(parseParams("revert", ok)).toEqual(ok);
+    expect(parseParams("cherryPick", { repo: "/r", hash: hash.slice(0, 7) })).toBeUndefined();
+    expect(parseParams("revert", { repo: "/r", hash: "--abort" })).toBeUndefined();
+  });
+});
+
+describe("merge / rebase 的起点", () => {
+  it("收完整引用名；短名和选项拒收", () => {
+    const ok = { repo: "/r", start: "refs/remotes/origin/feature", startName: "origin/feature" };
+    expect(parseParams("merge", ok)).toEqual(ok);
+    expect(parseParams("rebase", ok)).toEqual(ok);
+    const hash = "a".repeat(40);
+    const onto = { repo: "/r", start: hash, startName: hash.slice(0, 7) };
+    expect(parseParams("rebase", onto)).toEqual(onto);
+    expect(parseParams("rebase", { repo: "/r", start: hash.slice(0, 7), startName: "x" })).toBe(
+      undefined,
+    );
+    expect(
+      parseParams("merge", { repo: "/r", start: "feature", startName: "feature" }),
+    ).toBeUndefined();
+    expect(
+      parseParams("rebase", { repo: "/r", start: "--abort", startName: "feature" }),
+    ).toBeUndefined();
+    expect(
+      parseParams("merge", { repo: "/r", start: "refs/heads/feature", startName: "" }),
+    ).toBeUndefined();
+  });
+});

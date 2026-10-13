@@ -69,6 +69,10 @@ export const _baseline = defineHandlers({
   fetch: openDiffStub,
   pull: openDiffStub,
   push: openDiffStub,
+  merge: openDiffStub,
+  rebase: openDiffStub,
+  cherryPick: openDiffStub,
+  revert: openDiffStub,
   checkout: openDiffStub,
   checkoutRemote: openDiffStub,
   newBranch: openDiffStub,
@@ -89,6 +93,7 @@ export const _baseline = defineHandlers({
   markResolved: openDiffStub,
   removeConflictFile: openDiffStub,
   resolveDeletion: openDiffStub,
+  addUntracked: openDiffStub,
   deleteUntracked: openDiffStub,
   getOperation: async () => null,
   continueOperation: openDiffStub,
@@ -106,7 +111,7 @@ export const _missing = defineHandlers(
 );
 
 /**
- * 方向二：**多注册**。多了一条协议表里没有的 `cherryPick`。
+ * 方向二：**多注册**。多了一条协议表里没有的 `notACommand`。
  *
  * 它守的是「不存在游离于协议之外的命令」。
  *
@@ -130,7 +135,7 @@ const extraHandlers = {
   amend: openDiffStub,
   rollback: openDiffStub,
   fetch: openDiffStub,
-  cherryPick: async (): Promise<CommitFileChange[]> => [],
+  notACommand: async (): Promise<CommitFileChange[]> => [],
 };
 
 // @ts-expect-error 多注册：不允许存在协议表之外的命令

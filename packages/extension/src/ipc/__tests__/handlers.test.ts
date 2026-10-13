@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   DiffOpenMode,
@@ -1084,6 +1084,14 @@ describe("解决冲突：markResolved / removeConflictFile / resolveDeletion / d
     expect(status(repo, "gone.txt")).toBe("D  gone.txt");
   });
 
+  it("未跟踪文件 Add to Git：放进暂存区，不确认，磁盘上的内容还在", async () => {
+    const repo = makeTempRepo("add-untracked");
+    writeFileSync(join(repo, "junk.txt"), "x\n");
+    expect(await act(repo, (h) => h.addUntracked({ repo, path: "junk.txt" }))).toEqual([]);
+    expect(status(repo, "junk.txt")).toBe("A  junk.txt");
+    expect(readFileSync(join(repo, "junk.txt"), "utf8")).toBe("x\n");
+  });
+
   it("删未跟踪文件：确认后从磁盘删掉，取消就留着", async () => {
     const repo = makeTempRepo("delete-untracked");
     writeFileSync(join(repo, "junk.txt"), "x");
@@ -1233,5 +1241,308 @@ describe("停在半路：继续与放弃", () => {
     await expect(act(repo, (h) => h.abortOperation({ repo }))).rejects.toThrow(
       "No operation in progress.",
     );
+  });
+});
+
+describe("分支右键：合并与变基", () => {
+  afterAll(cleanupTempRepos);
+
+  const run = async (
+    repo: string,
+    call: (handlers: ReturnType<typeof createHandlers>) => Promise<unknown>,
+  ) => {
+    const repository = new Repository(plainLocation(repo), cli);
+    const said: string[] = [];
+    const ui: HandlerUi = {
+      ...NO_UI,
+      withProgress: async (title, task, done) => {
+        said.push(title);
+        const value = await task();
+        said.push(done(value));
+        return value;
+      },
+    };
+    try {
+      await call(createHandlers(repository, ui));
+      return said;
+    } finally {
+      repository.dispose();
+    }
+  };
+
+  /** feature 比 main 多一次提交，main 没有自己的新提交。 */
+  const ahead = (name: string): string => {
+    const repo = makeTempRepo(name);
+    git(repo, ["switch", "-q", "-c", "feature"]);
+    writeFileSync(join(repo, "extra.txt"), "extra\n");
+    git(repo, ["add", "extra.txt"]);
+    git(repo, ["commit", "-qm", "feature"]);
+    git(repo, ["switch", "-q", "main"]);
+    return repo;
+  };
+
+  /** main 与 feature 都改了 f1。 */
+  const bothTouched = (name: string): string => {
+    const repo = makeTempRepo(name);
+    git(repo, ["switch", "-q", "-c", "feature"]);
+    writeFileSync(join(repo, "f1"), "feature\n");
+    git(repo, ["commit", "-qam", "feature"]);
+    git(repo, ["switch", "-q", "main"]);
+    writeFileSync(join(repo, "f1"), "main\n");
+    git(repo, ["commit", "-qam", "main"]);
+    return repo;
+  };
+
+  it("快进，工作区里不相关的改动留着", async () => {
+    const repo = ahead("merge-ff");
+    writeFileSync(join(repo, "f1"), "dirty\n");
+    const said = await run(repo, (h) =>
+      h.merge({ repo, start: "refs/heads/feature", startName: "feature" }),
+    );
+    expect(said).toEqual(["Merging feature…", "Fast-forwarded to feature"]);
+    expect(git(repo, ["rev-parse", "main"])).toBe(git(repo, ["rev-parse", "feature"]));
+    expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe(" M f1");
+  });
+
+  it("已经包含：说一声，不再合一次", async () => {
+    const repo = ahead("merge-uptodate");
+    await run(repo, (h) => h.merge({ repo, start: "refs/heads/feature", startName: "feature" }));
+    const said = await run(repo, (h) =>
+      h.merge({ repo, start: "refs/heads/feature", startName: "feature" }),
+    );
+    expect(said).toEqual(["Merging feature…", "Already up to date"]);
+  });
+
+  it("分叉且文件不撞：合成一个合并提交", async () => {
+    const repo = makeTempRepo("merge-join");
+    git(repo, ["switch", "-q", "-c", "feature"]);
+    writeFileSync(join(repo, "extra.txt"), "extra\n");
+    git(repo, ["add", "extra.txt"]);
+    git(repo, ["commit", "-qm", "feature"]);
+    git(repo, ["switch", "-q", "main"]);
+    writeFileSync(join(repo, "f1"), "main\n");
+    git(repo, ["commit", "-qam", "main side"]);
+    const said = await run(repo, (h) =>
+      h.merge({ repo, start: "refs/heads/feature", startName: "feature" }),
+    );
+    expect(said).toEqual(["Merging feature…", "Merged feature"]);
+    expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe("Merge branch 'feature'");
+  });
+
+  it("合出冲突：停住，不弹确认", async () => {
+    const repo = bothTouched("merge-stop");
+    const said = await run(repo, (h) =>
+      h.merge({ repo, start: "refs/heads/feature", startName: "feature" }),
+    );
+    expect(said).toEqual(["Merging feature…", "Stopped for conflicts"]);
+    expect(existsSync(join(repo, ".git", "MERGE_HEAD"))).toBe(true);
+    expect(readFileSync(join(repo, ".git", "MERGE_MSG"), "utf8")).toContain(
+      "Merge branch 'feature'",
+    );
+  });
+
+  it("工作区改动会被盖掉：git 拒绝，合并没有开始", async () => {
+    const repo = bothTouched("merge-refuse");
+    git(repo, ["reset", "-q", "--hard", "HEAD~1"]);
+    writeFileSync(join(repo, "f1"), "dirty\n");
+    await expect(
+      run(repo, (h) => h.merge({ repo, start: "refs/heads/feature", startName: "feature" })),
+    ).rejects.toThrow(/would be overwritten/);
+    expect(existsSync(join(repo, ".git", "MERGE_HEAD"))).toBe(false);
+  });
+
+  it("变基到远程分支记录，已跟踪的改动取回", async () => {
+    const repo = ahead("rebase-keep");
+    git(repo, ["update-ref", "refs/remotes/origin/feature", "refs/heads/feature"]);
+    writeFileSync(join(repo, "f1"), "dirty\n");
+    const said = await run(repo, (h) =>
+      h.rebase({ repo, start: "refs/remotes/origin/feature", startName: "origin/feature" }),
+    );
+    expect(said).toEqual(["Rebasing onto origin/feature…", "Rebased onto origin/feature"]);
+    expect(git(repo, ["rev-parse", "main"])).toBe(git(repo, ["rev-parse", "feature"]));
+    expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe(" M f1");
+  });
+
+  it("已经在目标上：说一声", async () => {
+    const repo = ahead("rebase-uptodate");
+    await run(repo, (h) => h.rebase({ repo, start: "refs/heads/feature", startName: "feature" }));
+    const said = await run(repo, (h) =>
+      h.rebase({ repo, start: "refs/heads/feature", startName: "feature" }),
+    );
+    expect(said).toEqual(["Rebasing onto feature…", "Already up to date"]);
+  });
+
+  it("变基冲突：停住", async () => {
+    const repo = bothTouched("rebase-stop");
+    const said = await run(repo, (h) =>
+      h.rebase({ repo, start: "refs/heads/feature", startName: "feature" }),
+    );
+    expect(said).toEqual(["Rebasing onto feature…", "Stopped for conflicts"]);
+    expect(existsSync(join(repo, ".git", "rebase-merge"))).toBe(true);
+  });
+
+  it("取回暂存的改动冲突：变基已经结束，工作区留下冲突", async () => {
+    const repo = makeTempRepo("rebase-stash");
+    git(repo, ["switch", "-q", "-c", "feature"]);
+    writeFileSync(join(repo, "f1"), "feature\n");
+    git(repo, ["commit", "-qam", "feature"]);
+    git(repo, ["switch", "-q", "main"]);
+    writeFileSync(join(repo, "f1"), "dirty\n");
+    const said = await run(repo, (h) =>
+      h.rebase({ repo, start: "refs/heads/feature", startName: "feature" }),
+    );
+    expect(said).toEqual([
+      "Rebasing onto feature…",
+      "Rebased onto feature. Applying the stashed changes has conflicts.",
+    ]);
+    expect(existsSync(join(repo, ".git", "rebase-merge"))).toBe(false);
+    expect(existsSync(join(repo, ".git", "MERGE_HEAD"))).toBe(false);
+    expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe("UU f1");
+    expect(git(repo, ["rev-parse", "main"])).toBe(git(repo, ["rev-parse", "feature"]));
+  });
+});
+
+describe("提交右键：cherry-pick、revert、变基到这条", () => {
+  afterAll(cleanupTempRepos);
+
+  const run = async (
+    repo: string,
+    call: (handlers: ReturnType<typeof createHandlers>) => Promise<unknown>,
+  ) => {
+    const repository = new Repository(plainLocation(repo), cli);
+    const said: string[] = [];
+    const ui: HandlerUi = {
+      ...NO_UI,
+      withProgress: async (title, task, done) => {
+        said.push(title);
+        const value = await task();
+        said.push(done(value));
+        return value;
+      },
+    };
+    try {
+      await call(createHandlers(repository, ui));
+      return said;
+    } finally {
+      repository.dispose();
+    }
+  };
+
+  const head = (repo: string): string => git(repo, ["rev-parse", "HEAD"]).trim();
+  const short = (hash: string): string => hash.slice(0, 7);
+
+  it("摘一条不相关的提交，工作区里不相关的改动留着", async () => {
+    const repo = makeTempRepo("pick-ok");
+    git(repo, ["switch", "-q", "-c", "feature"]);
+    writeFileSync(join(repo, "extra.txt"), "extra\n");
+    git(repo, ["add", "extra.txt"]);
+    git(repo, ["commit", "-qm", "feature"]);
+    const hash = head(repo);
+    git(repo, ["switch", "-q", "main"]);
+    writeFileSync(join(repo, "f1"), "dirty\n");
+    const said = await run(repo, (h) => h.cherryPick({ repo, hash }));
+    expect(said).toEqual([`Cherry-picking ${short(hash)}…`, `Cherry-picked ${short(hash)}`]);
+    expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe("feature");
+    expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe(" M f1");
+  });
+
+  it("摘出冲突：停住，不弹确认", async () => {
+    const repo = makeTempRepo("pick-stop");
+    git(repo, ["switch", "-q", "-c", "feature"]);
+    writeFileSync(join(repo, "f1"), "feature\n");
+    git(repo, ["commit", "-qam", "feature"]);
+    const hash = head(repo);
+    git(repo, ["switch", "-q", "main"]);
+    writeFileSync(join(repo, "f1"), "main\n");
+    git(repo, ["commit", "-qam", "main"]);
+    const said = await run(repo, (h) => h.cherryPick({ repo, hash }));
+    expect(said).toEqual([`Cherry-picking ${short(hash)}…`, "Stopped for conflicts"]);
+    expect(existsSync(join(repo, ".git", "CHERRY_PICK_HEAD"))).toBe(true);
+  });
+
+  it("工作区改动会被盖掉：git 拒绝，cherry-pick 没有开始", async () => {
+    const repo = makeTempRepo("pick-refuse");
+    git(repo, ["switch", "-q", "-c", "feature"]);
+    writeFileSync(join(repo, "f1"), "feature\n");
+    git(repo, ["commit", "-qam", "feature"]);
+    const hash = head(repo);
+    git(repo, ["switch", "-q", "main"]);
+    writeFileSync(join(repo, "f1"), "dirty\n");
+    await expect(run(repo, (h) => h.cherryPick({ repo, hash }))).rejects.toThrow(
+      /would be overwritten/,
+    );
+    expect(existsSync(join(repo, ".git", "CHERRY_PICK_HEAD"))).toBe(false);
+  });
+
+  it("改动已经在了：停住，但不是冲突", async () => {
+    const repo = makeTempRepo("pick-empty");
+    git(repo, ["switch", "-q", "-c", "feature"]);
+    writeFileSync(join(repo, "extra.txt"), "extra\n");
+    git(repo, ["add", "extra.txt"]);
+    git(repo, ["commit", "-qm", "feature"]);
+    const hash = head(repo);
+    git(repo, ["switch", "-q", "main"]);
+    await run(repo, (h) => h.cherryPick({ repo, hash }));
+    const said = await run(repo, (h) => h.cherryPick({ repo, hash }));
+    expect(said).toEqual([`Cherry-picking ${short(hash)}…`, "Cherry-pick is now empty"]);
+    expect(existsSync(join(repo, ".git", "CHERRY_PICK_HEAD"))).toBe(true);
+  });
+
+  it("合并提交：git 拒绝，原文里说明要 -m", async () => {
+    const repo = makeTempRepo("pick-merge");
+    git(repo, ["switch", "-q", "-c", "side"]);
+    writeFileSync(join(repo, "side.txt"), "side\n");
+    git(repo, ["add", "side.txt"]);
+    git(repo, ["commit", "-qm", "side"]);
+    git(repo, ["switch", "-q", "main"]);
+    writeFileSync(join(repo, "f1"), "main\n");
+    git(repo, ["commit", "-qam", "main side"]);
+    git(repo, ["merge", "-q", "--no-edit", "side"]);
+    const hash = head(repo);
+    git(repo, ["reset", "-q", "--hard", "HEAD~1"]);
+    await expect(run(repo, (h) => h.cherryPick({ repo, hash }))).rejects.toThrow(/no -m option/);
+    expect(existsSync(join(repo, ".git", "CHERRY_PICK_HEAD"))).toBe(false);
+  });
+
+  it("反向提交，工作区里不相关的改动留着", async () => {
+    const repo = makeTempRepo("revert-ok");
+    writeFileSync(join(repo, "f1"), "next\n");
+    git(repo, ["commit", "-qam", "next"]);
+    const hash = head(repo);
+    writeFileSync(join(repo, "note.txt"), "base\n");
+    git(repo, ["add", "note.txt"]);
+    git(repo, ["commit", "-qm", "note"]);
+    writeFileSync(join(repo, "note.txt"), "dirty\n");
+    const said = await run(repo, (h) => h.revert({ repo, hash }));
+    expect(said).toEqual([`Reverting ${short(hash)}…`, `Reverted ${short(hash)}`]);
+    expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe('Revert "next"');
+    expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe(" M note.txt");
+  });
+
+  it("反向提交冲突：停住", async () => {
+    const repo = makeTempRepo("revert-stop");
+    writeFileSync(join(repo, "f1"), "second\n");
+    git(repo, ["commit", "-qam", "second"]);
+    const hash = head(repo);
+    writeFileSync(join(repo, "f1"), "third\n");
+    git(repo, ["commit", "-qam", "third"]);
+    const said = await run(repo, (h) => h.revert({ repo, hash }));
+    expect(said).toEqual([`Reverting ${short(hash)}…`, "Stopped for conflicts"]);
+    expect(existsSync(join(repo, ".git", "REVERT_HEAD"))).toBe(true);
+  });
+
+  it("变基到一条提交，已跟踪的改动取回", async () => {
+    const repo = makeTempRepo("rebase-hash");
+    git(repo, ["switch", "-q", "-c", "feature"]);
+    writeFileSync(join(repo, "extra.txt"), "extra\n");
+    git(repo, ["add", "extra.txt"]);
+    git(repo, ["commit", "-qm", "feature"]);
+    const hash = head(repo);
+    git(repo, ["switch", "-q", "main"]);
+    writeFileSync(join(repo, "f1"), "dirty\n");
+    const said = await run(repo, (h) => h.rebase({ repo, start: hash, startName: short(hash) }));
+    expect(said).toEqual([`Rebasing onto ${short(hash)}…`, `Rebased onto ${short(hash)}`]);
+    expect(head(repo)).toBe(hash);
+    expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe(" M f1");
   });
 });

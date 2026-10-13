@@ -46,6 +46,30 @@ function stashParams(context: Record<string, unknown>): Record<string, unknown> 
   return { repo: context[MenuContextKey.Repo], hash: context[MenuContextKey.Stash] };
 }
 
+/** 提交列表的一行：仓库与完整 hash。 */
+function commitParams(context: Record<string, unknown>): Record<string, unknown> {
+  return { repo: context[MenuContextKey.Repo], hash: context[MenuContextKey.Hash] };
+}
+
+/** 把当前分支变基到这一行提交上。显示名用 7 位，和别处的短 hash 一样长。 */
+function rebaseHereParams(context: Record<string, unknown>): Record<string, unknown> {
+  const hash = context[MenuContextKey.Hash];
+  return {
+    repo: context[MenuContextKey.Repo],
+    start: hash,
+    startName: typeof hash === "string" ? hash.slice(0, 7) : "",
+  };
+}
+
+/** 合并、变基：仓库、完整引用、显示名。本地分支和远程分支的上下文里都有。 */
+function refParams(context: Record<string, unknown>): Record<string, unknown> {
+  return {
+    repo: context[MenuContextKey.Repo],
+    start: context[MenuContextKey.Start],
+    startName: context[MenuContextKey.StartName],
+  };
+}
+
 const MENU_COMMANDS: readonly MenuCommand[] = [
   menuCommand("dummyGit.checkout", "checkout", (context) => ({
     repo: context[MenuContextKey.Repo],
@@ -64,6 +88,8 @@ const MENU_COMMANDS: readonly MenuCommand[] = [
     repo: context[MenuContextKey.Repo],
     branch: context[MenuContextKey.Branch],
   })),
+  menuCommand("dummyGit.mergeBranch", "merge", refParams),
+  menuCommand("dummyGit.rebaseBranch", "rebase", refParams),
   menuCommand("dummyGit.newBranch", "newBranch", (context) => ({
     repo: context[MenuContextKey.Repo],
     start: context[MenuContextKey.Start],
@@ -85,6 +111,9 @@ const MENU_COMMANDS: readonly MenuCommand[] = [
   menuCommand("dummyGit.copyHash", "copyText", (context) => ({
     text: context[MenuContextKey.Hash],
   })),
+  menuCommand("dummyGit.cherryPick", "cherryPick", commitParams),
+  menuCommand("dummyGit.revertCommit", "revert", commitParams),
+  menuCommand("dummyGit.rebaseHere", "rebase", rebaseHereParams),
   menuCommand("dummyGit.openMergeEditor", "openMergeEditor", fileParams),
   menuCommand("dummyGit.markResolved", "markResolved", fileParams),
   // Keep 就是标记已解决：留下工作区里的那份（一边删了的冲突，文件里本来没有冲突标记）。
@@ -94,6 +123,7 @@ const MENU_COMMANDS: readonly MenuCommand[] = [
     repo: context[MenuContextKey.Repo],
     paths: [context[MenuContextKey.Path]],
   })),
+  menuCommand("dummyGit.addUntracked", "addUntracked", fileParams),
   menuCommand("dummyGit.deleteUntracked", "deleteUntracked", fileParams),
   menuCommand("dummyGit.popStash", "popStash", stashParams),
   menuCommand("dummyGit.applyStash", "applyStash", stashParams),

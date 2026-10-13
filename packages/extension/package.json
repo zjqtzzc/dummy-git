@@ -96,8 +96,28 @@
         "title": "Push"
       },
       {
+        "command": "dummyGit.mergeBranch",
+        "title": "Merge into Current"
+      },
+      {
+        "command": "dummyGit.rebaseBranch",
+        "title": "Rebase Current onto This"
+      },
+      {
         "command": "dummyGit.copyHash",
         "title": "Copy Hash"
+      },
+      {
+        "command": "dummyGit.cherryPick",
+        "title": "Cherry-Pick"
+      },
+      {
+        "command": "dummyGit.revertCommit",
+        "title": "Revert"
+      },
+      {
+        "command": "dummyGit.rebaseHere",
+        "title": "Rebase Current onto Here"
       },
       {
         "command": "dummyGit.openMergeEditor",
@@ -118,6 +138,10 @@
       {
         "command": "dummyGit.rollbackFile",
         "title": "Rollback"
+      },
+      {
+        "command": "dummyGit.addUntracked",
+        "title": "Add to Git"
       },
       {
         "command": "dummyGit.deleteUntracked",
@@ -182,9 +206,44 @@
           "group": "2_sync@2"
         },
         {
+          "command": "dummyGit.mergeBranch",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'localBranch' && !dummyGit.current",
+          "group": "2_sync@3"
+        },
+        {
+          "command": "dummyGit.mergeBranch",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'remoteBranch'",
+          "group": "2_sync@3"
+        },
+        {
+          "command": "dummyGit.rebaseBranch",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'localBranch' && !dummyGit.current",
+          "group": "2_sync@4"
+        },
+        {
+          "command": "dummyGit.rebaseBranch",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'remoteBranch'",
+          "group": "2_sync@4"
+        },
+        {
           "command": "dummyGit.copyHash",
           "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'commit'",
           "group": "1_switch@1"
+        },
+        {
+          "command": "dummyGit.cherryPick",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'commit'",
+          "group": "2_pick@1"
+        },
+        {
+          "command": "dummyGit.revertCommit",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'commit'",
+          "group": "2_pick@2"
+        },
+        {
+          "command": "dummyGit.rebaseHere",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'commit'",
+          "group": "2_pick@3"
         },
         {
           "command": "dummyGit.openMergeEditor",
@@ -215,6 +274,11 @@
           "command": "dummyGit.rollbackFile",
           "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'change'",
           "group": "4_delete@1"
+        },
+        {
+          "command": "dummyGit.addUntracked",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'untracked'",
+          "group": "3_edit@1"
         },
         {
           "command": "dummyGit.deleteUntracked",
@@ -268,7 +332,27 @@
           "when": "false"
         },
         {
+          "command": "dummyGit.mergeBranch",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.rebaseBranch",
+          "when": "false"
+        },
+        {
           "command": "dummyGit.copyHash",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.cherryPick",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.revertCommit",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.rebaseHere",
           "when": "false"
         },
         {
@@ -289,6 +373,10 @@
         },
         {
           "command": "dummyGit.rollbackFile",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.addUntracked",
           "when": "false"
         },
         {

@@ -590,6 +590,7 @@ onMounted(async () => {
           :details="details"
           :selected="selected"
           :now="now"
+          :repo="repo"
           @select="select"
           @copy="copyCommit"
           @visible="fetchVisible"

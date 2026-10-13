@@ -166,6 +166,11 @@ export interface Commands {
     params: { repo: string; path: string };
     result: null;
   };
+  /** 未跟踪文件放进暂存区（右键 Add to Git）：`git add`。不确认。 */
+  addUntracked: {
+    params: { repo: string; path: string };
+    result: null;
+  };
   /** 从磁盘删掉一个未跟踪文件（右键 Delete），扩展先确认。 */
   deleteUntracked: {
     params: { repo: string; path: string };
@@ -189,6 +194,32 @@ export interface Commands {
    */
   push: {
     params: { repo: string; branch: string };
+    result: null;
+  };
+  /**
+   * 把 `start` 合进当前分支。`start` 是完整引用名（`refs/heads/x`、`refs/remotes/origin/x`）。
+   * `startName` 只用来显示。不确认。
+   */
+  merge: {
+    params: { repo: string; start: string; startName: string };
+    result: null;
+  };
+  /**
+   * 把当前分支变基到 `start`，已跟踪的改动先收起再取回。
+   * `start` 是完整引用名，或一条提交的完整 hash。`startName` 只用来显示。不确认。
+   */
+  rebase: {
+    params: { repo: string; start: string; startName: string };
+    result: null;
+  };
+  /** 把 `hash` 这条提交摘到当前分支。`hash` 是完整 hash。不确认。工作区已有的改动交给 git。 */
+  cherryPick: {
+    params: { repo: string; hash: string };
+    result: null;
+  };
+  /** 为 `hash` 做一次反向提交。`hash` 是完整 hash。不确认。工作区已有的改动交给 git。 */
+  revert: {
+    params: { repo: string; hash: string };
     result: null;
   };
   /** 切到一个本地分支。入口是分支树的右键菜单（协议的第二个入口，见 `extension/src/vscode/menu.ts`）。 */
