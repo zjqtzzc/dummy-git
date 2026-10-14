@@ -1,11 +1,6 @@
-import type { CommitSkeleton } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
 import { buildStructure } from "../structure.js";
-
-/** 按行写骨架：`["c", "b"]` 表示提交 c 的父提交是 b。时间与图无关，统一给 0。 */
-function skeleton(rows: readonly (readonly string[])[]): CommitSkeleton[] {
-  return rows.map(([hash = "", ...parents]) => ({ hash, parents, at: 0 }));
-}
+import { skeleton } from "./skeleton.js";
 
 describe("buildStructure：骨架换成按行号的图", () => {
   it("一条直线：每行的父提交是下一行", () => {
