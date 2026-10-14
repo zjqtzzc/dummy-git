@@ -17,11 +17,15 @@ export interface GraphSegment {
   readonly from: number;
   readonly to: number;
   readonly direction: Direction;
+  /** 颜色 id：取两端里编号较大的那个节点的颜色。`undefined` 为默认色。 */
+  readonly color: number | undefined;
 }
 
 export interface GraphRow {
   /** 本行节点的位置。 */
   readonly nodePosition: number;
+  /** 本行节点的颜色 id。`undefined` 为默认色。 */
+  readonly nodeColor: number | undefined;
   readonly segments: readonly GraphSegment[];
   /** 本行的图要几条车道宽。斜线在本行只画一半，按半格算，所以可以是 .5。 */
   readonly width: number;

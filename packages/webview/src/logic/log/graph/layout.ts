@@ -8,8 +8,8 @@ import type { GraphStructure } from "./structure.js";
 export interface GraphLayout {
   /** 每行的编号，从 1 开始。 */
   readonly indexes: readonly number[];
-  /** 编号 → 以它为主链的那个头上排第一的 ref。分叉出来的片段不在表里。颜色按它区分。 */
-  readonly mainRefs: ReadonlyMap<number, Ref>;
+  /** 编号 → 以它为主链的那个头上排第一的 ref，头上没有 ref 时为 `undefined`。分叉出来的片段不在表里。颜色按它区分。 */
+  readonly mainRefs: ReadonlyMap<number, Ref | undefined>;
 }
 
 const MAIN_NAMES = new Set(["main", "master"]);
@@ -30,7 +30,7 @@ function rankOf(ref: Ref): number {
   }
 }
 
-function nameOf(ref: Ref): string {
+export function nameOf(ref: Ref): string {
   switch (ref.kind) {
     case RefKind.RemoteBranch:
       return `${ref.remote}/${ref.name}`;
@@ -74,12 +74,11 @@ function sortedHeads(
 export function buildLayout(structure: GraphStructure, refs: readonly Ref[]): GraphLayout {
   const { heads, best } = sortedHeads(structure, refs);
   const indexes = structure.parents.map(() => 0);
-  const mainRefs = new Map<number, Ref>();
+  const mainRefs = new Map<number, Ref | undefined>();
   let current = 1;
   for (const head of heads) {
     if (indexes.at(head) !== 0) continue;
-    const ref = best.get(head);
-    if (ref !== undefined) mainRefs.set(current, ref);
+    mainRefs.set(current, best.get(head));
     // 深度优先：先沿第一个还没编号的父提交走到底，一条链用一个编号；走到底换下一个编号，
     // 退回去找合并提交的其它父提交，它们开新的编号。
     const stack = [head];

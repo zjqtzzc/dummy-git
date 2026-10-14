@@ -27,8 +27,15 @@ const MAX_BASE = 6;
 /** 推荐宽度的加权：最下一行的权重是最上一行的 `K` 倍，靠上的行更能代表打开时看到的样子。 */
 const K = 0.1;
 
-export function buildGraph(edges: readonly GraphEdge[], indexes: readonly number[]): Graph {
+export function buildGraph(
+  edges: readonly GraphEdge[],
+  indexes: readonly number[],
+  colors: readonly (number | undefined)[],
+): Graph {
   const indexOf = (row: number) => indexes.at(row) ?? 0;
+  const colorOf = (row: number) => colors.at(row);
+  const edgeColor = (edge: GraphEdge) =>
+    colorOf(indexOf(edge.up) >= indexOf(edge.down) ? edge.up : edge.down);
 
   /**
    * 边与节点比：边的编号取两端较大的那个，与节点的编号比；相同时按上端行号比。
@@ -92,9 +99,19 @@ export function buildGraph(edges: readonly GraphEdge[], indexes: readonly number
     const nodePosition = nodePositions.at(row) ?? 0;
     const segments: GraphSegment[] = [];
     const down = (from: number, id: number, edge: GraphEdge) =>
-      segments.push({ from, to: positionIn(row + 1, id, edge), direction: Direction.Down });
+      segments.push({
+        from,
+        to: positionIn(row + 1, id, edge),
+        direction: Direction.Down,
+        color: edgeColor(edge),
+      });
     const up = (from: number, id: number, edge: GraphEdge) =>
-      segments.push({ from, to: positionIn(row - 1, id, edge), direction: Direction.Up });
+      segments.push({
+        from,
+        to: positionIn(row - 1, id, edge),
+        direction: Direction.Up,
+        color: edgeColor(edge),
+      });
 
     for (const id of startsAt.at(row) ?? []) {
       const edge = edges.at(id);
@@ -115,7 +132,7 @@ export function buildGraph(edges: readonly GraphEdge[], indexes: readonly number
       (max, segment) => Math.max(max, segment.from, (segment.from + segment.to) / 2),
       nodePosition,
     );
-    rows.push({ nodePosition, segments, width: widest + 1 });
+    rows.push({ nodePosition, nodeColor: colorOf(row), segments, width: widest + 1 });
   }
 
   return { rows, base: Math.min(MAX_BASE, recommendedWidth(rows)) };

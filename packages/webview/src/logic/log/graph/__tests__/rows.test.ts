@@ -8,9 +8,11 @@ import { skeleton } from "./skeleton.js";
 
 const local = (name: string, target: string): Ref => ({ kind: RefKind.LocalBranch, name, target });
 
+/** 颜色 id 直接用编号，线的颜色取哪一端一眼可见。 */
 function graph(rows: readonly (readonly string[])[], refs: readonly Ref[]): Graph {
   const structure = buildStructure(skeleton(rows));
-  return buildGraph(edgesOf(structure), buildLayout(structure, refs).indexes);
+  const { indexes } = buildLayout(structure, refs);
+  return buildGraph(edgesOf(structure), indexes, indexes);
 }
 
 /** 每一行往下画的每段线，下一行都有一段反过来往上画的与它对上。 */
@@ -22,6 +24,7 @@ function expectJoined(g: Graph): void {
         from: segment.to,
         to: segment.from,
         direction: Direction.Up,
+        color: segment.color,
       });
     }
   });
@@ -35,8 +38,18 @@ describe("buildGraph：位置", () => {
     const g = graph([["c", "b"], ["b", "a"], ["a"]], [local("main", "c")]);
     expect(g.rows.map((row) => row.nodePosition)).toEqual([0, 0, 0]);
     expect(g.rows[1]?.segments).toHaveLength(2);
-    expect(g.rows[1]?.segments).toContainEqual({ from: 0, to: 0, direction: Direction.Up });
-    expect(g.rows[1]?.segments).toContainEqual({ from: 0, to: 0, direction: Direction.Down });
+    expect(g.rows[1]?.segments).toContainEqual({
+      from: 0,
+      to: 0,
+      direction: Direction.Up,
+      color: 1,
+    });
+    expect(g.rows[1]?.segments).toContainEqual({
+      from: 0,
+      to: 0,
+      direction: Direction.Down,
+      color: 1,
+    });
     expectJoined(g);
   });
 
@@ -44,15 +57,26 @@ describe("buildGraph：位置", () => {
     const g = graph(FORK, [local("main", "m2"), local("feature", "f2")]);
     // f2 独占第 0 行；m2 那行 main 在左、feature 的边在右；f1 那行 main 的边在左、f1 在右；m1 合回第 0 个位置。
     expect(g.rows.map((row) => row.nodePosition)).toEqual([0, 0, 1, 0, 0]);
-    expect(g.rows[0]?.segments).toEqual([{ from: 0, to: 1, direction: Direction.Down }]);
-    expect(g.rows[2]?.segments).toContainEqual({ from: 1, to: 0, direction: Direction.Down });
+    expect(g.rows[0]?.segments).toEqual([{ from: 0, to: 1, direction: Direction.Down, color: 2 }]);
+    expect(g.rows[2]?.segments).toContainEqual({
+      from: 1,
+      to: 0,
+      direction: Direction.Down,
+      color: 2,
+    });
     expectJoined(g);
   });
 
-  it("合并：第二个父提交的分支在右，合回后左移", () => {
+  it("合并：第二个父提交的分支在右，合回后左移；线取编号较大一端的颜色", () => {
     const g = graph(MERGE, [local("main", "merge")]);
     expect(g.rows.map((row) => row.nodePosition)).toEqual([0, 1, 0, 0]);
-    expect(g.rows[0]?.segments).toContainEqual({ from: 0, to: 1, direction: Direction.Down });
+    expect(g.rows.map((row) => row.nodeColor)).toEqual([1, 2, 1, 1]);
+    expect(g.rows[0]?.segments).toContainEqual({
+      from: 0,
+      to: 1,
+      direction: Direction.Down,
+      color: 2,
+    });
     expectJoined(g);
   });
 
@@ -63,8 +87,18 @@ describe("buildGraph：位置", () => {
       [local("main", "m"), local("feature", "f"), local("other", "o")],
     );
     expect(g.rows.map((row) => row.nodePosition)).toEqual([0, 0, 2, 1, 0]);
-    expect(g.rows[1]?.segments).toContainEqual({ from: 1, to: 1, direction: Direction.Down });
-    expect(g.rows[2]?.segments).toContainEqual({ from: 0, to: 0, direction: Direction.Down });
+    expect(g.rows[1]?.segments).toContainEqual({
+      from: 1,
+      to: 1,
+      direction: Direction.Down,
+      color: 2,
+    });
+    expect(g.rows[2]?.segments).toContainEqual({
+      from: 0,
+      to: 0,
+      direction: Direction.Down,
+      color: 1,
+    });
     expectJoined(g);
   });
 });

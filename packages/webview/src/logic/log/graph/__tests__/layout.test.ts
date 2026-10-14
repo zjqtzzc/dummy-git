@@ -92,4 +92,10 @@ describe("buildLayout：mainRefs", () => {
     expect(mainRefs.get(1)).toEqual(main);
     expect(mainRefs.has(2)).toBe(false);
   });
+
+  it("没有 ref 的头也是主链，对应 undefined", () => {
+    const { mainRefs } = layout([["x", "base"], ["base"]], []);
+    expect(mainRefs.has(1)).toBe(true);
+    expect(mainRefs.get(1)).toBeUndefined();
+  });
 });

@@ -28,6 +28,7 @@ import {
   restoreFilter,
   saveFilter,
 } from "../logic/log/filter.js";
+import { buildColors } from "../logic/log/graph/color.js";
 import { buildLayout } from "../logic/log/graph/layout.js";
 import { buildGraph } from "../logic/log/graph/rows.js";
 import { buildStructure, edgesOf } from "../logic/log/graph/structure.js";
@@ -148,7 +149,8 @@ const hidesRows = computed(() => hashes.value.length !== skeleton.value.length);
 const graph = computed(() => {
   if (hidesRows.value) return undefined;
   const structure = buildStructure(skeleton.value);
-  return buildGraph(edgesOf(structure), buildLayout(structure, refs.value).indexes);
+  const layout = buildLayout(structure, refs.value);
+  return buildGraph(edgesOf(structure), layout.indexes, buildColors(layout));
 });
 
 /** 搜索框里正显示的字。改了立刻显示，停 300 毫秒才变成过滤条件（`NFR.md` 第 3 节：查询要防抖）。 */
