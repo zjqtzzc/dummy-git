@@ -5,6 +5,7 @@ import {
   type GraphRow,
   type GraphSegment,
   LineEnd,
+  LineStyle,
 } from "../logic/log/graph/types.js";
 import { ROW_HEIGHT } from "../logic/virtualList.js";
 
@@ -92,6 +93,28 @@ function strokeOf(segment: GraphSegment, i: number): string | undefined {
   return segment.end === LineEnd.Fade ? `url(#${fadeId(i)})` : paint(segment.color);
 }
 
+/** 虚线的空白长度：半个行高减 2。 */
+const DASH_GAP = MIDDLE - 2;
+
+/**
+ * 虚线：空白长度固定，线段长度凑成整数段，图案从半段线开始，每段线都以行中心对称。
+ * 竖线按一个行高算，斜线按两行中心间的长度算。箭头照旧画实线。
+ */
+function dashOf(segment: GraphSegment): { strokeDasharray: string; strokeDashoffset: number } | undefined {
+  switch (segment.style) {
+    case LineStyle.Solid:
+      return undefined;
+    case LineStyle.Dotted: {
+      if (segment.end === LineEnd.Arrow) return undefined;
+      const length = Math.hypot((segment.to - segment.from) * LANE, ROW_HEIGHT);
+      const dash = length / Math.max(1, Math.floor(length / ROW_HEIGHT)) - DASH_GAP;
+      return { strokeDasharray: `${dash} ${DASH_GAP}`, strokeDashoffset: dash / 2 };
+    }
+    default:
+      return assertNever(segment.style, "GraphCell.dashOf");
+  }
+}
+
 /** 一段线的 SVG 路径。接到相邻行的画到相邻行的中心；箭头竖直画到行边缘再加两翼；渐隐竖直画到行边缘。 */
 function pathOf(segment: GraphSegment): string {
   const x1 = x(segment.from);
@@ -135,7 +158,7 @@ function pathOf(segment: GraphSegment): string {
       v-for="(segment, i) in props.row.segments"
       :key="i"
       :d="pathOf(segment)"
-      :style="{ stroke: strokeOf(segment, i) }"
+      :style="{ stroke: strokeOf(segment, i), ...dashOf(segment) }"
     />
     <circle
       :cx="x(props.row.nodePosition)"

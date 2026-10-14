@@ -1,16 +1,23 @@
 /** 提交图布局的输入与输出。只有声明，没有数据表。 */
 
+/** 线型：实线是直接的父子；虚线是中间隔着被筛掉的提交。 */
+export enum LineStyle {
+  Solid = "solid",
+  Dotted = "dotted",
+}
+
 /** 一条父子连线：子提交在 `up` 行，父提交在 `down` 行，`up < down`。 */
 export interface GraphEdge {
   readonly up: number;
   readonly down: number;
+  readonly style: LineStyle;
 }
 
 /** 要画的线。 */
 export interface GraphLines {
   readonly edges: readonly GraphEdge[];
-  /** 每行有几段从节点往下、到行底渐隐的线：另一头不在列表里。 */
-  readonly fades: readonly number[];
+  /** 每行从节点往下、到行底渐隐的线，各是什么线型：另一头不在列表里。 */
+  readonly fades: readonly (readonly LineStyle[])[];
 }
 
 /** 一段线从本行往哪个相邻行画。 */
@@ -38,6 +45,7 @@ export interface GraphSegment {
   readonly to: number;
   readonly direction: Direction;
   readonly end: LineEnd;
+  readonly style: LineStyle;
   /** 颜色 id：取两端里编号较大的那个节点的颜色。`undefined` 为默认色。 */
   readonly color: number | undefined;
 }

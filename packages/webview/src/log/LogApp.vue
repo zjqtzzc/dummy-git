@@ -31,10 +31,12 @@ import {
 import { buildColors } from "../logic/log/graph/color.js";
 import { buildLayout } from "../logic/log/graph/layout.js";
 import { buildGraph } from "../logic/log/graph/rows.js";
-import { buildStructure, linesOf } from "../logic/log/graph/structure.js";
+import { buildStructure } from "../logic/log/graph/structure.js";
+import { visibleLines, visibleRows } from "../logic/log/graph/visible.js";
 import { type Layout, restoreLayout, splitPosition } from "../logic/log/layout.js";
 import { hashesToFetch } from "../logic/log/prefetch.js";
 import type { FileEntry } from "../logic/tree/fileTree.js";
+import { keepIfSame } from "../logic/utils/list.js";
 import type { RowRange } from "../logic/virtualList.js";
 import FileTree from "../tree/FileTree.vue";
 import ToolButton from "../ui/ToolButton.vue";
@@ -138,19 +140,25 @@ const matches = computed((): Matches => {
     ...(filter.value.path === undefined || path === undefined ? {} : { path: path.hashes }),
   };
 });
-/** 列表里显示的提交：骨架按过滤条件筛过，顺序不变。 */
-const hashes = computed(() => applyFilter(skeleton.value, filter.value, now.value, matches.value));
-
 /**
- * 提交图。骨架或 refs 变了才重算：`hashes` 每 30 秒随时钟重算一次，图只看「有没有藏掉行」这个布尔值，
- * 值不变就不触发。藏掉了行时行号与骨架对不上，不画图。
+ * 列表里显示的提交：骨架按过滤条件筛过，顺序不变。
+ * 每 30 秒随时钟重算一次；结果没变就沿用上一次的数组，列表和图不跟着重算。
  */
-const hidesRows = computed(() => hashes.value.length !== skeleton.value.length);
+const hashes = computed((previous?: readonly string[]) =>
+  keepIfSame(previous, applyFilter(skeleton.value, filter.value, now.value, matches.value)),
+);
+
+/** 提交图。行号图、编号与颜色只随骨架和 refs 变；筛选只换要画的线和取哪些行。 */
+const structure = computed(() => buildStructure(skeleton.value));
+const graphLayout = computed(() => buildLayout(structure.value, refs.value));
+const colors = computed(() => buildColors(graphLayout.value));
 const graph = computed(() => {
-  if (hidesRows.value) return undefined;
-  const structure = buildStructure(skeleton.value);
-  const layout = buildLayout(structure, refs.value);
-  return buildGraph(linesOf(structure), layout.indexes, buildColors(layout));
+  const rows = visibleRows(structure.value, hashes.value);
+  return buildGraph(
+    visibleLines(structure.value, rows),
+    rows.map((row) => graphLayout.value.indexes.at(row) ?? 0),
+    rows.map((row) => colors.value.at(row)),
+  );
 });
 
 /** 搜索框里正显示的字。改了立刻显示，停 300 毫秒才变成过滤条件（`NFR.md` 第 3 节：查询要防抖）。 */

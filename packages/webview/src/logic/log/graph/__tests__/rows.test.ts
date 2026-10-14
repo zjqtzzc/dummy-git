@@ -2,8 +2,9 @@ import { type Ref, RefKind } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
 import { buildLayout } from "../layout.js";
 import { buildGraph } from "../rows.js";
-import { buildStructure, linesOf } from "../structure.js";
-import { Direction, type Graph, LineEnd } from "../types.js";
+import { buildStructure } from "../structure.js";
+import { Direction, type Graph, LineEnd, LineStyle } from "../types.js";
+import { visibleLines } from "../visible.js";
 import { skeleton } from "./skeleton.js";
 
 const local = (name: string, target: string): Ref => ({ kind: RefKind.LocalBranch, name, target });
@@ -12,7 +13,14 @@ const local = (name: string, target: string): Ref => ({ kind: RefKind.LocalBranc
 function graph(rows: readonly (readonly string[])[], refs: readonly Ref[]): Graph {
   const structure = buildStructure(skeleton(rows));
   const { indexes } = buildLayout(structure, refs);
-  return buildGraph(linesOf(structure), indexes, indexes);
+  return buildGraph(
+    visibleLines(
+      structure,
+      indexes.map((_, row) => row),
+    ),
+    indexes,
+    indexes,
+  );
 }
 
 /** 每一行往下接到下一行的每段线，下一行都有一段反过来往上画的与它对上。 */
@@ -29,6 +37,7 @@ function expectJoined(g: Graph): void {
         direction: Direction.Up,
         color: segment.color,
         end: LineEnd.Joined,
+        style: segment.style,
       });
     }
   });
@@ -48,6 +57,7 @@ describe("buildGraph：位置", () => {
       direction: Direction.Up,
       color: 1,
       end: LineEnd.Joined,
+      style: LineStyle.Solid,
     });
     expect(g.rows[1]?.segments).toContainEqual({
       from: 0,
@@ -55,6 +65,7 @@ describe("buildGraph：位置", () => {
       direction: Direction.Down,
       color: 1,
       end: LineEnd.Joined,
+      style: LineStyle.Solid,
     });
     expectJoined(g);
   });
@@ -64,7 +75,14 @@ describe("buildGraph：位置", () => {
     // f2 独占第 0 行；m2 那行 main 在左、feature 的边在右；f1 那行 main 的边在左、f1 在右；m1 合回第 0 个位置。
     expect(g.rows.map((row) => row.nodePosition)).toEqual([0, 0, 1, 0, 0]);
     expect(g.rows[0]?.segments).toEqual([
-      { from: 0, to: 1, direction: Direction.Down, color: 2, end: LineEnd.Joined },
+      {
+        from: 0,
+        to: 1,
+        direction: Direction.Down,
+        color: 2,
+        end: LineEnd.Joined,
+        style: LineStyle.Solid,
+      },
     ]);
     expect(g.rows[2]?.segments).toContainEqual({
       from: 1,
@@ -72,6 +90,7 @@ describe("buildGraph：位置", () => {
       direction: Direction.Down,
       color: 2,
       end: LineEnd.Joined,
+      style: LineStyle.Solid,
     });
     expectJoined(g);
   });
@@ -86,6 +105,7 @@ describe("buildGraph：位置", () => {
       direction: Direction.Down,
       color: 2,
       end: LineEnd.Joined,
+      style: LineStyle.Solid,
     });
     expectJoined(g);
   });
@@ -103,6 +123,7 @@ describe("buildGraph：位置", () => {
       direction: Direction.Down,
       color: 2,
       end: LineEnd.Joined,
+      style: LineStyle.Solid,
     });
     expect(g.rows[2]?.segments).toContainEqual({
       from: 0,
@@ -110,6 +131,7 @@ describe("buildGraph：位置", () => {
       direction: Direction.Down,
       color: 1,
       end: LineEnd.Joined,
+      style: LineStyle.Solid,
     });
     expectJoined(g);
   });
@@ -157,10 +179,24 @@ describe("buildGraph：截断", () => {
       ],
       [local("main", "c")],
     );
-    const fade = { from: 0, to: 0, direction: Direction.Down, end: LineEnd.Fade, color: 1 };
+    const fade = {
+      from: 0,
+      to: 0,
+      direction: Direction.Down,
+      end: LineEnd.Fade,
+      style: LineStyle.Solid,
+      color: 1,
+    };
     expect(g.rows[0]?.segments).toContainEqual(fade);
     expect(g.rows[1]?.segments).toEqual([
-      { from: 0, to: 0, direction: Direction.Up, end: LineEnd.Joined, color: 1 },
+      {
+        from: 0,
+        to: 0,
+        direction: Direction.Up,
+        end: LineEnd.Joined,
+        style: LineStyle.Solid,
+        color: 1,
+      },
       fade,
     ]);
     expect(g.rows.map((row) => row.width)).toEqual([1, 1]);

@@ -123,8 +123,11 @@ export function buildGraph(
     ) => {
       const to = positionIn(direction === Direction.Down ? row + 1 : row - 1, id, edge);
       const color = edgeColor(edge);
-      if (to !== undefined) segments.push({ from, to, direction, end: LineEnd.Joined, color });
-      else if (passing) segments.push({ from, to: from, direction, end: LineEnd.Arrow, color });
+      const style = edge.style;
+      if (to !== undefined)
+        segments.push({ from, to, direction, end: LineEnd.Joined, style, color });
+      else if (passing)
+        segments.push({ from, to: from, direction, end: LineEnd.Arrow, style, color });
       else throw new Error(`提交图：边 ${id} 在第 ${row} 行的相邻行没有位置`);
     };
 
@@ -136,12 +139,13 @@ export function buildGraph(
       const edge = edges.at(id);
       if (edge !== undefined) draw(nodePosition, id, edge, Direction.Up, false);
     }
-    for (let i = 0; i < (fades.at(row) ?? 0); i++) {
+    for (const style of fades.at(row) ?? []) {
       segments.push({
         from: nodePosition,
         to: nodePosition,
         direction: Direction.Down,
         end: LineEnd.Fade,
+        style,
         color: colorOf(row),
       });
     }
