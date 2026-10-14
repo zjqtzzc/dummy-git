@@ -1,4 +1,5 @@
 import type { CommitSkeleton } from "@dummy-git/shared";
+import type { GraphEdge } from "./types.js";
 
 /**
  * 提交图按行号表示：第 i 行就是列表里的第 i 条提交。编号、每行的位置都只认行号，不再查 hash。
@@ -12,6 +13,11 @@ export interface GraphStructure {
   readonly parents: readonly (readonly number[])[];
   /** 每行有几个父提交不在骨架里（第一万条附近被截断）。每个各画一段到行底渐隐的线。 */
   readonly missingParents: readonly number[];
+}
+
+/** 每条父子关系一条边。 */
+export function edgesOf(structure: GraphStructure): GraphEdge[] {
+  return structure.parents.flatMap((parents, up) => parents.map((down) => ({ up, down })));
 }
 
 export function buildStructure(skeleton: readonly CommitSkeleton[]): GraphStructure {
