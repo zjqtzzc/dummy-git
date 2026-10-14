@@ -13,4 +13,11 @@ describe("keepIfSame", () => {
     expect(keepIfSame(["a"], next)).toBe(next);
     expect(keepIfSame(undefined, next)).toBe(next);
   });
+
+  it("给了比较函数：按它判断相同", () => {
+    const previous = [{ id: 1 }];
+    const same = (a: { id: number }, b: { id: number }) => a.id === b.id;
+    expect(keepIfSame(previous, [{ id: 1 }], same)).toBe(previous);
+    expect(keepIfSame(previous, [{ id: 2 }], same)).not.toBe(previous);
+  });
 });

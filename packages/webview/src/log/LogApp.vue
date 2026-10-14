@@ -31,7 +31,7 @@ import {
 import { buildColors } from "../logic/log/graph/color.js";
 import { buildLayout } from "../logic/log/graph/layout.js";
 import { buildGraph } from "../logic/log/graph/rows.js";
-import { buildStructure } from "../logic/log/graph/structure.js";
+import { buildStructure, sameCommit } from "../logic/log/graph/structure.js";
 import { visibleLines, visibleRows } from "../logic/log/graph/visible.js";
 import { type Layout, restoreLayout, splitPosition } from "../logic/log/layout.js";
 import { hashesToFetch } from "../logic/log/prefetch.js";
@@ -52,7 +52,7 @@ const props = defineProps<{ client: Client }>();
 /** `ref`：`.value` 一改，用到它的模板就重画。 */
 const repo = ref<string>();
 /** 骨架，最多一万条（`ARCHITECTURE.md` 第 8 题）。 */
-const skeleton = ref<CommitSkeleton[]>([]);
+const skeleton = ref<readonly CommitSkeleton[]>([]);
 /** 已经取到的详情。同一个 hash 的内容永远不变，刷新时不清。 */
 const details = ref(new Map<string, Commit>());
 /** 正在路上的详情请求，避免重复要。不参与界面，不用 ref。 */
@@ -373,7 +373,9 @@ async function load(repository: string): Promise<void> {
       props.client.request("getRefs", { repo: repository }),
     ]);
     const previous = selected.value === undefined ? -1 : hashes.value.indexOf(selected.value);
-    skeleton.value = fetchedSkeleton;
+    // 内容没变就沿用旧数组：refs 变了而提交没变（fetch 没拉到新东西、切到同一提交上的分支）时，
+    // 图结构不重算、筛选不重查。
+    skeleton.value = keepIfSame(skeleton.value, fetchedSkeleton, sameCommit);
     refs.value = fetchedRefs;
     loaded.value = true;
     // 正在过滤的分支被删了（`TRAPS.md`）：过滤落空，按全部分支重取。

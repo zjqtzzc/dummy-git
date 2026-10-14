@@ -2,7 +2,13 @@
 export function keepIfSame<T>(
   previous: readonly T[] | undefined,
   next: readonly T[],
+  same: (a: T, b: T) => boolean = (a, b) => a === b,
 ): readonly T[] {
   if (previous === undefined || previous.length !== next.length) return next;
-  return previous.every((item, i) => item === next[i]) ? previous : next;
+  return previous.every((item, i) => {
+    const other = next.at(i);
+    return other !== undefined && same(item, other);
+  })
+    ? previous
+    : next;
 }

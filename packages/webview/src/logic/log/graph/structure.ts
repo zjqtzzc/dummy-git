@@ -14,6 +14,19 @@ export interface GraphStructure {
   readonly missingParents: readonly number[];
 }
 
+/**
+ * 重拉回来的同一条提交是否一样。hash 相同不够：`refs/replace` 与 `shallow` 不改 hash，
+ * 却会改 git 报出的父提交与时间，也就改了图。
+ */
+export function sameCommit(a: CommitSkeleton, b: CommitSkeleton): boolean {
+  return (
+    a.hash === b.hash &&
+    a.at === b.at &&
+    a.parents.length === b.parents.length &&
+    a.parents.every((parent, i) => parent === b.parents.at(i))
+  );
+}
+
 export function buildStructure(skeleton: readonly CommitSkeleton[]): GraphStructure {
   const rowOf = new Map(skeleton.map((commit, row) => [commit.hash, row]));
   const parents = skeleton.map((commit) =>
