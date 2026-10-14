@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildLayout } from "../layout.js";
 import { buildGraph } from "../rows.js";
 import { buildStructure, edgesOf } from "../structure.js";
-import { Direction, type Graph } from "../types.js";
+import { Direction, type Graph, LineEnd } from "../types.js";
 import { skeleton } from "./skeleton.js";
 
 const local = (name: string, target: string): Ref => ({ kind: RefKind.LocalBranch, name, target });
@@ -15,16 +15,20 @@ function graph(rows: readonly (readonly string[])[], refs: readonly Ref[]): Grap
   return buildGraph(edgesOf(structure), indexes, indexes);
 }
 
-/** 每一行往下画的每段线，下一行都有一段反过来往上画的与它对上。 */
+/** 每一行往下接到下一行的每段线，下一行都有一段反过来往上画的与它对上。 */
 function expectJoined(g: Graph): void {
   g.rows.forEach((row, r) => {
     const next = g.rows[r + 1];
-    for (const segment of row.segments.filter((s) => s.direction === Direction.Down)) {
+    const joinedDown = row.segments.filter(
+      (s) => s.direction === Direction.Down && s.end === LineEnd.Joined,
+    );
+    for (const segment of joinedDown) {
       expect(next?.segments).toContainEqual({
         from: segment.to,
         to: segment.from,
         direction: Direction.Up,
         color: segment.color,
+        end: LineEnd.Joined,
       });
     }
   });
@@ -43,12 +47,14 @@ describe("buildGraph：位置", () => {
       to: 0,
       direction: Direction.Up,
       color: 1,
+      end: LineEnd.Joined,
     });
     expect(g.rows[1]?.segments).toContainEqual({
       from: 0,
       to: 0,
       direction: Direction.Down,
       color: 1,
+      end: LineEnd.Joined,
     });
     expectJoined(g);
   });
@@ -57,12 +63,15 @@ describe("buildGraph：位置", () => {
     const g = graph(FORK, [local("main", "m2"), local("feature", "f2")]);
     // f2 独占第 0 行；m2 那行 main 在左、feature 的边在右；f1 那行 main 的边在左、f1 在右；m1 合回第 0 个位置。
     expect(g.rows.map((row) => row.nodePosition)).toEqual([0, 0, 1, 0, 0]);
-    expect(g.rows[0]?.segments).toEqual([{ from: 0, to: 1, direction: Direction.Down, color: 2 }]);
+    expect(g.rows[0]?.segments).toEqual([
+      { from: 0, to: 1, direction: Direction.Down, color: 2, end: LineEnd.Joined },
+    ]);
     expect(g.rows[2]?.segments).toContainEqual({
       from: 1,
       to: 0,
       direction: Direction.Down,
       color: 2,
+      end: LineEnd.Joined,
     });
     expectJoined(g);
   });
@@ -76,6 +85,7 @@ describe("buildGraph：位置", () => {
       to: 1,
       direction: Direction.Down,
       color: 2,
+      end: LineEnd.Joined,
     });
     expectJoined(g);
   });
@@ -92,14 +102,48 @@ describe("buildGraph：位置", () => {
       to: 1,
       direction: Direction.Down,
       color: 2,
+      end: LineEnd.Joined,
     });
     expect(g.rows[2]?.segments).toContainEqual({
       from: 0,
       to: 0,
       direction: Direction.Down,
       color: 1,
+      end: LineEnd.Joined,
     });
     expectJoined(g);
+  });
+});
+
+/** 主线 `length + 1` 个提交，第一个是合并，第二个父提交在主线之后：合并进来的那条线跨 `length + 1` 行。 */
+function longMerge(length: number): Graph {
+  const main = Array.from({ length: length + 1 }, (_, i) => `m${i}`);
+  const rows = main.map((hash, i) =>
+    i === 0 ? [hash, "m1", "side"] : [hash, main[i + 1] ?? "base"],
+  );
+  return graph([...rows, ["side", "base"], ["base"]], [local("main", "m0")]);
+}
+
+describe("buildGraph：长线", () => {
+  it("跨度 30：只在两头各露一行，朝中间画箭头；中间的行不含它、宽度变回 1", () => {
+    // m0 在第 0 行，side 在第 30 行。
+    const g = longMerge(29);
+    const side = g.rows.length - 2;
+    expect(g.rows[1]?.segments).toContainEqual(
+      expect.objectContaining({ direction: Direction.Down, end: LineEnd.Arrow, from: 1, to: 1 }),
+    );
+    expect(g.rows[side - 1]?.segments).toContainEqual(
+      expect.objectContaining({ direction: Direction.Up, end: LineEnd.Arrow, from: 1, to: 1 }),
+    );
+    for (let row = 2; row < side - 1; row++) expect(g.rows[row]?.width).toBe(1);
+    expectJoined(g);
+  });
+
+  it("跨度 29：整条画出来", () => {
+    const g = longMerge(28);
+    const arrows = g.rows.flatMap((row) => row.segments).filter((s) => s.end === LineEnd.Arrow);
+    expect(arrows).toEqual([]);
+    expect(g.rows[15]?.width).toBe(2);
   });
 });
 

@@ -4,6 +4,7 @@ import {
   type GraphEdge,
   type GraphRow,
   type GraphSegment,
+  LineEnd,
 } from "./types.js";
 
 /**
@@ -11,6 +12,9 @@ import {
  *
  * 一行的元素 = 本行的节点 + 穿过本行的边（上端在本行之上、下端在本行之下）。元素按编号排序，
  * 位置就是序号：左边有边结束，右边的边下一行自动左移一格，车道始终压紧。
+ *
+ * 长线（跨度 ≥ `LONG_EDGE`）只在两头各露 `VISIBLE_PART` 行，中间的行里不算它的元素、不占位置；
+ * 露出的那一行朝中间的一头画成箭头。
  */
 
 enum ElementKind {
@@ -21,6 +25,16 @@ enum ElementKind {
 type Element =
   | { readonly kind: ElementKind.Node; readonly row: number }
   | { readonly kind: ElementKind.Edge; readonly id: number; readonly edge: GraphEdge };
+
+const LONG_EDGE = 30;
+const VISIBLE_PART = 1;
+
+/** 边在穿过的这一行里画不画：短线都画，长线只画离端点不超过 `VISIBLE_PART` 行的。 */
+function visibleIn(edge: GraphEdge, row: number): boolean {
+  return (
+    edge.down - edge.up < LONG_EDGE || Math.min(row - edge.up, edge.down - row) <= VISIBLE_PART
+  );
+}
 
 /** 基准宽度的上限（车道数）。 */
 const MAX_BASE = 6;
@@ -74,7 +88,8 @@ export function buildGraph(
     const elements: Element[] = [{ kind: ElementKind.Node, row }];
     for (const id of active) {
       const edge = edges.at(id);
-      if (edge !== undefined) elements.push({ kind: ElementKind.Edge, id, edge });
+      if (edge !== undefined && visibleIn(edge, row))
+        elements.push({ kind: ElementKind.Edge, id, edge });
     }
     elements.sort(compare);
     const positions = new Map<number, number>();
@@ -86,46 +101,45 @@ export function buildGraph(
     for (const id of startsAt.at(row) ?? []) active.add(id);
   }
 
-  /** 边在某一行的位置：那一行是它的端点就是节点的位置，否则是它穿过那一行时的位置。 */
-  const positionIn = (row: number, id: number, edge: GraphEdge): number => {
-    const position =
-      edge.up === row || edge.down === row ? nodePositions.at(row) : edgePositions.at(row)?.get(id);
-    if (position === undefined) throw new Error(`提交图：边 ${id} 不在第 ${row} 行`);
-    return position;
-  };
+  /**
+   * 边在某一行的位置：那一行是它的端点就是节点的位置，否则是它穿过那一行时的位置。
+   * 长线在那一行被省略时没有位置。
+   */
+  const positionIn = (row: number, id: number, edge: GraphEdge): number | undefined =>
+    edge.up === row || edge.down === row ? nodePositions.at(row) : edgePositions.at(row)?.get(id);
 
   const rows: GraphRow[] = [];
   for (let row = 0; row < rowCount; row++) {
     const nodePosition = nodePositions.at(row) ?? 0;
     const segments: GraphSegment[] = [];
-    const down = (from: number, id: number, edge: GraphEdge) =>
-      segments.push({
-        from,
-        to: positionIn(row + 1, id, edge),
-        direction: Direction.Down,
-        color: edgeColor(edge),
-      });
-    const up = (from: number, id: number, edge: GraphEdge) =>
-      segments.push({
-        from,
-        to: positionIn(row - 1, id, edge),
-        direction: Direction.Up,
-        color: edgeColor(edge),
-      });
+    /** 从本行 `from` 朝相邻行画一段。相邻行没有这条边（长线省略了中间）就画箭头；只有穿过本行的边会这样。 */
+    const draw = (
+      from: number,
+      id: number,
+      edge: GraphEdge,
+      direction: Direction,
+      passing: boolean,
+    ) => {
+      const to = positionIn(direction === Direction.Down ? row + 1 : row - 1, id, edge);
+      const color = edgeColor(edge);
+      if (to !== undefined) segments.push({ from, to, direction, end: LineEnd.Joined, color });
+      else if (passing) segments.push({ from, to: from, direction, end: LineEnd.Arrow, color });
+      else throw new Error(`提交图：边 ${id} 在第 ${row} 行的相邻行没有位置`);
+    };
 
     for (const id of startsAt.at(row) ?? []) {
       const edge = edges.at(id);
-      if (edge !== undefined) down(nodePosition, id, edge);
+      if (edge !== undefined) draw(nodePosition, id, edge, Direction.Down, false);
     }
     for (const id of endsAt.at(row) ?? []) {
       const edge = edges.at(id);
-      if (edge !== undefined) up(nodePosition, id, edge);
+      if (edge !== undefined) draw(nodePosition, id, edge, Direction.Up, false);
     }
     for (const [id, position] of edgePositions.at(row) ?? []) {
       const edge = edges.at(id);
       if (edge === undefined) continue;
-      up(position, id, edge);
-      down(position, id, edge);
+      draw(position, id, edge, Direction.Up, true);
+      draw(position, id, edge, Direction.Down, true);
     }
 
     const widest = segments.reduce(

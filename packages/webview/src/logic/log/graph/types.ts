@@ -12,11 +12,23 @@ export enum Direction {
   Down = "down",
 }
 
-/** 本行里的一段线：从本行第 `from` 个位置的中心，画到相邻行第 `to` 个位置的中心，超出本行的部分裁掉。 */
+/** 线在本行朝相邻行的那一头怎么收。 */
+export enum LineEnd {
+  /** 接到相邻行。 */
+  Joined = "joined",
+  /** 长线省略中间：竖直画到行边缘，带箭头。 */
+  Arrow = "arrow",
+}
+
+/**
+ * 本行里的一段线：从本行第 `from` 个位置的中心，画到相邻行第 `to` 个位置的中心，超出本行的部分裁掉。
+ * 带箭头时不进相邻行，`to` 等于 `from`。
+ */
 export interface GraphSegment {
   readonly from: number;
   readonly to: number;
   readonly direction: Direction;
+  readonly end: LineEnd;
   /** 颜色 id：取两端里编号较大的那个节点的颜色。`undefined` 为默认色。 */
   readonly color: number | undefined;
 }

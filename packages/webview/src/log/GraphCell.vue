@@ -1,6 +1,11 @@
 <script lang="ts">
 import { assertNever } from "@dummy-git/shared";
-import { Direction, type GraphRow } from "../logic/log/graph/types.js";
+import {
+  Direction,
+  type GraphRow,
+  type GraphSegment,
+  LineEnd,
+} from "../logic/log/graph/types.js";
 import { ROW_HEIGHT } from "../logic/virtualList.js";
 
 /** 一条车道的宽度，像素。 */
@@ -52,36 +57,57 @@ export function graphWidth(row: GraphRow, base: number): number {
 const props = defineProps<{ row: GraphRow; base: number }>();
 
 const MIDDLE = ROW_HEIGHT / 2;
+const RADIUS = 4;
+/** 箭头尖离行边缘的距离。 */
+const ARROW_GAP = RADIUS / 2 + 1;
+/** 箭头两翼：长 0.3 倍行高，与线的夹角约 33°。 */
+const WING_ALONG = 0.3 * ROW_HEIGHT * Math.sqrt(0.7);
+const WING_ACROSS = 0.3 * ROW_HEIGHT * Math.sqrt(0.3);
 
 const x = (position: number) => position * LANE + LANE / 2;
 
-function targetY(direction: Direction): number {
+/** 往下为 1，往上为 -1。 */
+function sign(direction: Direction): number {
   switch (direction) {
     case Direction.Up:
-      return MIDDLE - ROW_HEIGHT;
+      return -1;
     case Direction.Down:
-      return MIDDLE + ROW_HEIGHT;
+      return 1;
     default:
-      return assertNever(direction, "GraphCell.targetY");
+      return assertNever(direction, "GraphCell.sign");
+  }
+}
+
+/** 一段线的 SVG 路径。接到相邻行的画到相邻行的中心，箭头竖直画到行边缘再加两翼。 */
+function pathOf(segment: GraphSegment): string {
+  const x1 = x(segment.from);
+  const s = sign(segment.direction);
+  switch (segment.end) {
+    case LineEnd.Joined:
+      return `M${x1} ${MIDDLE}L${x(segment.to)} ${MIDDLE + s * ROW_HEIGHT}`;
+    case LineEnd.Arrow: {
+      const tip = MIDDLE + s * (MIDDLE - ARROW_GAP);
+      const wing = tip - s * WING_ALONG;
+      return `M${x1} ${MIDDLE}L${x1} ${tip}M${x1 - WING_ACROSS} ${wing}L${x1} ${tip}L${x1 + WING_ACROSS} ${wing}`;
+    }
+    default:
+      return assertNever(segment.end, "GraphCell.pathOf");
   }
 }
 </script>
 
 <template>
   <svg class="graph" aria-hidden="true" :width="graphWidth(props.row, props.base)" :height="ROW_HEIGHT">
-    <line
+    <path
       v-for="(segment, i) in props.row.segments"
       :key="i"
-      :x1="x(segment.from)"
-      :y1="MIDDLE"
-      :x2="x(segment.to)"
-      :y2="targetY(segment.direction)"
+      :d="pathOf(segment)"
       :style="{ stroke: paint(segment.color) }"
     />
     <circle
       :cx="x(props.row.nodePosition)"
       :cy="MIDDLE"
-      r="4"
+      :r="RADIUS"
       :style="{ fill: paint(props.row.nodeColor) }"
     />
   </svg>
@@ -95,8 +121,13 @@ function targetY(direction: Direction): number {
   left: 8px;
   pointer-events: none;
   stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   /* 主题色与终端色都偏艳，图上统一压低饱和度（IDEA 的提交图饱和度是 0.4）。 */
   filter: saturate(0.7);
+}
+.graph path {
+  fill: none;
 }
 .graph circle {
   stroke: none;
