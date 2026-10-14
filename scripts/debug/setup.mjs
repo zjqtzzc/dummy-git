@@ -71,6 +71,10 @@ const g = {
   git(...args) {
     return git(target, args);
   },
+  /** 从标准输入喂数据的命令（比如用 fast-import 一次造上万个提交）。 */
+  gitInput(input, ...args) {
+    return execFileSync("git", args, { cwd: target, input, encoding: "utf8" });
+  },
   /** 预期失败的命令（比如造冲突的 stash pop）：吞掉非零退出码。 */
   gitMayFail(...args) {
     try {

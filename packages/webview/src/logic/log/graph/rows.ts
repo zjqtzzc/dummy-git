@@ -2,6 +2,7 @@ import {
   Direction,
   type Graph,
   type GraphEdge,
+  type GraphLines,
   type GraphRow,
   type GraphSegment,
   LineEnd,
@@ -42,7 +43,7 @@ const MAX_BASE = 6;
 const K = 0.1;
 
 export function buildGraph(
-  edges: readonly GraphEdge[],
+  { edges, fades }: GraphLines,
   indexes: readonly number[],
   colors: readonly (number | undefined)[],
 ): Graph {
@@ -134,6 +135,15 @@ export function buildGraph(
     for (const id of endsAt.at(row) ?? []) {
       const edge = edges.at(id);
       if (edge !== undefined) draw(nodePosition, id, edge, Direction.Up, false);
+    }
+    for (let i = 0; i < (fades.at(row) ?? 0); i++) {
+      segments.push({
+        from: nodePosition,
+        to: nodePosition,
+        direction: Direction.Down,
+        end: LineEnd.Fade,
+        color: colorOf(row),
+      });
     }
     for (const [id, position] of edgePositions.at(row) ?? []) {
       const edge = edges.at(id);

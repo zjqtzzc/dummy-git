@@ -50,6 +50,8 @@ export function graphWidth(row: GraphRow, base: number): number {
 </script>
 
 <script setup lang="ts">
+import { useId } from "vue";
+
 /**
  * 一行的提交图：每段线从本行节点中心画到相邻行目标位置的中心，超出本行的部分由 SVG 裁掉；
  * 节点最后画，盖在线上。
@@ -78,7 +80,19 @@ function sign(direction: Direction): number {
   }
 }
 
-/** 一段线的 SVG 路径。接到相邻行的画到相邻行的中心，箭头竖直画到行边缘再加两翼。 */
+/** 本行朝某个方向的边缘。 */
+const edgeY = (direction: Direction) => MIDDLE + sign(direction) * MIDDLE;
+
+/** 渐隐用的渐变，每行各自定义：id 在整个页面里唯一。 */
+const uid = useId();
+const fadeId = (i: number) => `${uid}-fade-${i}`;
+
+/** 线的颜色。渐隐的线引用本行的渐变，渐变里再取颜色。 */
+function strokeOf(segment: GraphSegment, i: number): string | undefined {
+  return segment.end === LineEnd.Fade ? `url(#${fadeId(i)})` : paint(segment.color);
+}
+
+/** 一段线的 SVG 路径。接到相邻行的画到相邻行的中心；箭头竖直画到行边缘再加两翼；渐隐竖直画到行边缘。 */
 function pathOf(segment: GraphSegment): string {
   const x1 = x(segment.from);
   const s = sign(segment.direction);
@@ -90,6 +104,8 @@ function pathOf(segment: GraphSegment): string {
       const wing = tip - s * WING_ALONG;
       return `M${x1} ${MIDDLE}L${x1} ${tip}M${x1 - WING_ACROSS} ${wing}L${x1} ${tip}L${x1 + WING_ACROSS} ${wing}`;
     }
+    case LineEnd.Fade:
+      return `M${x1} ${MIDDLE}L${x1} ${edgeY(segment.direction)}`;
     default:
       return assertNever(segment.end, "GraphCell.pathOf");
   }
@@ -98,11 +114,28 @@ function pathOf(segment: GraphSegment): string {
 
 <template>
   <svg class="graph" aria-hidden="true" :width="graphWidth(props.row, props.base)" :height="ROW_HEIGHT">
+    <defs>
+      <template v-for="(segment, i) in props.row.segments" :key="i">
+        <!-- userSpaceOnUse：竖线的外框宽度为 0，按外框算的渐变画不出来。 -->
+        <linearGradient
+          v-if="segment.end === LineEnd.Fade"
+          :id="fadeId(i)"
+          gradientUnits="userSpaceOnUse"
+          x1="0"
+          :y1="MIDDLE"
+          x2="0"
+          :y2="edgeY(segment.direction)"
+        >
+          <stop offset="0" :style="{ stopColor: paint(segment.color) }" />
+          <stop offset="1" :style="{ stopColor: paint(segment.color), stopOpacity: 0 }" />
+        </linearGradient>
+      </template>
+    </defs>
     <path
       v-for="(segment, i) in props.row.segments"
       :key="i"
       :d="pathOf(segment)"
-      :style="{ stroke: paint(segment.color) }"
+      :style="{ stroke: strokeOf(segment, i) }"
     />
     <circle
       :cx="x(props.row.nodePosition)"

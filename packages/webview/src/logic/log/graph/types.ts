@@ -6,6 +6,13 @@ export interface GraphEdge {
   readonly down: number;
 }
 
+/** 要画的线。 */
+export interface GraphLines {
+  readonly edges: readonly GraphEdge[];
+  /** 每行有几段从节点往下、到行底渐隐的线：另一头不在列表里。 */
+  readonly fades: readonly number[];
+}
+
 /** 一段线从本行往哪个相邻行画。 */
 export enum Direction {
   Up = "up",
@@ -18,11 +25,13 @@ export enum LineEnd {
   Joined = "joined",
   /** 长线省略中间：竖直画到行边缘，带箭头。 */
   Arrow = "arrow",
+  /** 另一头不在列表里：竖直画到行边缘，逐渐变淡。 */
+  Fade = "fade",
 }
 
 /**
  * 本行里的一段线：从本行第 `from` 个位置的中心，画到相邻行第 `to` 个位置的中心，超出本行的部分裁掉。
- * 带箭头时不进相邻行，`to` 等于 `from`。
+ * 带箭头或渐隐时不进相邻行，`to` 等于 `from`。
  */
 export interface GraphSegment {
   readonly from: number;

@@ -2,7 +2,7 @@ import { type Ref, RefKind } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
 import { buildLayout } from "../layout.js";
 import { buildGraph } from "../rows.js";
-import { buildStructure, edgesOf } from "../structure.js";
+import { buildStructure, linesOf } from "../structure.js";
 import { Direction, type Graph, LineEnd } from "../types.js";
 import { skeleton } from "./skeleton.js";
 
@@ -12,7 +12,7 @@ const local = (name: string, target: string): Ref => ({ kind: RefKind.LocalBranc
 function graph(rows: readonly (readonly string[])[], refs: readonly Ref[]): Graph {
   const structure = buildStructure(skeleton(rows));
   const { indexes } = buildLayout(structure, refs);
-  return buildGraph(edgesOf(structure), indexes, indexes);
+  return buildGraph(linesOf(structure), indexes, indexes);
 }
 
 /** 每一行往下接到下一行的每段线，下一行都有一段反过来往上画的与它对上。 */
@@ -144,6 +144,26 @@ describe("buildGraph：长线", () => {
     const arrows = g.rows.flatMap((row) => row.segments).filter((s) => s.end === LineEnd.Arrow);
     expect(arrows).toEqual([]);
     expect(g.rows[15]?.width).toBe(2);
+  });
+});
+
+describe("buildGraph：截断", () => {
+  it("父提交不在列表里：从节点往下一段渐隐，颜色同节点，不占位置", () => {
+    // b 的父提交 gone 不在骨架里；c 是合并，第二个父提交也不在。
+    const g = graph(
+      [
+        ["c", "b", "gone2"],
+        ["b", "gone"],
+      ],
+      [local("main", "c")],
+    );
+    const fade = { from: 0, to: 0, direction: Direction.Down, end: LineEnd.Fade, color: 1 };
+    expect(g.rows[0]?.segments).toContainEqual(fade);
+    expect(g.rows[1]?.segments).toEqual([
+      { from: 0, to: 0, direction: Direction.Up, end: LineEnd.Joined, color: 1 },
+      fade,
+    ]);
+    expect(g.rows.map((row) => row.width)).toEqual([1, 1]);
   });
 });
 
