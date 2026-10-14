@@ -35,6 +35,7 @@ import { buildStructure } from "../logic/log/graph/structure.js";
 import { visibleLines, visibleRows } from "../logic/log/graph/visible.js";
 import { type Layout, restoreLayout, splitPosition } from "../logic/log/layout.js";
 import { hashesToFetch } from "../logic/log/prefetch.js";
+import { refLabels } from "../logic/log/refLabels.js";
 import type { FileEntry } from "../logic/tree/fileTree.js";
 import { keepIfSame } from "../logic/utils/list.js";
 import type { RowRange } from "../logic/virtualList.js";
@@ -160,6 +161,9 @@ const graph = computed(() => {
     rows.map((row) => colors.value.at(row)),
   );
 });
+
+/** 每个提交上的 ref 标签。 */
+const labels = computed(() => refLabels(refs.value));
 
 /** 搜索框里正显示的字。改了立刻显示，停 300 毫秒才变成过滤条件（`NFR.md` 第 3 节：查询要防抖）。 */
 const searchText = ref(filter.value.text ?? "");
@@ -616,6 +620,7 @@ onMounted(async () => {
           :now="now"
           :repo="repo"
           :graph="graph"
+          :labels="labels"
           @select="select"
           @copy="copyCommit"
           @visible="fetchVisible"

@@ -8,7 +8,8 @@
  * - feature/a 从 main 分出两个提交，--no-ff 合回；
  * - x、y、z 各一个提交，一次三方合并合回 main；
  * - feature/b 从 main 分出两个提交，没合回；
- * - origin/main 停在 main 的前一个提交，HEAD 在 main。
+ * - origin/main 停在 main 的前一个提交，HEAD 在 main；
+ * - feature/b 跟踪 origin/feature/b（同一提交），a: second 上另有一个超长名字的分支。
  */
 export function build(g) {
   // git 子进程继承 process.env：提交前把两个时间设成「一分钟一个」，最后一个停在现在。
@@ -62,6 +63,14 @@ export function build(g) {
   commit("main 4");
   g.git("update-ref", "refs/remotes/origin/main", "main");
   commit("main 5");
+
+  // 标签：feature/b 跟踪指向同一提交的 origin/feature/b（合成一个标签）；
+  // 一个超长的分支名停在 a: second（截掉开头）。
+  // origin 只是个名字，地址不会被访问。
+  g.git("remote", "add", "origin", "https://example.invalid/graph.git");
+  g.git("update-ref", "refs/remotes/origin/feature/b", "feature/b");
+  g.git("branch", "-q", "--set-upstream-to=origin/feature/b", "feature/b");
+  g.git("branch", "feature/a-very-long-branch-name-for-labels", "feature/a");
   delete process.env.GIT_AUTHOR_DATE;
   delete process.env.GIT_COMMITTER_DATE;
 }

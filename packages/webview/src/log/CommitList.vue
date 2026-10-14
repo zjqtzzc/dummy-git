@@ -1,7 +1,15 @@
 <script setup lang="ts">
-import { type Commit, MenuContextKey, MenuNodeValue } from "@dummy-git/shared";
+import {
+  assertNever,
+  type Commit,
+  MenuContextKey,
+  MenuNodeValue,
+  RefKind,
+} from "@dummy-git/shared";
 import { computed, onMounted, onUnmounted, ref } from "vue";
+import { codicon, type IconRef, IconSize } from "../logic/icons.js";
 import type { Graph } from "../logic/log/graph/types.js";
+import type { RefLabel } from "../logic/log/refLabels.js";
 import { formatTime } from "../logic/utils/time.js";
 import {
   keepRowInPlace,
@@ -11,6 +19,7 @@ import {
   scrollIntoView,
   scrollToCenter,
 } from "../logic/virtualList.js";
+import Icon from "../ui/Icon.vue";
 import GraphCell, { graphWidth } from "./GraphCell.vue";
 
 /**
@@ -29,6 +38,8 @@ const props = defineProps<{
   repo: string | undefined;
   /** 提交图，`rows` 与 `hashes` 同一个下标。缺席时不画图。 */
   graph: Graph | undefined;
+  /** 提交 hash → 这个提交上的 ref 标签。 */
+  labels: ReadonlyMap<string, readonly RefLabel[]>;
 }>();
 
 const emit = defineEmits<{
@@ -49,9 +60,55 @@ const range = computed(() =>
 const rows = computed(() =>
   props.hashes.slice(range.value.start, range.value.end).map((hash, i) => {
     const index = range.value.start + i;
-    return { hash, index, commit: props.details.get(hash), graph: graphOf(index) };
+    return {
+      hash,
+      index,
+      commit: props.details.get(hash),
+      graph: graphOf(index),
+      labels: props.labels.get(hash) ?? [],
+    };
   }),
 );
+
+function labelIcon(kind: RefKind): IconRef {
+  switch (kind) {
+    case RefKind.Head:
+      return codicon("warning");
+    case RefKind.LocalBranch:
+      return codicon("git-branch");
+    case RefKind.RemoteBranch:
+      return codicon("cloud");
+    case RefKind.Tag:
+      return codicon("tag");
+    default:
+      return assertNever(kind, "labelIcon");
+  }
+}
+
+/**
+ * 标签放不下时从后往前压：越靠后收缩系数越大，前面的名字留到最后。
+ * 指数封顶，免得系数大到浮点溢出；第 5 个以后一起压。
+ */
+function shrinkOf(index: number): number {
+  return 100 ** Math.min(index, 4);
+}
+
+/** 图标颜色：扫一眼就分得出当前分支、本地、远程、tag；detached HEAD 用警告色。 */
+function labelColor(label: RefLabel): string {
+  if (label.current) return "var(--vscode-charts-yellow)";
+  switch (label.kind) {
+    case RefKind.Head:
+      return "var(--vscode-editorWarning-foreground)";
+    case RefKind.LocalBranch:
+      return "var(--vscode-charts-green)";
+    case RefKind.RemoteBranch:
+      return "var(--vscode-charts-purple)";
+    case RefKind.Tag:
+      return "var(--vscode-descriptionForeground)";
+    default:
+      return assertNever(label.kind, "labelColor");
+  }
+}
 
 /** 一行的图，以及要给 Message 留出的宽度。 */
 function graphOf(index: number) {
@@ -191,9 +248,23 @@ defineExpose({
           :style="{ top: `${row.index * ROW_HEIGHT}px`, height: `${ROW_HEIGHT}px` }"
         >
           <GraphCell v-if="row.graph !== undefined" :row="row.graph.row" :base="row.graph.base" />
-          <span class="cell" :style="{ paddingLeft: `${row.graph?.width ?? 0}px` }">
-            <template v-if="row.commit !== undefined">{{ subject(row.commit.message) }}</template>
-            <span v-else class="placeholder" />
+          <span class="cell message" :style="{ paddingLeft: `${row.graph?.width ?? 0}px` }">
+            <span v-if="row.commit !== undefined" class="subject">{{ subject(row.commit.message) }}</span>
+            <span v-else class="subject placeholder" />
+            <span v-if="row.labels.length > 0" class="labels">
+              <span
+                v-for="(label, i) in row.labels"
+                :key="i"
+                class="label"
+                :style="{ flexShrink: shrinkOf(i) }"
+                :title="label.title"
+              >
+                <span class="label-icon" :style="{ color: labelColor(label) }">
+                  <Icon :icon="labelIcon(label.kind)" :size="IconSize.Inline" />
+                </span>
+                <span class="label-name">{{ label.name }}</span>
+              </span>
+            </span>
           </span>
           <template v-if="row.commit !== undefined">
             <span class="cell dim">{{ row.commit.author.name }}</span>
@@ -250,6 +321,42 @@ defineExpose({
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* 说明文字在左、标签靠右。标签最多占「一半」与「减去 80px」中较大的那个，说明文字至少留 80px。 */
+.message {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.subject {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.labels {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  max-width: max(50%, 100% - 80px);
+  overflow: hidden;
+}
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  /* 名字压没了只剩图标（Inline 图标 12px），不会盖到旁边的标签上。 */
+  min-width: 12px;
+  overflow: hidden;
+  font-size: 0.9em;
+}
+.label-icon {
+  display: inline-flex;
+  flex: none;
+}
+.label-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .placeholder {
   display: block;
