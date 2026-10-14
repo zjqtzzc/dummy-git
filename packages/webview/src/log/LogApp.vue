@@ -28,6 +28,9 @@ import {
   restoreFilter,
   saveFilter,
 } from "../logic/log/filter.js";
+import { buildLayout } from "../logic/log/graph/layout.js";
+import { buildGraph } from "../logic/log/graph/rows.js";
+import { buildStructure, edgesOf } from "../logic/log/graph/structure.js";
 import { type Layout, restoreLayout, splitPosition } from "../logic/log/layout.js";
 import { hashesToFetch } from "../logic/log/prefetch.js";
 import type { FileEntry } from "../logic/tree/fileTree.js";
@@ -136,6 +139,17 @@ const matches = computed((): Matches => {
 });
 /** 列表里显示的提交：骨架按过滤条件筛过，顺序不变。 */
 const hashes = computed(() => applyFilter(skeleton.value, filter.value, now.value, matches.value));
+
+/**
+ * 提交图。骨架或 refs 变了才重算：`hashes` 每 30 秒随时钟重算一次，图只看「有没有藏掉行」这个布尔值，
+ * 值不变就不触发。藏掉了行时行号与骨架对不上，不画图。
+ */
+const hidesRows = computed(() => hashes.value.length !== skeleton.value.length);
+const graph = computed(() => {
+  if (hidesRows.value) return undefined;
+  const structure = buildStructure(skeleton.value);
+  return buildGraph(edgesOf(structure), buildLayout(structure, refs.value).indexes);
+});
 
 /** 搜索框里正显示的字。改了立刻显示，停 300 毫秒才变成过滤条件（`NFR.md` 第 3 节：查询要防抖）。 */
 const searchText = ref(filter.value.text ?? "");
@@ -591,6 +605,7 @@ onMounted(async () => {
           :selected="selected"
           :now="now"
           :repo="repo"
+          :graph="graph"
           @select="select"
           @copy="copyCommit"
           @visible="fetchVisible"

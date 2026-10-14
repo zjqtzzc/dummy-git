@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { type Commit, MenuContextKey, MenuNodeValue } from "@dummy-git/shared";
 import { computed, onMounted, onUnmounted, ref } from "vue";
+import type { Graph } from "../logic/log/graph/types.js";
 import { formatTime } from "../logic/utils/time.js";
 import {
   keepRowInPlace,
@@ -10,6 +11,7 @@ import {
   scrollIntoView,
   scrollToCenter,
 } from "../logic/virtualList.js";
+import GraphCell, { graphWidth } from "./GraphCell.vue";
 
 /**
  * 中间的提交列表：固定三列 Message / Author / Date，虚拟滚动。
@@ -25,6 +27,8 @@ const props = defineProps<{
   now: number;
   /** 仓库根。菜单命令拿它拼协议参数。还没打开仓库时缺席。 */
   repo: string | undefined;
+  /** 提交图，`rows` 与 `hashes` 同一个下标。缺席时不画图。 */
+  graph: Graph | undefined;
 }>();
 
 const emit = defineEmits<{
@@ -43,12 +47,18 @@ const range = computed(() =>
   renderRange(scrollTop.value, viewportHeight.value, props.hashes.length),
 );
 const rows = computed(() =>
-  props.hashes.slice(range.value.start, range.value.end).map((hash, i) => ({
-    hash,
-    index: range.value.start + i,
-    commit: props.details.get(hash),
-  })),
+  props.hashes.slice(range.value.start, range.value.end).map((hash, i) => {
+    const index = range.value.start + i;
+    return { hash, index, commit: props.details.get(hash), graph: graphOf(index) };
+  }),
 );
+
+/** 一行的图，以及要给 Message 留出的宽度。 */
+function graphOf(index: number) {
+  const row = props.graph?.rows.at(index);
+  if (props.graph === undefined || row === undefined) return undefined;
+  return { row, base: props.graph.base, width: graphWidth(row, props.graph.base) };
+}
 
 function subject(message: string): string {
   const end = message.indexOf("\n");
@@ -180,13 +190,16 @@ defineExpose({
           :class="['columns', 'row', { selected: row.hash === selected }]"
           :style="{ top: `${row.index * ROW_HEIGHT}px`, height: `${ROW_HEIGHT}px` }"
         >
+          <GraphCell v-if="row.graph !== undefined" :row="row.graph.row" :base="row.graph.base" />
+          <span class="cell" :style="{ paddingLeft: `${row.graph?.width ?? 0}px` }">
+            <template v-if="row.commit !== undefined">{{ subject(row.commit.message) }}</template>
+            <span v-else class="placeholder" />
+          </span>
           <template v-if="row.commit !== undefined">
-            <span class="cell">{{ subject(row.commit.message) }}</span>
             <span class="cell dim">{{ row.commit.author.name }}</span>
             <span class="cell dim">{{ formatTime(row.commit.author.at, now) }}</span>
           </template>
           <template v-else>
-            <span class="cell placeholder" />
             <span class="cell placeholder" />
             <span class="cell placeholder" />
           </template>
@@ -239,6 +252,7 @@ defineExpose({
   white-space: nowrap;
 }
 .placeholder {
+  display: block;
   height: 0.8em;
   border-radius: 2px;
   background: var(--vscode-editorWidget-border);
