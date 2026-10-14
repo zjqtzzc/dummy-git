@@ -381,7 +381,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       );
       return null;
     },
-    pull: async ({ branch }) => {
+    update: async ({ branch }) => {
       const { root, gitDir } = repository.location;
       const [head, refs] = await Promise.all([
         repository.run(getHead, root),
@@ -396,7 +396,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       const tracked = `${upstream.remote}/${upstream.name}`;
       const current = head.kind === RefKind.Head && head.branch === branch;
       const step = await ui.withProgress(
-        `Pulling ${branch}…`,
+        `Updating ${branch}…`,
         async () => {
           // 当前分支：git 不许 fetch 直接更新检出的分支，拆成远程道的 fetch + 本地道的快进。
           let result: FastForwardResult;
@@ -418,10 +418,10 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
               return "";
             case "done":
               return finished.moved
-                ? `Pulled ${branch} from ${tracked}`
+                ? `Updated ${branch} from ${tracked}`
                 : `${branch} is up to date`;
             default:
-              return assertNever(finished, "pull");
+              return assertNever(finished, "update");
           }
         },
       );
@@ -490,7 +490,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
           );
           if (result.kind === PushKind.Rejected) {
             throw new UserFacingError(
-              `Push rejected: ${tracked} has commits that ${branch} doesn't have. Pull first.`,
+              `Push rejected: ${tracked} has commits that ${branch} doesn't have. Update it first.`,
               result.stderr,
             );
           }

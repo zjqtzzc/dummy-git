@@ -332,7 +332,7 @@ const PARAM_GUARDS = {
     const branch = raw["branch"];
     return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;
   },
-  pull: (raw: Record<string, unknown>) => {
+  update: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const branch = raw["branch"];
     return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;

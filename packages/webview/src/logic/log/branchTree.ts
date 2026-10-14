@@ -266,7 +266,7 @@ export function toTreeNodes(nodes: readonly BranchNode[], repo: string): TreeNod
 }
 
 /**
- * 选中的节点是不是一个本地分支，是就给出它的全名（拉取、推送的对象）。
+ * 选中的节点是不是一个本地分支，是就给出它的全名（更新、推送的对象）。
  * 顶上那行 HEAD 代表当前分支（detached 时不是）；远程分支、目录、分组都不是。
  * 是不是当前分支、上游是什么，由扩展执行时自己问 git，不用这里可能过时的状态。
  */
@@ -281,6 +281,36 @@ export function localBranchOf(node: BranchNode): string | undefined {
       return undefined;
     default:
       return assertNever(node, "localBranchOf");
+  }
+}
+
+export enum DeleteTargetKind {
+  Local = "local",
+  Remote = "remote",
+}
+
+/** 左栏 Delete 按钮删的是什么。 */
+export type DeleteTarget =
+  | { readonly kind: DeleteTargetKind.Local; readonly branch: string }
+  | { readonly kind: DeleteTargetKind.Remote; readonly remote: string; readonly branch: string };
+
+/**
+ * 选中的节点能不能删，能就给出删什么。与右键菜单同一规则：非当前的本地分支、远程分支。
+ * HEAD 那行、当前分支、目录、分组都不能。
+ */
+export function deleteTargetOf(node: BranchNode): DeleteTarget | undefined {
+  switch (node.kind) {
+    case BranchNodeKind.Branch:
+      if (node.ref.kind === RefKind.RemoteBranch) {
+        return { kind: DeleteTargetKind.Remote, remote: node.ref.remote, branch: node.ref.name };
+      }
+      return node.current ? undefined : { kind: DeleteTargetKind.Local, branch: node.ref.name };
+    case BranchNodeKind.Head:
+    case BranchNodeKind.Group:
+    case BranchNodeKind.Folder:
+      return undefined;
+    default:
+      return assertNever(node, "deleteTargetOf");
   }
 }
 

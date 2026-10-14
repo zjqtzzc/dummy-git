@@ -22,9 +22,9 @@
  * | `fetchAll` | `fetch --all --prune` | — | — |
  * | `listRemotes` | `remote` | — | — |
  * | `push` | `push [-u] <远程> refs/heads/<B>:refs/heads/<M>` | — | — |
- * | `fetchInto` | `fetch <远程> refs/heads/<M>:refs/heads/<B>`（拉取非当前分支） | — | — |
- * | `fetchBranch` | `fetch <远程> refs/heads/<M>`（拉取当前分支第一步） | — | — |
- * | `fastForward` | `merge --ff-only <远程分支记录>`（拉取当前分支第二步） | — | — |
+ * | `fetchInto` | `fetch <远程> refs/heads/<M>:refs/heads/<B>`（更新非当前分支） | — | — |
+ * | `fetchBranch` | `fetch <远程> refs/heads/<M>`（更新当前分支第一步） | — | — |
+ * | `fastForward` | `merge --ff-only <远程分支记录>`（更新当前分支第二步） | — | — |
  * | `switchBranch` | `switch <分支>` | `git switch` | 2.23 |
  * | `createTrackingBranch` | `switch -c <分支> --track <远程分支>` | `git switch` | 2.23 |
  * | `createBranch` | `switch -c <分支> --no-track <起点>` | `git switch` | 2.23 |
@@ -103,13 +103,6 @@ export {
 } from "./log.js";
 export { abortInProgress, ContinueOutcome, continueInProgress } from "./operation.js";
 export { listPaths, type TrackedPath } from "./paths.js";
-export {
-  FastForwardKind,
-  type FastForwardResult,
-  fastForward,
-  fetchBranch,
-  fetchInto,
-} from "./pull.js";
 export { PushKind, type PushResult, push } from "./push.js";
 export { getHead, getRefs } from "./refs.js";
 export { fetchAll, listRemotes } from "./remote.js";
@@ -125,3 +118,10 @@ export {
   unstage,
 } from "./stash.js";
 export { getStatus } from "./status.js";
+export {
+  FastForwardKind,
+  type FastForwardResult,
+  fastForward,
+  fetchBranch,
+  fetchInto,
+} from "./update.js";

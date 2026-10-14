@@ -88,8 +88,8 @@
         "title": "Delete"
       },
       {
-        "command": "dummyGit.pullBranch",
-        "title": "Pull"
+        "command": "dummyGit.updateBranch",
+        "title": "Update"
       },
       {
         "command": "dummyGit.pushBranch",
@@ -196,7 +196,7 @@
           "group": "4_delete@1"
         },
         {
-          "command": "dummyGit.pullBranch",
+          "command": "dummyGit.updateBranch",
           "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'localBranch'",
           "group": "2_sync@1"
         },
@@ -324,7 +324,7 @@
           "when": "false"
         },
         {
-          "command": "dummyGit.pullBranch",
+          "command": "dummyGit.updateBranch",
           "when": "false"
         },
         {

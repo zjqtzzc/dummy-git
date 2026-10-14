@@ -15,7 +15,7 @@ export type FastForwardResult =
   | { readonly kind: FastForwardKind.Diverged; readonly stderr: string };
 
 /**
- * 拉取一个**不是当前分支**的本地分支：一条 `fetch <remote> refs/heads/<M>:refs/heads/<B>`。
+ * 更新一个**不是当前分支**的本地分支：一条 `fetch <remote> refs/heads/<M>:refs/heads/<B>`。
  *
  * 取回远程的 `M`，同时更新远程分支记录与本地的 `B`。冒号两边不带 `+`，只允许快进；
  * 不碰暂存区与工作区。写引用，走远程道。写成完整引用名，免得和同名 tag 混淆。
@@ -37,7 +37,7 @@ export const fetchInto: GitCommand<
   },
 };
 
-/** 拉取当前分支的第一步：只取回远程的 `M`，更新它的远程分支记录。走远程道。 */
+/** 更新当前分支的第一步：只取回远程的 `M`，更新它的远程分支记录。走远程道。 */
 export const fetchBranch: GitCommand<
   [repository: string, remote: string, remoteBranch: string],
   void
@@ -50,7 +50,7 @@ export const fetchBranch: GitCommand<
 };
 
 /**
- * 拉取当前分支的第二步：`merge --ff-only <远程分支记录>`。改工作区，走本地道。
+ * 更新当前分支的第二步：`merge --ff-only <远程分支记录>`。改工作区，走本地道。
  *
  * 不能快进时 git 报 `Not possible to fast-forward`。工作区的改动挡住时（`would be overwritten`）
  * 是别的失败，原样抛出：git 那一句已经说清楚了。

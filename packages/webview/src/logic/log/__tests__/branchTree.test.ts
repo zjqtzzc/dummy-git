@@ -7,7 +7,9 @@ import {
   branchFilters,
   branchNodesById,
   buildBranchTree,
+  DeleteTargetKind,
   defaultExpanded,
+  deleteTargetOf,
   localBranchOf,
   restoreExpanded,
   startOf,
@@ -123,6 +125,33 @@ describe("restoreExpanded", () => {
     );
     expect(restoreExpanded(undefined)).toBeUndefined();
     expect(restoreExpanded([1, 2])).toBeUndefined();
+  });
+});
+
+describe("deleteTargetOf：选中的能不能删", () => {
+  const byId = branchNodesById(
+    buildBranchTree([head("main"), local("main"), local("feat/x"), remote("origin", "feat/x")]),
+  );
+  const of = (id: string) => {
+    const node = byId.get(id);
+    if (node === undefined) throw new Error(`没有 ${id}`);
+    return deleteTargetOf(node);
+  };
+
+  it("非当前的本地分支、远程分支：能删", () => {
+    expect(of("local/feat/x")).toEqual({ kind: DeleteTargetKind.Local, branch: "feat/x" });
+    expect(of("remote/origin/feat/x")).toEqual({
+      kind: DeleteTargetKind.Remote,
+      remote: "origin",
+      branch: "feat/x",
+    });
+  });
+
+  it("当前分支、HEAD 行、目录、分组：不能删", () => {
+    expect(of("local/main")).toBeUndefined();
+    expect(of("head")).toBeUndefined();
+    expect(of("local/feat")).toBeUndefined();
+    expect(of("remote")).toBeUndefined();
   });
 });
 

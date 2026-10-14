@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanupTempRepos, cli, git, makeTrackingRepos } from "../../../__tests__/support.js";
-import { FastForwardKind, fastForward, fetchBranch, fetchInto } from "../pull.js";
+import { FastForwardKind, fastForward, fetchBranch, fetchInto } from "../update.js";
 
 afterEach(cleanupTempRepos);
 
 const head = (repo: string, ref: string) => git(repo, ["rev-parse", ref]).trim();
 
-describe("拉取非当前分支：fetchInto", () => {
+describe("更新非当前分支：fetchInto", () => {
   it("远程有新提交：本地分支快进到远程", async () => {
     const { remote, repo } = makeTrackingRepos();
     git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
@@ -30,7 +30,7 @@ describe("拉取非当前分支：fetchInto", () => {
   });
 });
 
-describe("拉取当前分支：fetchBranch + fastForward", () => {
+describe("更新当前分支：fetchBranch + fastForward", () => {
   it("远程有新提交：当前分支与工作区快进到远程", async () => {
     const { remote, repo } = makeTrackingRepos();
     git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);

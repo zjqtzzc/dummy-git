@@ -35,7 +35,7 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     amend: async (): Promise<null> => null,
     rollback: async (): Promise<null> => null,
     fetch: async (): Promise<null> => null,
-    pull: async (): Promise<null> => null,
+    update: async (): Promise<null> => null,
     push: async (): Promise<null> => null,
     merge: async (): Promise<null> => null,
     rebase: async (): Promise<null> => null,
@@ -307,7 +307,7 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
           ran = true;
           return null;
         },
-        pull: async () => {
+        update: async () => {
           ran = true;
           return null;
         },

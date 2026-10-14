@@ -182,10 +182,10 @@ export interface Commands {
     result: null;
   };
   /**
-   * 拉取选中的本地分支：只更新它和它跟踪的远程分支，只快进。
+   * 更新选中的本地分支：只取它跟踪的远程分支，能快进就快进，分叉时扩展问变基还是合并。
    * 是不是当前分支、上游是什么由扩展自己问 git。
    */
-  pull: {
+  update: {
     params: { repo: string; branch: string };
     result: null;
   };

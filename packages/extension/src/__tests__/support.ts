@@ -67,7 +67,7 @@ export function makeTempRepo(name = "t"): string {
 /** 在 `afterEach` 里调用。漏调不会让测试失败，只会在 /tmp 里留垃圾。 */
 /**
  * 一个远程仓库，和一个跟踪它的本地仓库：本地 `main` 是当前分支、跟踪 `origin/main`；
- * 另有 `other` 也跟踪 `origin/main`。拉取、推送的测试用。都是临时仓库，可写。
+ * 另有 `other` 也跟踪 `origin/main`。更新、推送的测试用。都是临时仓库，可写。
  */
 export function makeTrackingRepos(): { remote: string; repo: string } {
   const remote = makeTempRepo("remote");

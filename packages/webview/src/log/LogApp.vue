@@ -15,7 +15,12 @@ import type { VscodeSplitLayout } from "@vscode-elements/elements/dist/vscode-sp
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { type Client, report } from "../logic/client.js";
 import { AppIcon, appIcon, codicon } from "../logic/icons.js";
-import { branchFilters, type StartPoint } from "../logic/log/branchTree.js";
+import {
+  branchFilters,
+  type DeleteTarget,
+  DeleteTargetKind,
+  type StartPoint,
+} from "../logic/log/branchTree.js";
 import { commitDiffSides, commitFileEntry } from "../logic/log/commitDiff.js";
 import { commitCopyText } from "../logic/log/copy.js";
 import {
@@ -402,14 +407,21 @@ async function load(repository: string): Promise<void> {
   }
 }
 
-/** 分支树里选中的本地分支：Pull / Push 的对象。选中的不是本地分支时两个按钮置灰。 */
+/** 分支树里选中的本地分支：Update 的对象。选中的不是本地分支时置灰。 */
 const selectedBranch = ref<string>();
 /** 分支树里选中节点的起点：New Branch 的起点。选中的是目录、分组或没选时置灰。 */
 const selectedStart = ref<StartPoint>();
+/** 分支树里选中的、能删的分支：Delete 的对象。当前分支、HEAD 行、目录、分组时置灰。 */
+const selectedDelete = ref<DeleteTarget>();
 
-function onBranchSelect(branch: string | undefined, start: StartPoint | undefined): void {
+function onBranchSelect(
+  branch: string | undefined,
+  start: StartPoint | undefined,
+  deletable: DeleteTarget | undefined,
+): void {
   selectedBranch.value = branch;
   selectedStart.value = start;
+  selectedDelete.value = deletable;
 }
 
 /**
@@ -425,21 +437,35 @@ async function fetchRemotes(): Promise<void> {
   }
 }
 
-/** Pull Selected：只更新选中的本地分支和它跟踪的远程分支，只快进。 */
-async function pullSelected(): Promise<void> {
+/** Update Selected：只取选中分支跟踪的远程分支，能快进就快进，分叉时扩展问变基还是合并。 */
+async function updateSelected(): Promise<void> {
   if (repo.value === undefined || selectedBranch.value === undefined) return;
   try {
-    await props.client.request("pull", { repo: repo.value, branch: selectedBranch.value });
+    await props.client.request("update", { repo: repo.value, branch: selectedBranch.value });
   } catch (cause) {
     report(cause);
   }
 }
 
-/** Push Selected：推到哪里由扩展算（上游 → 唯一的远程 → origin）。 */
-async function pushSelected(): Promise<void> {
-  if (repo.value === undefined || selectedBranch.value === undefined) return;
+/** Delete Selected：与右键菜单的 Delete 同一条请求，确认由扩展问。 */
+async function deleteSelected(): Promise<void> {
+  const target = selectedDelete.value;
+  if (repo.value === undefined || target === undefined) return;
   try {
-    await props.client.request("push", { repo: repo.value, branch: selectedBranch.value });
+    switch (target.kind) {
+      case DeleteTargetKind.Local:
+        await props.client.request("deleteBranch", { repo: repo.value, branch: target.branch });
+        break;
+      case DeleteTargetKind.Remote:
+        await props.client.request("deleteRemoteBranch", {
+          repo: repo.value,
+          remote: target.remote,
+          branch: target.branch,
+        });
+        break;
+      default:
+        assertNever(target, "deleteSelected");
+    }
   } catch (cause) {
     report(cause);
   }
@@ -568,19 +594,19 @@ onMounted(async () => {
           :disabled="selectedStart === undefined"
           @click="newBranchFromSelected"
         />
-        <ToolButton :icon="appIcon(AppIcon.Fetch)" title="Fetch" @click="fetchRemotes" />
         <ToolButton
           :icon="appIcon(AppIcon.Pull)"
-          title="Pull Selected"
+          title="Update Selected"
           :disabled="selectedBranch === undefined"
-          @click="pullSelected"
+          @click="updateSelected"
         />
         <ToolButton
-          :icon="appIcon(AppIcon.Push)"
-          title="Push Selected"
-          :disabled="selectedBranch === undefined"
-          @click="pushSelected"
+          :icon="codicon('trash')"
+          title="Delete Selected"
+          :disabled="selectedDelete === undefined"
+          @click="deleteSelected"
         />
+        <ToolButton :icon="appIcon(AppIcon.Fetch)" title="Fetch" @click="fetchRemotes" />
       </div>
       <div class="pane">
         <BranchTree

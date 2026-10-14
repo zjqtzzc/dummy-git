@@ -311,19 +311,19 @@ describe("handlers.rollback", () => {
   });
 });
 
-describe("handlers.pull", () => {
+describe("handlers.update", () => {
   afterAll(cleanupTempRepos);
-  const pull = async (path: string, branch: string) => {
+  const update = async (path: string, branch: string) => {
     const repository = new Repository(plainLocation(path), cli);
     try {
-      await createHandlers(repository, NO_UI).pull({ repo: path, branch });
+      await createHandlers(repository, NO_UI).update({ repo: path, branch });
     } finally {
       repository.dispose();
     }
   };
 
   /** 分叉后选一个按钮。`undefined` 是关掉通知。返回问过的话和进度出口说过的话。 */
-  const pullDiverged = async (path: string, branch: string, choice: number | undefined) => {
+  const updateDiverged = async (path: string, branch: string, choice: number | undefined) => {
     const repository = new Repository(plainLocation(path), cli);
     const asked: string[] = [];
     const said: string[] = [];
@@ -341,7 +341,7 @@ describe("handlers.pull", () => {
           if (message !== "") said.push(message);
           return value;
         },
-      }).pull({ repo: path, branch });
+      }).update({ repo: path, branch });
       return { asked, said };
     } finally {
       repository.dispose();
@@ -372,8 +372,8 @@ describe("handlers.pull", () => {
   it("当前分支与非当前分支都能快进到远程", async () => {
     const { remote, repo } = makeTrackingRepos();
     git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
-    await pull(repo, "main");
-    await pull(repo, "other");
+    await update(repo, "main");
+    await update(repo, "other");
     const tip = git(remote, ["rev-parse", "main"]);
     expect(git(repo, ["rev-parse", "main"])).toBe(tip);
     expect(git(repo, ["rev-parse", "other"])).toBe(tip);
@@ -382,7 +382,7 @@ describe("handlers.pull", () => {
   it("没有上游：给一句说明，不跑 git", async () => {
     const { repo } = makeTrackingRepos();
     git(repo, ["branch", "-q", "lonely"]);
-    await expect(pull(repo, "lonely")).rejects.toThrow(
+    await expect(update(repo, "lonely")).rejects.toThrow(
       "lonely has no upstream branch. Push it first.",
     );
   });
@@ -391,9 +391,9 @@ describe("handlers.pull", () => {
     const { remote, repo } = makeTrackingRepos();
     diverge(remote, repo, "main");
     const local = git(repo, ["rev-parse", "main"]);
-    const { asked, said } = await pullDiverged(repo, "main", undefined);
+    const { asked, said } = await updateDiverged(repo, "main", undefined);
     expect(asked).toEqual(["main and origin/main have diverged. [Rebase / Merge]"]);
-    expect(said).toEqual(["Pulling main…"]);
+    expect(said).toEqual(["Updating main…"]);
     expect(git(repo, ["rev-parse", "main"])).toBe(local);
     expect(git(repo, ["rev-parse", "origin/main"])).toBe(git(remote, ["rev-parse", "main"]));
   });
@@ -402,9 +402,9 @@ describe("handlers.pull", () => {
     const { remote, repo } = makeTrackingRepos();
     diverge(remote, repo, "main");
     writeFileSync(join(repo, "f1"), "dirty\n");
-    const { said } = await pullDiverged(repo, "main", 0);
+    const { said } = await updateDiverged(repo, "main", 0);
     expect(said).toEqual([
-      "Pulling main…",
+      "Updating main…",
       "Rebasing onto origin/main…",
       "Rebased onto origin/main",
     ]);
@@ -419,8 +419,8 @@ describe("handlers.pull", () => {
   it("选 Merge：合成合并提交，说明用远程分支的显示名", async () => {
     const { remote, repo } = makeTrackingRepos();
     diverge(remote, repo, "main");
-    const { said } = await pullDiverged(repo, "main", 1);
-    expect(said).toEqual(["Pulling main…", "Merging origin/main…", "Merged origin/main"]);
+    const { said } = await updateDiverged(repo, "main", 1);
+    expect(said).toEqual(["Updating main…", "Merging origin/main…", "Merged origin/main"]);
     expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe(
       "Merge remote-tracking branch 'origin/main'",
     );
@@ -436,8 +436,8 @@ describe("handlers.pull", () => {
     writeFileSync(join(repo, "f1"), "local\n");
     git(repo, ["add", "f1"]);
     git(repo, ["commit", "-qm", "local"]);
-    const { said } = await pullDiverged(repo, "main", 1);
-    expect(said).toEqual(["Pulling main…", "Merging origin/main…", "Stopped for conflicts"]);
+    const { said } = await updateDiverged(repo, "main", 1);
+    expect(said).toEqual(["Updating main…", "Merging origin/main…", "Stopped for conflicts"]);
     expect(existsSync(join(repo, ".git", "MERGE_HEAD"))).toBe(true);
   });
 
@@ -445,9 +445,9 @@ describe("handlers.pull", () => {
     const { remote, repo } = makeTrackingRepos();
     diverge(remote, repo, "other");
     const main = git(repo, ["rev-parse", "main"]);
-    const { said } = await pullDiverged(repo, "other", 0);
+    const { said } = await updateDiverged(repo, "other", 0);
     expect(said).toEqual([
-      "Pulling other…",
+      "Updating other…",
       "Rebasing onto origin/main…",
       "Rebased onto origin/main",
     ]);
@@ -462,9 +462,9 @@ describe("handlers.pull", () => {
     const { remote, repo } = makeTrackingRepos();
     diverge(remote, repo, "other");
     const main = git(repo, ["rev-parse", "main"]);
-    const { said } = await pullDiverged(repo, "other", 1);
+    const { said } = await updateDiverged(repo, "other", 1);
     expect(said).toEqual([
-      "Pulling other…",
+      "Updating other…",
       "Checking out other…",
       "Switched to branch 'other'",
       "Merging origin/main…",
@@ -483,9 +483,9 @@ describe("handlers.pull", () => {
     const { remote, repo } = makeTrackingRepos();
     diverge(remote, repo, "other");
     const other = git(repo, ["rev-parse", "other"]);
-    const { asked, said } = await pullDiverged(repo, "other", undefined);
+    const { asked, said } = await updateDiverged(repo, "other", undefined);
     expect(asked).toEqual(["other and origin/main have diverged. [Rebase / Merge]"]);
-    expect(said).toEqual(["Pulling other…"]);
+    expect(said).toEqual(["Updating other…"]);
     expect(git(repo, ["branch", "--show-current"]).trim()).toBe("main");
     expect(git(repo, ["rev-parse", "other"])).toBe(other);
     expect(git(repo, ["rev-parse", "origin/main"])).toBe(git(remote, ["rev-parse", "main"]));
@@ -533,7 +533,7 @@ describe("handlers.push", () => {
     const error = await pushBranch(repo, "main").catch((e: unknown) => e);
     expect(error).toBeInstanceOf(UserFacingError);
     expect(error instanceof UserFacingError && error.message).toBe(
-      "Push rejected: origin/main has commits that main doesn't have. Pull first.",
+      "Push rejected: origin/main has commits that main doesn't have. Update it first.",
     );
     expect(error instanceof UserFacingError && error.detail).toContain("[rejected]");
   });

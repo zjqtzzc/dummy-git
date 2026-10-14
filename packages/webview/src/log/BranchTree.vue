@@ -5,7 +5,9 @@ import {
   branchFilterOf,
   branchNodesById,
   buildBranchTree,
+  type DeleteTarget,
   defaultExpanded,
+  deleteTargetOf,
   localBranchOf,
   restoreExpanded,
   type StartPoint,
@@ -28,10 +30,15 @@ import TrackingBadge from "./TrackingBadge.vue";
 const props = defineProps<{ refs: readonly Ref[]; repo: string }>();
 const emit = defineEmits<{
   /**
-   * 选中的本地分支名（拉取、推送的对象），选中的不是本地分支时是 `undefined`；
-   * 选中节点的起点（新建分支），目录与分组是 `undefined`。
+   * 选中的本地分支名（更新的对象），选中的不是本地分支时是 `undefined`；
+   * 选中节点的起点（新建分支），目录与分组是 `undefined`；
+   * 能删的话删什么（`deleteTargetOf`）。
    */
-  select: [branch: string | undefined, start: StartPoint | undefined];
+  select: [
+    branch: string | undefined,
+    start: StartPoint | undefined,
+    deletable: DeleteTarget | undefined,
+  ];
   /** 双击（或回车）一个分支：按它过滤 Log。HEAD 那行是当前分支；detached、目录、分组没有反应。 */
   filter: [branch: BranchFilter];
   /** 选中一行时按了复制快捷键：要复制的分支名（`branchCopyText`）。 */
@@ -50,7 +57,7 @@ function tracking(node: TreeNode): Tracking | undefined {
 
 /**
  * 选中的节点 id。分支数据每次变化都按它重新报一次选中的是什么：节点没了（比如删掉了选中的分支）
- * 就报「没选」，Pull / Push 随之置灰；HEAD 那行在 Checkout 后报新的当前分支。
+ * 就报「没选」，Update / Delete 随之置灰；HEAD 那行在 Checkout 后报新的当前分支。
  */
 const selectedId = ref<string>();
 watch([selectedId, byId], ([id, index]) => {
@@ -59,6 +66,7 @@ watch([selectedId, byId], ([id, index]) => {
     "select",
     node === undefined ? undefined : localBranchOf(node),
     node === undefined ? undefined : startOf(node),
+    node === undefined ? undefined : deleteTargetOf(node),
   );
 });
 
