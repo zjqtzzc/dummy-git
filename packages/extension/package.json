@@ -101,7 +101,7 @@
       },
       {
         "command": "dummyGit.rebaseBranch",
-        "title": "Rebase Current onto This"
+        "title": "Rebase onto This"
       },
       {
         "command": "dummyGit.copyHash",
@@ -117,7 +117,7 @@
       },
       {
         "command": "dummyGit.rebaseHere",
-        "title": "Rebase Current onto Here"
+        "title": "Rebase onto Here"
       },
       {
         "command": "dummyGit.openMergeEditor",
