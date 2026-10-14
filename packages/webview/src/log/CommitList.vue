@@ -8,6 +8,7 @@ import {
 } from "@dummy-git/shared";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { codicon, type IconRef, IconSize } from "../logic/icons.js";
+import { ColumnHandle, type Columns, resizeColumns, restoreColumns } from "../logic/log/columns.js";
 import type { Graph } from "../logic/log/graph/types.js";
 import type { RefLabel } from "../logic/log/refLabels.js";
 import { formatTime } from "../logic/utils/time.js";
@@ -20,6 +21,7 @@ import {
   scrollToCenter,
 } from "../logic/virtualList.js";
 import Icon from "../ui/Icon.vue";
+import { viewState } from "../vscodeApi.js";
 import GraphCell, { graphWidth } from "./GraphCell.vue";
 
 /**
@@ -201,6 +203,39 @@ onMounted(() => {
 });
 onUnmounted(() => resizes.disconnect());
 
+/** 拖过的列宽，存进 `viewState`；没拖过时 CSS 用 em 默认值。 */
+const columns = ref<Columns | undefined>(restoreColumns(viewState.read("columns")));
+const columnStyle = computed(() =>
+  columns.value === undefined
+    ? {}
+    : { "--author": `${columns.value.author}px`, "--date": `${columns.value.date}px` },
+);
+const authorHeader = ref<HTMLElement>();
+const dateHeader = ref<HTMLElement>();
+
+/** 按下分界线：从此刻表头的实际宽度起算（没拖过时是 em 换算出的像素），松手时存回去。 */
+function startResize(handle: ColumnHandle, event: PointerEvent): void {
+  if (authorHeader.value === undefined || dateHeader.value === undefined) return;
+  const target = event.currentTarget;
+  if (!(target instanceof HTMLElement)) return;
+  const start: Columns = {
+    author: authorHeader.value.getBoundingClientRect().width,
+    date: dateHeader.value.getBoundingClientRect().width,
+  };
+  const x = event.clientX;
+  target.setPointerCapture(event.pointerId);
+  const move = (e: PointerEvent) => {
+    columns.value = resizeColumns(start, handle, e.clientX - x);
+  };
+  const end = () => {
+    target.removeEventListener("pointermove", move);
+    target.removeEventListener("pointerup", end);
+    if (columns.value !== undefined) viewState.write("columns", columns.value);
+  };
+  target.addEventListener("pointermove", move);
+  target.addEventListener("pointerup", end);
+}
+
 defineExpose({
   /** 让第 `row` 行居中（看得见就不动）。 */
   reveal(row: number): void {
@@ -214,11 +249,17 @@ defineExpose({
 </script>
 
 <template>
-  <div class="commit-list">
+  <div class="commit-list" :style="columnStyle">
     <div class="columns header">
       <span>Message</span>
-      <span>Author</span>
-      <span>Date</span>
+      <span ref="authorHeader" class="resizable">
+        <span class="resize-handle" @pointerdown="startResize(ColumnHandle.Author, $event)" />
+        Author
+      </span>
+      <span ref="dateHeader" class="resizable">
+        <span class="resize-handle" @pointerdown="startResize(ColumnHandle.Date, $event)" />
+        Date
+      </span>
     </div>
     <div
       ref="scroller"
@@ -288,7 +329,7 @@ defineExpose({
 }
 .columns {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 12em 9.5em;
+  grid-template-columns: minmax(0, 1fr) var(--author, 8em) var(--date, 9.5em);
   gap: 12px;
   padding: 0 8px;
   align-items: center;
@@ -298,6 +339,28 @@ defineExpose({
   height: 22px;
   font-weight: 600;
   border-bottom: 1px solid var(--vscode-panel-border);
+}
+.resizable {
+  position: relative;
+}
+/* 分界线抓手：骑在列间 12px 的空隙正中。 */
+.resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -9px;
+  width: 6px;
+  cursor: col-resize;
+  touch-action: none;
+}
+/* 表头里一直显示的分界线（同 IDEA），颜色同表头底边。 */
+.resize-handle::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 50%;
+  border-left: 1px solid var(--vscode-panel-border);
 }
 .scroller {
   flex: 1;
