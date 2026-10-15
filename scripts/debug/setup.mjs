@@ -59,8 +59,12 @@ if (existsSync(dotGit) && statSync(dotGit).isFile()) {
   console.log(`已摘掉旧的 worktree：${target}`);
 }
 
-rmSync(target, { recursive: true, force: true });
-mkdirSync(target);
+// 清空目录里的东西，不删目录本身：调试窗口开着时，它对工作区根目录的文件监听挂在这个目录上，
+// 目录一删监听就没了（Linux 的 inotify 不会跟到新建的同名目录上），面板从此不刷新，像扩展的 bug。
+mkdirSync(target, { recursive: true });
+for (const entry of readdirSync(target)) {
+  rmSync(join(target, entry), { recursive: true, force: true });
+}
 git(target, ["init", "-q", "-b", "main"]);
 
 /** 交给场景的工具。场景只用这几样，不直接碰路径与进程。 */
