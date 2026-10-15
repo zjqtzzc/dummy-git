@@ -5,6 +5,7 @@ import {
   authorsArgs,
   detailsArgs,
   matchArgs,
+  outgoingArgs,
   parseAuthors,
   parseHashes,
   parseLog,
@@ -74,6 +75,30 @@ export const getCommitDetails: GitCommand<
   execute: async (cli, repository, hashes) => {
     const { args, input } = detailsArgs(hashes);
     const result = await runRaw(cli, args, { cwd: repository, input });
+    return parseLog(result.stdout);
+  },
+};
+
+/**
+ * 推送对话框里要推的提交，最新的在前，最多 `limit` 条。
+ * `remoteBranch` 缺席表示远程上还没有这个分支（按本地记录判断，由调用方查）。
+ */
+export const getOutgoingCommits: GitCommand<
+  [
+    repository: string,
+    limit: number,
+    branch: string,
+    remote: string,
+    remoteBranch: string | undefined,
+  ],
+  Commit[]
+> = {
+  lock: LockPolicy.None,
+
+  execute: async (cli, repository, limit, branch, remote, remoteBranch) => {
+    const result = await runRaw(cli, outgoingArgs(limit, branch, remote, remoteBranch), {
+      cwd: repository,
+    });
     return parseLog(result.stdout);
   },
 };

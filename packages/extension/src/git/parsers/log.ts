@@ -231,6 +231,34 @@ export function detailsArgs(hashes: readonly string[]): StdinCommand {
 }
 
 /**
+ * 推到 `remote/remoteBranch` 会带上的提交，最新的在前，最多 `limit` 条（推送对话框）。
+ *
+ * 远程分支已有本地记录：本地分支有、它没有的（`<分支> --not <远程分支>`）。
+ * 还没有：本地分支有、那个远程的所有分支都没有的（`--remotes=<远程>`，同 IDEA）。
+ * 都写成完整引用名，免得和同名 tag 混淆；`--` 收尾，引用名不会被当成路径。
+ */
+export function outgoingArgs(
+  limit: number,
+  branch: string,
+  remote: string,
+  remoteBranch: string | undefined,
+): string[] {
+  const known =
+    remoteBranch === undefined
+      ? [`--remotes=${remote}`]
+      : [`refs/remotes/${remote}/${remoteBranch}`];
+  return [
+    ...LOG_PREFIX,
+    `--format=${LOG_FORMAT}`,
+    `--max-count=${limit}`,
+    `refs/heads/${branch}`,
+    "--not",
+    ...known,
+    "--",
+  ];
+}
+
+/**
  * 在给定的提交里按条件筛（Log 的过滤，`ARCHITECTURE.md` 第 8 题）：只输出命中的 hash。
  *
  * `--no-walk --stdin` 同 `detailsArgs`：只看喂进去的这些，不顺着父提交走，仓库再大也最多检查这么多条。

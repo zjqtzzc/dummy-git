@@ -209,6 +209,14 @@ export interface Commands {
     result: { remotes: readonly string[]; remote: string; remoteBranch: string };
   };
   /**
+   * 推到 `remote/remoteBranch` 会带上的提交，最新的在前，最多列一千条；`more` 表示还有没列出的。
+   * 远程上还没有这个分支时，是那个远程的所有分支都没有的（同 IDEA）。
+   */
+  getOutgoingCommits: {
+    params: { repo: string; branch: string; remote: string; remoteBranch: string };
+    result: { commits: Commit[]; more: boolean };
+  };
+  /**
    * 把本地分支 `branch` 推到 `remote` 的 `remoteBranch`，并关掉推送对话框。本地分支没有上游时顺带设为上游。
    * `force` 时用 `--force-with-lease`，扩展先确认；取消了什么都不做，对话框留着。
    */

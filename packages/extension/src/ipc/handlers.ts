@@ -43,6 +43,7 @@ import {
   getConflictStages,
   getHead,
   getIdentity,
+  getOutgoingCommits,
   getRefs,
   getSkeleton,
   getStashes,
@@ -167,6 +168,11 @@ export interface HandlerUi {
     mode: DiffOpenMode,
   ) => Promise<void>;
 }
+
+/**
+ * 推送对话框最多列多少条要推的提交。推到新远程时可能是整个历史，全取出来没有意义。
+ */
+const OUTGOING_LIMIT = 1000;
 
 export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMap {
   /**
@@ -488,6 +494,23 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         throw new UserFacingError(`Cannot push ${branch}: the repository has no remotes.`);
       }
       return { remotes, ...target };
+    },
+    getOutgoingCommits: async ({ branch, remote, remoteBranch }) => {
+      const root = repository.location.root;
+      const known = (await repository.run(getRefs, root)).some(
+        (ref) =>
+          ref.kind === RefKind.RemoteBranch && ref.remote === remote && ref.name === remoteBranch,
+      );
+      // 多取一条，用来判断还有没有没列出的。
+      const commits = await repository.run(
+        getOutgoingCommits,
+        root,
+        OUTGOING_LIMIT + 1,
+        branch,
+        remote,
+        known ? remoteBranch : undefined,
+      );
+      return { commits: commits.slice(0, OUTGOING_LIMIT), more: commits.length > OUTGOING_LIMIT };
     },
     push: async ({ branch, remote, remoteBranch, force }) => {
       const root = repository.location.root;

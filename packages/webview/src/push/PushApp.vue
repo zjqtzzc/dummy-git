@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { DialogKind, type Ref } from "@dummy-git/shared";
+import { type Commit, DialogKind, type Ref } from "@dummy-git/shared";
 import { VscodeSingleSelect } from "@vscode-elements/elements/dist/vscode-single-select/vscode-single-select.js";
 import { VscodeTextfield } from "@vscode-elements/elements/dist/vscode-textfield/vscode-textfield.js";
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { type Client, report } from "../logic/client.js";
 import { isNewRemoteBranch } from "../logic/push/target.js";
+import { formatTime } from "../logic/utils/time.js";
 import DialogShell from "../ui/DialogShell.vue";
 
 /** 推送对话框（`.notes/design/phase-10.md`）。`subject` 是要推的本地分支。 */
@@ -36,6 +37,29 @@ onMounted(async () => {
   } catch (cause) {
     report(cause);
   }
+});
+
+/** 要推的提交，最新的在前；`more` 是还有没列出的。还没取到时缺席。 */
+const outgoing = ref<{ commits: Commit[]; more: boolean }>();
+/** 取到列表时的时间（unix 秒），日期列按它写「多久之前」。 */
+const now = ref(0);
+/** 每次改目标都重新取。边输入边取时回复可能乱序，只认最后一次的。 */
+let asked = 0;
+async function loadOutgoing(): Promise<void> {
+  if (repo.value === undefined || remote.value === "") return;
+  const ask = ++asked;
+  const result = await props.client.request("getOutgoingCommits", {
+    repo: repo.value,
+    branch: props.subject,
+    remote: remote.value,
+    remoteBranch: remoteBranch.value,
+  });
+  if (ask !== asked) return;
+  now.value = Math.floor(Date.now() / 1000);
+  outgoing.value = result;
+}
+watch([remote, remoteBranch], () => {
+  loadOutgoing().catch(report);
 });
 
 function onRemote(event: Event): void {
@@ -128,6 +152,19 @@ onUnmounted(() => {
         <vscode-badge v-if="isNew">New</vscode-badge>
       </div>
     </div>
+    <div v-if="outgoing !== undefined" class="outgoing">
+      <div class="dim">
+        Commits ({{ outgoing.commits.length }}{{ outgoing.more ? "+" : "" }})
+      </div>
+      <div class="commits">
+        <div v-for="commit in outgoing.commits" :key="commit.hash" class="commit">
+          <span class="subject">{{ commit.message.split("\n", 1)[0] }}</span>
+          <span class="dim">{{ commit.author.name }}</span>
+          <span class="dim">{{ formatTime(commit.author.at, now) }}</span>
+        </div>
+        <div v-if="outgoing.commits.length === 0" class="commit dim">No commits to push</div>
+      </div>
+    </div>
     <template #buttons>
       <vscode-button secondary @click="close">Cancel</vscode-button>
       <div ref="split" class="split">
@@ -180,6 +217,29 @@ onUnmounted(() => {
     align-items: stretch;
     gap: 4px;
   }
+}
+.outgoing {
+  padding: 8px 0;
+}
+/* 只有这里会变长：给最大高度，框内滚动。 */
+.commits {
+  margin-top: 6px;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--vscode-panel-border);
+}
+.commit {
+  display: flex;
+  gap: 12px;
+  padding: 2px 8px;
+  line-height: 22px;
+  white-space: nowrap;
+}
+.subject {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .split {
   position: relative;

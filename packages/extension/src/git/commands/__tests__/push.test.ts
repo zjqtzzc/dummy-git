@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanupTempRepos, cli, git, makeTrackingRepos } from "../../../__tests__/support.js";
+import { getOutgoingCommits } from "../log.js";
 import { PushKind, push } from "../push.js";
 import { listRemotes } from "../remote.js";
 
@@ -73,6 +74,39 @@ describe("push --force-with-lease", () => {
     const result = await push.execute(cli, repo, "origin", "main", "main", false, true);
     expect(result.kind).toBe(PushKind.Rejected);
     expect(tip(remote, "main")).toBe(before);
+  });
+});
+
+describe("getOutgoingCommits", () => {
+  const subjects = async (repo: string, branch: string, remote: string, remoteBranch?: string) =>
+    (await getOutgoingCommits.execute(cli, repo, 10, branch, remote, remoteBranch)).map(
+      (commit) => commit.message,
+    );
+
+  it("远程分支已有记录：本地有、它没有的，最新的在前", async () => {
+    const { repo } = repos();
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "one"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "two"]);
+    expect(await subjects(repo, "main", "origin", "main")).toEqual(["two", "one"]);
+  });
+
+  it("远程上还没有这个分支：只排除那个远程已有的提交，别的远程上的不算", async () => {
+    const { repo } = repos();
+    git(repo, ["switch", "-q", "-c", "feat"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "on fork"]);
+    // fork 是另一个远程：它的分支记录里有 "on fork"，但推到 origin 时这条仍要推。
+    git(repo, ["update-ref", "refs/remotes/fork/feat", "HEAD"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "new"]);
+    expect(await subjects(repo, "feat", "origin")).toEqual(["new", "on fork"]);
+    expect(await subjects(repo, "feat", "fork")).toEqual(["new"]);
+  });
+
+  it("最多 limit 条", async () => {
+    const { repo } = repos();
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "one"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "two"]);
+    const commits = await getOutgoingCommits.execute(cli, repo, 1, "main", "origin", "main");
+    expect(commits.map((commit) => commit.message)).toEqual(["two"]);
   });
 });
 

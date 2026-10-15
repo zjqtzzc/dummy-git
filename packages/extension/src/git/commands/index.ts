@@ -21,7 +21,7 @@
  * | `amendCommit` | 同上，`commit --amend --only …`；路径可为空（只改说明） | — | — |
  * | `fetchAll` | `fetch --all --prune` | — | — |
  * | `listRemotes` | `remote` | — | — |
- * | `push` | `push [-u] <远程> refs/heads/<B>:refs/heads/<M>` | — | — |
+ * | `push` | `push [-u] [--force-with-lease] <远程> refs/heads/<B>:refs/heads/<M>` | — | — |
  * | `fetchInto` | `fetch <远程> refs/heads/<M>:refs/heads/<B>`（更新非当前分支） | — | — |
  * | `fetchBranch` | `fetch <远程> refs/heads/<M>`（更新当前分支第一步） | — | — |
  * | `fastForward` | `merge --ff-only <远程分支记录>`（更新当前分支第二步） | — | — |
@@ -52,6 +52,7 @@
  * | `rollback` | `restore --source=HEAD --staged --worktree -- <路径…>` | `git restore` | **2.23** |
  * | `getSkeleton` | `-c log.showSignature=false log --format=… --max-count=10000 HEAD --branches --remotes --tags --date-order --`；按分支过滤时起点换成那个分支 | — | — |
  * | `getCommitDetails` | `-c log.showSignature=false log --format=… --no-walk --stdin` | — | — |
+ * | `getOutgoingCommits` | `-c log.showSignature=false log --format=… --max-count=<N> refs/heads/<B> --not refs/remotes/<R>/<M>`（远程上还没有时 `--remotes=<R>`）`--` | — | — |
  * | `getRefs` | `for-each-ref --format=… refs/heads refs/remotes refs/tags` | `%(upstream:remotename)` / `%(upstream:remoteref)`（git 2.16.0 发布说明） | 2.16 |
  * | `getHead` | `rev-parse HEAD --symbolic-full-name HEAD` | — | — |
  * | `getFileContent` | `cat-file --filters <提交>:<路径>` | `--filters` | 2.11 |
@@ -97,6 +98,7 @@ export { LockPolicy } from "./lock.js";
 export {
   getCommitDetails,
   getCommitFiles,
+  getOutgoingCommits,
   getSkeleton,
   listAuthors,
   matchCommits,

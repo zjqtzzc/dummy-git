@@ -356,6 +356,18 @@ const PARAM_GUARDS = {
     const branch = raw["branch"];
     return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;
   },
+  getOutgoingCommits: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const branch = raw["branch"];
+    const remote = raw["remote"];
+    const remoteBranch = raw["remoteBranch"];
+    return typeof repo === "string" &&
+      typeof branch === "string" &&
+      typeof remote === "string" &&
+      typeof remoteBranch === "string"
+      ? { repo, branch, remote, remoteBranch }
+      : undefined;
+  },
   push: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const branch = raw["branch"];
