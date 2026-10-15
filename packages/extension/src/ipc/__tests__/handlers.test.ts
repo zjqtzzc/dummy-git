@@ -1686,3 +1686,52 @@ describe("提交右键：cherry-pick、revert、变基到这条", () => {
     expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe(" M f1");
   });
 });
+
+describe("handlers.resetTo", () => {
+  afterAll(cleanupTempRepos);
+  const reset = async (path: string, hash: string, pick: number | undefined) => {
+    const repository = new Repository(plainLocation(path), cli);
+    const asked: { message: string; actions: readonly string[]; detail?: string | undefined }[] =
+      [];
+    try {
+      await createHandlers(repository, {
+        ...NO_UI,
+        choose: async (message, actions, detail) => {
+          asked.push({ message, actions, detail });
+          return pick;
+        },
+      }).resetTo({ repo: path, hash });
+      return asked;
+    } finally {
+      repository.dispose();
+    }
+  };
+  const scene = () => {
+    const repo = makeTempRepo("reset-handler");
+    const first = git(repo, ["rev-parse", "HEAD"]).trim();
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "second\n\nbody"]);
+    return { repo, first };
+  };
+
+  it("对话框：写明分支、短 hash 与说明首行，四个按钮从轻到重，每个附一句说明", async () => {
+    const { repo, first } = scene();
+    const [asked] = await reset(repo, first, undefined);
+    expect(asked?.message).toBe(`Reset main to ${first.slice(0, 7)} "init"?`);
+    expect(asked?.actions).toEqual(["Soft", "Mixed", "Keep", "Hard"]);
+    expect(asked?.detail?.split("\n").map((line) => line.split(":")[0])).toEqual([
+      "Soft",
+      "Mixed",
+      "Keep",
+      "Hard",
+    ]);
+  });
+
+  it("取消：什么都不动；选了就按那一种做", async () => {
+    const { repo, first } = scene();
+    const before = git(repo, ["rev-parse", "HEAD"]).trim();
+    await reset(repo, first, undefined);
+    expect(git(repo, ["rev-parse", "HEAD"]).trim()).toBe(before);
+    await reset(repo, first, 3);
+    expect(git(repo, ["rev-parse", "HEAD"]).trim()).toBe(first);
+  });
+});

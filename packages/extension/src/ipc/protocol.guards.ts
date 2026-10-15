@@ -220,6 +220,11 @@ const PARAM_GUARDS = {
     const hashes = asStringArray(raw["hashes"]);
     return typeof repo === "string" && hashes !== undefined ? { repo, hashes } : undefined;
   },
+  resetTo: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const hash = raw["hash"];
+    return typeof repo === "string" && typeof hash === "string" ? { repo, hash } : undefined;
+  },
   markResolved: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const path = raw["path"];

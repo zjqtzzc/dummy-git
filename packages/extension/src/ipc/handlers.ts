@@ -59,9 +59,11 @@ import {
   push,
   RebaseOutcome,
   ReplayOutcome,
+  ResetMode,
   rebaseOnto,
   removeConflictPath,
   renameBranch,
+  resetTo,
   revertCommit,
   rollback,
   stashAll,
@@ -112,7 +114,12 @@ export interface HandlerUi {
   /** 删除前的确认（原生模态框）：`action` 是确认按钮，`true` 是确认。 */
   readonly confirm: (message: string, action: string) => Promise<boolean>;
   /** 原生模态框，几个按钮选一个：返回按钮的序号，取消是 `undefined`。 */
-  readonly choose: (message: string, actions: readonly string[]) => Promise<number | undefined>;
+  readonly choose: (
+    message: string,
+    actions: readonly string[],
+    /** 标题下面的说明，可多行。 */
+    detail?: string,
+  ) => Promise<number | undefined>;
   /** 从几项里选一项（`vscode/pick.ts`）：返回选中的序号，取消是 `undefined`。 */
   readonly pick: (title: string, items: readonly PickItem[]) => Promise<number | undefined>;
   /** 打开合并编辑器（`vscode/mergeEditor.ts`）。 */
@@ -519,6 +526,29 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       );
       return null;
     },
+    resetTo: async ({ hash }) => {
+      const root = repository.location.root;
+      const [head, [commit]] = await Promise.all([
+        repository.run(getHead, root),
+        repository.run(getCommitDetails, root, [hash]),
+      ]);
+      const short = hash.slice(0, 7);
+      const target = head.kind === RefKind.Head && head.branch !== undefined ? head.branch : "HEAD";
+      const subject = commit === undefined ? "" : ` "${firstLine(commit.message)}"`;
+      const index = await ui.choose(
+        `Reset ${target} to ${short}${subject}?`,
+        RESET_MODES.map(resetLabel),
+        RESET_MODES.map((mode) => `${resetLabel(mode)}: ${resetEffect(mode)}`).join("\n"),
+      );
+      const mode = index === undefined ? undefined : RESET_MODES[index];
+      if (mode === undefined) return null;
+      await ui.withProgress(
+        `Resetting ${target} to ${short}…`,
+        () => repository.run(resetTo, root, mode, hash),
+        () => `Reset ${target} to ${short}`,
+      );
+      return null;
+    },
     cherryPick: async ({ hash }) => {
       const { root, gitDir } = repository.location;
       const name = hash.slice(0, 7);
@@ -805,6 +835,50 @@ function abortQuestion(kind: OperationKind): string {
     default:
       return assertNever(kind, "abortQuestion");
   }
+}
+
+/** reset 对话框的按钮顺序：对文件的影响从小到大。 */
+const RESET_MODES: readonly ResetMode[] = [
+  ResetMode.Soft,
+  ResetMode.Mixed,
+  ResetMode.Keep,
+  ResetMode.Hard,
+];
+
+function resetLabel(mode: ResetMode): string {
+  switch (mode) {
+    case ResetMode.Soft:
+      return "Soft";
+    case ResetMode.Mixed:
+      return "Mixed";
+    case ResetMode.Keep:
+      return "Keep";
+    case ResetMode.Hard:
+      return "Hard";
+    default:
+      return assertNever(mode, "resetLabel");
+  }
+}
+
+/** 每种做法对文件的影响，照 IDEA 的写法。 */
+function resetEffect(mode: ResetMode): string {
+  switch (mode) {
+    case ResetMode.Soft:
+      return "Files won't change, differences will be staged for commit.";
+    case ResetMode.Mixed:
+      return "Files won't change, differences won't be staged.";
+    case ResetMode.Keep:
+      return "Files will be reverted to the state of the selected commit, but local changes will be kept intact.";
+    case ResetMode.Hard:
+      return "Files will be reverted to the state of the selected commit. Warning: any local changes will be lost.";
+    default:
+      return assertNever(mode, "resetEffect");
+  }
+}
+
+function firstLine(text: string): string {
+  const end = text.indexOf("\n");
+  return end === -1 ? text : text.slice(0, end);
 }
 
 /** 双击一边删了的冲突文件时，弹框里的那句话。 */

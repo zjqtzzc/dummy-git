@@ -42,8 +42,10 @@ export async function notifyChoice(
 export async function choose(
   message: string,
   actions: readonly string[],
+  detail?: string,
 ): Promise<number | undefined> {
-  const picked = await vscode.window.showWarningMessage(message, { modal: true }, ...actions);
+  const options = detail === undefined ? { modal: true } : { modal: true, detail };
+  const picked = await vscode.window.showWarningMessage(message, options, ...actions);
   const index = picked === undefined ? -1 : actions.indexOf(picked);
   return index === -1 ? undefined : index;
 }

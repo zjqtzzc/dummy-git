@@ -91,6 +91,7 @@ export const _baseline = defineHandlers({
   copyText: openDiffStub,
   openMergeEditor: openDiffStub,
   markResolved: openDiffStub,
+  resetTo: openDiffStub,
   removeConflictFile: openDiffStub,
   resolveDeletion: openDiffStub,
   addUntracked: openDiffStub,

@@ -48,6 +48,7 @@
  * | `rebaseOnto` | `rebase --autostash <引用> [<分支>]` | `--autostash` | 2.6 |
  * | `cherryPickCommit` | `cherry-pick --no-edit <hash>` | — | — |
  * | `revertCommit` | `revert --no-edit <hash>` | — | — |
+ * | `resetTo` | `reset -q --soft/--mixed/--keep/--hard <hash>` | — | — |
  * | `rollback` | `restore --source=HEAD --staged --worktree -- <路径…>` | `git restore` | **2.23** |
  * | `getSkeleton` | `-c log.showSignature=false log --format=… --max-count=10000 HEAD --branches --remotes --tags --date-order --`；按分支过滤时起点换成那个分支 | — | — |
  * | `getCommitDetails` | `-c log.showSignature=false log --format=… --no-walk --stdin` | — | — |
@@ -106,6 +107,7 @@ export { listPaths, type TrackedPath } from "./paths.js";
 export { PushKind, type PushResult, push } from "./push.js";
 export { getHead, getRefs } from "./refs.js";
 export { fetchAll, listRemotes } from "./remote.js";
+export { ResetMode, resetTo } from "./reset.js";
 export { markResolvedPath, removeConflictPath } from "./resolve.js";
 export { rollback } from "./rollback.js";
 export {

@@ -213,6 +213,13 @@ export interface Commands {
     result: null;
   };
   /** 把 `hash` 这条提交摘到当前分支。`hash` 是完整 hash。不确认。工作区已有的改动交给 git。 */
+  /**
+   * 把当前分支 reset 到 `hash`（完整 hash）。扩展弹模态框选 Soft / Mixed / Keep / Hard，对话框即二次确认；取消什么都不做。
+   */
+  resetTo: {
+    params: { repo: string; hash: string };
+    result: null;
+  };
   cherryPick: {
     params: { repo: string; hash: string };
     result: null;

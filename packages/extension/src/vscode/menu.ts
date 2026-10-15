@@ -111,6 +111,7 @@ const MENU_COMMANDS: readonly MenuCommand[] = [
   menuCommand("dummyGit.copyHash", "copyText", (context) => ({
     text: context[MenuContextKey.Hash],
   })),
+  menuCommand("dummyGit.resetTo", "resetTo", commitParams),
   menuCommand("dummyGit.cherryPick", "cherryPick", commitParams),
   menuCommand("dummyGit.revertCommit", "revert", commitParams),
   menuCommand("dummyGit.rebaseHere", "rebase", rebaseHereParams),

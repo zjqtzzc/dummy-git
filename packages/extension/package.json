@@ -146,6 +146,10 @@
       {
         "command": "dummyGit.deleteUntracked",
         "title": "Delete"
+      },
+      {
+        "command": "dummyGit.resetTo",
+        "title": "Reset Current Branch to Here…"
       }
     ],
     "menus": {
@@ -284,6 +288,11 @@
           "command": "dummyGit.deleteUntracked",
           "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'untracked'",
           "group": "4_delete@1"
+        },
+        {
+          "command": "dummyGit.resetTo",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'commit'",
+          "group": "3_edit@1"
         }
       ],
       "commandPalette": [
@@ -381,6 +390,10 @@
         },
         {
           "command": "dummyGit.deleteUntracked",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.resetTo",
           "when": "false"
         }
       ]
