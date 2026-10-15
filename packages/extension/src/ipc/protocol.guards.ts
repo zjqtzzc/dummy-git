@@ -351,10 +351,22 @@ const PARAM_GUARDS = {
       ? { repo, remote, branch }
       : undefined;
   },
-  push: (raw: Record<string, unknown>) => {
+  getPushTarget: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const branch = raw["branch"];
     return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;
+  },
+  push: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const branch = raw["branch"];
+    const remote = raw["remote"];
+    const remoteBranch = raw["remoteBranch"];
+    return typeof repo === "string" &&
+      typeof branch === "string" &&
+      typeof remote === "string" &&
+      typeof remoteBranch === "string"
+      ? { repo, branch, remote, remoteBranch }
+      : undefined;
   },
   update: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];

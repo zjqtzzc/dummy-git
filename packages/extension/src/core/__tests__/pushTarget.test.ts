@@ -14,7 +14,6 @@ describe("defaultPushTarget：上游 → 唯一的远程 → origin → 选不�
       kind: PushTargetKind.Target,
       remote: "upstream",
       remoteBranch: "dev",
-      setUpstream: false,
     });
   });
 
@@ -26,19 +25,17 @@ describe("defaultPushTarget：上游 → 唯一的远程 → origin → 选不�
     });
   });
 
-  it("没有上游、只有一个远程：用它，推到同名并设为上游——哪怕它不叫 origin", () => {
+  it("没有上游、只有一个远程：用它，推到同名——哪怕它不叫 origin", () => {
     expect(defaultPushTarget("feat", undefined, ["github"])).toEqual({
       kind: PushTargetKind.Target,
       remote: "github",
       remoteBranch: "feat",
-      setUpstream: true,
     });
   });
 
   it("没有上游、多个远程：用 origin", () => {
     expect(defaultPushTarget("feat", undefined, ["fork", "origin"])).toMatchObject({
       remote: "origin",
-      setUpstream: true,
     });
   });
 

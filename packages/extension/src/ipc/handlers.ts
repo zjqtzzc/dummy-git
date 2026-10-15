@@ -478,7 +478,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       ui.closeDialog(dialog);
       return null;
     },
-    push: async ({ branch }) => {
+    getPushTarget: async ({ branch }) => {
       const root = repository.location.root;
       const local = localBranch(await repository.run(getRefs, root), branch);
       if (local === undefined) throw new UserFacingError(`Branch ${branch} no longer exists.`);
@@ -487,7 +487,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       const target = defaultPushTarget(branch, local.upstream, remotes);
       switch (target.kind) {
         case PushTargetKind.Target:
-          break;
+          return { remote: target.remote, remoteBranch: target.remoteBranch };
         case PushTargetKind.Ambiguous:
           throw new UserFacingError(
             `Cannot choose a remote for ${branch}: the repository has several remotes and none is named origin.`,
@@ -499,17 +499,23 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         default:
           return assertNever(target, "push target");
       }
-      const tracked = `${target.remote}/${target.remoteBranch}`;
+    },
+    push: async ({ branch, remote, remoteBranch }) => {
+      const root = repository.location.root;
+      const local = localBranch(await repository.run(getRefs, root), branch);
+      if (local === undefined) throw new UserFacingError(`Branch ${branch} no longer exists.`);
+      const tracked = `${remote}/${remoteBranch}`;
       await ui.withProgress(
         `Pushing ${branch}…`,
         async () => {
+          // 没有上游时带 `-u`：第一次推送顺带设好上游。
           const result = await repository.run(
             push,
             root,
-            target.remote,
+            remote,
             branch,
-            target.remoteBranch,
-            target.setUpstream,
+            remoteBranch,
+            local.upstream === undefined,
           );
           if (result.kind === PushKind.Rejected) {
             throw new UserFacingError(

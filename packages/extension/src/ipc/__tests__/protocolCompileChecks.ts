@@ -70,6 +70,7 @@ export const _baseline = defineHandlers({
   update: openDiffStub,
   openPushDialog: openDiffStub,
   closeDialog: openDiffStub,
+  getPushTarget: async () => ({ remote: "", remoteBranch: "" }),
   push: openDiffStub,
   merge: openDiffStub,
   rebase: openDiffStub,

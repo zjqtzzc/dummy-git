@@ -201,10 +201,16 @@ export interface Commands {
     result: null;
   };
   /**
-   * 推送选中的本地分支。推到哪里由扩展算：上游 → 唯一的远程 → `origin`（后两种推到同名并设为上游）。
+   * 推送对话框打开时的默认目标：上游 → 唯一的远程 → `origin`（后两种推到同名分支）。
+   * 选不出来时失败，说明为什么。
    */
-  push: {
+  getPushTarget: {
     params: { repo: string; branch: string };
+    result: { remote: string; remoteBranch: string };
+  };
+  /** 把本地分支 `branch` 推到 `remote` 的 `remoteBranch`。本地分支没有上游时顺带设为上游。 */
+  push: {
+    params: { repo: string; branch: string; remote: string; remoteBranch: string };
     result: null;
   };
   /**
