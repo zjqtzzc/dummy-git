@@ -15,6 +15,7 @@ import CommitApp from "./commit/CommitApp.vue";
 import LogApp from "./log/LogApp.vue";
 import { Client } from "./logic/client.js";
 import PushApp from "./push/PushApp.vue";
+import RewordApp from "./reword/RewordApp.vue";
 import { transport } from "./vscodeApi.js";
 
 /**
@@ -30,6 +31,7 @@ const APPS: Readonly<Record<string, Component>> = {
   "dummyGit.log": LogApp,
   "dummyGit.commit": CommitApp,
   "dummyGit.push": PushApp,
+  "dummyGit.reword": RewordApp,
 };
 const root = document.getElementById("root");
 const app = APPS[root?.dataset["view"] ?? ""];

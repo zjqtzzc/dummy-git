@@ -37,6 +37,7 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     fetch: async (): Promise<null> => null,
     update: async (): Promise<null> => null,
     openPushDialog: async (): Promise<null> => null,
+    openRewordDialog: async (): Promise<null> => null,
     closeDialog: async (): Promise<null> => null,
     getPushTarget: async () => ({ remotes: ["origin"], remote: "origin", remoteBranch: "main" }),
     getOutgoingCommits: async () => ({ commits: [], more: false }),
@@ -317,6 +318,10 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
           return null;
         },
         openPushDialog: async () => {
+          ran = true;
+          return null;
+        },
+        openRewordDialog: async () => {
           ran = true;
           return null;
         },

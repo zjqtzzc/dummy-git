@@ -6,6 +6,7 @@ import { html } from "./webviewView.js";
 /** 对话框 → 视图 id（页面按它挂根组件，见 `webview/src/main.ts`）。 */
 const VIEW_TYPES: Readonly<Record<DialogKind, string>> = {
   [DialogKind.Push]: "dummyGit.push",
+  [DialogKind.Reword]: "dummyGit.reword",
 };
 
 /**

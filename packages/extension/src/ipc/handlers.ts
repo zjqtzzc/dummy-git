@@ -481,6 +481,10 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       ui.openDialog(DialogKind.Push, branch, `Push ${branch}`);
       return null;
     },
+    openRewordDialog: async ({ hash }) => {
+      ui.openDialog(DialogKind.Reword, hash, "Edit Commit Message");
+      return null;
+    },
     closeDialog: async ({ dialog }) => {
       ui.closeDialog(dialog);
       return null;

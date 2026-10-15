@@ -69,6 +69,7 @@ export const _baseline = defineHandlers({
   fetch: openDiffStub,
   update: openDiffStub,
   openPushDialog: openDiffStub,
+  openRewordDialog: openDiffStub,
   closeDialog: openDiffStub,
   getPushTarget: async () => ({ remotes: [], remote: "", remoteBranch: "" }),
   getOutgoingCommits: async () => ({ commits: [], more: false }),

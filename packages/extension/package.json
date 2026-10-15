@@ -150,6 +150,10 @@
       {
         "command": "dummyGit.resetTo",
         "title": "Reset Current Branch to Here…"
+      },
+      {
+        "command": "dummyGit.rewordCommit",
+        "title": "Edit Commit Message…"
       }
     ],
     "menus": {
@@ -293,6 +297,11 @@
           "command": "dummyGit.resetTo",
           "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'commit'",
           "group": "3_edit@1"
+        },
+        {
+          "command": "dummyGit.rewordCommit",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'commit' && dummyGit.rewordable",
+          "group": "3_edit@2"
         }
       ],
       "commandPalette": [
@@ -394,6 +403,10 @@
         },
         {
           "command": "dummyGit.resetTo",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.rewordCommit",
           "when": "false"
         }
       ]

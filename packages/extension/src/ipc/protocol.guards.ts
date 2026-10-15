@@ -73,6 +73,8 @@ function asDialogKind(value: unknown): DialogKind | undefined {
   switch (value) {
     case DialogKind.Push:
       return DialogKind.Push;
+    case DialogKind.Reword:
+      return DialogKind.Reword;
     default:
       return undefined;
   }
@@ -270,6 +272,7 @@ const PARAM_GUARDS = {
     const branch = raw["branch"];
     return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;
   },
+  openRewordDialog: asCommitTarget,
   closeDialog: (raw: Record<string, unknown>) => {
     const dialog = asDialogKind(raw["dialog"]);
     return dialog === undefined ? undefined : { dialog };

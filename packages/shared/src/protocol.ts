@@ -195,6 +195,11 @@ export interface Commands {
     params: { repo: string; branch: string };
     result: null;
   };
+  /** 为 `hash`（完整 hash）打开改说明的对话框（提交右键 `Edit Commit Message…`）。已经开着就换成这条。 */
+  openRewordDialog: {
+    params: { repo: string; hash: string };
+    result: null;
+  };
   /** 关掉一个对话框的标签（对话框里的 Cancel）。没开着什么都不做。 */
   closeDialog: {
     params: { dialog: DialogKind };

@@ -23,6 +23,8 @@ export const MenuContextKey = {
   Stash: "dummyGit.stash",
   /** 提交的 hash（Log 提交列表的一行）。 */
   Hash: "dummyGit.hash",
+  /** 这条提交能改说明（`true`；不能时不写这个键）。 */
+  Rewordable: "dummyGit.rewordable",
   /** 文件路径，相对仓库根（Commit 面板的一个文件）。 */
   Path: "dummyGit.path",
 } as const;

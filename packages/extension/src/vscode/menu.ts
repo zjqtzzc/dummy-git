@@ -112,6 +112,7 @@ const MENU_COMMANDS: readonly MenuCommand[] = [
     text: context[MenuContextKey.Hash],
   })),
   menuCommand("dummyGit.resetTo", "resetTo", commitParams),
+  menuCommand("dummyGit.rewordCommit", "openRewordDialog", commitParams),
   menuCommand("dummyGit.cherryPick", "cherryPick", commitParams),
   menuCommand("dummyGit.revertCommit", "revert", commitParams),
   menuCommand("dummyGit.rebaseHere", "rebase", rebaseHereParams),

@@ -42,6 +42,8 @@ const props = defineProps<{
   graph: Graph | undefined;
   /** 提交 hash → 这个提交上的 ref 标签。 */
   labels: ReadonlyMap<string, readonly RefLabel[]>;
+  /** 能改说明的提交，右键菜单才有 `Edit Commit Message…`。 */
+  rewordable: ReadonlySet<string>;
 }>();
 
 const emit = defineEmits<{
@@ -165,6 +167,7 @@ function menuOf(hash: string): string {
     [MenuContextKey.Node]: MenuNodeValue.Commit,
     [MenuContextKey.Hash]: hash,
     ...(props.repo === undefined ? {} : { [MenuContextKey.Repo]: props.repo }),
+    ...(props.rewordable.has(hash) ? { [MenuContextKey.Rewordable]: true } : {}),
   });
 }
 
