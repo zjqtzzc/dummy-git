@@ -374,12 +374,19 @@ const PARAM_GUARDS = {
     const remote = raw["remote"];
     const remoteBranch = raw["remoteBranch"];
     const force = raw["force"];
-    return typeof repo === "string" &&
-      typeof branch === "string" &&
-      typeof remote === "string" &&
-      typeof remoteBranch === "string" &&
-      typeof force === "boolean"
-      ? { repo, branch, remote, remoteBranch, force }
+    const remoteUrl = raw["remoteUrl"];
+    if (
+      typeof repo !== "string" ||
+      typeof branch !== "string" ||
+      typeof remote !== "string" ||
+      typeof remoteBranch !== "string" ||
+      typeof force !== "boolean"
+    ) {
+      return undefined;
+    }
+    if (remoteUrl === undefined) return { repo, branch, remote, remoteBranch, force };
+    return typeof remoteUrl === "string"
+      ? { repo, branch, remote, remoteBranch, force, remoteUrl }
       : undefined;
   },
   update: (raw: Record<string, unknown>) => {

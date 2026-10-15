@@ -538,12 +538,20 @@ describe("handlers.getPushTarget / push", () => {
     expect(git(repo, ["rev-parse", "--abbrev-ref", "main@{upstream}"]).trim()).toBe("origin/main");
   });
 
-  it("一个远程都没有：给一句说明", async () => {
-    const { repo } = repos();
+  it("一个远程都没有：在对话框里定义远程，先加远程再推，并设为上游", async () => {
+    const { remote, repo } = repos();
     git(repo, ["remote", "remove", "origin"]);
-    await expect(
-      withHandlers(repo, (handlers) => handlers.getPushTarget({ repo, branch: "main" })),
-    ).rejects.toThrow("Cannot push main: the repository has no remotes.");
+    await withHandlers(repo, async (handlers) => {
+      const { remotes, ...target } = await handlers.getPushTarget({ repo, branch: "main" });
+      expect({ remotes, ...target }).toEqual({
+        remotes: [],
+        remote: "origin",
+        remoteBranch: "main",
+      });
+      await handlers.push({ repo, branch: "main", ...target, force: false, remoteUrl: remote });
+    });
+    expect(git(repo, ["remote", "get-url", "origin"]).trim()).toBe(remote);
+    expect(git(repo, ["rev-parse", "--abbrev-ref", "main@{upstream}"]).trim()).toBe("origin/main");
   });
 
   it("被拒绝：给一句说明，git 原文留在 detail", async () => {

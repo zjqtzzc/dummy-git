@@ -13,9 +13,15 @@ const props = defineProps<{ client: Client; subject: string }>();
 
 const repo = ref<string>();
 const remotes = ref<readonly string[]>([]);
-/** 推到哪个远程、远程上的哪个分支。打开时填默认目标，用户可改。空串表示还没取到（取不到时扩展已经报过为什么）。 */
+/**
+ * 推到哪个远程、远程上的哪个分支。打开时填默认目标，用户可改。空串表示还没取到（取不到时扩展已经报过为什么）。
+ * 仓库一个远程都没有时，`remote` 是要定义的远程的名字（预填 `origin`）。
+ */
 const remote = ref("");
 const remoteBranch = ref("");
+/** 仓库一个远程都没有：远程下拉换成名字与地址两个输入框，推送前先加这个远程。 */
+const defining = computed(() => remote.value !== "" && remotes.value.length === 0);
+const remoteUrl = ref("");
 /** 打开时的分支与 tag，只用来判断目标是不是新分支。 */
 const refs = ref<readonly Ref[]>([]);
 const isNew = computed(() => isNewRemoteBranch(refs.value, remote.value, remoteBranch.value));
@@ -65,11 +71,20 @@ watch([remote, remoteBranch], () => {
 function onRemote(event: Event): void {
   if (event.currentTarget instanceof VscodeSingleSelect) remote.value = event.currentTarget.value;
 }
+/** 输入框里的文字。读里面那个真正的输入框：宿主上的 value 在这次输入之后不一定已经跟上。 */
+function textOf(event: Event): string | undefined {
+  return event.currentTarget instanceof VscodeTextfield
+    ? event.currentTarget.wrappedElement.value
+    : undefined;
+}
+function onRemoteName(event: Event): void {
+  remote.value = textOf(event) ?? remote.value;
+}
 function onRemoteBranch(event: Event): void {
-  // 读里面那个真正的输入框：宿主上的 value 在这次输入之后不一定已经跟上。
-  if (event.currentTarget instanceof VscodeTextfield) {
-    remoteBranch.value = event.currentTarget.wrappedElement.value;
-  }
+  remoteBranch.value = textOf(event) ?? remoteBranch.value;
+}
+function onRemoteUrl(event: Event): void {
+  remoteUrl.value = textOf(event) ?? remoteUrl.value;
 }
 
 function close(): void {
@@ -82,14 +97,16 @@ function close(): void {
  */
 function push(force: boolean): void {
   if (repo.value === undefined || remote.value === "") return;
+  if (defining.value && remoteUrl.value === "") return;
+  const target = {
+    repo: repo.value,
+    branch: props.subject,
+    remote: remote.value,
+    remoteBranch: remoteBranch.value,
+    force,
+  };
   props.client
-    .request("push", {
-      repo: repo.value,
-      branch: props.subject,
-      remote: remote.value,
-      remoteBranch: remoteBranch.value,
-      force,
-    })
+    .request("push", defining.value ? { ...target, remoteUrl: remoteUrl.value } : target)
     .catch(report);
 }
 
@@ -142,14 +159,27 @@ onUnmounted(() => {
   >
     <div v-if="remote !== ''" class="field">
       <span class="label dim">Target</span>
-      <div class="target">
+      <div class="control">
         <span>{{ subject }} →</span>
-        <vscode-single-select class="remote" :value="remote" @change="onRemote">
+        <vscode-textfield
+          v-if="defining"
+          class="remote"
+          placeholder="Name"
+          :value="remote"
+          @input="onRemoteName"
+        />
+        <vscode-single-select v-else class="remote" :value="remote" @change="onRemote">
           <vscode-option v-for="name in remotes" :key="name" :value="name">{{ name }}</vscode-option>
         </vscode-single-select>
         <span class="dim">/</span>
-        <vscode-textfield class="branch" :value="remoteBranch" @input="onRemoteBranch" />
+        <vscode-textfield class="grow" :value="remoteBranch" @input="onRemoteBranch" />
         <vscode-badge v-if="isNew">New</vscode-badge>
+      </div>
+    </div>
+    <div v-if="defining" class="field">
+      <span class="label dim">Remote URL</span>
+      <div class="control">
+        <vscode-textfield class="grow" :value="remoteUrl" @input="onRemoteUrl" />
       </div>
     </div>
     <div v-if="outgoing !== undefined" class="outgoing">
@@ -196,7 +226,7 @@ onUnmounted(() => {
   flex: none;
   width: 80px;
 }
-.target {
+.control {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -207,7 +237,7 @@ onUnmounted(() => {
 .remote {
   width: 120px;
 }
-.branch {
+.grow {
   flex: 1;
   min-width: 120px;
 }

@@ -202,7 +202,7 @@ export interface Commands {
   };
   /**
    * 推送对话框打开时要的：全部远程，与默认目标（上游 → `origin` → 第一个远程，后两种推到同名分支）。
-   * 一个远程都没有时失败。
+   * 一个远程都没有时 `remotes` 为空，`remote` 是定义远程时预填的名字。
    */
   getPushTarget: {
     params: { repo: string; branch: string };
@@ -219,6 +219,7 @@ export interface Commands {
   /**
    * 把本地分支 `branch` 推到 `remote` 的 `remoteBranch`，并关掉推送对话框。本地分支没有上游时顺带设为上游。
    * `force` 时用 `--force-with-lease`，扩展先确认；取消了什么都不做，对话框留着。
+   * 带 `remoteUrl` 时先 `git remote add <remote> <remoteUrl>` 再推（仓库还没有远程时在对话框里定义）。
    */
   push: {
     params: {
@@ -227,6 +228,7 @@ export interface Commands {
       remote: string;
       remoteBranch: string;
       force: boolean;
+      remoteUrl?: string;
     };
     result: null;
   };

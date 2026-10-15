@@ -21,6 +21,7 @@
  * | `amendCommit` | 同上，`commit --amend --only …`；路径可为空（只改说明） | — | — |
  * | `fetchAll` | `fetch --all --prune` | — | — |
  * | `listRemotes` | `remote` | — | — |
+ * | `addRemote` | `remote add -- <名字> <地址>` | — | — |
  * | `push` | `push [-u] [--force-with-lease] <远程> refs/heads/<B>:refs/heads/<M>` | — | — |
  * | `fetchInto` | `fetch <远程> refs/heads/<M>:refs/heads/<B>`（更新非当前分支） | — | — |
  * | `fetchBranch` | `fetch <远程> refs/heads/<M>`（更新当前分支第一步） | — | — |
@@ -108,7 +109,7 @@ export { abortInProgress, ContinueOutcome, continueInProgress } from "./operatio
 export { listPaths, type TrackedPath } from "./paths.js";
 export { PushKind, type PushResult, push } from "./push.js";
 export { getHead, getRefs } from "./refs.js";
-export { fetchAll, listRemotes } from "./remote.js";
+export { addRemote, fetchAll, listRemotes } from "./remote.js";
 export { ResetMode, resetTo } from "./reset.js";
 export { markResolvedPath, removeConflictPath } from "./resolve.js";
 export { rollback } from "./rollback.js";

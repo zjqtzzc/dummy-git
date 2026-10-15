@@ -19,6 +19,7 @@ import { defaultPushTarget } from "../core/pushTarget.js";
 import type { Repository } from "../core/repository.js";
 import {
   abortInProgress,
+  addRemote,
   amendCommit,
   applyStash,
   ContinueOutcome,
@@ -489,11 +490,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       const local = localBranch(await repository.run(getRefs, root), branch);
       if (local === undefined) throw new UserFacingError(`Branch ${branch} no longer exists.`);
       const remotes = await repository.run(listRemotes, root);
-      const target = defaultPushTarget(branch, local.upstream, remotes);
-      if (target === undefined) {
-        throw new UserFacingError(`Cannot push ${branch}: the repository has no remotes.`);
-      }
-      return { remotes, ...target };
+      return { remotes, ...defaultPushTarget(branch, local.upstream, remotes) };
     },
     getOutgoingCommits: async ({ branch, remote, remoteBranch }) => {
       const root = repository.location.root;
@@ -512,7 +509,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       );
       return { commits: commits.slice(0, OUTGOING_LIMIT), more: commits.length > OUTGOING_LIMIT };
     },
-    push: async ({ branch, remote, remoteBranch, force }) => {
+    push: async ({ branch, remote, remoteBranch, force, remoteUrl }) => {
       const root = repository.location.root;
       const local = localBranch(await repository.run(getRefs, root), branch);
       if (local === undefined) throw new UserFacingError(`Branch ${branch} no longer exists.`);
@@ -531,6 +528,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       await ui.withProgress(
         `Pushing ${branch}…`,
         async () => {
+          if (remoteUrl !== undefined) await repository.run(addRemote, root, remote, remoteUrl);
           // 没有上游时带 `-u`：第一次推送顺带设好上游。
           const result = await repository.run(
             push,

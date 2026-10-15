@@ -38,7 +38,10 @@ describe("defaultPushTarget：上游 → origin → 第一个远程", () => {
     });
   });
 
-  it("一个远程都没有：没有默认目标", () => {
-    expect(defaultPushTarget("feat", undefined, [])).toBeUndefined();
+  it("一个远程都没有：origin（定义远程时预填的名字）", () => {
+    expect(defaultPushTarget("feat", undefined, [])).toEqual({
+      remote: "origin",
+      remoteBranch: "feat",
+    });
   });
 });
