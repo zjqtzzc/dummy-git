@@ -63,11 +63,13 @@ import {
   RebaseOutcome,
   ReplayOutcome,
   ResetMode,
+  RewordOutcome,
   rebaseOnto,
   removeConflictPath,
   renameBranch,
   resetTo,
   revertCommit,
+  rewordCommit,
   rollback,
   stashAll,
   stashPaths,
@@ -485,6 +487,31 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       ui.openDialog(DialogKind.Reword, hash, "Edit Commit Message");
       return null;
     },
+    reword: async ({ hash, message }) => {
+      const { root, gitDir } = repository.location;
+      const current = await readOperation(gitDir);
+      if (current !== null) {
+        throw new UserFacingError(
+          `Cannot edit commit messages while ${operationNoun(current.kind)} is in progress.`,
+        );
+      }
+      // 点了就关，改写在后台跑（`design/phase-11.md` 第 6 条）。
+      ui.closeDialog(DialogKind.Reword);
+      const short = hash.slice(0, 7);
+      await ui.withProgress(
+        "Rewording…",
+        async () => {
+          const outcome = await repository.run(rewordCommit, root, hash, message);
+          if (outcome === RewordOutcome.NotLinear) {
+            throw new UserFacingError(
+              `Cannot edit the message of ${short}: it is not on the current branch, or a merge commit comes after it.`,
+            );
+          }
+        },
+        () => `Reworded ${short}`,
+      );
+      return null;
+    },
     closeDialog: async ({ dialog }) => {
       ui.closeDialog(dialog);
       return null;
@@ -867,6 +894,22 @@ function continueDone(kind: OperationKind, outcome: ContinueOutcome): string {
       return "Revert completed";
     default:
       return assertNever(kind, "continueDone");
+  }
+}
+
+/** 「正在做的操作」放进句子里的说法。 */
+function operationNoun(kind: OperationKind): string {
+  switch (kind) {
+    case OperationKind.Merge:
+      return "a merge";
+    case OperationKind.Rebase:
+      return "a rebase";
+    case OperationKind.CherryPick:
+      return "a cherry-pick";
+    case OperationKind.Revert:
+      return "a revert";
+    default:
+      return assertNever(kind, "operationNoun");
   }
 }
 

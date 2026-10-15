@@ -261,6 +261,14 @@ export interface Commands {
     params: { repo: string; hash: string };
     result: null;
   };
+  /**
+   * 把 `hash`（完整 hash）那条提交的说明改成 `message`，并关掉改说明的对话框。
+   * 那条与它后面的提交在内存里重造，工作区不动。有操作停在半路、或它已不在 HEAD 的直线历史上时失败。
+   */
+  reword: {
+    params: { repo: string; hash: string; message: string };
+    result: null;
+  };
   cherryPick: {
     params: { repo: string; hash: string };
     result: null;

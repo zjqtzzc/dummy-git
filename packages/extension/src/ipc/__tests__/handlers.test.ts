@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  DialogKind,
   DiffOpenMode,
   type DiffSide,
   DiffSideKind,
@@ -1822,5 +1823,68 @@ describe("handlers.resetTo", () => {
     expect(git(repo, ["rev-parse", "HEAD"]).trim()).toBe(before);
     await reset(repo, first, 3);
     expect(git(repo, ["rev-parse", "HEAD"]).trim()).toBe(first);
+  });
+});
+
+describe("handlers.reword", () => {
+  afterAll(cleanupTempRepos);
+  const reword = async (path: string, hash: string, message: string) => {
+    const repository = new Repository(plainLocation(path), cli);
+    const said: string[] = [];
+    const closed: DialogKind[] = [];
+    try {
+      await createHandlers(repository, {
+        ...NO_UI,
+        closeDialog: (dialog) => void closed.push(dialog),
+        withProgress: async (title, task, done) => {
+          said.push(title);
+          const value = await task();
+          said.push(done(value));
+          return value;
+        },
+      }).reword({ repo: path, hash, message });
+      return { said, closed };
+    } finally {
+      repository.dispose();
+    }
+  };
+
+  it("关掉对话框，改写，状态栏说改了哪条", async () => {
+    const repo = makeTempRepo("reword-handler");
+    const hash = git(repo, ["rev-parse", "HEAD"]).trim();
+    const { said, closed } = await reword(repo, hash, "renamed");
+    expect(closed).toEqual([DialogKind.Reword]);
+    expect(said).toEqual(["Rewording…", `Reworded ${hash.slice(0, 7)}`]);
+    expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe("renamed");
+  });
+
+  it("merge 停在半路：拒绝，对话框不关，什么都不动", async () => {
+    const repo = makeTempRepo("reword-merging");
+    git(repo, ["switch", "-qc", "side"]);
+    writeFileSync(join(repo, "f1"), "side\n");
+    git(repo, ["commit", "-qam", "side"]);
+    git(repo, ["switch", "-q", "main"]);
+    writeFileSync(join(repo, "f1"), "main\n");
+    git(repo, ["commit", "-qam", "main"]);
+    try {
+      git(repo, ["merge", "-q", "side"]);
+    } catch {
+      // 冲突：merge 以非 0 退出，停在半路。
+    }
+    const head = git(repo, ["rev-parse", "HEAD"]).trim();
+    const closed: DialogKind[] = [];
+    const repository = new Repository(plainLocation(repo), cli);
+    try {
+      await expect(
+        createHandlers(repository, {
+          ...NO_UI,
+          closeDialog: (dialog) => void closed.push(dialog),
+        }).reword({ repo, hash: head, message: "x" }),
+      ).rejects.toThrow("Cannot edit commit messages while a merge is in progress.");
+    } finally {
+      repository.dispose();
+    }
+    expect(closed).toEqual([]);
+    expect(git(repo, ["rev-parse", "HEAD"]).trim()).toBe(head);
   });
 });

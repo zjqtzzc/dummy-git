@@ -3,6 +3,7 @@ import { DialogKind, RefKind } from "@dummy-git/shared";
 import { VscodeTextarea } from "@vscode-elements/elements/dist/vscode-textarea/vscode-textarea.js";
 import { onMounted, ref } from "vue";
 import { type Client, report } from "../logic/client.js";
+import { isBlankMessage } from "../logic/commit/message.js";
 import DialogShell from "../ui/DialogShell.vue";
 
 /** 改一条提交的说明（`.notes/design/phase-11.md`）。`subject` 是那条提交的完整 hash。 */
@@ -45,6 +46,18 @@ function onInput(event: Event): void {
 function close(): void {
   props.client.request("closeDialog", { dialog: DialogKind.Reword }).catch(report);
 }
+
+/** 空说明点了没反应；没改就直接关。改写前扩展关掉对话框，进度与结果走进度出口、错误关口。 */
+function reword(): void {
+  if (repo.value === undefined || isBlankMessage(message.value)) return;
+  if (message.value === original.value) {
+    close();
+    return;
+  }
+  props.client
+    .request("reword", { repo: repo.value, hash: props.subject, message: message.value })
+    .catch(report);
+}
 </script>
 
 <template>
@@ -59,7 +72,7 @@ function close(): void {
     />
     <template #buttons>
       <vscode-button secondary @click="close">Cancel</vscode-button>
-      <vscode-button>Reword</vscode-button>
+      <vscode-button @click="reword">Reword</vscode-button>
     </template>
   </DialogShell>
 </template>

@@ -273,6 +273,11 @@ const PARAM_GUARDS = {
     return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;
   },
   openRewordDialog: asCommitTarget,
+  reword: (raw: Record<string, unknown>) => {
+    const target = asCommitTarget(raw);
+    const message = raw["message"];
+    return target !== undefined && typeof message === "string" ? { ...target, message } : undefined;
+  },
   closeDialog: (raw: Record<string, unknown>) => {
     const dialog = asDialogKind(raw["dialog"]);
     return dialog === undefined ? undefined : { dialog };
