@@ -50,6 +50,7 @@
  * | `cherryPickCommit` | `cherry-pick --no-edit <hash>` | — | — |
  * | `revertCommit` | `revert --no-edit <hash>` | — | — |
  * | `resetTo` | `reset -q --soft/--mixed/--keep/--hard <hash>` | — | — |
+ * | `rewordCommit` | `rev-list --first-parent --parents HEAD --not <hash>^@` + `config --bool --get commit.gpgSign` + `stripspace` + 逐条 `cat-file commit` 与 `commit-tree [-S] <tree> -p <父>` + `update-ref -m reword HEAD <新> <旧>` | — | — |
  * | `rollback` | `restore --source=HEAD --staged --worktree -- <路径…>` | `git restore` | **2.23** |
  * | `getSkeleton` | `-c log.showSignature=false log --format=… --max-count=10000 HEAD --branches --remotes --tags --date-order --`；按分支过滤时起点换成那个分支 | — | — |
  * | `getCommitDetails` | `-c log.showSignature=false log --format=… --no-walk --stdin` | — | — |
@@ -112,6 +113,7 @@ export { getHead, getRefs } from "./refs.js";
 export { addRemote, fetchAll, listRemotes } from "./remote.js";
 export { ResetMode, resetTo } from "./reset.js";
 export { markResolvedPath, removeConflictPath } from "./resolve.js";
+export { RewordOutcome, rewordCommit } from "./reword.js";
 export { rollback } from "./rollback.js";
 export {
   applyStash,
