@@ -25,6 +25,7 @@
 import {
   type CommandName,
   type CommandParams,
+  DialogKind,
   DiffOpenMode,
   type DiffSide,
   DiffSideKind,
@@ -63,6 +64,15 @@ function asDiffSide(value: unknown): DiffSide | undefined {
     // 暂存区的一栏只由扩展构造（合并编辑器），页面不发。
     case DiffSideKind.Stage:
       return undefined;
+    default:
+      return undefined;
+  }
+}
+
+function asDialogKind(value: unknown): DialogKind | undefined {
+  switch (value) {
+    case DialogKind.Push:
+      return DialogKind.Push;
     default:
       return undefined;
   }
@@ -254,6 +264,15 @@ const PARAM_GUARDS = {
     const repo = raw["repo"];
     const path = raw["path"];
     return typeof repo === "string" && typeof path === "string" ? { repo, path } : undefined;
+  },
+  openPushDialog: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    const branch = raw["branch"];
+    return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;
+  },
+  closeDialog: (raw: Record<string, unknown>) => {
+    const dialog = asDialogKind(raw["dialog"]);
+    return dialog === undefined ? undefined : { dialog };
   },
   copyText: (raw: Record<string, unknown>) => {
     const text = raw["text"];

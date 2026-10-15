@@ -9,6 +9,7 @@ import { type Component, createApp } from "vue";
 import CommitApp from "./commit/CommitApp.vue";
 import LogApp from "./log/LogApp.vue";
 import { Client } from "./logic/client.js";
+import PushApp from "./push/PushApp.vue";
 import { transport } from "./vscodeApi.js";
 
 /**
@@ -19,12 +20,15 @@ const client = new Client(transport, crypto.randomUUID());
 
 window.addEventListener("message", (event) => client.receive(event.data));
 
-/** 视图 id（扩展侧写在 `data-view` 上，即 package.json 里的 id）→ 根组件。 */
+/** 视图 id（扩展侧写在 `data-view` 上，即 package.json 里的 id，对话框的在 `dialogPanel.ts`）→ 根组件。 */
 const APPS: Readonly<Record<string, Component>> = {
   "dummyGit.log": LogApp,
   "dummyGit.commit": CommitApp,
+  "dummyGit.push": PushApp,
 };
 const root = document.getElementById("root");
 const app = APPS[root?.dataset["view"] ?? ""];
 if (root === null || app === undefined) throw new Error(`未知视图：${root?.dataset["view"]}`);
-createApp(app, { client }).mount(root);
+// 对话框还有它针对的东西（推送对话框是分支名），扩展写在 `data-subject` 上。
+const subject = root.dataset["subject"];
+createApp(app, subject === undefined ? { client } : { client, subject }).mount(root);

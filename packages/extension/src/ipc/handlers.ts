@@ -4,6 +4,7 @@ import {
   assertNever,
   ChangeKind,
   ConflictKind,
+  DialogKind,
   type DiffOpenMode,
   type DiffSide,
   DiffSideKind,
@@ -152,6 +153,13 @@ export interface HandlerUi {
     value: string,
     validate: (name: string) => Promise<string | undefined>,
   ) => Promise<string | undefined>;
+  /**
+   * 打开一个对话框的标签（`vscode/dialogPanel.ts`）：`subject` 是它针对的东西（推送对话框是分支名），
+   * `title` 是标签名。同一种已经开着就切过去、换成新的 `subject`。
+   */
+  readonly openDialog: (dialog: DialogKind, subject: string, title: string) => void;
+  /** 关掉一个对话框的标签。没开着什么都不做。 */
+  readonly closeDialog: (dialog: DialogKind) => void;
   readonly openDiff: (
     root: string,
     left: DiffSide,
@@ -460,6 +468,14 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
           (outcome) => mergeDone(outcome, tracked),
         );
       }
+      return null;
+    },
+    openPushDialog: async ({ branch }) => {
+      ui.openDialog(DialogKind.Push, branch, `Push ${branch}`);
+      return null;
+    },
+    closeDialog: async ({ dialog }) => {
+      ui.closeDialog(dialog);
       return null;
     },
     push: async ({ branch }) => {

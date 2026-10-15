@@ -36,6 +36,8 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     rollback: async (): Promise<null> => null,
     fetch: async (): Promise<null> => null,
     update: async (): Promise<null> => null,
+    openPushDialog: async (): Promise<null> => null,
+    closeDialog: async (): Promise<null> => null,
     push: async (): Promise<null> => null,
     merge: async (): Promise<null> => null,
     rebase: async (): Promise<null> => null,
@@ -309,6 +311,14 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
           return null;
         },
         update: async () => {
+          ran = true;
+          return null;
+        },
+        openPushDialog: async () => {
+          ran = true;
+          return null;
+        },
+        closeDialog: async () => {
           ran = true;
           return null;
         },

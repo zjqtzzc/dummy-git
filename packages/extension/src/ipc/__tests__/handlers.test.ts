@@ -38,6 +38,12 @@ const NO_UI: HandlerUi = {
   choose: () => Promise.reject(new Error("测试里不该弹选择")),
   notify: () => undefined,
   pick: () => Promise.reject(new Error("测试里不该弹选择框")),
+  openDialog: () => {
+    throw new Error("测试里不该开对话框");
+  },
+  closeDialog: () => {
+    throw new Error("测试里不该关对话框");
+  },
   copyText: () => Promise.reject(new Error("测试里不该写剪贴板")),
   openMergeEditor: () => Promise.reject(new Error("测试里不该打开合并编辑器")),
   openDiff: () => Promise.reject(new Error("测试里不该打开 diff")),

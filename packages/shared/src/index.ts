@@ -8,6 +8,7 @@ export {
   type StatusSnapshot,
 } from "./change.js";
 export type { Commit, CommitSkeleton, Signature } from "./commit.js";
+export { DialogKind } from "./dialog.js";
 export { DiffOpenMode, type DiffSide, DiffSideKind, IndexStage } from "./diff.js";
 export { GitDomain } from "./domain.js";
 export { GitErrorCode } from "./error.js";

@@ -84,7 +84,7 @@ const MENU_COMMANDS: readonly MenuCommand[] = [
     repo: context[MenuContextKey.Repo],
     branch: context[MenuContextKey.Branch],
   })),
-  menuCommand("dummyGit.pushBranch", "push", (context) => ({
+  menuCommand("dummyGit.pushBranch", "openPushDialog", (context) => ({
     repo: context[MenuContextKey.Repo],
     branch: context[MenuContextKey.Branch],
   })),

@@ -27,10 +27,17 @@ function makeNonce(): string {
  * 「有哪些仓库」是协议的问题，烤进页面就等于由扩展替用户选好了那一个，
  * 多仓库时还得再拆出来（见 `shared/protocol.ts` 的 `getRepositories`）。
  *
- * 只写一个视图 id（`data-view`），页面按它挂 Log 还是 Commit。两个视图共用一份脚本；
+ * 只写一个视图 id（`data-view`），页面按它挂哪个根组件。所有视图共用一份脚本；
  * 视图 id 本来就是写在 `package.json` 里的外部字符串，不另造一套名字。
+ * 对话框另写 `data-subject`：它针对的东西（推送对话框是分支名），是页面身份的一部分，
+ * 和视图 id 一样在打开时就定了（`vscode/dialogPanel.ts`）。
  */
-function html(webview: vscode.Webview, root: vscode.Uri, viewType: string): string {
+export function html(
+  webview: vscode.Webview,
+  root: vscode.Uri,
+  viewType: string,
+  subject?: string,
+): string {
   const nonce = makeNonce();
   const asset = (name: string): string =>
     webview.asWebviewUri(vscode.Uri.joinPath(root, "dist", "webview", name)).toString();
@@ -50,15 +57,20 @@ function html(webview: vscode.Webview, root: vscode.Uri, viewType: string): stri
 <link id="vscode-codicon-stylesheet" rel="stylesheet" href="${asset("codicon.css")}">
 </head>
 <body>
-<div id="root" data-view="${viewType}"></div>
+<div id="root" data-view="${viewType}"${subject === undefined ? "" : ` data-subject="${escapeHtml(subject)}"`}></div>
 <script type="module" nonce="${nonce}" src="${script}"></script>
 </body>
 </html>`;
 }
 
+/** 写进 HTML 文本或属性值的字符串：分支名里可以有 `&`、`<`、`"`。 */
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"]/g, (ch) => `&#${ch.charCodeAt(0)};`);
+}
+
 /** 没有仓库、git 不可用时的页面：只有一句原因，不加载界面脚本。 */
 function unavailableHtml(reason: string): string {
-  const text = reason.replace(/[&<>"]/g, (ch) => `&#${ch.charCodeAt(0)};`);
+  const text = escapeHtml(reason);
   return `<!DOCTYPE html>
 <html lang="en">
 <head>

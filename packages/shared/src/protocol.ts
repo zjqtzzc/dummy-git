@@ -1,5 +1,6 @@
 import type { CommitFileChange, StatusSnapshot } from "./change.js";
 import type { Commit, CommitSkeleton } from "./commit.js";
+import type { DialogKind } from "./dialog.js";
 import type { DiffOpenMode, DiffSide } from "./diff.js";
 import type { GitDomain } from "./domain.js";
 import type { GitErrorCode } from "./error.js";
@@ -187,6 +188,16 @@ export interface Commands {
    */
   update: {
     params: { repo: string; branch: string };
+    result: null;
+  };
+  /** 为 `branch` 打开推送对话框（分支右键 `Push…`）。已经开着就切过去，换成这个分支。 */
+  openPushDialog: {
+    params: { repo: string; branch: string };
+    result: null;
+  };
+  /** 关掉一个对话框的标签（对话框里的 Cancel）。没开着什么都不做。 */
+  closeDialog: {
+    params: { dialog: DialogKind };
     result: null;
   };
   /**

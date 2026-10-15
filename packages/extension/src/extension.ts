@@ -1,10 +1,11 @@
 import * as vscode from "vscode";
 import { Repository } from "./core/repository.js";
 import { GitCli } from "./git/cli.js";
-import { createHandlers } from "./ipc/handlers.js";
+import { createHandlers, type HandlerUi } from "./ipc/handlers.js";
 import { Router, type Transport } from "./ipc/router.js";
 import { copyText } from "./vscode/clipboard.js";
 import { choose, confirm, confirmRollback, notifyChoice } from "./vscode/confirm.js";
+import { DialogPanels } from "./vscode/dialogPanel.js";
 import { openDiff } from "./vscode/diff.js";
 import { ErrorGate } from "./vscode/errorGate.js";
 import { resolveGitPath } from "./vscode/gitPath.js";
@@ -44,28 +45,30 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const source = new Promise<ViewSource>((resolve) => {
     settle = resolve;
   });
+  // handler 用到的界面动作。对话框的标签页要等仓库找到才有（`dialogs` 在下面），
+  // 而 handler 只在有仓库之后才会被调到。
+  const ui: HandlerUi = {
+    askBranchName,
+    choose,
+    confirm,
+    confirmRollback,
+    copyText,
+    notify,
+    notifyChoice,
+    openDiff,
+    openMergeEditor,
+    pick,
+    withProgress,
+    openDialog: (dialog, subject, title) => dialogs?.open(dialog, subject, title),
+    closeDialog: (dialog) => dialogs?.close(dialog),
+  };
+  let dialogs: DialogPanels | undefined;
   // 一次展开配一个 Router。收起再展开，握手会带来新代号，上一代的回复自动作废。
   const createRouter = (repository: Repository, transport: Transport): Router =>
-    new Router(
-      transport,
-      createHandlers(repository, {
-        askBranchName,
-        choose,
-        confirm,
-        confirmRollback,
-        copyText,
-        notify,
-        notifyChoice,
-        openDiff,
-        openMergeEditor,
-        pick,
-        withProgress,
-      }),
-      {
-        log: (line) => channel.appendLine(line),
-        report: (error) => errors.report(error),
-      },
-    );
+    new Router(transport, createHandlers(repository, ui), {
+      log: (line) => channel.appendLine(line),
+      report: (error) => errors.report(error),
+    });
   for (const viewType of ["dummyGit.log", "dummyGit.commit"]) {
     context.subscriptions.push(registerWebviewView(context, viewType, source, createRouter));
   }
@@ -92,23 +95,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(watchRepository(repository));
 
   // 原生右键菜单：协议的第二个入口，用同一套 handler（`vscode/menu.ts`）。
-  context.subscriptions.push(
-    registerMenuCommands(
-      createHandlers(repository, {
-        askBranchName,
-        choose,
-        confirm,
-        confirmRollback,
-        copyText,
-        notify,
-        notifyChoice,
-        openDiff,
-        openMergeEditor,
-        pick,
-        withProgress,
-      }),
-      errors,
-    ),
+  context.subscriptions.push(registerMenuCommands(createHandlers(repository, ui), errors));
+
+  // 推送等对话框：开在编辑器标签页里（`vscode/dialogPanel.ts`），和面板用同一套 handler。
+  dialogs = new DialogPanels(context.extensionUri, (transport) =>
+    createRouter(repository, transport),
   );
 
   // diff 里历史版本的内容。重新加载窗口后恢复的 diff 标签也靠它（`onFileSystem:dummygit` 激活）。

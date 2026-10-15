@@ -93,7 +93,7 @@
       },
       {
         "command": "dummyGit.pushBranch",
-        "title": "Push"
+        "title": "Push…"
       },
       {
         "command": "dummyGit.mergeBranch",
