@@ -1,6 +1,6 @@
 import { UpstreamState } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
-import { defaultPushTarget, PushTargetKind } from "../pushTarget.js";
+import { defaultPushTarget } from "../pushTarget.js";
 
 const upstream = {
   remote: "upstream",
@@ -8,10 +8,9 @@ const upstream = {
   state: { kind: UpstreamState.Tracking, ahead: 1, behind: 0 },
 } as const;
 
-describe("defaultPushTarget：上游 → 唯一的远程 → origin → 选不出来", () => {
+describe("defaultPushTarget：上游 → origin → 第一个远程", () => {
   it("有上游：推到上游，不管有几个远程", () => {
     expect(defaultPushTarget("feat", upstream, ["origin", "upstream"])).toEqual({
-      kind: PushTargetKind.Target,
       remote: "upstream",
       remoteBranch: "dev",
     });
@@ -19,33 +18,27 @@ describe("defaultPushTarget：上游 → 唯一的远程 → origin → 选不�
 
   it("上游已删（gone）：照样推到原来的上游", () => {
     const gone = { ...upstream, state: { kind: UpstreamState.Gone } } as const;
-    expect(defaultPushTarget("feat", gone, [])).toMatchObject({
+    expect(defaultPushTarget("feat", gone, [])).toEqual({
       remote: "upstream",
       remoteBranch: "dev",
     });
   });
 
-  it("没有上游、只有一个远程：用它，推到同名——哪怕它不叫 origin", () => {
-    expect(defaultPushTarget("feat", undefined, ["github"])).toEqual({
-      kind: PushTargetKind.Target,
-      remote: "github",
+  it("没有上游、多个远程：用 origin，推到同名", () => {
+    expect(defaultPushTarget("feat", undefined, ["fork", "origin"])).toEqual({
+      remote: "origin",
       remoteBranch: "feat",
     });
   });
 
-  it("没有上游、多个远程：用 origin", () => {
-    expect(defaultPushTarget("feat", undefined, ["fork", "origin"])).toMatchObject({
-      remote: "origin",
+  it("没有上游、没有 origin：用第一个远程", () => {
+    expect(defaultPushTarget("feat", undefined, ["b", "a"])).toEqual({
+      remote: "b",
+      remoteBranch: "feat",
     });
   });
 
-  it("多个远程且没有 origin：选不出来", () => {
-    expect(defaultPushTarget("feat", undefined, ["a", "b"])).toEqual({
-      kind: PushTargetKind.Ambiguous,
-    });
-  });
-
-  it("没有远程", () => {
-    expect(defaultPushTarget("feat", undefined, [])).toEqual({ kind: PushTargetKind.NoRemote });
+  it("一个远程都没有：没有默认目标", () => {
+    expect(defaultPushTarget("feat", undefined, [])).toBeUndefined();
   });
 });

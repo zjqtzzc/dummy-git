@@ -1,11 +1,15 @@
 import "./style.css";
 // 只引入用到的 vscode-elements 组件，不引整个库。
+import "@vscode-elements/elements/dist/vscode-badge/index.js";
 import "@vscode-elements/elements/dist/vscode-button/index.js";
 import "@vscode-elements/elements/dist/vscode-button-group/index.js";
 import "@vscode-elements/elements/dist/vscode-checkbox/index.js";
 import "@vscode-elements/elements/dist/vscode-icon/index.js";
+import "@vscode-elements/elements/dist/vscode-option/index.js";
+import "@vscode-elements/elements/dist/vscode-single-select/index.js";
 import "@vscode-elements/elements/dist/vscode-split-layout/index.js";
 import "@vscode-elements/elements/dist/vscode-textarea/index.js";
+import "@vscode-elements/elements/dist/vscode-textfield/index.js";
 import { type Component, createApp } from "vue";
 import CommitApp from "./commit/CommitApp.vue";
 import LogApp from "./log/LogApp.vue";

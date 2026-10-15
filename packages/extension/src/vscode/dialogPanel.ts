@@ -15,6 +15,7 @@ const VIEW_TYPES: Readonly<Record<DialogKind, string>> = {
  * 上一次的输入不留。重新加载会再握手一次，同一个 Router 按换代处理（`ipc/router.ts`）。
  *
  * 不订阅仓库的广播：对话框只开一会儿，内容在打开时取一次。
+ * 切到别的标签再回来时保留页面（`retainContextWhenHidden`），不然输入到一半的东西会丢。
  */
 export class DialogPanels {
   private readonly panels = new Map<DialogKind, vscode.WebviewPanel>();
@@ -45,6 +46,7 @@ export class DialogPanels {
       vscode.ViewColumn.Active,
       {
         enableScripts: true,
+        retainContextWhenHidden: true,
         // 只允许从扩展自己的 dist 目录读资源。
         localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, "dist")],
       },

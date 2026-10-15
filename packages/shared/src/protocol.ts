@@ -201,12 +201,12 @@ export interface Commands {
     result: null;
   };
   /**
-   * 推送对话框打开时的默认目标：上游 → 唯一的远程 → `origin`（后两种推到同名分支）。
-   * 选不出来时失败，说明为什么。
+   * 推送对话框打开时要的：全部远程，与默认目标（上游 → `origin` → 第一个远程，后两种推到同名分支）。
+   * 一个远程都没有时失败。
    */
   getPushTarget: {
     params: { repo: string; branch: string };
-    result: { remote: string; remoteBranch: string };
+    result: { remotes: readonly string[]; remote: string; remoteBranch: string };
   };
   /**
    * 把本地分支 `branch` 推到 `remote` 的 `remoteBranch`，并关掉推送对话框。本地分支没有上游时顺带设为上游。

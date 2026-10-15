@@ -1,15 +1,23 @@
 <script setup lang="ts">
-import { DialogKind } from "@dummy-git/shared";
-import { onMounted, onUnmounted, ref } from "vue";
+import { DialogKind, type Ref } from "@dummy-git/shared";
+import { VscodeSingleSelect } from "@vscode-elements/elements/dist/vscode-single-select/vscode-single-select.js";
+import { VscodeTextfield } from "@vscode-elements/elements/dist/vscode-textfield/vscode-textfield.js";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { type Client, report } from "../logic/client.js";
+import { isNewRemoteBranch } from "../logic/push/target.js";
 import DialogShell from "../ui/DialogShell.vue";
 
 /** 推送对话框（`.notes/design/phase-10.md`）。`subject` 是要推的本地分支。 */
 const props = defineProps<{ client: Client; subject: string }>();
 
 const repo = ref<string>();
-/** 推到哪里。选不出默认目标时缺席（扩展已经报过为什么），Push 点了没反应。 */
-const target = ref<{ remote: string; remoteBranch: string }>();
+const remotes = ref<readonly string[]>([]);
+/** 推到哪个远程、远程上的哪个分支。打开时填默认目标，用户可改。空串表示还没取到（取不到时扩展已经报过为什么）。 */
+const remote = ref("");
+const remoteBranch = ref("");
+/** 打开时的分支与 tag，只用来判断目标是不是新分支。 */
+const refs = ref<readonly Ref[]>([]);
+const isNew = computed(() => isNewRemoteBranch(refs.value, remote.value, remoteBranch.value));
 
 onMounted(async () => {
   props.client.start();
@@ -17,14 +25,28 @@ onMounted(async () => {
     const [root] = await props.client.request("getRepositories", {});
     if (root === undefined) return;
     repo.value = root;
-    target.value = await props.client.request("getPushTarget", {
-      repo: root,
-      branch: props.subject,
-    });
+    const [target, all] = await Promise.all([
+      props.client.request("getPushTarget", { repo: root, branch: props.subject }),
+      props.client.request("getRefs", { repo: root }),
+    ]);
+    remotes.value = target.remotes;
+    remote.value = target.remote;
+    remoteBranch.value = target.remoteBranch;
+    refs.value = all;
   } catch (cause) {
     report(cause);
   }
 });
+
+function onRemote(event: Event): void {
+  if (event.currentTarget instanceof VscodeSingleSelect) remote.value = event.currentTarget.value;
+}
+function onRemoteBranch(event: Event): void {
+  // 读里面那个真正的输入框：宿主上的 value 在这次输入之后不一定已经跟上。
+  if (event.currentTarget instanceof VscodeTextfield) {
+    remoteBranch.value = event.currentTarget.wrappedElement.value;
+  }
+}
 
 function close(): void {
   props.client.request("closeDialog", { dialog: DialogKind.Push }).catch(report);
@@ -32,12 +54,18 @@ function close(): void {
 
 /**
  * 扩展推送前关掉对话框，推送在后台跑；进度与结果由扩展的进度出口、错误关口显示。
- * `force` 时扩展先确认，取消了对话框留着。
+ * `force` 时扩展先确认，取消了对话框留着。远程分支名不合法时由 git 报错。
  */
 function push(force: boolean): void {
-  if (repo.value === undefined || target.value === undefined) return;
+  if (repo.value === undefined || remote.value === "") return;
   props.client
-    .request("push", { repo: repo.value, branch: props.subject, ...target.value, force })
+    .request("push", {
+      repo: repo.value,
+      branch: props.subject,
+      remote: remote.value,
+      remoteBranch: remoteBranch.value,
+      force,
+    })
     .catch(report);
 }
 
@@ -88,11 +116,18 @@ onUnmounted(() => {
     :title="`Push ${subject}`"
     :description="`Push commits from ${subject} to a remote branch.`"
   >
-    <p v-if="target !== undefined">
-      <span class="dim">Target</span>&emsp;{{ subject }} → {{ target.remote }}/{{
-        target.remoteBranch
-      }}
-    </p>
+    <div v-if="remote !== ''" class="field">
+      <span class="label dim">Target</span>
+      <div class="target">
+        <span>{{ subject }} →</span>
+        <vscode-single-select class="remote" :value="remote" @change="onRemote">
+          <vscode-option v-for="name in remotes" :key="name" :value="name">{{ name }}</vscode-option>
+        </vscode-single-select>
+        <span class="dim">/</span>
+        <vscode-textfield class="branch" :value="remoteBranch" @input="onRemoteBranch" />
+        <vscode-badge v-if="isNew">New</vscode-badge>
+      </div>
+    </div>
     <template #buttons>
       <vscode-button secondary @click="close">Cancel</vscode-button>
       <div ref="split" class="split">
@@ -113,6 +148,39 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* 一行「标签 + 控件」；窄于约 480px 时上下排（`DECISIONS.md`「自定义弹出窗口」）。 */
+.field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+.label {
+  flex: none;
+  width: 80px;
+}
+.target {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.remote {
+  width: 120px;
+}
+.branch {
+  flex: 1;
+  min-width: 120px;
+}
+@media (max-width: 480px) {
+  .field {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+}
 .split {
   position: relative;
 }

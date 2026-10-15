@@ -517,24 +517,33 @@ describe("handlers.getPushTarget / push", () => {
     const { remote, repo } = repos();
     git(repo, ["branch", "-q", "feat"]);
     await withHandlers(repo, async (handlers) => {
-      const target = await handlers.getPushTarget({ repo, branch: "feat" });
-      expect(target).toEqual({ remote: "origin", remoteBranch: "feat" });
+      const { remotes, ...target } = await handlers.getPushTarget({ repo, branch: "feat" });
+      expect({ remotes, ...target }).toEqual({
+        remotes: ["origin"],
+        remote: "origin",
+        remoteBranch: "feat",
+      });
       await handlers.push({ repo, branch: "feat", ...target, force: false });
     });
     expect(git(remote, ["rev-parse", "feat"])).toBe(git(repo, ["rev-parse", "feat"]));
     expect(git(repo, ["rev-parse", "--abbrev-ref", "feat@{upstream}"]).trim()).toBe("origin/feat");
   });
 
-  it("没有上游、多个远程且没有 origin：选不出默认目标，给一句说明", async () => {
-    const { repo } = repos();
-    git(repo, ["remote", "rename", "origin", "a"]);
-    git(repo, ["remote", "add", "b", "https://example.invalid/b.git"]);
-    git(repo, ["branch", "-q", "feat"]);
-    await expect(
-      withHandlers(repo, (handlers) => handlers.getPushTarget({ repo, branch: "feat" })),
-    ).rejects.toThrow(
-      "Cannot choose a remote for feat: the repository has several remotes and none is named origin.",
+  it("有上游时推到另一个名字：上游不变", async () => {
+    const { remote, repo } = repos();
+    await withHandlers(repo, (handlers) =>
+      handlers.push({ repo, branch: "main", remote: "origin", remoteBranch: "copy", force: false }),
     );
+    expect(git(remote, ["rev-parse", "copy"])).toBe(git(repo, ["rev-parse", "main"]));
+    expect(git(repo, ["rev-parse", "--abbrev-ref", "main@{upstream}"]).trim()).toBe("origin/main");
+  });
+
+  it("一个远程都没有：给一句说明", async () => {
+    const { repo } = repos();
+    git(repo, ["remote", "remove", "origin"]);
+    await expect(
+      withHandlers(repo, (handlers) => handlers.getPushTarget({ repo, branch: "main" })),
+    ).rejects.toThrow("Cannot push main: the repository has no remotes.");
   });
 
   it("被拒绝：给一句说明，git 原文留在 detail", async () => {

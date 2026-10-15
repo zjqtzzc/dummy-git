@@ -15,7 +15,7 @@ import {
   RefKind,
 } from "@dummy-git/shared";
 import { hasConflictMarkers } from "../core/conflictMarkers.js";
-import { defaultPushTarget, PushTargetKind } from "../core/pushTarget.js";
+import { defaultPushTarget } from "../core/pushTarget.js";
 import type { Repository } from "../core/repository.js";
 import {
   abortInProgress,
@@ -482,23 +482,12 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       const root = repository.location.root;
       const local = localBranch(await repository.run(getRefs, root), branch);
       if (local === undefined) throw new UserFacingError(`Branch ${branch} no longer exists.`);
-      // 有上游就用不到远程列表，不去问 git。
-      const remotes = local.upstream === undefined ? await repository.run(listRemotes, root) : [];
+      const remotes = await repository.run(listRemotes, root);
       const target = defaultPushTarget(branch, local.upstream, remotes);
-      switch (target.kind) {
-        case PushTargetKind.Target:
-          return { remote: target.remote, remoteBranch: target.remoteBranch };
-        case PushTargetKind.Ambiguous:
-          throw new UserFacingError(
-            `Cannot choose a remote for ${branch}: the repository has several remotes and none is named origin.`,
-          );
-        case PushTargetKind.NoRemote:
-          throw new UserFacingError(
-            `Cannot choose a remote for ${branch}: the repository has no remotes.`,
-          );
-        default:
-          return assertNever(target, "push target");
+      if (target === undefined) {
+        throw new UserFacingError(`Cannot push ${branch}: the repository has no remotes.`);
       }
+      return { remotes, ...target };
     },
     push: async ({ branch, remote, remoteBranch, force }) => {
       const root = repository.location.root;
