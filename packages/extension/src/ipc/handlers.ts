@@ -500,11 +500,22 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
           return assertNever(target, "push target");
       }
     },
-    push: async ({ branch, remote, remoteBranch }) => {
+    push: async ({ branch, remote, remoteBranch, force }) => {
       const root = repository.location.root;
       const local = localBranch(await repository.run(getRefs, root), branch);
       if (local === undefined) throw new UserFacingError(`Branch ${branch} no longer exists.`);
       const tracked = `${remote}/${remoteBranch}`;
+      if (
+        force &&
+        !(await ui.confirm(
+          `Force push to ${tracked}? It may overwrite commits at the remote.`,
+          "Force Push",
+        ))
+      ) {
+        return null;
+      }
+      // 点了就关，推送在后台跑（`design/phase-10.md` 第 6 条）。
+      ui.closeDialog(DialogKind.Push);
       await ui.withProgress(
         `Pushing ${branch}…`,
         async () => {
@@ -516,6 +527,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
             branch,
             remoteBranch,
             local.upstream === undefined,
+            force,
           );
           if (result.kind === PushKind.Rejected) {
             throw new UserFacingError(

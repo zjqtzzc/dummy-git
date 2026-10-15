@@ -361,11 +361,13 @@ const PARAM_GUARDS = {
     const branch = raw["branch"];
     const remote = raw["remote"];
     const remoteBranch = raw["remoteBranch"];
+    const force = raw["force"];
     return typeof repo === "string" &&
       typeof branch === "string" &&
       typeof remote === "string" &&
-      typeof remoteBranch === "string"
-      ? { repo, branch, remote, remoteBranch }
+      typeof remoteBranch === "string" &&
+      typeof force === "boolean"
+      ? { repo, branch, remote, remoteBranch, force }
       : undefined;
   },
   update: (raw: Record<string, unknown>) => {

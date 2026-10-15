@@ -18,14 +18,14 @@ describe("push", () => {
   it("有新提交：推上去", async () => {
     const { remote, repo } = repos();
     git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
-    const result = await push.execute(cli, repo, "origin", "main", "main", false);
+    const result = await push.execute(cli, repo, "origin", "main", "main", false, false);
     expect(result).toEqual({ kind: PushKind.Pushed });
     expect(tip(remote, "main")).toBe(tip(repo, "main"));
   });
 
   it("远程已经一样：已是最新", async () => {
     const { repo } = repos();
-    expect(await push.execute(cli, repo, "origin", "main", "main", false)).toEqual({
+    expect(await push.execute(cli, repo, "origin", "main", "main", false, false)).toEqual({
       kind: PushKind.UpToDate,
     });
   });
@@ -33,7 +33,7 @@ describe("push", () => {
   it("新分支带 -u：推到同名并设为上游", async () => {
     const { remote, repo } = repos();
     git(repo, ["branch", "-q", "feat"]);
-    await push.execute(cli, repo, "origin", "feat", "feat", true);
+    await push.execute(cli, repo, "origin", "feat", "feat", true, false);
     expect(tip(remote, "feat")).toBe(tip(repo, "feat"));
     expect(git(repo, ["rev-parse", "--abbrev-ref", "feat@{upstream}"]).trim()).toBe("origin/feat");
   });
@@ -43,7 +43,34 @@ describe("push", () => {
     git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
     git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
     const before = tip(remote, "main");
-    const result = await push.execute(cli, repo, "origin", "main", "main", false);
+    const result = await push.execute(cli, repo, "origin", "main", "main", false, false);
+    expect(result.kind).toBe(PushKind.Rejected);
+    expect(tip(remote, "main")).toBe(before);
+  });
+});
+
+describe("push --force-with-lease", () => {
+  /** 远程多一条本地没有的提交，且本地已经 fetch 过它。 */
+  function diverged(): { remote: string; repo: string } {
+    const { remote, repo } = repos();
+    git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
+    git(repo, ["fetch", "-q"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
+    return { remote, repo };
+  }
+
+  it("远程还停在上次 fetch 看到的位置：覆盖掉", async () => {
+    const { remote, repo } = diverged();
+    const result = await push.execute(cli, repo, "origin", "main", "main", false, true);
+    expect(result).toEqual({ kind: PushKind.Pushed });
+    expect(tip(remote, "main")).toBe(tip(repo, "main"));
+  });
+
+  it("上次 fetch 之后远程又变了：被拒绝，远程不动", async () => {
+    const { remote, repo } = diverged();
+    git(remote, ["commit", "-q", "--allow-empty", "-m", "someone else"]);
+    const before = tip(remote, "main");
+    const result = await push.execute(cli, repo, "origin", "main", "main", false, true);
     expect(result.kind).toBe(PushKind.Rejected);
     expect(tip(remote, "main")).toBe(before);
   });

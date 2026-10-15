@@ -208,9 +208,18 @@ export interface Commands {
     params: { repo: string; branch: string };
     result: { remote: string; remoteBranch: string };
   };
-  /** 把本地分支 `branch` 推到 `remote` 的 `remoteBranch`。本地分支没有上游时顺带设为上游。 */
+  /**
+   * 把本地分支 `branch` 推到 `remote` 的 `remoteBranch`，并关掉推送对话框。本地分支没有上游时顺带设为上游。
+   * `force` 时用 `--force-with-lease`，扩展先确认；取消了什么都不做，对话框留着。
+   */
   push: {
-    params: { repo: string; branch: string; remote: string; remoteBranch: string };
+    params: {
+      repo: string;
+      branch: string;
+      remote: string;
+      remoteBranch: string;
+      force: boolean;
+    };
     result: null;
   };
   /**

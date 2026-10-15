@@ -1,6 +1,7 @@
 import "./style.css";
 // 只引入用到的 vscode-elements 组件，不引整个库。
 import "@vscode-elements/elements/dist/vscode-button/index.js";
+import "@vscode-elements/elements/dist/vscode-button-group/index.js";
 import "@vscode-elements/elements/dist/vscode-checkbox/index.js";
 import "@vscode-elements/elements/dist/vscode-icon/index.js";
 import "@vscode-elements/elements/dist/vscode-split-layout/index.js";

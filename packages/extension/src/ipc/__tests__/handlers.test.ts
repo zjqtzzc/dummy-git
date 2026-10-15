@@ -42,9 +42,7 @@ const NO_UI: HandlerUi = {
   openDialog: () => {
     throw new Error("测试里不该开对话框");
   },
-  closeDialog: () => {
-    throw new Error("测试里不该关对话框");
-  },
+  closeDialog: () => undefined,
   copyText: () => Promise.reject(new Error("测试里不该写剪贴板")),
   openMergeEditor: () => Promise.reject(new Error("测试里不该打开合并编辑器")),
   openDiff: () => Promise.reject(new Error("测试里不该打开 diff")),
@@ -521,7 +519,7 @@ describe("handlers.getPushTarget / push", () => {
     await withHandlers(repo, async (handlers) => {
       const target = await handlers.getPushTarget({ repo, branch: "feat" });
       expect(target).toEqual({ remote: "origin", remoteBranch: "feat" });
-      await handlers.push({ repo, branch: "feat", ...target });
+      await handlers.push({ repo, branch: "feat", ...target, force: false });
     });
     expect(git(remote, ["rev-parse", "feat"])).toBe(git(repo, ["rev-parse", "feat"]));
     expect(git(repo, ["rev-parse", "--abbrev-ref", "feat@{upstream}"]).trim()).toBe("origin/feat");
@@ -544,13 +542,72 @@ describe("handlers.getPushTarget / push", () => {
     git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
     git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
     const error = await withHandlers(repo, (handlers) =>
-      handlers.push({ repo, branch: "main", remote: "origin", remoteBranch: "main" }),
+      handlers.push({
+        repo,
+        branch: "main",
+        remote: "origin",
+        remoteBranch: "main",
+        force: false,
+      }),
     ).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(UserFacingError);
     expect(error instanceof UserFacingError && error.message).toBe(
       "Push rejected: origin/main has commits that main doesn't have. Update it first.",
     );
     expect(error instanceof UserFacingError && error.detail).toContain("[rejected]");
+  });
+});
+
+describe("handlers.push：force", () => {
+  afterAll(cleanupTempRepos);
+
+  /** 远程多一条本地没有的提交（已 fetch），本地另有一条：普通推送会被拒。 */
+  function diverged(): { remote: string; repo: string } {
+    const { remote, repo } = makeTrackingRepos();
+    git(remote, ["config", "receive.denyCurrentBranch", "ignore"]);
+    git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
+    git(repo, ["fetch", "-q"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
+    return { remote, repo };
+  }
+
+  const forcePush = async (path: string, sure: boolean) => {
+    const asked: string[] = [];
+    const repository = new Repository(plainLocation(path), cli);
+    const ui: HandlerUi = {
+      ...NO_UI,
+      confirm: async (message) => {
+        asked.push(message);
+        return sure;
+      },
+    };
+    try {
+      await createHandlers(repository, ui).push({
+        repo: path,
+        branch: "main",
+        remote: "origin",
+        remoteBranch: "main",
+        force: true,
+      });
+    } finally {
+      repository.dispose();
+    }
+    return asked;
+  };
+
+  it("先确认；确认了就覆盖远程", async () => {
+    const { remote, repo } = diverged();
+    expect(await forcePush(repo, true)).toEqual([
+      "Force push to origin/main? It may overwrite commits at the remote.",
+    ]);
+    expect(git(remote, ["rev-parse", "main"])).toBe(git(repo, ["rev-parse", "main"]));
+  });
+
+  it("取消：远程不动", async () => {
+    const { remote, repo } = diverged();
+    const before = git(remote, ["rev-parse", "main"]);
+    await forcePush(repo, false);
+    expect(git(remote, ["rev-parse", "main"])).toBe(before);
   });
 });
 
