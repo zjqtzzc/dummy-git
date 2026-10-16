@@ -4,7 +4,7 @@ import { LockPolicy } from "../git/commands/index.js";
 /**
  * 命令调度：**写命令分两条道互斥排队，读命令直接跑。**
  *
- * 设计依据见 `.notes/specs/locking.md` §2。
+ * 设计依据见 `docs/tech/locking.md` §2。
  *
  * ## 它只管正确性
  *

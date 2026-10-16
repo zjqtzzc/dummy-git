@@ -7,11 +7,8 @@ coverage/
 *.tsbuildinfo
 .claude/
 
-# 本地笔记，不进版本库
+# 参照源码的本地副本（许可证各异、体积大），不进版本库
 /.notes/
-
-# 项目纪律，与 .notes/ 同为过程产物
-/CLAUDE.md
 
 # 脚本与测试生成的临时东西，都在这一个目录下：
 #   fixtures/       parser 验证用的临时仓库（scripts/fixture.mjs）
