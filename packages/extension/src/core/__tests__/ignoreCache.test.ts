@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanupTempRepos, cli, git, makeTempRepo } from "../../__tests__/support.js";
@@ -50,14 +50,46 @@ describe("IgnoreCache：批量", () => {
     const repo = repoWithIgnores();
     const cache = new IgnoreCache(cli, repo);
 
-    // 模拟一次构建：几百个随机文件名落在同一个窗口
-    const paths = Array.from({ length: 200 }, (_, i) => `build/chunk-${i}.js`);
+    const paths = Array.from({ length: 200 }, (_, i) => `logs/run-${i}.log`);
     for (const p of paths) expect(cache.shouldIgnore(p)).toBe(false);
 
     await cache.resolvePending();
 
     for (const p of paths) expect(cache.shouldIgnore(p)).toBe(true);
-    expect(cache.size).toBe(200);
+  });
+});
+
+describe("IgnoreCache：被忽略的目录整个记住", () => {
+  it("编译持续往被忽略的目录里写新文件名：问过一次之后不再放行、不再排队", async () => {
+    const repo = repoWithIgnores();
+    const cache = new IgnoreCache(cli, repo);
+
+    expect(cache.shouldIgnore("build/obj/a.o")).toBe(false);
+    await cache.resolvePending();
+
+    // 之后每个窗口都是没见过的文件名
+    for (let i = 0; i < 100; i++) {
+      expect(cache.shouldIgnore(`build/obj/unit-${i}.o`)).toBe(true);
+      expect(cache.shouldIgnore(`build/CMakeFiles/tmp-${i}/x.d`)).toBe(true);
+    }
+    expect(cache.hasPending()).toBe(false);
+  });
+
+  it("目录里有 add -f 跟踪的文件时，git 不认这个目录被忽略，它下面照常通知", async () => {
+    const repo = repoWithIgnores();
+    mkdirSync(join(repo, "build"));
+    writeFileSync(join(repo, "build", "forced.txt"), "v1\n");
+    git(repo, ["add", "-f", "build/forced.txt"]);
+    git(repo, ["commit", "-qm", "force add"]);
+
+    const cache = new IgnoreCache(cli, repo);
+    cache.shouldIgnore("build/a.o");
+    cache.shouldIgnore("build/forced.txt");
+    await cache.resolvePending();
+
+    expect(cache.shouldIgnore("build/forced.txt")).toBe(false); // ← 不挡
+    expect(cache.shouldIgnore("build/a.o")).toBe(true); // 按文件挡
+    expect(cache.shouldIgnore("build/b.o")).toBe(false); // 目录没被记成忽略，新文件照常放行
   });
 });
 
