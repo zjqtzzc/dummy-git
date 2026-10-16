@@ -14,21 +14,10 @@
 | 4 | 删除远程分支跑成删本地 | 远程分支走专门的删除；`Ref` 把 remote / name 分开存，远程与本地在类型上就分得开 |
 | 4 | 从远程分支 checkout 时本地分支名的推导 | 去掉远程名前缀，不按斜杠猜 |
 | 4 | 删除当前正在过滤 / 选中的分支后面板不刷新 | 删除后按 refs 域刷新，选中与过滤要能落空 |
-| 4 | `stash push -u -- <路径>` 里有**已暂存的删除**（改名的旧路径、`git rm` 过的）：先存下 stash，再在清理时报 `pathspec did not match` 退出——stash 建了、改动还在工作区（git 2.43）；不带 `-u` 则直接拒绝。只传新路径又剩下 `D` | 先 `restore --staged` 把它们退回成未暂存的删除再 stash（`handlers.ts` 的 `stash`，有测试）。IDEA（Staging Area 模式）与 GitLens 都只传新路径，留下 `D` |
-| 4 | `stash push -- <路径>` 存进去的是**整个暂存区**：没勾的已暂存改动（新增、改名、删除）一起进 stash，同时还留在工作区，Apply 时再来一遍（git 2.25、2.43 实测；2026-10-16 用户碰到） | `stashPaths` 先 `write-tree` 记下暂存区，把没勾的已暂存路径退回，stash 完（失败也）从那棵树还原（有测试）。否决：自己用 `commit-tree` 造 stash（等于重写 `git stash`）；有别的暂存改动时拒绝（常见用法用不了）；`stash push --staged`（语义不同，要 2.35） |
-| 4 | `git stash drop` / `pop` 只认 `stash@{n}`、不认 hash（`is not a stash reference`），而序号随存、删而变：拿界面上的序号去删可能删错一条 | 界面与协议一律用 hash；drop / pop 在同一条本地道命令里先按 hash 找当前序号再执行（`commands/stash.ts`，有测试）。`apply` 认 hash |
-| 7 | merge、cherry-pick、revert 进行中，`commit --only -- 路径` 和 `--amend` 被 git 拒绝（git 2.43 实测） | 见 `phases/phase-07.md` A5 |
-| 7 | rebase 停下时 git 允许 amend，但改到的是上一条已经重放好的提交 | 见 A5 |
-| 7 | 冲突解决后、继续之前，git 允许 stash push 和回滚：解决好的内容被存走或丢掉，`MERGE_HEAD` 还在 | 已知，不处理 |
-| 7 | merge、cherry-pick、rebase 的 `--continue` 可能打开编辑器等用户写说明，从扩展里调用会一直卡住 | 用 `-F` 或 `GIT_EDITOR` 把说明框的内容传进去 |
-| 7 | stash pop 冲突时不删除 stash | 解决后要自己删 |
-| 7 | `ORIG_HEAD`、`AUTO_MERGE` 在 abort 之后仍然留着 | 不能用它们判断有没有操作在进行 |
-| 7 | 合并编辑器一打开，结果栏就是「未保存」的草稿（没处理的冲突用基准占位，两边都新增的为空）；替用户关它时，用户若在 VS Code 的关闭提示里勾过「不再询问」，就直接保存，冲突标记被基准内容覆盖而 git 仍认为是冲突 | 不主动关合并编辑器，也不替用户保存（`vscode/mergeEditor.ts`） |
 | 7 | 旧的 `checkout` 不检查进行中的操作，`switch` 会检查 | 我们用的是 `switch`，不用处理 |
 | — | 在 VS Code 的终端里跑 `pnpm check`，环境里带着 VS Code 自己的 `GIT_ASKPASS`（及 `VSCODE_GIT_IPC_HANDLE` 等）：`cli.test.ts` 的「没给脚本：直接失败」会去问 VS Code 的 askpass，十几秒后成功返回而失败，还可能在 VS Code 里弹一次输入框（2026-10-15 发现） | 暂不处理（用户定）。临时绕开：`env -u GIT_ASKPASS -u VSCODE_GIT_IPC_HANDLE … pnpm check`。待想：扩展不传脚本时也会继承宿主环境的 `GIT_ASKPASS`，测试与 `GitCli` 是否该清掉它 |
 | — | git 2.31 之前（如 Ubuntu 20.04 的 2.25），`log --first-parent --name-status` 对 merge 提交**输出为空、退出码 0**；2.31 起 `--first-parent` 才顺带给 merge 出 diff。stash 也是 merge，于是容器里的 Stash 页展开是空的，用户以为没存上把它删了（2026-10-16） | `-m --first-parent` 一起用，两个版本输出一致（`parsers/nameStatus.ts`）。测试只在 2.43 上跑，测不出这种版本差异；最低版本定的是 2.23，老版本上的行为要另外验证 |
 | — | git 2.25 的 `check-ignore`（不带 `--verbose`）把被 `!` 否定规则重新纳入的文件也报成「忽略」（2.43 不报），于是监听把这些文件的改动当成忽略、面板不刷新（2026-10-16 在 2.25 上跑测试发现） | 带 `--verbose`，命中的规则以 `!` 开头的不算忽略（`commands/checkIgnore.ts`，两个版本实测；现有测试在 2.25 上会红）|
-| — | git 2.26 之前 rebase 默认走 apply 后端，状态目录是 `rebase-apply/` 而不是 `rebase-merge/` | 读状态、写说明两处都认两个目录（`operationState.ts`、`operation.ts`），测试也两个都认 |
 | — | 进程层强制 `LC_ALL=en_US.UTF-8`，没装这个 locale 的系统（如只有 `C.UTF-8` 的 Ubuntu 容器）上，git 调起的 shell（钩子、`/bin/sh` 是 bash 时）在 stderr 第一行打 `setlocale: LC_ALL: cannot change locale`，我们取「git 说的第一句」时取到的是它 | Linux 改用 `C.UTF-8`（C locale 下 git 不翻译，照样英文），macOS、Windows 照旧（`cli.ts` 的 `LOCALE`；`pnpm test:old-git` 的容器里有判别力的测试）|
 | 9 | 撤销某个提交里一个文件的改动 | 按文件在该提交里的状态分三种：新增 → 删除文件；删除 → 从父提交恢复；修改 / 改名 → 改回父提交内容。一律 `checkout <hash>~1 -- <path>` 在新增文件上会报 `pathspec did not match` |
 

@@ -22,7 +22,8 @@
 | 有哪些阶段、各做什么 | `product/roadmap.md` |
 | 以后可能做的 | `product/backlog.md` |
 | 定了永远不做的 | `product/never.md` |
-| 某个功能现在是什么样、为什么 | `product/features/`；还没并进去的在 `phases/` |
+| 某个功能现在是什么样、为什么 | `product/features/` |
+| 正在做的阶段的设计稿 | `phases/`（阶段结束时并进 `features/` 后删掉） |
 | 某个技术问题选了什么、否决了什么 | `tech/architecture.md` |
 | 其余为什么这么定 | `tech/decisions.md` |
 | 会碰到的坑 | `tech/traps.md` |

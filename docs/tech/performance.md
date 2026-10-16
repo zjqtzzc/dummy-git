@@ -52,7 +52,7 @@ git clone --bare https://github.com/torvalds/linux  ~/bench/linux.git     # ~130
 
 筛选时另算可见的线（`visibleLines`，两趟线性扫描）：同一仓库每 2 条留 1 条为 7 ms、每 10 条留 1 条为 4 ms；行数少了，`buildGraph` 也跟着变快（11 ms、2 ms）。行号图、编号、颜色不随筛选重算。
 
-骨架或 refs 变了才整个重算，在可接受范围，**不改成按可见行懒算**（`phases/phase-08.md` 技术方案第 1 节的退路）。
+骨架或 refs 变了才整个重算，在可接受范围，**不改成按可见行懒算**。
 大头在 `buildGraph` 的逐行排序；车道更多的仓库会变慢，到时先看它。
 
 ## 3. 唯一的性能悬崖：过滤（第 5 阶段）
