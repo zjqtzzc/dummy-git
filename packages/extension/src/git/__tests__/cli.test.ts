@@ -142,6 +142,15 @@ describe("日志", () => {
   });
 });
 
+describe("locale", () => {
+  it("git 调起的 bash 不打 setlocale 警告（没装 en_US.UTF-8 的系统上也不打）", async () => {
+    // 本机装了 en_US.UTF-8 时怎么都不打；`pnpm test:old-git` 的容器里没装，这条才有判别力。
+    const r = await cli.exec(["-c", "alias.probe=!bash -c true", "probe"], { cwd: fixtures.base });
+    expect(r.exitCode).toBe(0);
+    expect(r.stderr).toBe("");
+  });
+});
+
 describe("GIT_TERMINAL_PROMPT=0：认证需求时快速失败而不是挂住", () => {
   it("对不存在的远程 fetch 会在超时内退出", async () => {
     const repo = makeTempRepo("noprompt");

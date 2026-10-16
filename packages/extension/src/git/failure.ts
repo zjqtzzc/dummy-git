@@ -4,7 +4,7 @@
  * 文件名是 `failure.ts` 而不是 `errors.ts`：`parsers/errors.ts` 已经占用了那个名字，
  * 且两者管的是不同的东西——那个是**解析失败**的诊断，这个是**命令失败**的分类。
  *
- * ## ⚠️ 这里的正则依赖进程层强制的 `LC_ALL=en_US.UTF-8`
+ * ## ⚠️ 这里的正则依赖进程层强制的英文 locale（`cli.ts` 的 `LOCALE`）
  *
  * git 的错误消息是会本地化的。中文环境下 `not a git repository` 会变成中文，
  * 两条正则同时失效——而且**不报错，只是永远返回 `undefined`**。

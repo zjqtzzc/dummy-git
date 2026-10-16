@@ -31,6 +31,16 @@ export interface ExecOptions {
 }
 
 /**
+ * 给 git 的 locale：英文、UTF-8（C locale 的字符集是 ASCII）。
+ *
+ * Linux 用 `C.UTF-8`，不用 `en_US.UTF-8`：后者不一定装了（Ubuntu 的 Docker 镜像只有 C、C.UTF-8），
+ * 没装时 git 调起的 bash（钩子、`!` 别名）每次都往 stderr 第一行打
+ * `setlocale: LC_ALL: cannot change locale`，我们取「git 说的第一句」时取到的就是它。
+ * C locale 下 git 不翻译，消息照样是英文。macOS 没有 `C.UTF-8`，Windows 的 git 自带环境，都照旧。
+ */
+const LOCALE = process.platform === "linux" ? "C.UTF-8" : "en_US.UTF-8";
+
+/**
  * 每个 git 子进程都强制注入，调用方不可覆盖。
  *
  * 前两条堵「git 停下来等人」——那是最坏的故障：无错误、无退出码、无法诊断，
@@ -42,10 +52,10 @@ const FORCED_ENV = {
   // 防 less 挂住。git 本来就检测 isatty 自动关分页器，这条是零成本的冗余保险。
   GIT_PAGER: "cat",
   // 错误消息锁定英文。⚠️ `failure.ts` 的两条分类正则是英文的，删掉这三行会让分类
-  // **静默失效**——不报错，只是永远返回 undefined。用 en_US.UTF-8 而非 C：C locale 字符集是 ASCII。
-  LANGUAGE: "en_US.UTF-8",
-  LC_ALL: "en_US.UTF-8",
-  LANG: "en_US.UTF-8",
+  // **静默失效**——不报错，只是永远返回 undefined。
+  LANGUAGE: LOCALE,
+  LC_ALL: LOCALE,
+  LANG: LOCALE,
   // 非 ASCII 路径原样输出，不转义成 \344\275\240。
   GIT_CONFIG_PARAMETERS: "'core.quotepath=false'",
 } as const;
