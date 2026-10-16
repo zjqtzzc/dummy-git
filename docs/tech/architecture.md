@@ -112,7 +112,7 @@
 **选**：
 - 同一个 Vite 工程、一份 `webview.js`。扩展在 HTML 的 `#root` 上写视图 id（`data-view`，即 `package.json` 里的 id），`main.ts` 按它查表挂 Log 或 Commit 的根组件。树组件、协议客户端共用。
 - 两块 webview 之间不直接通信。每块各配一个 Router，各自订阅仓库的分域过期事件。提交后 Log 刷新、Log 上 merge 停下后 Commit 面板出横幅，都靠这条路。
-- 对话框（第 10 阶段起，`tech/decisions.md`「自定义弹出窗口」）是开在编辑器标签页里的另一块 webview，同一份打包，按视图 id（`dummyGit.push`、`dummyGit.reword`）挂根组件。它针对的东西（推送对话框是分支名，改说明是提交 hash）写在 HTML 的 `data-subject` 上，和视图 id 一样是页面身份的一部分。也配一个 Router，但不订阅仓库的广播（内容打开时取一次）；关自己、做完关掉都经扩展（`vscode/dialogPanel.ts`）。
+- 对话框（第 10 阶段起，`product/features/dialogs.md`）是开在编辑器标签页里的另一块 webview，同一份打包，按视图 id（`dummyGit.push`、`dummyGit.reword`）挂根组件。它针对的东西（推送对话框是分支名，改说明是提交 hash）写在 HTML 的 `data-subject` 上，和视图 id 一样是页面身份的一部分。也配一个 Router，但不订阅仓库的广播（内容打开时取一次）；关自己、做完关掉都经扩展（`vscode/dialogPanel.ts`）。
 - 界面自己的状态（勾选了哪些文件、写到一半的提交说明）放在各自 webview 里，同时存进 VS Code 的 `setState`，视图收起再打开时恢复。
 
 **否决**：
