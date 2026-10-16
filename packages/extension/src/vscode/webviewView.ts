@@ -118,7 +118,8 @@ export function registerWebviewView(
   viewType: string,
   source: Promise<ViewSource>,
   /** 拿着这个视图的 `Transport` 换一个 `Router`。理由同 Router 需要 Transport 才能造。 */
-  createRouter: (repository: Repository, transport: Transport) => Router,
+  /** `source` 是视图 id，日志里记作来源。 */
+  createRouter: (repository: Repository, transport: Transport, source: string) => Router,
 ): vscode.Disposable {
   return vscode.window.registerWebviewViewProvider(viewType, {
     resolveWebviewView: async (view) => {
@@ -144,12 +145,16 @@ export function registerWebviewView(
 
       // 视图销毁后往它 post 会抛。Transport 在这里收口。
       let alive = true;
-      const router = createRouter(repository, {
-        post: (message) => {
-          if (!alive) return;
-          void view.webview.postMessage(message);
+      const router = createRouter(
+        repository,
+        {
+          post: (message) => {
+            if (!alive) return;
+            void view.webview.postMessage(message);
+          },
         },
-      });
+        viewType,
+      );
       const receiving = view.webview.onDidReceiveMessage((raw: unknown) => router.receive(raw));
       // 仓库变了 → 广播给这个视图。只说「哪些域过期了」，要不要重拉由前端决定。
       const unsubscribe = repository.onDidChange((domains) =>

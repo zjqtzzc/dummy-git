@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { Repository } from "./core/repository.js";
 import { GitCli } from "./git/cli.js";
 import { createHandlers, type HandlerUi } from "./ipc/handlers.js";
+import { Operations } from "./ipc/operation.js";
 import { Router, type Transport } from "./ipc/router.js";
 import { copyText } from "./vscode/clipboard.js";
 import { choose, confirm, confirmRollback, notifyChoice } from "./vscode/confirm.js";
@@ -32,6 +33,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // git/ 层不 import vscode（lint 强制），所以 git 路径、askpass 脚本路径与日志出口都从这里注入。
   const askpass = vscode.Uri.joinPath(context.extensionUri, "resources", "askpass-empty.sh").fsPath;
+  // 操作（`ipc/operation.ts`）：webview 请求与右键菜单共用一个，编号不重。
+  const operations = new Operations(channel);
   const gitPath = resolveGitPath();
   const cli = new GitCli(gitPath, createOutputLogger(channel), askpass);
   // 不等它：只是一行日志，不该拖慢视图注册。
@@ -72,9 +75,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   };
   let dialogs: DialogPanels | undefined;
   // 一次展开配一个 Router。收起再展开，握手会带来新代号，上一代的回复自动作废。
-  const createRouter = (repository: Repository, transport: Transport): Router =>
+  const createRouter = (repository: Repository, transport: Transport, source: string): Router =>
     new Router(transport, createHandlers(repository, ui), {
-      log: (line) => channel.info(line),
+      log: (line) => channel.debug(line),
+      operation: (command, params, task) => operations.run(source, command, params, task),
       report: (error) => errors.report(error),
     });
   for (const viewType of ["dummyGit.log", "dummyGit.commit"]) {
@@ -103,11 +107,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(watchRepository(repository));
 
   // 原生右键菜单：协议的第二个入口，用同一套 handler（`vscode/menu.ts`）。
-  context.subscriptions.push(registerMenuCommands(createHandlers(repository, ui), errors));
+  context.subscriptions.push(
+    registerMenuCommands(createHandlers(repository, ui), operations, errors),
+  );
 
   // 推送等对话框：开在编辑器标签页里（`vscode/dialogPanel.ts`），和面板用同一套 handler。
-  dialogs = new DialogPanels(context.extensionUri, (transport) =>
-    createRouter(repository, transport),
+  dialogs = new DialogPanels(context.extensionUri, (transport, source) =>
+    createRouter(repository, transport, source),
   );
 
   // diff 里历史版本的内容。重新加载窗口后恢复的 diff 标签也靠它（`onFileSystem:dummygit` 激活）。

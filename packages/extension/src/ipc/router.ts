@@ -73,8 +73,13 @@ export interface Transport {
 
 /** Router 往外说话的出口。同样注入，默认什么都不做。 */
 export interface RouterHooks {
-  /** 记一行流水（用时、丢弃原因）。 */
+  /** 记一行 Router 自己的流水（丢弃原因、换代）。 */
   readonly log: (line: string) => void;
+  /**
+   * 把一次请求当成一个操作跑（`ipc/operation.ts`）：记开头与结尾。
+   * 来源（哪块页面）由建 Router 的地方绑定，Router 不知道自己挂在哪。
+   */
+  readonly operation: <T>(command: string, params: unknown, task: () => Promise<T>) => Promise<T>;
   /**
    * 请求失败时交给错误关口（`vscode/errorGate.ts`）：输出面板写全、弹通知。
    * Router 是三个关口之一（`ARCHITECTURE.md` 第 15 题），handler 不自己 `catch`。
@@ -82,7 +87,11 @@ export interface RouterHooks {
   readonly report: (error: unknown) => void;
 }
 
-const NOOP_HOOKS: RouterHooks = { log: () => {}, report: () => {} };
+const NOOP_HOOKS: RouterHooks = {
+  log: () => {},
+  operation: (_command, _params, task) => task(),
+  report: () => {},
+};
 
 /**
  * 把 `GitFailureError` 转成协议里的错误。
@@ -220,11 +229,11 @@ export class Router {
       this.transport.post(message);
     };
 
-    const started = Date.now();
     try {
-      const value: CommandResult<K> = await this.handlers[command](params);
+      const value: CommandResult<K> = await this.hooks.operation(command, params, () =>
+        this.handlers[command](params),
+      );
       respondOnce({ kind: MessageKind.Response, generation, id, result: ResponseKind.Ok, value });
-      this.hooks.log(`${command} 用时 ${Date.now() - started}ms`);
     } catch (error) {
       const protocolError = toProtocolError(error);
       respondOnce({
@@ -234,8 +243,7 @@ export class Router {
         result: ResponseKind.Error,
         error: protocolError,
       });
-      // 错误内容由关口写（report），这里只记用时，与成功时那行对称。
-      this.hooks.log(`${command} 失败（${Date.now() - started}ms）`);
+      // 结尾那行由操作记，详情由关口写（report）。
       this.hooks.report(error);
     }
   }

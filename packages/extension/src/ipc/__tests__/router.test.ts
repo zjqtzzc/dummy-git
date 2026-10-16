@@ -174,7 +174,11 @@ describe("Router：分发与响应", () => {
           throw bug;
         },
       }),
-      { log: () => {}, report: (error) => reported.push(error) },
+      {
+        log: () => {},
+        operation: (_c, _p, task) => task(),
+        report: (error) => reported.push(error),
+      },
     );
 
     ready(router);
@@ -488,6 +492,7 @@ describe("Router：读得出 id 的不合法请求回一个错误，不让前端
     const reported: unknown[] = [];
     const router = new Router(t, handlersWith(), {
       log: () => {},
+      operation: (_c, _p, task) => task(),
       report: (error) => void reported.push(error),
     });
     ready(router);

@@ -1,5 +1,6 @@
 import { type CommandName, MenuContextKey } from "@dummy-git/shared";
 import * as vscode from "vscode";
+import type { Operations } from "../ipc/operation.js";
 import { isRecord, parseParams } from "../ipc/protocol.guards.js";
 import type { HandlerMap } from "../ipc/router.js";
 import type { ErrorGate } from "./errorGate.js";
@@ -17,7 +18,7 @@ import type { ErrorGate } from "./errorGate.js";
 interface MenuCommand {
   /** VS Code 命令 id，与 `package.json` 一致。 */
   readonly id: string;
-  readonly run: (handlers: HandlerMap, context: unknown) => Promise<void>;
+  readonly run: (handlers: HandlerMap, operations: Operations, context: unknown) => Promise<void>;
 }
 
 function menuCommand<K extends CommandName>(
@@ -28,10 +29,11 @@ function menuCommand<K extends CommandName>(
 ): MenuCommand {
   return {
     id,
-    run: async (handlers, context) => {
+    run: async (handlers, operations, context) => {
       const parsed = isRecord(context) ? parseParams(command, params(context)) : undefined;
       if (parsed === undefined) throw new Error(`Rejected menu command ${id}: invalid context`);
-      await handlers[command](parsed);
+      // 来源记菜单命令 id：一看就知道是右键菜单里的哪一项。
+      await operations.run(id, command, parsed, () => handlers[command](parsed));
     },
   };
 }
@@ -132,11 +134,15 @@ const MENU_COMMANDS: readonly MenuCommand[] = [
   menuCommand("dummyGit.dropStash", "dropStash", stashParams),
 ];
 
-export function registerMenuCommands(handlers: HandlerMap, errors: ErrorGate): vscode.Disposable {
+export function registerMenuCommands(
+  handlers: HandlerMap,
+  operations: Operations,
+  errors: ErrorGate,
+): vscode.Disposable {
   return vscode.Disposable.from(
     ...MENU_COMMANDS.map(({ id, run }) =>
       vscode.commands.registerCommand(id, (context: unknown) =>
-        run(handlers, context).catch((error: unknown) => errors.report(error)),
+        run(handlers, operations, context).catch((error: unknown) => errors.report(error)),
       ),
     ),
   );

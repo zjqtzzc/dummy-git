@@ -23,8 +23,8 @@ export class DialogPanels {
 
   constructor(
     private readonly extensionUri: vscode.Uri,
-    /** 拿着标签页的 `Transport` 换一个 `Router`，同 `webviewView.ts`。 */
-    private readonly createRouter: (transport: Transport) => Router,
+    /** 拿着标签页的 `Transport` 换一个 `Router`，同 `webviewView.ts`。`source` 是视图 id，日志里记作来源。 */
+    private readonly createRouter: (transport: Transport, source: string) => Router,
   ) {}
 
   open(dialog: DialogKind, subject: string, title: string): void {
@@ -56,12 +56,15 @@ export class DialogPanels {
 
     // 标签关掉后往它 post 会抛。
     let alive = true;
-    const router = this.createRouter({
-      post: (message) => {
-        if (!alive) return;
-        void panel.webview.postMessage(message);
+    const router = this.createRouter(
+      {
+        post: (message) => {
+          if (!alive) return;
+          void panel.webview.postMessage(message);
+        },
       },
-    });
+      VIEW_TYPES[dialog],
+    );
     const receiving = panel.webview.onDidReceiveMessage((raw: unknown) => router.receive(raw));
     this.panels.set(dialog, panel);
     panel.onDidDispose(() => {
