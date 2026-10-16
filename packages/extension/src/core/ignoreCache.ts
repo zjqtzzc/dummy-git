@@ -36,6 +36,11 @@ import { checkIgnore } from "../git/commands/index.js";
  * 这不会挡掉被跟踪的文件：目录下只要有被跟踪的文件（`add -f`），
  * git 就不说这个目录被忽略（2.25、2.43 实测）。剩下的缺口是「目录记住之后才 `add -f`」：
  * `add` 本身写 index 会刷新，之后再改那个文件不触发刷新，要等别的刷新带出来。
+
+## 规则变了，旧答案不更新
+
+改了 `.gitignore` / `info/exclude` 之后，记下的答案照旧用到重载窗口。
+「本来忽略、现在不忽略了」的文件，改动要等别的刷新带出来；反方向只是多刷几次。
  *
  * 目录一律带结尾的 `/` 问：目录已被删掉时，不带 `/` 的 `build` 会被当成文件，
  * `build/` 这类只匹配目录的规则就不命中了。
@@ -124,20 +129,6 @@ export class IgnoreCache {
     }
 
     this.evictIfNeeded();
-  }
-
-  /**
-   * 清空。规则可能变了，之前的答案一律作废。
-   *
-   * 触发时机：任意 `.gitignore` /
-   * `.git/info/exclude` / `config`（`core.excludesFile` 可能变）/
-   * `.git/index`（可能有 `add -f`，会让一个已忽略的路径变成不忽略）。
-   *
-   * 清空是廉价的：缓存按路径惰性重建，重建成本是每个防抖窗口一次批量查询。
-   */
-  invalidate(): void {
-    this.known.clear();
-    this.pending.clear();
   }
 
   /** 供测试与诊断观察内部状态，不参与判定。 */

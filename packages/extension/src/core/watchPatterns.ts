@@ -59,16 +59,8 @@ const WORKTREE_FILES = [
  *   `git gc` 之后 ref 就从 `refs/*` 搬进它，此后更新**只写它**
  * - `logs/**` —— reflog，`refs/stash` 的变化也反映在这里
  * - `shallow` —— 浅克隆截断点。ref 指向可以没动，而祖先关系变了
- * - `info/exclude` —— 忽略规则的来源之一，变了要让 `ignoreCache` 失效
  */
-const COMMON_FILES = [
-  "config",
-  "packed-refs",
-  "shallow",
-  "info/exclude",
-  "refs/**",
-  "logs/**",
-] as const;
+const COMMON_FILES = ["config", "packed-refs", "shallow", "refs/**", "logs/**"] as const;
 
 /**
  * 标准仓库（没有 linked worktree）：一个 watcher 覆盖全部。

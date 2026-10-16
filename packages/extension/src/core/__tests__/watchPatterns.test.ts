@@ -50,7 +50,6 @@ describe("DOT_GIT_GLOB：该收的必须收到", () => {
     "config",
     "packed-refs",
     "shallow",
-    "info/exclude",
     "refs/heads/main",
     "refs/remotes/origin/main",
     "refs/stash",

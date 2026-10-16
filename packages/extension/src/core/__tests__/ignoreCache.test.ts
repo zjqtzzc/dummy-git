@@ -93,26 +93,6 @@ describe("IgnoreCache：被忽略的目录整个记住", () => {
   });
 });
 
-describe("IgnoreCache：invalidate 让规则变化生效", () => {
-  it("改了 .gitignore 之后，旧答案作废", async () => {
-    const repo = repoWithIgnores();
-    const cache = new IgnoreCache(cli, repo);
-
-    cache.shouldIgnore("notes.txt");
-    await cache.resolvePending();
-    expect(cache.shouldIgnore("notes.txt")).toBe(false); // 此刻不被忽略
-
-    // 用户把它加进 .gitignore
-    writeFileSync(join(repo, ".gitignore"), "*.log\nbuild/\nnotes.txt\n");
-    cache.invalidate();
-
-    // 作废后重新问，答案变了
-    expect(cache.shouldIgnore("notes.txt")).toBe(false); // 第一次又是放行
-    await cache.resolvePending();
-    expect(cache.shouldIgnore("notes.txt")).toBe(true);
-  });
-});
-
 describe("IgnoreCache：强制跟踪的 ignored 文件照常通知", () => {
   it("add -f 强制跟踪的 ignored 文件，改动**不会**被挡", async () => {
     // 纯模式匹配的库会把它判成忽略 → 用户对它的改动永远不显示。
