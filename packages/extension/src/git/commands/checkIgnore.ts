@@ -1,7 +1,11 @@
 import { classifyError, GitFailureError } from "../failure.js";
+import { GitParseError } from "../parsers/errors.js";
 import { decode, split } from "../parsers/scan.js";
 import type { GitCommand } from "./command.js";
 import { LockPolicy } from "./lock.js";
+
+/** `--verbose` 每条的字段：来源、行号、规则、路径。 */
+const FIELD_COUNT = 4;
 
 /**
  * 批量问 git：这些工作区路径里，哪些是被忽略的。
@@ -42,6 +46,12 @@ import { LockPolicy } from "./lock.js";
  *
  * `run()` 刻意**没有**「某些退出码视为成功」的开关，界限就划在这里：
  * 要读退出码的命令自己读。代价是这条命令要自己负责「真出错时抛」，见下面 `default` 分支。
+ *
+ * ## 为什么带 `--verbose`
+ *
+ * git 2.25 不带 `--verbose` 时，把被 `!` 否定规则重新纳入的路径**也**输出成「忽略」（2.43 不会）。
+ * 带上之后每条是 `来源\0行号\0规则\0路径\0`，规则以 `!` 开头的就是没被忽略（两个版本实测一致，
+ * 退出码同上：只命中了否定规则也算 0）。
  */
 export const checkIgnore: GitCommand<
   [repository: string, paths: readonly string[]],
@@ -54,7 +64,7 @@ export const checkIgnore: GitCommand<
     // 空输入时 git 同样返回 1，但没必要为此起一个子进程。
     if (paths.length === 0) return new Set();
 
-    const args = ["check-ignore", "-z", "--stdin"];
+    const args = ["check-ignore", "-z", "--stdin", "--verbose"];
     const result = await cli.execRaw(args, {
       cwd: repository,
       // 用 `\0` **结尾**而不是分隔：git 的 -z 输入按 NUL 终止读取，
@@ -64,13 +74,28 @@ export const checkIgnore: GitCommand<
 
     switch (result.exitCode) {
       case 0: {
-        // 输出只含**被忽略的**那些路径，与输入顺序无关，所以给 Set 不给数组。
+        // 输出只含**命中了规则的**那些路径，与输入顺序无关，所以给 Set 不给数组。
         const parts = split(result.stdout, 0x00).map((r) => decode(result.stdout, r));
         // 输出是 NUL **结尾**的，`split` 会因此多给一个末尾空段。
-        // 那是格式产物不是路径——`split` 保留末尾空段是刻意的
+        // 那是格式产物不是字段——`split` 保留末尾空段是刻意的
         // （log 的 `%B` 可以为空，丢了会让字段错位），所以由调用方在这里丢。
-        // git 从不输出空路径，过滤空串是安全的。
-        return new Set(parts.filter((p) => p !== ""));
+        if (parts.at(-1) === "") parts.pop();
+        if (parts.length % FIELD_COUNT !== 0) {
+          throw new GitParseError({
+            parser: "checkIgnore",
+            recordIndex: -1,
+            detail: `字段数 ${parts.length} 不是 ${FIELD_COUNT} 的倍数`,
+            buf: result.stdout,
+            range: { start: 0, end: result.stdout.length },
+          });
+        }
+        const ignored = new Set<string>();
+        for (let i = 0; i < parts.length; i += FIELD_COUNT) {
+          const pattern = parts[i + 2] ?? "";
+          const path = parts[i + 3] ?? "";
+          if (!pattern.startsWith("!")) ignored.add(path);
+        }
+        return ignored;
       }
       case 1:
         // 一个都没被忽略。正常答案。

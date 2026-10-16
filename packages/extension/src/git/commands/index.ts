@@ -16,7 +16,7 @@
  * |---|---|---|---|
  * | `getRepositoryLocation` | `rev-parse --show-toplevel --absolute-git-dir --git-common-dir` | `--absolute-git-dir` | 2.13 |
  * | `getStatus` | `status --porcelain=v2 --branch -z -uall`，环境 `GIT_OPTIONAL_LOCKS=0` | `--porcelain=v2`；`GIT_OPTIONAL_LOCKS` | 2.11；2.15 |
- * | `checkIgnore` | `check-ignore -z --stdin` | — | — |
+ * | `checkIgnore` | `check-ignore -z --stdin --verbose` | — | — |
  * | `commit` | `add -- <未跟踪…>`（有才跑）+ `commit --only -F - -- <路径…>` | — | — |
  * | `amendCommit` | 同上，`commit --amend --only …`；路径可为空（只改说明） | — | — |
  * | `fetchAll` | `fetch --all --prune` | — | — |
