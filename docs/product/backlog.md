@@ -1,116 +1,108 @@
-# 需求池（106）
+# 需求池
 
-> 以后可能做、还没排进阶段的需求。排进阶段时从这里移到 `roadmap.md`；决定永远不做的移到 `never.md`。
+> 以后可能做、还没排进阶段的需求，按功能分组，组名和 `product/features/` 一一对应。排进阶段时从这里移到 `product/roadmap.md`；决定永远不做的移到 `product/never.md`；做完了就删掉。
+> 先后由项目负责人定，定了的移到组的最前面并标「下一批」。标「大」的是要单独成一个阶段的工程。
 
-- 上架 VS Code 商店（2026-10-16 暂缓：商店返回 429，账号可能被封）。已定：商店页面与描述只用中文；先不放仓库链接（不公开源码，打包带 `--allow-missing-repository`）。还缺：商店 README、128×128 图标、CHANGELOG、版本号改 0.1.0、`keywords` 与 `galleryBanner`、把打包脚本从本地 `.notes/` 搬进 `scripts/`（输出放 `.tmp/`）并写发布步骤
-- 继承来的 `GIT_ASKPASS`：在 VS Code 的终端里跑 `pnpm check`，`cli.test.ts` 的「没给脚本：直接失败」会去问 VS Code 自己的 askpass（十几秒后成功返回而失败，还可能弹一次输入框）；扩展不传脚本时也会继承宿主环境里的 `GIT_ASKPASS`。要定：测试与 `GitCli` 是否清掉继承来的 `GIT_ASKPASS` 等变量（`tech/traps.md` 有临时绕开办法，2026-10-15 记）
-- 自定义弹出窗口（2026-10-15 定：IDEA 靠弹窗解决的，我们大概率也要）。消费者：reword 与 squash 的多行说明、交互式 rebase、推送对话框（含 force push）、Reset 的单选加说明（第 9 阶段先用原生模态框）、新建分支 / 改名的勾选项、Merge / Rebase 的选项、删除分支时「同时删远程」、Log 过滤栏下拉与图形选项、Unstash As；冲突弹窗（`tech/decisions.md`「否决 IDEA 的模态冲突弹窗」的前提随之改变）。
-  形态已定（2026-10-15，`tech/decisions.md`「自定义弹出窗口：webview 标签页上的表单页」）：webview 标签页，按表单页排版；先做推送对话框当原型（第 10 阶段），外壳与控件验证过再搬其余
-- 把选中的提交 squash 成一条（2026-10-15 从第 9 阶段移出；第 11 阶段定为等提交列表多选）：连续的一段可在内存里做（同 reword，tech/architecture.md 第 21 题）；弹窗确认合并后的说明，默认是所有被合并提交的说明拼起来（同 IDEA）。否决先自动拼接说明、不让编辑：说明是 squash 的一半，做一半以后还得改入口
-- 列表多选（2026-10-15 定，以后要做）：提交列表、分支树、Commit 面板的文件列表、提交详情的文件列表。提交列表多选后能批量 drop、squash；第 9 阶段只删单条
-- 暂不做的日志功能（2026-10-16 第 12 阶段定）：记 git 的 stdout（同 VS Code 的 `git.commandsToLog`）；一键导出日志（同 IDEA 的 Collect Logs）；记纯界面点击；请求带上是哪个按钮发起的
-- Rollback 改为作用于选中的项（同 IDEA；2026-10-15 用户提，不急，随列表多选）：现在 Rollback 作用于勾选的项（第 2 阶段）。IDEA 默认取选中（选中目录 = 它下面的全部），什么都没选时弹出含全部改动的确认框
-- 删掉某条提交（drop，2026-10-15 从第 9 阶段移出）：右键 `Drop Commit…`，原生模态确认；单条用 `rebase --autostash --onto <父提交> <它>` 即可，不必 `rebase -i`；只在当前分支第一父提交链上、到 HEAD 无合并、非根提交时出现。批量删随列表多选。工作区有改动时 autostash，取回冲突按冲突处理
-- 交互式 rebase（2026-10-15 定，fixup 与「把一条 squash 进另一条」归它）：从某条提交开始，在弹窗里自由调整之后各条提交的顺序、合并方式（pick / reword / squash / fixup / drop）（同 IDEA）
+## 跨功能
 
-- Log 面板展开时黑一下再一次性出现（2026-10-14 发现）：不开 `retainContextWhenHidden`，每次展开都重建 webview（新 iframe → 加载脚本与字体 → 挂载 → 拉骨架与 refs）。一万条与 52 条的黑屏时长看不出差别，大头不在数据量。先在页面里打点实测慢在哪段，再在「给 Log 开 retainContextWhenHidden（改 ARCHITECTURE 的取舍，收起时常驻内存）」与「先画出页面框架、数据后到」之间选
-- 推送被拒时给 Rebase & Push / Merge & Push 两个选择：fetch → rebase 或 merge → 没冲突就推送；中途冲突停下就不再自动推送（2026-10-10 从第 7 阶段移出，推送被拒照旧报错）
-- 冲突文件右键 Accept Ours / Accept Theirs：整个文件取某一边（`checkout --ours/--theirs` + `add`）。第 7 阶段只用合并编辑器加标记已解决（2026-10-10 定）
-- 合并编辑器只留一个（同 diff 只有一个预览标签）：`_open.mergeEditor` 不支持预览，替用户关旧标签时保存与否取决于用户在 VS Code 里的「不再询问」，可能把用基准占位的草稿写进文件、冲突标记悄悄没了。等能判断「还有没有未处理的冲突」（`TabInputTextMerge` 成为正式 API 等）再做（2026-10-10 试过后撤回）
-- 停在半路时的 Skip：rebase、cherry-pick、revert 跳过当前这一条接着做（`--skip`），冲突组标题行多一个 › 按钮。第 7 阶段只有继续与放弃（2026-10-10 定）
-- 操作停在半路时，把 Commit 面板切到前台；在 Stash 模式下就切回 Commit（IDEA 的冲突弹窗会强制出现，新版改成跳到文件树）
-- Log 里跳到 hash / ref（Go to）：列表滚到那一行并选中，其它提交还在；被过滤掉或在一万条以外时说明原因（2026-10-08 从第 5 阶段移出）
-- Log 过滤栏的四个按钮改成按钮正下方弹出的下拉菜单（第 5 阶段先用原生 QuickPick 过渡；只换弹框这一层，过滤逻辑不动）
-- Log 的图形选项（同 IDEA 过滤栏里 IntelliSort 图标的弹出菜单）：只看第一个父提交（First Parent）、隐藏合并提交、排序方式。不影响架构：隐藏合并提交在骨架上按父提交个数筛；First Parent 是骨架命令多一个参数（分支过滤已让骨架命令可带参数），或在页面里沿第一个父提交标记
-- 改写历史时完全不碰工作区（在内存里造提交，冲突时退回普通 rebase）
-- 所有会产生冲突的操作（拉取不能快进、stash pop、autostash 恢复、merge、rebase…）都转进同一个合并界面解决
-- 自建 IDEA 那样的三方合并编辑器，替换 VS Code 的合并编辑器（用户定：最终要它，2026-10-10）：左 Yours、中 Result（可直接编辑）、右 Theirs 三栏，滚动同步；
-  每块改动有箭头「取这边」与 ×「不要这边」；一键应用所有不冲突的改动（左边的 / 右边的 / 全部）；上一处 / 下一处冲突与剩余冲突计数；整个文件取某一边；
-  点 Apply 写回工作区并标记已解决（与冲突组的「标记已解决」同一条路），还有未处理的冲突时先确认；同一时间只开一个（顺带解决「合并编辑器只留一个」）。
-  三栏内容照旧取暂存区 `:1` / `:2` / `:3`（tech/architecture.md 第 19 题），换的只是「双击打开什么」
-- 检出远程分支时，同名本地分支与它分叉：照 IDEA 让用户选「把本地 rebase 到远程上」还是「丢弃本地、用远程的」
-- 冲突区域模型（文件内七种冲突码解析），自建合并编辑器时用
-- 带 autostash 的切换与拉取，及其冲突的解决
-- 按行提交：一个文件里只提交勾选的几处改动
-- 对某个具体分支单独 Push
-- 作者 / 邮箱 / 日期 / 完整 message
-- 文件树 / 平铺切换 —— 第 1 阶段只有树
-- 按文件数阈值自动选布局
-- Revert Selected Changes（从某提交撤销这几个文件）
-- 树 / 平铺切换
-- Expand All 递归
-- Copy Patch to Clipboard（单文件 / 多文件）
-- 批量多选文件操作（Stage / Discard / Stash / Copy Path…）
-- 切换远程时重算 ahead 提交 —— 只有多远程才有意义
-- ref 标签对齐方式 / 分组折叠
-- ref 标签紧凑视图
-- 区间过滤（branchA..branchB）
-- 隐藏合并提交
-- rebase 对话框内联帮助
-- 搜索框过滤分支
-- 收藏 / 星标分支（置顶或单独分组）。当前分支同时被收藏时，黄色标签图标变成实心
-- 已跟踪分支的操作单独成子菜单
-- 每个文件的增删行数统计
-- 单条历史 revision 上执行 Annotate
-- 合并提交：可切看相对每个父的改动
-- 提交签名（GPG / SSH）验证状态展示
-- 提交消息历史下拉
-- 单文件 Stash（只把这一个文件的改动存起来）
-- Add to .gitignore（从文件右键直接加规则）
-- Reveal in Explorer / Open in System Folder
-- 只 stash 已暂存 / 未暂存的那一部分（勾选文件后存已在第 4 阶段）
-- Stash 重命名
-- Apply / Pop 时可选还原暂存状态（`stash apply --index`，同 IDEA 的 Reinstate index）：现在取回后全部变成未暂存（2026-10-16 记）
-- 单文件 diff / 单文件取出
-- 结果用 VSCode 原生通知（面板可能已关）
-- Push Up To Commit —— 推到某条历史提交而非 HEAD
-- 多仓库批量 fetch / pull / push
-- 文件级 Apply Selected Changes
-- 目录 / 文件夹级 diff（不止单文件）
-- Diff with Revision（任意历史版本，From 变体可先选起点）
-- 独立的 File History 视图
-- 折叠 / 展开整张图
-- 长边显示开关（第 8 阶段总是隐藏长线的中间；开关打开后画全）
-- HEAD 所在提交的节点画成「外圈 + 实心」，标出当前位置（同 IDEA；2026-10-14 定第 8 阶段不做）
-- ref 标签重叠彩色（16px / 5px 重叠）
-- tag 名称单独显示开关
-- 按 ref 类型 Hide / Show 图上的噪声
-- 后台建索引 + 未建索引提交单独着色
-- cherry-pick 来的提交高亮
-- 合并提交 / 当前分支提交高亮
-- 键盘导航：列表上下 + 沿图父子左右跳
-- 正则开关
-- 大小写敏感开关
-- 提交签名验证状态显示在列表里
-- Modify Commits
-- 交互式 rebase 图形化编辑器（拖拽重排、逐行选动作）
-- 动作集 pick / reword / edit / squash / fixup / drop
-- fixup! / squash! / amend! 前缀自动补全
-- message 里 URL 高亮可点
-- Autolink：issue / PR 引用模式匹配 + 反查标题
-- Cherry-Pick Selected Changes
-- Apply Selected Changes —— Revert 的镜像动作（文件级 cherry-pick）
-- 内置检查：冲突未解决 / CRLF 混用 / 大文件 / 用户名未配置…
-- 远程选择下拉（多远程）
-- Open Changed File Diffs 系列（全部 / 逐个 / 与 merge-base / 与 working）
-- 列表级 Accept Theirs / Accept Yours 批操作（不打开编辑器）
-- rebase 场景下 ours / theirs 语义反转
-- 合并对话框文案按操作类型定制（merge / rebase / cherry-pick 场景标签不同）
-- 整文件 blame 标注（gutter 逐行显示最后改动的提交 / 作者 / 时间）
-- Compare With Branch：打开虚拟文件系统，把两分支差异当文件树浏览
-- Diff With Local（某 ref 与当前工作区整体比较，同样是文件树浏览）
-- 比较视图的上下两个提交列表分别记忆折叠等 UI 属性
-- 已保存的比较可复用 / 交换方向（A..B ↔ B..A）
-- 当前行 blame
-- 跳到这次改动之前的 blame
-- 标注上下逐个改动跳转
-- Line History
-- 跟踪重命名
-- 跟随光标 / 编辑器切换
-- 单独的回滚确认页（文件树 + 复选框，可在页内调整勾选）
-- 树里按空格切换勾选（现在快捷键宁缺毋滥，需要时在 `Tree.vue` 的按键处理里加）
-- 未跟踪文件成千上万时的退化方案：树已是虚拟滚动，但 `git status -uall` 与勾选推算仍是全量
-- 对话框的共用部分抽出来（2026-10-15 用户定：现在先不抽，第三种对话框出现时一定要做）：协议里每种一条的 `openPushDialog` / `openRewordDialog` 合成一条通用的打开命令；页面里各自写的「标签 + 控件」一行与窄屏上下排、输入框读值（`wrappedElement`）、多行说明框（Commit 面板也有一份）抽成 `ui/` 组件
-- 推送对话框里显示 force push 会覆盖掉的远程提交（远程有、本地没有的；2026-10-15 第 10 阶段定不做）
-- 自动 Fetch：定时，或打开面板时（第 3 阶段只有手动）
-- 提示文字统一处理：现在各处直接显示 git 原文（少数已知错误写了一句话）；以后集中成一处（情况 → 文案的表，或错误关口从 git 原文里挑出有用的那一行：跳过 `To …`、`hint:`，优先 `error:` / `fatal:`），顺带统一语气与语言
+- **大** 列表多选：提交列表、分支树、Commit 面板的文件、提交详情的文件。多选后，提交列表能批量 drop、squash、cherry-pick、revert；分支树能批量删除、更新；Commit 面板的 Rollback、Add、Delete 作用于选中项。Rollback 同时改为作用于**选中**的项，同 IDEA（项目负责人提）：选中目录等于选中它下面的全部；什么都没选时，弹出含全部改动的确认框。
+- 提示文字统一处理：现在各处直接显示 git 原文（少数已知错误自己写了一句）。以后集中成一处：一张「情况 → 文案」的表，或者让错误出口从 git 原文里挑出有用的那一行（跳过 `To …`、`hint:`，优先 `error:` / `fatal:`），顺带统一语气。
+- 多仓库批量 fetch / pull / push。现在只支持单仓库（`tech/architecture.md` 第 13 题）。
+
+## Log（`product/features/log.md`）
+
+- 右栏显示选中提交的详情：作者、邮箱、日期、完整说明（现在右栏只有文件）。
+- 跳到 hash 或 ref（Go to）：列表滚到那一行并选中，其它提交都还在；被过滤掉了、或在一万条以外时，说明原因。
+- 过滤栏的四个按钮改成在按钮正下方弹出的下拉菜单：现在用原生 QuickPick 过渡，到时只换弹框这一层，过滤逻辑不动。
+- 图形选项（同 IDEA 过滤栏里 IntelliSort 图标的弹出菜单）：只看第一个父提交（First Parent）、隐藏合并提交、排序方式。不影响架构：隐藏合并提交是在骨架上按父提交个数筛；First Parent 是骨架命令多一个参数。
+- 区间过滤（`branchA..branchB`）。
+- 搜索框的正则开关、大小写敏感开关。
+- 合并提交：可以切换着看相对每个父提交的改动。
+- 提交详情里对文件：Revert Selected Changes（从这条提交撤销这几个文件的改动）、Cherry-Pick Selected Changes、Apply Selected Changes（把这几个文件的改动应用到工作区）。
+
+## 提交图（`product/features/graph.md`）
+
+- 长线显示开关：现在总是隐藏长线的中间，打开开关后画全。
+- HEAD 所在提交的节点画成「外圈 + 实心」，标出当前位置（同 IDEA）。
+- 键盘导航：列表上下移动，沿着图在父子提交之间左右跳。
+
+## 分支（`product/features/branches.md`）
+
+- 检出远程分支时，同名本地分支和它分叉了：照 IDEA 让用户选「把本地 rebase 到远程上」还是「丢弃本地、用远程的」。
+- 分支树上方的搜索框，过滤分支。
+- 收藏 / 星标分支（置顶或单独分组）。当前分支同时被收藏时，黄色标签图标变成实心。
+
+## 同步（`product/features/sync.md`）
+
+- 推送被拒时给 Rebase & Push / Merge & Push：fetch → rebase 或 merge → 没冲突就推送；中途冲突停下，就不再自动推送。现在推送被拒只报错。
+- 提交右键 `Push All up to Here…`：推到某条历史提交，而不是 HEAD，接到推送对话框。
+- 推送对话框里显示 force push 会覆盖掉的远程提交（远程有、本地没有的）。
+- 自动 Fetch：定时，或打开面板时。现在只有手动。
+- Update、Checkout 带 autostash：工作区有改动挡住时，先存起来、做完再取回；取回冲突按冲突处理。
+
+## Commit 面板（`product/features/commit.md`、`product/features/trees.md`）
+
+- 按行提交：一个文件里只提交勾了的那几处改动。
+- 提交说明的历史下拉。
+- 单独的 Rollback 确认页：文件树加复选框，可以在页面里调整勾选。
+- 文件右键 Add to .gitignore、Reveal in Explorer / Open in System Folder。
+- 树里按空格切换勾选。
+- 文件树 / 平铺切换。
+
+## Stash（`product/features/stash.md`）
+
+- 单文件 Stash：只把这一个文件的改动存起来。
+- 只存已暂存，或只存未暂存的那一部分。
+- Stash 重命名。
+- Apply / Pop 时可选还原暂存状态（`stash apply --index`，同 IDEA 的 Reinstate index）：现在取回后全部变成未暂存。
+
+## 冲突（`product/features/conflicts.md`）
+
+- **大** 自建合并界面，替换 VS Code 的合并编辑器（项目负责人定：最终要它，2026-10-10）。所有会产生冲突的操作（Update 分叉、stash 取回、autostash 取回、merge、rebase…）都转进这一个界面。
+  - 照 IDEA 三栏：左 Yours、中 Result（可以直接编辑）、右 Theirs，滚动同步。每块改动有箭头「取这边」和 ×「不要这边」；一键应用所有不冲突的改动（左边的 / 右边的 / 全部）；上一处 / 下一处冲突，剩余冲突计数；整个文件取某一边。
+  - 点 Apply 写回工作区并标记已解决（和冲突组的「标记已解决」同一条路），还有没处理的冲突时先确认。同一时间只开一个。
+  - 三栏内容照旧取暂存区的 `:1` / `:2` / `:3`（`tech/architecture.md` 第 19 题），换的只是「双击打开什么」。要用到文件内七种冲突码的解析（冲突区域模型）。
+  - 顺带：冲突文件右键、以及冲突列表上批量的 Accept Ours / Accept Theirs（整个文件取某一边：`checkout --ours/--theirs` + `add`）；rebase 时 ours / theirs 的语义是反的，界面上的文字要按操作类型写。
+  - 在它之前不做「合并编辑器只留一个」：`_open.mergeEditor` 不支持预览，替用户关旧标签时保存与否，取决于用户在 VS Code 里勾没勾「不再询问」，可能把用基准占位的草稿写进文件，冲突标记悄悄就没了（2026-10-10 试过后撤回）。
+- 停在半路时的 Skip：rebase、cherry-pick、revert 跳过当前这一条接着做（`--skip`），冲突组标题行多一个 › 按钮。
+- 操作停在半路时，把 Commit 面板切到前台；在 Stash 模式下就切回 Commit。
+
+## 改写历史（`product/features/history.md`）
+
+- Squash：把选中的提交合成一条（依赖列表多选）。连续的一段在内存里做（同 reword）；弹对话框确认合并后的说明，默认是所有被合并提交的说明拼起来（同 IDEA）。否决先自动拼接说明、不让编辑：说明是 squash 的一半，做一半以后还得改入口。否决 `Squash Commits up to Here…`。
+- Drop：提交右键 `Drop Commit…`，原生模态确认。单条用 `rebase --autostash --onto <父提交> <它>`，不必 `rebase -i`；只在当前分支的第一父提交链上、到 HEAD 之间没有合并提交、不是根提交时出现。批量删依赖列表多选。工作区有改动时 autostash，取回冲突按冲突处理。
+- **大** 交互式 rebase（同 IDEA）：从某条提交开始，在对话框里调整之后各条提交的顺序和合并方式（pick / reword / edit / squash / fixup / drop），可以拖拽重排。fixup、「把一条并进另一条」都归它。
+- Reset 搬进对话框：单选加说明。现在用原生模态框，四个按钮。
+
+## 对话框（`product/features/dialogs.md`）
+
+- 这些功能以后改用对话框：新建分支 / 改名的勾选项、删除分支时「同时删远程」、Merge / Rebase 的选项。
+
+## 日志（`product/features/logging.md`）
+
+- 记 git 的 stdout（同 VS Code 的 `git.commandsToLog`）；一键导出日志（同 IDEA 的 Collect Logs）；记纯界面上的点击；请求带上是哪个按钮发起的。
+
+## 已知问题
+
+- Log 面板展开时黑一下，再一次性出现（2026-10-14 发现）：Log 没开 `retainContextWhenHidden`，每次展开都重建 webview（新 iframe → 加载脚本与字体 → 挂载 → 拉骨架与 refs）。一万条和 52 条的黑屏时长看不出差别，大头不在数据量。先在页面里打点实测慢在哪一段，再在「给 Log 开 `retainContextWhenHidden`（收起时常驻内存，要改 `tech/architecture.md` 的取舍）」和「先画出页面框架、数据后到」之间选。
+- 未跟踪文件成千上万时：树已经是虚拟滚动，但 `git status -uall` 和勾选的推算仍是全量。
+
+## 技术债与触发条件
+
+- 对话框的共用部分抽出来（项目负责人定：**第三种对话框出现时一定要做**）：协议里每种一条的 `openPushDialog` / `openRewordDialog` 合成一条通用的打开命令；页面里各自写的「标签 + 控件」一行与窄屏上下排、输入框读值（`wrappedElement`）、多行说明框（Commit 面板也有一份），抽成 `ui/` 组件。
+- 继承来的 `GIT_ASKPASS`：在 VS Code 的终端里跑 `pnpm check`，`cli.test.ts` 的「没给脚本：直接失败」会去问 VS Code 自己的 askpass（十几秒后成功返回，测试失败，还可能弹一次输入框）；扩展不传脚本时，也会继承宿主环境里的 `GIT_ASKPASS`。要定：测试与 `GitCli` 是否清掉继承来的 `GIT_ASKPASS` 等变量（`tech/traps.md` 有临时绕开的办法）。
+
+## 发布
+
+- 上架 VS Code 商店（2026-10-16 暂缓：商店返回 429，账号可能被封）。已定：商店页面与描述只用中文；先不放仓库链接（不公开源码，打包带 `--allow-missing-repository`）。还缺：商店 README、128×128 图标、CHANGELOG、版本号改 0.1.0、`keywords` 与 `galleryBanner`、把打包脚本从本地 `.notes/` 搬进 `scripts/`（输出放 `.tmp/`），并写发布步骤。
+
+## 参照里有、还没想清楚要不要的
+
+照搬自 IDEA、GitLens 的功能清单，还没回答「我们这边谁需要它」（`CLAUDE.md` D.6(c)）。要做哪一条，先回答这个问题，再移到上面对应的组里；确定不要的移到 `product/never.md`。
+
+- Log：message 里的 URL 高亮可点；Autolink（issue / PR 引用的模式匹配，反查标题）；提交签名（GPG / SSH）验证状态；每个文件的增删行数；Copy Patch to Clipboard（单文件 / 多文件）。
+- 提交图：折叠 / 展开整张图；ref 标签的对齐方式与分组折叠、紧凑视图、彩色重叠（16px / 5px）、tag 名称单独显示开关；按 ref 类型隐藏 / 显示图上的噪声；后台建索引，未建索引的提交单独着色；cherry-pick 来的提交高亮；合并提交 / 当前分支的提交高亮。
+- 分支：已跟踪分支的操作单独成子菜单。
+- Commit 面板：按文件数阈值自动选树还是平铺；内置检查（冲突未解决、CRLF 混用、大文件、用户名未配置…）。
+- 改写历史：`fixup!` / `squash!` / `amend!` 前缀自动补全；rebase 对话框里的内联帮助。
+- 文件历史与比较：独立的 File History 视图；Line History；跟踪重命名；跟随光标与编辑器切换；单条历史版本上 Annotate；整文件 blame（gutter 逐行显示最后改动的提交、作者、时间）、当前行 blame、跳到这次改动之前的 blame、标注里上下逐个改动跳转；Diff with Revision（任意历史版本，From 变体可以先选起点）；目录级 diff；单文件 diff / 单文件取出；Open Changed File Diffs 系列（全部 / 逐个 / 与 merge-base / 与工作区）；Compare With Branch（把两个分支的差异当文件树浏览）；Diff With Local（某个 ref 与当前工作区整体比较）；比较视图的上下两个提交列表分别记忆折叠状态；保存的比较可复用、可交换方向（A..B ↔ B..A）。

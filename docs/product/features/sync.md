@@ -54,4 +54,4 @@
 
 ## 以后可能做（`product/backlog.md`）
 
-推送被拒后给 Rebase & Push / Merge & Push；提交右键 `Push All up to Here…`；推送 tag、Run Git Hooks 开关；在对话框里显示 force push 会覆盖掉的远程提交；自动 Fetch。
+推送被拒后给 Rebase & Push / Merge & Push；提交右键 `Push All up to Here…`；在对话框里显示 force push 会覆盖掉的远程提交；自动 Fetch。
