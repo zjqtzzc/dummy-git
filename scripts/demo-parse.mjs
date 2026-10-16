@@ -25,7 +25,7 @@ import { join, resolve } from "node:path";
 import { build } from "esbuild";
 
 const ROOT = resolve(new URL("..", import.meta.url).pathname);
-const FIXTURES = join(ROOT, ".fixtures");
+const FIXTURES = join(ROOT, ".tmp", "fixtures");
 const PARSERS_DIR = join(ROOT, "packages/extension/src/git/parsers");
 
 /** 原始字节最多显示多少——够看清格式，又不会刷屏。 */

@@ -20,7 +20,7 @@ import type { RepositoryLocation } from "../git/commands/index.js";
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 
 /** 与 `vitest.globalSetup.ts` 算出同一个位置——不靠跨进程传递。 */
-const fixturesRoot = join(repoRoot, ".fixtures-test");
+const fixturesRoot = join(repoRoot, ".tmp", "fixtures-test");
 
 /** fixture 仓库。名字与 `scripts/fixture.mjs` 里建的一一对应。 */
 export const fixtures = {

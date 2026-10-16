@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 跑 vitest，终端照常显示，同时把完整输出存到 `.test-results/last.log`。
+ * 跑 vitest，终端照常显示，同时把完整输出存到 `.tmp/test-results/last.log`。
  *
  * 为什么要存：偶发失败往往来自测试之外的未处理错误（如某条和时间有关的测试留下的
  * rejection），vitest 会在输出里写明它来自哪个测试文件、最后在跑哪条测试——
@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 import { stripVTControlCharacters } from "node:util";
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
-const logFile = join(repoRoot, ".test-results", "last.log");
+const logFile = join(repoRoot, ".tmp", "test-results", "last.log");
 
 // `pnpm test -- x.test.ts` 会把 `--` 也传进来，vitest 见了它就不再把后面当文件过滤。
 const args = process.argv.slice(2).filter((arg) => arg !== "--");

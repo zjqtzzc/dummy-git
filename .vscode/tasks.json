@@ -2,7 +2,7 @@
   "version": "2.0.0",
   "tasks": [
     {
-      // 调试目标仓库：按 .debug-scenario 记下的当前场景从零重建。
+      // 调试目标仓库：按 .tmp/debug-scenario 记下的当前场景从零重建。
       "label": "debug:setup",
       "type": "shell",
       "command": "pnpm debug:setup",

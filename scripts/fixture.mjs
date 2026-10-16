@@ -3,7 +3,7 @@
  * 建 parser 的验证仓库。不是测试——无断言、不进 `pnpm check`。
  * 目的是把「手工验证」的成本从十分钟降到一条命令：
  *
- *   node scripts/fixture.mjs [outDir]     默认 .fixtures/
+ *   node scripts/fixture.mjs [outDir]     默认 .tmp/fixtures/
  *
  * 产出三个仓库，共享同一段历史：
  *
@@ -23,7 +23,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, renameSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-const outDir = resolve(process.argv[2] ?? ".fixtures");
+const outDir = resolve(process.argv[2] ?? ".tmp/fixtures");
 
 /**
  * 固定身份与时间 —— 这是整个脚本最重要的一个决定。

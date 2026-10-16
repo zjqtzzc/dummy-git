@@ -2,7 +2,7 @@
 /**
  * 给 F5 准备调试目标：本仓库旁边的独立仓库 `<仓库目录名>-debug`，按「场景」从零建出来。
  *
- *   pnpm debug:setup <场景名>   建这个场景，并记为当前场景（写进 .debug-scenario）
+ *   pnpm debug:setup <场景名>   建这个场景，并记为当前场景（写进 .tmp/debug-scenario）
  *   pnpm debug:setup            重建当前场景——F5 的 preLaunchTask 跑的就是这个
  *
  * 场景是 `scenarios/<场景名>.mjs`，导出 `build(g)`，把空仓库推到要测的状态（停在冲突中、
@@ -30,8 +30,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = dirname(dirname(here));
+// 调试仓库放在本仓库**外面**：放进 `.tmp/` 的话，它的 `.git` 一旦不在（重建到一半、建失败），
+// 调试窗口里的 git 命令会往上找到本仓库，Reset、Drop 这些就动到了真代码。
 const target = join(dirname(repoRoot), `${basename(repoRoot)}-debug`);
-const currentFile = join(repoRoot, ".debug-scenario");
+const currentFile = join(repoRoot, ".tmp", "debug-scenario");
 const scenarioDir = join(here, "scenarios");
 
 const scenarios = readdirSync(scenarioDir)
@@ -91,6 +93,7 @@ const g = {
 
 const scenario = await import(pathToFileURL(join(scenarioDir, `${name}.mjs`)).href);
 scenario.build(g);
+mkdirSync(dirname(currentFile), { recursive: true });
 writeFileSync(currentFile, `${name}\n`);
 
 // 打出现场实际到了什么状态，顺带核对场景建对了没有。

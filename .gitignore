@@ -13,14 +13,9 @@ coverage/
 # 项目纪律，与 .notes/ 同为过程产物
 /CLAUDE.md
 
-# parser 验证用的临时仓库，跑 scripts/fixture.mjs 生成
-/.fixtures/
-
-# 测试用 fixture 仓库，由 vitest.globalSetup.ts 生成
-/.fixtures-test/
-
-# 最近一次测试的完整输出，由 scripts/test.mjs 写入
-/.test-results/
-
-# 当前调试场景，由 scripts/debug/setup.mjs 写入
-/.debug-scenario
+# 脚本与测试生成的临时东西，都在这一个目录下：
+#   fixtures/       parser 验证用的临时仓库（scripts/fixture.mjs）
+#   fixtures-test/  测试用 fixture 仓库（vitest.globalSetup.ts）
+#   test-results/   最近一次测试的完整输出（scripts/test.mjs）
+#   debug-scenario  当前调试场景（scripts/debug/setup.mjs）
+/.tmp/

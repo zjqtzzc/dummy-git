@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
  * 固定路径让 setup 侧和测试侧各自算出同一个位置，不需要任何跨进程传递。
  */
 const root = dirname(fileURLToPath(import.meta.url));
-export const fixturesRoot = join(root, ".fixtures-test");
+export const fixturesRoot = join(root, ".tmp", "fixtures-test");
 
 export default function setup(): () => void {
   rmSync(fixturesRoot, { recursive: true, force: true });
