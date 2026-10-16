@@ -38,7 +38,7 @@ import { buildLayout } from "../logic/log/graph/layout.js";
 import { buildGraph } from "../logic/log/graph/rows.js";
 import { buildStructure, sameCommit } from "../logic/log/graph/structure.js";
 import { visibleLines, visibleRows } from "../logic/log/graph/visible.js";
-import { type Layout, restoreLayout, splitPosition } from "../logic/log/layout.js";
+import { type Layout, restoreLayout, splitPercent, splitPosition } from "../logic/log/layout.js";
 import { hashesToFetch } from "../logic/log/prefetch.js";
 import { refLabels } from "../logic/log/refLabels.js";
 import { rewordable } from "../logic/log/rewordable.js";
@@ -542,7 +542,7 @@ onMounted(async () => {
 });
 
 /**
- * 三栏宽度，像素。从 `viewState` 取回（收起再展开、重新加载窗口都在），拖动时存回去。
+ * 三栏宽度（像素）与右栏上下的比例。从 `viewState` 取回（收起再展开、重新加载窗口都在），拖动时存回去。
  *
  * 外层 `fixed-pane="start"`、内层 `fixed-pane="end"`：窗口或面板大小变化时，
  * 左栏和右栏保持像素宽度，只有中间的提交列表伸缩。设了 fixed-pane，组件才会自己
@@ -550,6 +550,7 @@ onMounted(async () => {
  */
 let layout: Layout = restoreLayout(viewState.read("layout"));
 const innerSplit = ref<VscodeSplitLayout>();
+const detailsSplit = ref<VscodeSplitLayout>();
 
 function onLeftSplit(event: Event): void {
   const position = splitPosition(event);
@@ -567,19 +568,42 @@ function onRightSplit(event: Event): void {
   viewState.write("layout", layout);
 }
 
+/** 右栏上下的分隔线：存文件占的百分比，详情占其余。 */
+function onDetailsSplit(event: Event): void {
+  const percent = splitPercent(event);
+  if (percent === undefined) return;
+  layout = { ...layout, files: percent };
+  viewState.write("layout", layout);
+}
+
 /**
  * 右栏的初始宽度。组件的分隔线位置只能从左边算，没有「从右边算」的写法，
  * 所以等它自己渲染完、量出内层宽度，一次性把分隔线放到「宽度 − 右栏宽度」。
  * 之后的尺寸变化由 fixed-pane 保持右栏宽度，不再管。
+ *
+ * 右栏上下按比例分，不设 fixed-pane。这时组件不跟踪尺寸，内部记的分隔线像素位置和总高度都会过时，
+ * 面板改过大小后一按分隔线就跳位。所以由我们监听尺寸变化，每次都按比例重设一次 `handlePosition`：
+ * 它会先重新量总高度再定位置。不能用 `resetHandlePosition()`：它只重算位置、不更新总高度，比例会越拉越歪。
  */
+const resizes = new ResizeObserver(() => {
+  if (detailsSplit.value !== undefined) detailsSplit.value.handlePosition = `${layout.files}%`;
+});
 onMounted(async () => {
   const split = innerSplit.value;
-  if (split === undefined) return;
-  await split.updateComplete;
-  const width = split.getBoundingClientRect().width;
-  split.initialHandlePosition = `${Math.max(0, width - layout.right)}px`;
-  split.resetHandlePosition();
+  if (split !== undefined) {
+    await split.updateComplete;
+    const width = split.getBoundingClientRect().width;
+    split.initialHandlePosition = `${Math.max(0, width - layout.right)}px`;
+    split.resetHandlePosition();
+  }
+  const vertical = detailsSplit.value;
+  if (vertical !== undefined) {
+    await vertical.updateComplete;
+    vertical.handlePosition = `${layout.files}%`;
+    resizes.observe(vertical);
+  }
 });
+onUnmounted(() => resizes.disconnect());
 </script>
 
 <template>
@@ -660,10 +684,18 @@ onMounted(async () => {
         />
       </div>
 
-      <div slot="end" class="pane">
-        <p v-if="filesLoading" class="dim loading">Loading…</p>
-        <FileTree v-else :groups="fileGroups" @open="openFile" />
-      </div>
+      <vscode-split-layout
+        slot="end"
+        split="horizontal"
+        ref="detailsSplit"
+        @vsc-split-layout-change="onDetailsSplit"
+      >
+        <div slot="start" class="pane">
+          <p v-if="filesLoading" class="dim loading">Loading…</p>
+          <FileTree v-else :groups="fileGroups" @open="openFile" />
+        </div>
+        <div slot="end" class="details"></div>
+      </vscode-split-layout>
     </vscode-split-layout>
   </vscode-split-layout>
 </template>
@@ -686,5 +718,9 @@ onMounted(async () => {
 .branches > .pane {
   flex: 1;
   min-width: 0;
+}
+.details {
+  height: 100%;
+  overflow: auto;
 }
 </style>
