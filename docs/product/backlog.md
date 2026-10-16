@@ -1,7 +1,8 @@
-# 需求池（105）
+# 需求池（106）
 
 > 以后可能做、还没排进阶段的需求。排进阶段时从这里移到 `roadmap.md`；决定永远不做的移到 `never.md`。
 
+- 上架 VS Code 商店（2026-10-16 暂缓：商店返回 429，账号可能被封）。已定：商店页面与描述只用中文；先不放仓库链接（不公开源码，打包带 `--allow-missing-repository`）。还缺：商店 README、128×128 图标、CHANGELOG、版本号改 0.1.0、`keywords` 与 `galleryBanner`、把打包脚本从本地 `.notes/` 搬进 `scripts/`（输出放 `.tmp/`）并写发布步骤
 - 继承来的 `GIT_ASKPASS`：在 VS Code 的终端里跑 `pnpm check`，`cli.test.ts` 的「没给脚本：直接失败」会去问 VS Code 自己的 askpass（十几秒后成功返回而失败，还可能弹一次输入框）；扩展不传脚本时也会继承宿主环境里的 `GIT_ASKPASS`。要定：测试与 `GitCli` 是否清掉继承来的 `GIT_ASKPASS` 等变量（`tech/traps.md` 有临时绕开办法，2026-10-15 记）
 - 自定义弹出窗口（2026-10-15 定：IDEA 靠弹窗解决的，我们大概率也要）。消费者：reword 与 squash 的多行说明、交互式 rebase、推送对话框（含 force push）、Reset 的单选加说明（第 9 阶段先用原生模态框）、新建分支 / 改名的勾选项、Merge / Rebase 的选项、删除分支时「同时删远程」、Log 过滤栏下拉与图形选项、Unstash As；冲突弹窗（`tech/decisions.md`「否决 IDEA 的模态冲突弹窗」的前提随之改变）。
   形态已定（2026-10-15，`tech/decisions.md`「自定义弹出窗口：webview 标签页上的表单页」）：webview 标签页，按表单页排版；先做推送对话框当原型（第 10 阶段），外壳与控件验证过再搬其余
