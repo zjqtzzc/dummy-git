@@ -4,6 +4,7 @@ import type { GitCli } from "../git/cli.js";
 import { LOCALE } from "../git/cli.js";
 import { getGitVersion, type RepositoryLocation } from "../git/commands/index.js";
 import type { GitLogger } from "../git/types.js";
+import { briefGitCommand } from "../ipc/brief.js";
 import { tagged } from "../ipc/operation.js";
 
 /**
@@ -18,14 +19,18 @@ export function createLogChannel(): vscode.LogOutputChannel {
 /**
  * 把 `git/` 的日志接到频道上。
  *
- * `GitLogger` 是一个只有 `log(line)` 的接口：
+ * `GitLogger` 只交出一条命令的记录（`GitCommandRecord`），写成什么样由这一层定：
  * `git/` 层不 import `vscode`（lint 强制），所以它只能声明形状，
  * 由这一层接到真正的出口上。换个宿主（CLI、测试脚本）换一个实现即可。
  */
 export function createOutputLogger(channel: vscode.LogOutputChannel): GitLogger {
   return {
-    // 在某个操作里跑的命令带上它的编号；启动、文件监听引起的不带。
-    log: (line) => channel.info(tagged(line)),
+    // 在某个操作里跑的命令带上它的编号；启动、文件监听引起的不带。慢的记 warn。
+    command: (record) => {
+      const { line, slow } = briefGitCommand(record);
+      if (slow) channel.warn(tagged(line));
+      else channel.info(tagged(line));
+    },
   };
 }
 

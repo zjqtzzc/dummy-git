@@ -1,13 +1,23 @@
+/** 一条 git 命令跑完的记录。怎么写成一行（截断、标慢）由日志那层定，见 `ipc/brief.ts`。 */
+export interface GitCommandRecord {
+  readonly args: readonly string[];
+  readonly ms: number;
+  /** 结局：`exit 0`、`killed by SIGTERM`、`failed: …`（进程起不来）、`cancelled before start`。 */
+  readonly outcome: string;
+  /** git 的 stderr 原文。没有输出、进程没起来时是空串。 */
+  readonly stderr: string;
+}
+
 /**
  * git 命令日志的出口。注入式——`git/` 层不许 import `vscode`，
- * 所以这里只定义形状，由 `vscode/` 层接到 OutputChannel 上。
+ * 所以这里只定义形状，由 `vscode/` 层接到日志频道上。
  */
 export interface GitLogger {
-  readonly log: (line: string) => void;
+  readonly command: (record: GitCommandRecord) => void;
 }
 
 /** 什么都不做的 logger。让 `GitCli` 内部可以无条件调用，不必到处判空。 */
-export const NOOP_LOGGER: GitLogger = { log: () => {} };
+export const NOOP_LOGGER: GitLogger = { command: () => {} };
 
 /** 命令被 `AbortSignal` 取消。用类而非 `err.name === "AbortError"`，避免字符串匹配。 */
 export class GitCancelledError extends Error {

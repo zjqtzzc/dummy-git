@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { GitFailureError } from "../../git/failure.js";
-import { brief, briefResult, briefString } from "../brief.js";
+import { brief, briefGitCommand, briefResult, briefString } from "../brief.js";
 import { type Log, Operations, tagged } from "../operation.js";
 
 /** 记下每一行与它的级别。 */
@@ -54,6 +54,60 @@ describe("Operations", () => {
     ).rejects.toThrow("bug");
     expect(lines[1]).toMatch(/^warn #1 ✗ \d+ms git stash drop 失败（exit 1）：error: nope$/);
     expect(lines[3]).toMatch(/^error #2 ✗ \d+ms bug$/);
+  });
+});
+
+describe("慢：超过 1 秒标 (slow)、记 warn", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("操作", async () => {
+    const { log, lines } = recorder();
+    vi.spyOn(Date, "now").mockReturnValueOnce(0).mockReturnValueOnce(1500);
+    await new Operations(log).run("m", "push", {}, async () => null);
+    expect(lines[1]).toBe("warn #1 ✓ 1500ms (slow)");
+  });
+
+  it("git 命令", () => {
+    const record = { args: ["fetch", "--all"], outcome: "exit 0", stderr: "" };
+    expect(briefGitCommand({ ...record, ms: 1500 })).toEqual({
+      line: "> git fetch --all [1500ms] exit 0 (slow)",
+      slow: true,
+    });
+    expect(briefGitCommand({ ...record, ms: 1000 }).slow).toBe(false);
+  });
+});
+
+describe("briefGitCommand", () => {
+  it("参数列前 12 个，--format= 折叠，带空格的加引号", () => {
+    const paths = Array.from({ length: 20 }, (_, i) => `f${i}`);
+    const { line } = briefGitCommand({
+      args: ["log", "--format=%H%x00", "-m", "a b", ...paths],
+      ms: 3,
+      outcome: "exit 0",
+      stderr: "",
+    });
+    expect(line).toBe(
+      '> git log --format=... -m "a b" f0 f1 f2 f3 f4 f5 f6 f7 …（共 24 个参数） [3ms] exit 0',
+    );
+  });
+
+  it("stderr 另起几行缩进写上，最多 5 行", () => {
+    const stderr = Array.from({ length: 7 }, (_, i) => `hint: ${i}`).join("\n");
+    const { line } = briefGitCommand({
+      args: ["push"],
+      ms: 3,
+      outcome: "exit 1",
+      stderr: `${stderr}\n`,
+    });
+    expect(line.split("\n")).toEqual([
+      "> git push [3ms] exit 1",
+      "    hint: 0",
+      "    hint: 1",
+      "    hint: 2",
+      "    hint: 3",
+      "    hint: 4",
+      "    …（共 7 行）",
+    ]);
   });
 });
 

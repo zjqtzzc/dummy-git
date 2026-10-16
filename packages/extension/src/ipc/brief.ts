@@ -1,3 +1,5 @@
+import type { GitCommandRecord } from "../git/types.js";
+
 /**
  * 写进日志的数据都先过这里（`CLAUDE.md` G）：日志要精简，长的截断，规则全在这一处。
  *
@@ -9,6 +11,12 @@
 const STRING_CHARS = 120;
 /** 列表最多列几项。 */
 const LIST_ITEMS = 3;
+/** git 命令行最多列几个参数（选项都在前面，后面多是路径）。 */
+const GIT_ARGS = 12;
+/** stderr 最多留几行。 */
+const STDERR_LINES = 5;
+/** 超过这么久算慢：行尾标 `(slow)`，记 warn。操作与 git 命令共用。 */
+export const SLOW_MS = 1000;
 
 /**
  * 任意值 → 一小段文字。对象展开一层，里面的列表列前几项（参数里的路径要看得到），
@@ -53,6 +61,31 @@ export function briefString(text: string): string {
   if (lines.length > 1) return `${clip(first)} …（共 ${lines.length} 行）`;
   if (first.length > STRING_CHARS) return `${clip(first)} …（共 ${first.length} 字）`;
   return first;
+}
+
+/**
+ * 一条 git 命令写成日志：`> git <参数> [用时] <结局>`，慢的标 `(slow)`；有 stderr 的另起几行缩进写上。
+ * `--format=` 的值是一长串分隔符，刷屏且无信息量，折叠成 `--format=...`。
+ */
+export function briefGitCommand(record: GitCommandRecord): {
+  readonly line: string;
+  readonly slow: boolean;
+} {
+  const shown = record.args.slice(0, GIT_ARGS).map((arg) => {
+    if (arg.startsWith("--format=")) return "--format=...";
+    if (arg === "") return '""';
+    return arg.includes(" ") ? `"${arg}"` : arg;
+  });
+  const more = record.args.length > GIT_ARGS ? ` …（共 ${record.args.length} 个参数）` : "";
+  const slow = record.ms > SLOW_MS;
+  const head = `> git ${shown.join(" ")}${more} [${record.ms}ms] ${record.outcome}${slow ? " (slow)" : ""}`;
+  const lines = record.stderr
+    .trimEnd()
+    .split("\n")
+    .filter((line) => line !== "");
+  const kept = lines.slice(0, STDERR_LINES).map((line) => `    ${line}`);
+  if (lines.length > STDERR_LINES) kept.push(`    …（共 ${lines.length} 行）`);
+  return { line: [head, ...kept].join("\n"), slow };
 }
 
 function clip(line: string): string {

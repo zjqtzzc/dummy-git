@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { GitFailureError } from "../git/failure.js";
-import { brief, briefResult, briefString } from "./brief.js";
+import { brief, briefResult, briefString, SLOW_MS } from "./brief.js";
 import { isRecord } from "./protocol.guards.js";
 import { UserFacingError } from "./userFacingError.js";
 
@@ -44,15 +44,19 @@ export class Operations {
     this.log.info(`#${id} ${source} → ${command} ${briefParams(params)}`);
     try {
       const value = await current.run(id, task);
+      const ms = Date.now() - started;
       const result = briefResult(value);
-      this.log.info(`#${id} ✓ ${Date.now() - started}ms${result === "" ? "" : ` → ${result}`}`);
+      const line = `#${id} ✓ ${ms}ms${slowMark(ms)}${result === "" ? "" : ` → ${result}`}`;
+      if (ms > SLOW_MS) this.log.warn(line);
+      else this.log.info(line);
       return value;
     } catch (error) {
       // 预料之中的失败（git 拒绝、已知情况）记 warn；其余是我们的 bug，记 error。
       // 详情由错误关口写，这里只记一行。
       const expected = error instanceof GitFailureError || error instanceof UserFacingError;
       const message = briefString(error instanceof Error ? error.message : String(error));
-      const line = `#${id} ✗ ${Date.now() - started}ms ${message}`;
+      const ms = Date.now() - started;
+      const line = `#${id} ✗ ${ms}ms${slowMark(ms)} ${message}`;
       if (expected) this.log.warn(line);
       else this.log.error(line);
       throw error;
@@ -67,4 +71,8 @@ export class Operations {
 function briefParams(params: unknown): string {
   if (!isRecord(params)) return brief(params);
   return brief(Object.fromEntries(Object.entries(params).filter(([key]) => key !== "repo")));
+}
+
+function slowMark(ms: number): string {
+  return ms > SLOW_MS ? " (slow)" : "";
 }

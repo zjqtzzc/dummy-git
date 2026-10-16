@@ -90,21 +90,16 @@ export class GitCli {
    * 必须只记一次：进程起不来时 Node 先发 `error`、**随后还会发 `close`**
    * （带一个假退出码，errno 取负），两个处理器会把同一条命令记两遍。
    *
-   * 只记命令行、耗时、结局——**不记 stdout**：它可能是几 MB 的 log 或文件内容。
+   * 记命令行、耗时、结局、stderr——**不记 stdout**：它可能是几 MB 的 log 或文件内容。
+   * stderr 照记：钩子的输出、警告、拒绝的原因都在那里。
    */
-  private makeLogOnce(args: readonly string[]): (outcome: string) => void {
+  private makeLogOnce(args: readonly string[]): (outcome: string, stderr?: string) => void {
     const startedAt = Date.now();
     let logged = false;
-    return (outcome: string): void => {
+    return (outcome, stderr = ""): void => {
       if (logged) return;
       logged = true;
-      const shown = args.map((arg) => {
-        // --format= 的值是一长串分隔符，刷屏且无信息量，折叠掉。
-        if (arg.startsWith("--format=")) return "--format=...";
-        if (arg === "") return '""';
-        return arg.includes(" ") ? `"${arg}"` : arg;
-      });
-      this.logger.log(`> git ${shown.join(" ")} [${Date.now() - startedAt}ms] ${outcome}`);
+      this.logger.command({ args, ms: Date.now() - startedAt, outcome, stderr });
     };
   }
 
@@ -209,12 +204,9 @@ export class GitCli {
           );
           return;
         }
-        logOnce(`exit ${code}`);
-        resolve({
-          exitCode: code,
-          stdout: Buffer.concat(stdoutChunks),
-          stderr: Buffer.concat(stderrChunks).toString("utf8"),
-        });
+        const stderr = Buffer.concat(stderrChunks).toString("utf8");
+        logOnce(`exit ${code}`, stderr);
+        resolve({ exitCode: code, stdout: Buffer.concat(stdoutChunks), stderr });
       });
     });
   }

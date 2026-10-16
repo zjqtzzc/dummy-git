@@ -11,7 +11,7 @@ import {
   makeTempRepo,
 } from "../../__tests__/support.js";
 import { GitCli } from "../cli.js";
-import { GitCancelledError, type GitLogger } from "../types.js";
+import { GitCancelledError, type GitCommandRecord, type GitLogger } from "../types.js";
 
 afterEach(cleanupTempRepos);
 
@@ -126,19 +126,25 @@ describe("进程起不来时 reject，不伪造退出码", () => {
 
 describe("日志", () => {
   it("一条命令只记一次", async () => {
-    const lines: string[] = [];
-    const logger: GitLogger = { log: (l) => lines.push(l) };
+    const records: GitCommandRecord[] = [];
+    const logger: GitLogger = { command: (r) => records.push(r) };
     const logged = new GitCli("git", logger);
     await logged.exec(["log", "-1", "--format=%H"], { cwd: fixtures.base });
-    expect(lines).toHaveLength(1);
-    expect(lines[0]).toContain("log");
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({
+      args: ["log", "-1", "--format=%H"],
+      outcome: "exit 0",
+      stderr: "",
+    });
   });
 
   it("失败的命令也只记一次", async () => {
-    const lines: string[] = [];
-    const logged = new GitCli("git", { log: (l) => lines.push(l) });
+    const records: GitCommandRecord[] = [];
+    const logged = new GitCli("git", { command: (r) => records.push(r) });
     await logged.exec(["rev-parse", "--verify", "nosuchref"], { cwd: fixtures.base });
-    expect(lines).toHaveLength(1);
+    expect(records).toHaveLength(1);
+    // stderr 照记：拒绝的原因在这里。
+    expect(records[0]?.stderr).toContain("fatal:");
   });
 });
 
