@@ -10,7 +10,12 @@ import { openDiff } from "./vscode/diff.js";
 import { ErrorGate } from "./vscode/errorGate.js";
 import { resolveGitPath } from "./vscode/gitPath.js";
 import { askBranchName } from "./vscode/input.js";
-import { createOutputLogger } from "./vscode/logger.js";
+import {
+  createLogChannel,
+  createOutputLogger,
+  logEnvironment,
+  logRepository,
+} from "./vscode/logger.js";
 import { registerMenuCommands } from "./vscode/menu.js";
 import { openMergeEditor } from "./vscode/mergeEditor.js";
 import { describeStartup, discoverRepositories, StartupKind } from "./vscode/open.js";
@@ -22,17 +27,20 @@ import { registerWebviewView, type ViewSource, ViewSourceKind } from "./vscode/w
 
 /** 扩展入口。**只做装配**：把已经存在的各层接起来，不含任何业务逻辑。 */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  const channel = vscode.window.createOutputChannel("Dummy Git");
+  const channel = createLogChannel();
   context.subscriptions.push(channel);
 
   // git/ 层不 import vscode（lint 强制），所以 git 路径、askpass 脚本路径与日志出口都从这里注入。
   const askpass = vscode.Uri.joinPath(context.extensionUri, "resources", "askpass-empty.sh").fsPath;
-  const cli = new GitCli(resolveGitPath(), createOutputLogger(channel), askpass);
+  const gitPath = resolveGitPath();
+  const cli = new GitCli(gitPath, createOutputLogger(channel), askpass);
+  // 不等它：只是一行日志，不该拖慢视图注册。
+  void logEnvironment(channel, context, cli, gitPath);
 
   // 未知错误的统一出口（`ARCHITECTURE.md` 第 15 题）：输出面板写全，弹一条通知，
   // 点「Show Output」跳到输出面板。去重与文案在可在纯 node 下测的 errorGate.ts 里。
   const errors = new ErrorGate({
-    log: (text) => channel.appendLine(text),
+    log: (text) => channel.error(text),
     show: async (summary) => {
       const pick = await vscode.window.showErrorMessage(`Dummy Git: ${summary}`, "Show Output");
       if (pick !== undefined) channel.show();
@@ -66,7 +74,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // 一次展开配一个 Router。收起再展开，握手会带来新代号，上一代的回复自动作废。
   const createRouter = (repository: Repository, transport: Transport): Router =>
     new Router(transport, createHandlers(repository, ui), {
-      log: (line) => channel.appendLine(line),
+      log: (line) => channel.info(line),
       report: (error) => errors.report(error),
     });
   for (const viewType of ["dummyGit.log", "dummyGit.commit"]) {
@@ -80,7 +88,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // 没有仓库、git 不可用：视图里直接写原因，同时进输出面板，**不弹通知**（`ARCHITECTURE.md` 第 13 题）。
   const reason = describeStartup(startup);
   if (reason !== undefined) {
-    channel.appendLine(reason);
+    channel.info(reason);
     settle({ kind: ViewSourceKind.Unavailable, reason });
   }
   if (startup.kind !== StartupKind.Ready) return;
@@ -88,7 +96,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // 现阶段只支持单仓库：用列表第一个。
   const repository = new Repository(startup.repositories[0], cli);
   context.subscriptions.push({ dispose: () => repository.dispose() });
-  channel.appendLine(`Repository: ${repository.location.root}`);
+  logRepository(channel, repository.location);
 
   // 文件监听跟着**仓库**走，不跟视图走：外部改动要一直被感知到，
   // 哪怕此刻面板收着（下次展开时状态才是对的）。

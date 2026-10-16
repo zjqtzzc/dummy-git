@@ -38,7 +38,7 @@ export interface ExecOptions {
  * `setlocale: LC_ALL: cannot change locale`，我们取「git 说的第一句」时取到的就是它。
  * C locale 下 git 不翻译，消息照样是英文。macOS 没有 `C.UTF-8`，Windows 的 git 自带环境，都照旧。
  */
-const LOCALE = process.platform === "linux" ? "C.UTF-8" : "en_US.UTF-8";
+export const LOCALE = process.platform === "linux" ? "C.UTF-8" : "en_US.UTF-8";
 
 /**
  * 每个 git 子进程都强制注入，调用方不可覆盖。

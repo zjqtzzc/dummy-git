@@ -15,6 +15,7 @@
  *
  * | 命令 | 执行的 git | 较新的特性 | 要求 |
  * |---|---|---|---|
+ * | `getGitVersion` | `--version` | — | — |
  * | `getRepositoryLocation` | `rev-parse --show-toplevel --absolute-git-dir --git-common-dir` | `--absolute-git-dir` | 2.13 |
  * | `getStatus` | `status --porcelain=v2 --branch -z -uall`，环境 `GIT_OPTIONAL_LOCKS=0` | `--porcelain=v2`；`GIT_OPTIONAL_LOCKS` | 2.11；2.15 |
  * | `checkIgnore` | `check-ignore -z --stdin --verbose` | — | — |
@@ -133,3 +134,4 @@ export {
   fetchBranch,
   fetchInto,
 } from "./update.js";
+export { getGitVersion } from "./version.js";
