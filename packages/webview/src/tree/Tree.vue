@@ -17,7 +17,7 @@ import { ROW_HEIGHT, renderRange, scrollIntoView } from "../logic/virtualList.js
 import Icon from "../ui/Icon.vue";
 
 /**
- * 所有树共用的基础组件（`.notes/design/phase-2.md` 第一节），外观与交互照 VS Code 原生的树。
+ * 所有树共用的基础组件，外观与交互照 VS Code 原生的树。
  *
  * 一行从左到右：缩进、箭头（没有下级时隐藏但占位）、复选框（可选）、图标（可选）、文字、说明（可选）、使用方插槽 `after`（可选）、
  * 右侧字母（可选）。
@@ -180,7 +180,7 @@ function onKeydown(event: KeyboardEvent): void {
   }
 }
 
-/** 复选框里画什么：勾、横杠、空。codicon 的类名，表放在用它的模块里（CLAUDE.md B.3）。 */
+/** 复选框里画什么：勾、横杠、空。codicon 的类名，表放在用它的模块里。 */
 const CHECK_ICON: Readonly<Record<CheckState, string>> = {
   [CheckState.Checked]: "codicon-check",
   [CheckState.Mixed]: "codicon-dash",

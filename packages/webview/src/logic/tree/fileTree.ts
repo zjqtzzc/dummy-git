@@ -4,7 +4,7 @@ import { setiIcon } from "./setiIcon.js";
 import type { TreeNode } from "./tree.js";
 
 /**
- * 所有文件树共用的整理逻辑（`.notes/design/phase-2.md` 第一节）：几组文件整理成树。
+ * 所有文件树共用的整理逻辑：几组文件整理成树。
  *
  * - 有标题的组画成顶层一行（`Changes  N files`），下面是它自己的目录树；空组不画，除非 `keepEmpty`。
  * - 只有一个子目录、自己没有文件的目录链合并成一行（`apps/rgv_calib_parser`）。
@@ -266,7 +266,7 @@ function fileCount(count: number): string {
 }
 
 /**
- * 刷新后的勾选（`.notes/design/phase-2.md` 第二节第 6 条）：按路径保持，消失的路径移出。
+ * 刷新后的勾选：按路径保持，消失的路径移出。
  * 新出现的文件本来就不在集合里，自然不勾。
  */
 export function keepChecked(

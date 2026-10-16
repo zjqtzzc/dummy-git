@@ -79,7 +79,7 @@ const PATTERNS: readonly (readonly [RegExp, GitErrorCode])[] = [
  *
  * **只收 stderr，不收退出码。** 调用方（`run()`）已经判定了「这次失败了」，
  * 这里只回答「是哪一类」。在函数内再判一次 `exitCode === 0` 属于防御性检查，
- * 违反 `CLAUDE.md §C.2`——「`exitCode === 0` 永不产出失败」由**唯一调用点**保证，
+ * 「`exitCode === 0` 永不产出失败」由**唯一调用点**保证，
  * 不由运行时检查保证。
  */
 export function classifyError(stderr: string): GitErrorCode | undefined {

@@ -19,7 +19,7 @@ export type StartupResult =
   | {
       readonly kind: StartupKind.Ready;
       /**
-       * 按工作区目录的顺序，按根目录去重。现阶段只用第一个（`ARCHITECTURE.md` 第 13 题）。
+       * 按工作区目录的顺序，按根目录去重。现阶段只用第一个。
        * 类型写成「至少一个」：走到 `Ready` 就一定有仓库，取第一个不必再判空。
        */
       readonly repositories: readonly [RepositoryLocation, ...RepositoryLocation[]];

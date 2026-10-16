@@ -53,7 +53,7 @@ const XY_FIELD = 1;
  * 少一个「前导空格容易被 trim 掉」的坑。
  *
  * 这张表放在这里而不是 `shared/`：它是 git 输出格式到我们类型的映射，
- * 属于边界，别处用不上（`CLAUDE.md §B.3`）。
+ * 属于边界，别处用不上。
  */
 const STATUS_BY_CHAR: Readonly<Record<string, FileStatus>> = {
   ".": FileStatus.Unchanged,
@@ -84,7 +84,7 @@ const CONFLICT_BY_XY: Readonly<Record<string, ConflictKind>> = {
 };
 
 export function statusArgs(): string[] {
-  // -uall：未跟踪文件逐个列出，不折叠成目录（FEATURES §3.1 明确要求）。
+  // -uall：未跟踪文件逐个列出，不折叠成目录（需求如此：折叠后勾不了里面的单个文件）。
   // --branch：顺带给出 HEAD 的 hash，与改动来自同一次调用。
   return ["status", "--porcelain=v2", "--branch", "-z", "-uall"];
 }

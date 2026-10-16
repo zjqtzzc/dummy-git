@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 const LISTED = 5;
 
 /**
- * Rollback 前的确认（`.notes/design/phase-2.md` 第二节第 9 条）：VS Code 原生模态框，
+ * Rollback 前的确认：VS Code 原生模态框，
  * 写明文件数、列出前 5 个文件名，按钮 `Rollback`，另有自带的取消。改动删了找不回来，所以要拦一下。
  * 只写文件名、不写目录：意思到了就行，长路径在对话框里反而难读。
  */

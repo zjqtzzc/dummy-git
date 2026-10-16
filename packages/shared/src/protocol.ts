@@ -40,7 +40,7 @@ import type { Stash } from "./stash.js";
  *
  * 取数分两步：`getSkeleton` 跑遍全历史但每条
  * 只有三个字段，`getCommitDetails` 只取当前要显示的那几十条。实测在 vscode 仓库
- * （188,163 条）上是 1,937 ms vs 11 ms（`NFR.md` §5.3）。
+ * （188,163 条）上是 1,937 ms vs 11 ms。
  */
 export interface Commands {
   /**
@@ -388,8 +388,8 @@ export type CommandResult<K extends CommandName> = Commands[K]["result"];
 /**
  * **事件只说「哪类数据过期了」，不带新数据。**
  *
- * 算出新值要跑 `git log` + `for-each-ref`，在 vscode 仓库上是 1.9 秒 / 360 MB
- * （`NFR.md` §5.3），而此刻可能根本没人在看那个面板。
+ * 算出新值要跑 `git log` + `for-each-ref`，在 vscode 仓库上是 1.9 秒 / 360 MB，
+ * 而此刻可能根本没人在看那个面板。
  * 让消费者自己决定要不要拉，是唯一不浪费的做法。
  *
  * `domains` 不是摆设：webview 应当**只在自己关心的域出现时**才重拉。
@@ -499,6 +499,6 @@ export type OutboundMessage = ResponseMessage | EventMessage;
 /**
  * ⚠️ 这两个联合类型在**运行时是谎言**——类型编译后就没了。
  * 从 `postMessage` 收到的东西必须先过 validator 才能当它们用
- * （`CLAUDE.md` C.1：这是全项目第二个也是最后一个校验点）。
+ * （这是全项目第二个也是最后一个校验点）。
  * 过关之后一律信任类型，不写防御性检查（C.2）。
  */

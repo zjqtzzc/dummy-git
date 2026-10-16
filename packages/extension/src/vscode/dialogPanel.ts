@@ -10,7 +10,7 @@ const VIEW_TYPES: Readonly<Record<DialogKind, string>> = {
 };
 
 /**
- * 对话框的标签页（`DECISIONS.md`「自定义弹出窗口」）。每种只开一个。
+ * 对话框的标签页。每种只开一个。
  *
  * 再开同一种时不新建标签：切过去、重写 HTML。页面整个重新加载，等于关了重开，
  * 上一次的输入不留。重新加载会再握手一次，同一个 Router 按换代处理（`ipc/router.ts`）。

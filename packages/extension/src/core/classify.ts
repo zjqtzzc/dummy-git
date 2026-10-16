@@ -23,8 +23,8 @@ import { GitDomain } from "@dummy-git/shared";
  *
  * 分隔符这条不是小事：Windows 上 `uri.fsPath` 给的是反斜杠，
  * 直接传进来所有前缀判断都会失效，而且**不报错**——只是所有事件都被当成认不出的丢掉，
- * 表现为「Windows 上界面永远不刷新」。归一化是调用方的责任（`CLAUDE.md` §C.1：
- * 校验只在边界做一次，这里是边界之内）。
+ * 表现为「Windows 上界面永远不刷新」。归一化是调用方的责任（校验只在边界做一次，
+ * 这里是边界之内）。
  *
  * ## 返回空数组 = 这个事件该丢弃
  *
@@ -54,14 +54,14 @@ const OP_REFS_WORKTREE: readonly GitDomain[] = Object.freeze([
  * 先挡噪声。
  *
  * 顺序不能反：噪声的量级远大于有效事件。实测一次 `commit` 产生 27 个事件，
- * **17 个是噪声**（`.notes/NFR.md` §7）。
+ * **17 个是噪声**。
  *
  * - `objects/` —— `fetch` 时能刷出成千上万个。注意这个 watcher 是绕开
  *   `files.watcherExclude` 建的，默认那条 `**​/.git/objects/**` 排除保护不到它。
  * - `*.lock` —— 每次 git 操作都建了又删。实测除了 `index.lock` / `HEAD.lock`，
  *   还有 `next-index-<pid>.lock` 这种带随机数字的，**靠后缀一条规则全覆盖**，
  *   不必逐个列举。
- *   （另见 `.notes/specs/locking.md` §5：不把 `.git/index.lock` 当状态源。）
+ *   （不把 `.git/index.lock` 当状态源。）
  * - `hooks/` `info/` `lfs/` —— 与我们关心的状态无关。
  */
 function isNoise(relPath: string): boolean {

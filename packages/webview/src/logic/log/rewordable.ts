@@ -1,7 +1,7 @@
 import type { CommitSkeleton } from "@dummy-git/shared";
 
 /**
- * 能改说明的提交（右键 `Edit Commit Message…` 出不出现，`.notes/design/phase-11.md` 第 3 条）：
+ * 能改说明的提交：
  * 从 HEAD 沿第一父提交往回走，走到合并提交就停（它自己也不算）。根提交算。
  * 只看骨架里有的：走出骨架（超过一万条、按别的分支过滤时）就停。
  */

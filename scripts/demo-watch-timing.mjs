@@ -68,8 +68,7 @@ function makeRepo() {
 }
 
 /**
- * §9 的噪声规则。这里只实现「挡噪声」那一半——本步不做域映射，
- * 那是第 3 步的事。现在只需要知道**滤完还剩几个**。
+ * 噪声规则。这里只实现「挡噪声」那一半，不做域映射：只需要知道**滤完还剩几个**。
  */
 function isNoise(relPath) {
   return (
@@ -161,7 +160,7 @@ console.log("─".repeat(64));
 if (after.length === 0) {
   console.log("  ⚠️ 全部事件在命令返回**前**就已到达。");
   console.log("     → 「命令返回时事件还没到」这个担心不成立，");
-  console.log("       设计稿 §7.5 那个「提前结算」方案在这一层是可行的。");
+  console.log("       「写操作完成后提前结算」在这一层是可行的。");
 } else {
   const maxDelay = Math.max(...after.map((e) => e.at - t0));
   console.log(`  命令返回后最长还要等 ${maxDelay.toFixed(1)} ms 事件才到齐。`);

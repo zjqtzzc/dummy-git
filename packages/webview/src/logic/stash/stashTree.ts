@@ -26,7 +26,7 @@ export interface StashFile {
 }
 
 /**
- * Stash 模式的树（`.notes/design/phase-4.md` 第 8 条）：每条 stash 一个顶层节点，
+ * Stash 模式的树：每条 stash 一个顶层节点，
  * 标题是 git 生成的说明、后面灰字时间；下面是它改了的文件（已跟踪与未跟踪合在一起），按目录整理。
  *
  * 同一个文件可以出现在好几条 stash 里，而节点 id 在一棵树里必须唯一，

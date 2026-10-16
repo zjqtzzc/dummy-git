@@ -7,7 +7,7 @@ import { useLightTheme } from "../ui/lightTheme.js";
 import Tree from "./Tree.vue";
 
 /**
- * 所有文件树共用的一层（`.notes/design/phase-2.md` 第一节第 5 条），建在基础树 `Tree.vue` 上：
+ * 所有文件树共用的一层，建在基础树 `Tree.vue` 上：
  * 分组的文件整理成树、配上 Seti 图标与改动字母；新出现的目录默认展开；
  * 双击或回车打开 diff，单击或上下键时 diff 跟随（真正开不开由扩展侧 `vscode/diff.ts` 判断）。
  * 只认 `FileEntry`，左右各是什么由使用方决定。

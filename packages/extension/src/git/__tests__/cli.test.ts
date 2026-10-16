@@ -169,7 +169,7 @@ describe("GIT_TERMINAL_PROMPT=0：认证需求时快速失败而不是挂住", (
   });
 });
 
-describe("askpass：要密码时拿到空回答（ARCHITECTURE.md 第 16 题）", () => {
+describe("askpass：要密码时拿到空回答", () => {
   /** 扩展随包带的空回答脚本。 */
   const script = join(__dirname, "../../../resources/askpass-empty.sh");
   /** 让 git 问用户名：不配凭据助手，host 用一个不存在的域名，不联网。 */

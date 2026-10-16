@@ -12,7 +12,7 @@ import type { ErrorGate } from "./errorGate.js";
  * 不经过 Router。所以每个菜单命令只做薄薄一层：
  * 1. 从 context 取出某条协议命令的参数，用 Router 入口**同一张**参数校验表校验（webview 来的数据，是边界）；
  * 2. 调**同一个** handler；
- * 3. 出错交给**同一个**错误关口（这就是 ARCHITECTURE 第 15 题的「命令注册包装」）。
+ * 3. 出错交给**同一个**错误关口。
  * 执行逻辑、校验、错误出口都只有一份。结果不回给页面：界面靠 watcher 刷新。
  */
 interface MenuCommand {

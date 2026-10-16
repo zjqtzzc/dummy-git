@@ -12,7 +12,7 @@ import { LockPolicy } from "./lock.js";
  * **静默失效**——不报错，只是什么都读不到、什么都监听不到。
  */
 export interface RepositoryLocation {
-  /** 工作树的根目录。同时是这个仓库的标识（`ARCHITECTURE.md` 第 13 题按它去重）。 */
+  /** 工作树的根目录。同时是这个仓库的标识。 */
   readonly root: string;
   /**
    * 本工作树专属的 git 目录。`HEAD`、`index`、`MERGE_HEAD`、`rebase-merge/` 在这里。
@@ -37,7 +37,7 @@ export interface RepositoryLocation {
  * - `--absolute-git-dir`：直接给绝对路径（git 2.13 起）。
  * - `--git-common-dir`：**相对的是执行目录**（实测：根目录下给 `.git`，
  *   `x/y/` 下给 `../../.git`；worktree 里给绝对路径）。git 直到 2.31 才有
- *   `--path-format=absolute`，而最低版本定在 2.25（`DECISIONS.md`），所以自己解析。
+ *   `--path-format=absolute`，而最低版本定在 2.25，所以自己解析。
  *
  * 另外两个是 git 给的真实路径（符号链接已展开），解析出来的这个也 `realpath` 一次，
  * 三者口径一致。

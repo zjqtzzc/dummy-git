@@ -133,7 +133,7 @@ describe("DebouncedSet：flushNow / cancel", () => {
 });
 
 describe("窗口值", () => {
-  it("150 / 1000——依据见 debounce.ts 文件头与 NFR.md §7", () => {
+  it("150 / 1000——依据见 debounce.ts 文件头", () => {
     // 钉住这两个数：改它们要连带改文件头的论证（实测事件簇 3.3ms、
     // 感知阈值 200ms、rebase 的 Banner 刷新节奏）。
     expect(DEBOUNCE_MS).toBe(150);

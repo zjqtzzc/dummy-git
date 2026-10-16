@@ -2,7 +2,7 @@
  * 原生右键菜单的上下文（页面元素上的 `data-vscode-context`）。
  *
  * VS Code 用它决定菜单项出不出现（`package.json` 菜单项的 `when` 条件），点了之后把整份交给扩展的菜单命令。
- * 键与值都是**对外的字符串**（CLAUDE.md B.2）：和 `package.json` 里的 `when` 逐字对应，改一边必须改另一边。
+ * 键与值都是**对外的字符串**：和 `package.json` 里的 `when` 逐字对应，改一边必须改另一边。
  */
 export const MenuContextKey = {
   /** 节点类型，值见 `MenuNodeValue`。 */

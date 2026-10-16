@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 从本机 VS Code 自带的 Seti 图标主题生成快照（`ARCHITECTURE.md` 第 5 题）。
+ * 从本机 VS Code 自带的 Seti 图标主题生成快照。
  * 输出到 `packages/webview/src/seti/`，提交进仓库；VS Code 更新了 Seti 就重跑。
  *
  *   node scripts/generate-seti.mjs [VS Code 的 extensions 目录]

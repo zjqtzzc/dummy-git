@@ -4,7 +4,7 @@ import { brief, briefResult, briefString, SLOW_MS } from "./brief.js";
 import { isRecord } from "./protocol.guards.js";
 import { UserFacingError } from "./userFacingError.js";
 
-/** 带级别的日志出口（`CLAUDE.md` G）。`vscode.LogOutputChannel` 直接满足它；本层因此不 import vscode。 */
+/** 带级别的日志出口。`vscode.LogOutputChannel` 直接满足它；本层因此不 import vscode。 */
 export interface Log {
   readonly error: (line: string) => void;
   readonly warn: (line: string) => void;
@@ -22,7 +22,7 @@ export function tagged(line: string): string {
 }
 
 /**
- * 操作：一条协议命令从入口进来到返回（`CLAUDE.md` G）。两个入口（Router、右键菜单）都经过这里，
+ * 操作：一条协议命令从入口进来到返回。两个入口（Router、右键菜单）都经过这里，
  * 记开头与结尾两行；里面的 git 命令、问答由各自的出口经 `tagged()` 带上编号。
  *
  * 两行而不并成一行：挂住的操作只有开头那行，看得出卡在哪。

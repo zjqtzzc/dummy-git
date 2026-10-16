@@ -1,6 +1,6 @@
 /**
  * `postMessage` 边界的运行时校验。**全项目第二个、也是最后一个校验点**
- * （`CLAUDE.md` C.1；第一个是 `git stdout → parser`）。
+ * （第一个是 `git stdout → parser`）。
  *
  * ## 为什么非验不可
  *
@@ -154,7 +154,7 @@ function asCommitTarget(raw: Record<string, unknown>): { repo: string; hash: str
  * **与 `Commands` 是两张表，但回答的是两个不同的问题**：`Commands` 说
  * 「参数的类型是什么」，这里说「一个运行时的值是不是那个类型」。
  * TypeScript 无法从类型推出校验器（类型不在运行时存在），所以这份重复是必要的，
- * 不是 `CLAUDE.md` D.6(d) 说的「同一个问题被回答两次」。
+ * 不是「同一个问题被回答两次」。
  *
  * `satisfies` 保证这张表**每条命令都有**，漏一条编译不过——
  * 与 `defineHandlers` 同一个思路：完整性由编译器管，不靠记性。

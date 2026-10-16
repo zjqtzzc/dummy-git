@@ -13,7 +13,7 @@ import { parseRevisionUri, REVISION_SCHEME } from "./revisionUri.js";
  *
  * ## 它是 VS Code 直接调用我们代码的入口
  *
- * 不经过 Router，所以读取失败要在这里交给错误关口（`ARCHITECTURE.md` 第 15 题）：
+ * 不经过 Router，所以读取失败要在这里交给错误关口：
  * 输出面板写全、弹通知；同时抛 `FileSystemError`，让编辑器里显示「无法读取」。
  */
 export class RevisionFileSystem implements vscode.FileSystemProvider {

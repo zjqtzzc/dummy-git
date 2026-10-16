@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { type OngoingOperation, OperationKind } from "@dummy-git/shared";
 
 /**
- * 停在半路的操作（`ARCHITECTURE.md` 第 18 题）：读状态文件，不跑 git。
+ * 停在半路的操作：读状态文件，不跑 git。
  *
  * `status` 里「You are currently rebasing」那种句子是给人看的，随版本和语言变。
  * 这些文件在，操作就还停着；不在，就结束了。

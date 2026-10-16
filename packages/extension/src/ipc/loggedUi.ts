@@ -3,7 +3,7 @@ import type { HandlerUi } from "./handlers.js";
 import { type Log, tagged } from "./operation.js";
 
 /**
- * 给 `HandlerUi` 套一层：问了用户什么、用户怎么答的、状态栏说了什么，都记进日志（`CLAUDE.md` G）。
+ * 给 `HandlerUi` 套一层：问了用户什么、用户怎么答的、状态栏说了什么，都记进日志。
  * 套在出口上，handler 不用改；记的行带所在操作的编号。
  *
  * 打开 diff、合并编辑器、对话框不记：操作开头那行已经写了命令，它们只是那条命令的直接结果。

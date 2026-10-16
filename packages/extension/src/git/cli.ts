@@ -61,7 +61,7 @@ const FORCED_ENV = {
 } as const;
 
 /**
- * 要密码时给空回答的脚本（ARCHITECTURE.md 第 16 题）。git（HTTPS 账号密码）与 ssh
+ * 要密码时给空回答的脚本。git（HTTPS 账号密码）与 ssh
  * （私钥口令、主机指纹确认、SSH 签名口令）一要密码就拿到空字符串，认证失败退出，不等人。
  * `SSH_ASKPASS_REQUIRE=force`：ssh 只走 askpass、不去找终端。GPG 不拦，交给系统 pinentry。
  */
@@ -142,7 +142,7 @@ export class GitCli {
         // 仍然要等满 3 秒；杀整个进程组后降到 ~300ms）。
         //
         // 用负 pid 给整个进程组发信号是 POSIX 语义，Windows 没有对应物，
-        // 那边退回单杀 git——已知的不完整取消，记入 `.notes/NFR.md`。
+        // 那边退回单杀 git——已知的不完整取消。
         if (detached && child.pid !== undefined) {
           try {
             process.kill(-child.pid, "SIGTERM");

@@ -61,9 +61,9 @@ export function sendReportsTo(send: (message: string, stack: string) => void): v
 }
 
 /**
- * 请求失败已由扩展侧的错误关口弹过通知、写过日志（`ARCHITECTURE.md` 第 15 题），
+ * 请求失败已由扩展侧的错误关口弹过通知、写过日志，
  * 这里不再报第二遍。webview 自己代码里的错误扩展侧不知道：写到开发者工具的控制台，
- * 同时送一份给扩展记进日志（`CLAUDE.md` G）——用户贴来的日志里才看得到。
+ * 同时送一份给扩展记进日志——用户贴来的日志里才看得到。
  */
 export function report(cause: unknown): void {
   if (cause instanceof CommandFailedError) return;

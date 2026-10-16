@@ -19,7 +19,7 @@ import { LockPolicy } from "./lock.js";
  * 不放进进程层的全局强制环境变量：进程层只看到一个字符串数组，
  * 靠 `args[0] === "status"` 判断等于把 git 语义焊进下层。
  *
- * 它有三个作用，缺一不可（`.notes/specs/locking.md` §6）：
+ * 它有三个作用，缺一不可：
  * 1. 防 status 回写 index → 触发 watcher → 又跑 status 的**刷新回路**
  * 2. 避免撞外部锁（次要——status 本来就不会因此失败）
  * 3. **让 status 免于被写锁串行化**：正因为它证明了自己不写 index，

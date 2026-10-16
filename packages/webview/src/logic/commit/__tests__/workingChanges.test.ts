@@ -69,7 +69,7 @@ describe("workingFiles：只看 HEAD ↔ 工作区，两列合成一个", () => 
     ]);
   });
 
-  it("未跟踪照列；冲突第 7 阶段才显示，先跳过", () => {
+  it("未跟踪照列；冲突另成一组，不在这几组里", () => {
     expect(
       workingFiles([
         { kind: ChangeKind.Untracked, path: "new.txt" },

@@ -14,7 +14,7 @@ import { LockPolicy } from "./lock.js";
  *
  * ## 返回字节，不解码
  *
- * 由 VS Code 按用户的编码设置解码（`ARCHITECTURE.md` 第 10 题）。在这里解成 UTF-8，
+ * 由 VS Code 按用户的编码设置解码。在这里解成 UTF-8，
  * GBK 之类的文件就成了乱码。
  *
  * `path` 是相对仓库根、以 `/` 分隔的路径。文件在这个版本里不存在时 git 以非零码退出，

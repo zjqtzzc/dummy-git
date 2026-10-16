@@ -1,7 +1,7 @@
 import type { IconRef } from "../icons.js";
 
 /**
- * 所有树共用的纯逻辑（`.notes/design/phase-2.md` 第一节）：节点的统一形状、按展开状态压平成行、
+ * 所有树共用的纯逻辑：节点的统一形状、按展开状态压平成行、
  * 展开 / 收起、键盘。外观与交互照 VS Code 原生的树。
  */
 
@@ -73,7 +73,7 @@ export function branchIds(nodes: readonly TreeNode[]): string[] {
 
 /**
  * 展开或收起一个节点，返回新的展开集合。
- * 收起时它下面的节点一起收起，再展开只露出一层（`.notes/REQUIREMENTS.md` 第 2 阶段）。
+ * 收起时它下面的节点一起收起，再展开只露出一层。
  */
 export function setExpanded(
   expanded: ReadonlySet<string>,

@@ -14,7 +14,7 @@ import {
 import type { FileEntry, FileGroup } from "../tree/fileTree.js";
 
 /**
- * Commit 面板的数据（`.notes/design/phase-2.md` 第二节第 3、5 条）：
+ * Commit 面板的数据：
  * 界面不区分暂存区，只看 HEAD ↔ 工作区文件，把 `git status` 的两列合成一个结果。
  */
 export enum WorkingStatus {
@@ -39,7 +39,7 @@ export interface ConflictFile {
   readonly conflict: ConflictKind;
 }
 
-/** 冲突文件，单独成组（`.notes/design/phase-7.md`）。 */
+/** 冲突文件，单独成组。 */
 export function conflictFiles(changes: readonly FileChange[]): ConflictFile[] {
   return changes.flatMap((change) =>
     change.kind === ChangeKind.Conflict ? [{ path: change.path, conflict: change.conflict }] : [],
@@ -48,7 +48,7 @@ export function conflictFiles(changes: readonly FileChange[]): ConflictFile[] {
 
 /**
  * 双击能不能用合并编辑器解决：两边都有内容的才行（两边都改、两边都新增）。
- * 一边删了一边改了、只有一边有的、两边都删了的，没有两栏可比，改为选保留或删除（`.notes/design/phase-7.md`）。
+ * 一边删了一边改了、只有一边有的、两边都删了的，没有两栏可比，改为选保留或删除。
  */
 export function opensMergeEditor(conflict: ConflictKind): boolean {
   switch (conflict) {
@@ -219,7 +219,7 @@ function toEntry(repo: string, file: WorkingFile): FileEntry {
 export const CONFLICTS_GROUP = "conflicts";
 
 /**
- * 冲突组标题（`.notes/design/phase-7.md` 四种情况）。
+ * 冲突组标题。
  * 没有操作也没有冲突时缺席，组不画。
  */
 export interface ConflictHeading {
@@ -312,7 +312,7 @@ export function workingGroups(
 }
 
 /**
- * 双击打开的 diff（`.notes/design/phase-2.md` 第二节第 10 条）：左边 HEAD 版本，右边工作区里的真实文件
+ * 双击打开的 diff：左边 HEAD 版本，右边工作区里的真实文件
  * （能直接编辑）。新增、未跟踪的左边空；删除的右边空；改名的左边用 HEAD 里的旧路径。
  * `head` 缺席（还没有任何提交）时左边一律空。
  */

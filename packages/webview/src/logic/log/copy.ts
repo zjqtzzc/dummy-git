@@ -3,7 +3,7 @@ import { formatDateTime } from "../utils/time.js";
 import { type BranchNode, BranchNodeKind } from "./branchTree.js";
 
 /**
- * 提交列表上 Ctrl+C 复制的文字（`.notes/design/phase-5.md` 第 10 条）：完整说明，空一行，作者与日期各一行。
+ * 提交列表上 Ctrl+C 复制的文字：完整说明，空一行，作者与日期各一行。
  * 邮箱为空时只写名字。日期写绝对时间。
  */
 export function commitCopyText(commit: Commit): string {

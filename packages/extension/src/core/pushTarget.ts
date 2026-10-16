@@ -1,7 +1,7 @@
 import type { Upstream } from "@dummy-git/shared";
 
 /**
- * 推送对话框打开时，默认推到哪里（`.notes/design/phase-10.md` 第 4 条）。
+ * 推送对话框打开时，默认推到哪里。
  *
  * 顺序：**上游 → `origin` → 第一个远程**。没有上游时推到远程的同名分支。
  * 一个远程都没有时也是 `origin`：对话框里定义远程时预填的名字。

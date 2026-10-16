@@ -6,11 +6,11 @@
  * 域要跨 extension ↔ webview 边界——广播事件 `domainsChanged` 带的就是它，
  * webview 据此决定要不要重新拉数据（`shared/protocol.ts`）。
  *
- * `CLAUDE.md` B.2 的判据是「值有没有离开这次构建」：
+ * 枚举值能不能直接当对外格式，判据是「值有没有离开这次构建」：
  * extension 与 webview 是**同一份源码、同一次发布**，不算离开，所以可以直接共享枚举，
  * 不需要「内部值 → 外部字符串」的映射表。
  *
- * B.3 的「永不提到 `shared/`」管的是**映射表**；本文件零数据表，纯声明。
+ * 映射表永不放进 `shared/`；本文件零数据表，纯声明。
  *
  * ## 域是按「下游要重新拉什么」划的，不是按 git 自己的概念
  *
@@ -46,7 +46,7 @@ export enum GitDomain {
   /**
    * `git stash` 的列表。
    *
-   * 消费者：Commit 面板的 Stash 模式（需求第 4 阶段）。
+   * 消费者：Commit 面板的 Stash 模式。
    */
   Stash = "stash",
 

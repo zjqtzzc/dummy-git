@@ -1,7 +1,7 @@
 import setiMap from "../../seti/setiMap.json";
 
 /**
- * 按文件名查 Seti 图标（`ARCHITECTURE.md` 第 5 题）。映射表由 `scripts/generate-seti.mjs`
+ * 按文件名查 Seti 图标。映射表由 `scripts/generate-seti.mjs`
  * 从 VS Code 自带的 Seti 主题生成。
  *
  * 优先级照 VS Code 自己的规则：精确文件名 > 扩展名（从长到短：`a.d.ts` 先试 `d.ts`

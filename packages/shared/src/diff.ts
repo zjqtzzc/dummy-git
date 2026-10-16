@@ -1,6 +1,5 @@
 /**
- * diff 的一边。一个 diff = 左边 + 右边 + 标题，左右可以是任意一种、自由组合
- * （`ARCHITECTURE.md` 第 10 题）。
+ * diff 的一边。一个 diff = 左边 + 右边 + 标题，左右可以是任意一种、自由组合。
  *
  * 放在 shared：左右怎么组合由界面决定，这个类型要跨过 webview ↔ 扩展的边界。
  * `path` 一律相对仓库根、以 `/` 分隔，扩展负责拼成绝对路径。
@@ -39,7 +38,7 @@ export type DiffSide =
   | { readonly kind: DiffSideKind.WorkingTree; readonly path: string }
   | { readonly kind: DiffSideKind.Stage; readonly stage: IndexStage; readonly path: string };
 
-/** 打开 diff 的两种来由（需求第 1 阶段：所有文件树的点击规则）。 */
+/** 打开 diff 的两种来由（所有文件树的点击规则）。 */
 export enum DiffOpenMode {
   /** 双击、回车：打开（或替换）插件的 diff 标签并翻到前台。 */
   Open = "open",

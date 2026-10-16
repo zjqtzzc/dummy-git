@@ -1,7 +1,7 @@
 import { assertNever, type CommitSkeleton, type PickedAuthor } from "@dummy-git/shared";
 
 /**
- * Log 的过滤条件（`.notes/design/phase-5.md`）。几种条件取交集；没有的条件就是不按它过滤。
+ * Log 的过滤条件。几种条件取交集；没有的条件就是不按它过滤。
  * 纯数据与纯函数，不依赖 Vue，能在 node 下测。
  */
 
@@ -119,7 +119,7 @@ export function applyFilter(
 
 /**
  * 存进 `viewState` 的写法。存下来的值会离开这次构建（下个版本读它），所以 enum 的值不直接落盘，
- * 由这张表给出对外的字符串（CLAUDE.md B.2）。
+ * 由这张表给出对外的字符串。
  */
 const SAVED_DATE: Readonly<Record<DateRange, string>> = {
   [DateRange.Day]: "24h",

@@ -5,7 +5,7 @@ import { FilterKind } from "../logic/log/filter.js";
 import Icon from "../ui/Icon.vue";
 
 /**
- * 提交列表上方的过滤栏（`.notes/design/phase-5.md` 第 1 条）：左边搜索框，右边四个按钮。
+ * 提交列表上方的过滤栏：左边搜索框，右边四个按钮。
  * 按钮没生效时只写名字加 ▾；生效后写当前值，后面一个 × 清除。值怎么选、怎么写由使用方定，这里只摆。
  */
 defineProps<{

@@ -8,7 +8,7 @@ import { isNewRemoteBranch } from "../logic/push/target.js";
 import { formatTime } from "../logic/utils/time.js";
 import DialogShell from "../ui/DialogShell.vue";
 
-/** 推送对话框（`.notes/design/phase-10.md`）。`subject` 是要推的本地分支。 */
+/** 推送对话框。`subject` 是要推的本地分支。 */
 const props = defineProps<{ client: Client; subject: string }>();
 
 const repo = ref<string>();
@@ -215,7 +215,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* 一行「标签 + 控件」；窄于约 480px 时上下排（`DECISIONS.md`「自定义弹出窗口」）。 */
+/* 一行「标签 + 控件」；窄于约 480px 时上下排。 */
 .field {
   display: flex;
   align-items: center;

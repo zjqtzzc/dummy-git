@@ -209,7 +209,7 @@ describe("Router：分发与响应", () => {
   });
 });
 
-describe("Router：边界校验（CLAUDE.md C.1）", () => {
+describe("Router：边界校验", () => {
   it("握手前的请求被丢弃，handler 不会跑", async () => {
     const t = recorder();
     let ran = false;

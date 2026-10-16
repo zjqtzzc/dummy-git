@@ -1,5 +1,5 @@
 /**
- * `git log` 的命令与解析。**两个查询**，对应取数模型 B（`.notes/ARCHITECTURE.md` 第 8 题）：
+ * `git log` 的命令与解析。**两个查询**，对应取数模型 B：
  *
  *   骨架  git log HEAD --branches --remotes --tags --date-order --format=<3 字段>
  *   详情  git log --no-walk --stdin --format=<9 字段>    按 hash 取，显示用
@@ -158,7 +158,7 @@ const SK_FIELD_COUNT = 3;
  * 带上作者与消息的话是 46 MB，而画图用不到那 28 MB。
  */
 /**
- * 骨架从哪里往下走。可带参数（`ARCHITECTURE.md` 第 8 题）：现在只有起点，以后 `--first-parent` 这类遍历选项也加在这里。
+ * 骨架从哪里往下走。可带参数：现在只有起点，以后 `--first-parent` 这类遍历选项也加在这里。
  */
 export interface SkeletonOptions {
   /** 只走这一个分支（完整引用名，`refs/heads/x` 或 `refs/remotes/origin/x`）。缺席时走 HEAD 与全部分支、远程、标签。 */
@@ -259,7 +259,7 @@ export function outgoingArgs(
 }
 
 /**
- * 在给定的提交里按条件筛（Log 的过滤，`ARCHITECTURE.md` 第 8 题）：只输出命中的 hash。
+ * 在给定的提交里按条件筛：只输出命中的 hash。
  *
  * `--no-walk --stdin` 同 `detailsArgs`：只看喂进去的这些，不顺着父提交走，仓库再大也最多检查这么多条。
  * 一律 `-F`（按普通文字）：说明里的 `a.b`、名字里的 `.` 都不被当成正则。

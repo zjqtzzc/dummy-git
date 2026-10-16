@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
  * ## 为什么共享而不是每个测试自己建
  *
  * 建 5 个仓库约 0.5 秒。几十个测试各建一次就是几十秒，
- * 而全量 `pnpm test` 的预算是 10 秒（见 `.notes/design/testing.md` §4.4）。
+ * 而全量 `pnpm test` 的预算是 10 秒。
  * 这些仓库**只读**，共享是安全的；需要写的测试用 `makeTempRepo()` 自建（见 support.ts）。
  *
  * ## 为什么用固定路径而不是 vitest 的 provide/inject

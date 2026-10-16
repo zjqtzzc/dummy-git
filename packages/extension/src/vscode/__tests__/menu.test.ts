@@ -4,7 +4,7 @@ import { MenuContextKey, MenuNodeValue } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
 
 /**
- * `package.json` 菜单项的 `when` 条件与页面写的 `data-vscode-context` 逐字对应（CLAUDE.md B.2）。
+ * `package.json` 菜单项的 `when` 条件与页面写的 `data-vscode-context` 逐字对应。
  * 改了一边忘了另一边，菜单项会悄悄不出现、不报任何错——这里守着。
  */
 const manifest: unknown = JSON.parse(

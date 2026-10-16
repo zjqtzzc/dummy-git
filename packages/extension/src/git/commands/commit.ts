@@ -19,7 +19,7 @@ function commitWith(amend: readonly string[]): GitCommand<CommitArgs, void> {
       if (untracked.length > 0) {
         await run(cli, ["add", "--", ...untracked], { cwd: repository });
       }
-      // 不做「消息是不是空」之类的防御性检查：验证只在边界做一次（CLAUDE.md §C.2），
+      // 不做「消息是不是空」之类的防御性检查：验证只在边界做一次，
       // 而这里在边界之内。空消息由 git 拒绝，`run()` 会把它包成 GitFailureError。
       try {
         await run(cli, ["commit", ...amend, "--only", "-F", "-", "--", ...paths], {

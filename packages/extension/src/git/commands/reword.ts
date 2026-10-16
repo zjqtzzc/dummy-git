@@ -10,7 +10,7 @@ export enum RewordOutcome {
 }
 
 /**
- * 改一条提交的说明，在内存里造提交（`ARCHITECTURE.md` 第 21 题）。
+ * 改一条提交的说明，在内存里造提交。
  *
  * 只改说明、内容（tree）不变：从 `target` 到 HEAD，按从旧到新逐条
  * `commit-tree <原 tree> -p <新父提交>`，`target` 用新说明，其余用原说明。不可能冲突，不碰暂存区与工作区。

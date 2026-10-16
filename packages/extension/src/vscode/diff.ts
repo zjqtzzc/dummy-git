@@ -5,7 +5,7 @@ import { diffTitle } from "./diffTitle.js";
 import { REVISION_SCHEME, toRevisionUri } from "./revisionUri.js";
 
 /**
- * 用 VS Code 的 diff 编辑器打开左右两边。**所有文件树都走这一个函数**（`ARCHITECTURE.md` 第 10 题）。
+ * 用 VS Code 的 diff 编辑器打开左右两边。**所有文件树都走这一个函数**。
  *
  * 重用 diff 标签靠 VS Code 自己的预览标签：同一组里新的预览替换旧的，不管旧的里面是什么
  * （文本 diff、二进制占位页）。我们不去找标签、也不关标签。

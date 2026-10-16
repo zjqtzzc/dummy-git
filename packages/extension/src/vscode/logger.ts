@@ -9,7 +9,7 @@ import { briefGitCommand } from "../ipc/brief.js";
 import { type Operations, tagged } from "../ipc/operation.js";
 
 /**
- * 「输出」里的 Dummy Git（`CLAUDE.md` G）。带级别的频道：每行自带时间戳与级别，
+ * 「输出」里的 Dummy Git。带级别的频道：每行自带时间戳与级别，
  * 同时写进窗口的日志目录（`Developer: Open Extension Logs Folder`），重新加载窗口后还找得回。
  * 默认级别 info，低于它的不显示也不落盘。
  */
@@ -75,7 +75,7 @@ export function logRepository(
   channel.info(`Repository: ${location.root} (git dir ${location.gitDir}${shared})`);
 }
 
-/** 域在日志里的叫法（`CLAUDE.md` B.2：enum 值不拼进文字，经这张表）。 */
+/** 域在日志里的叫法（enum 值不拼进文字，经这张表）。 */
 const DOMAIN_NAMES: Readonly<Record<GitDomain, string>> = {
   [GitDomain.Refs]: "分支与提交",
   [GitDomain.Worktree]: "工作区",

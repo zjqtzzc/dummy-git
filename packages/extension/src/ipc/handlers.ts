@@ -501,7 +501,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
           `Cannot edit commit messages while ${operationNoun(current.kind)} is in progress.`,
         );
       }
-      // 点了就关，改写在后台跑（`design/phase-11.md` 第 6 条）。
+      // 点了就关，改写在后台跑。
       ui.closeDialog(DialogKind.Reword);
       const short = hash.slice(0, 7);
       await ui.withProgress(
@@ -560,7 +560,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       ) {
         return null;
       }
-      // 点了就关，推送在后台跑（`design/phase-10.md` 第 6 条）。
+      // 点了就关，推送在后台跑。
       ui.closeDialog(DialogKind.Push);
       await ui.withProgress(
         `Pushing ${branch}…`,
@@ -835,7 +835,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       return null;
     },
     rollback: async ({ paths }) => {
-      // 未跟踪文件不归 Rollback 管（第 7 阶段右键 Delete）。一个已跟踪的都没有就什么都不做。
+      // 未跟踪文件不归 Rollback 管。一个已跟踪的都没有就什么都不做。
       const { tracked, withOldPaths } = await inspect(paths);
       if (tracked.length === 0 || !(await ui.confirmRollback(tracked))) return null;
       await repository.run(rollback, repository.location.root, withOldPaths(tracked));

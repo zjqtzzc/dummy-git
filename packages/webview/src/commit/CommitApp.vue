@@ -27,7 +27,7 @@ import { viewState } from "../vscodeApi.js";
 import StashView from "./StashView.vue";
 
 /**
- * 侧栏 Commit 面板（`.notes/design/phase-2.md` 第二节第 2 条）。
+ * 侧栏 Commit 面板。
  *
  * 从上到下：Commit / Stash 切换、工具栏、文件树、底部固定区（Amend、说明、提交）。
  * Stash 模式（`StashView`）只换掉切换栏以下的部分，底部固定区不显示。
@@ -63,7 +63,7 @@ const hasFiles = computed(
 const conflictRow = groupNodeId(CONFLICTS_GROUP);
 
 /**
- * 勾选的路径。默认都不勾（第二节第 4 条）。存进 `viewState`：面板收起再展开、重新加载窗口都还在。
+ * 勾选的路径。默认都不勾。存进 `viewState`：面板收起再展开、重新加载窗口都还在。
  */
 const checked = ref<ReadonlySet<string>>(new Set(restoreChecked(viewState.read("checked"))));
 function restoreChecked(saved: unknown): string[] {
@@ -83,7 +83,7 @@ function onCheck(paths: readonly string[], value: boolean): void {
 }
 
 /**
- * 提交说明与 Amend（第二节第 7、8 条）。
+ * 提交说明与 Amend。
  *
  * - `message`：说明框当前的内容。
  * - `amend`：是否勾着 Amend。勾上时说明框换成 HEAD 的说明（每次重新取），当前输入存为 `draft`；
@@ -156,7 +156,7 @@ async function onAmendChange(event: Event): Promise<void> {
 
 /** 正在提交：按钮置灰、文字变 `Committing…`，防重复点击。 */
 const committing = ref(false);
-/** 正在 Rollback。提交与 Rollback 进行中，两个按钮都置灰（第二节第 12 条）。 */
+/** 正在 Rollback。提交与 Rollback 进行中，两个按钮都置灰。 */
 const rollingBack = ref(false);
 /** 正在存 stash。同上，和提交、Rollback 互相置灰。 */
 const stashing = ref(false);
@@ -176,7 +176,7 @@ const canCommit = computed(
 /**
  * 提交或 Amend 勾选的文件。成功不弹通知（结果本身可见），说明框与普通草稿都清空，
  * Amend 取消勾选。失败由扩展侧的错误关口报，说明与勾选原样保留，
- * 改一改就能重试（第二节第 12 条）。
+ * 改一改就能重试。
  */
 async function submit(): Promise<void> {
   if (repo.value === undefined || !canCommit.value) return;
@@ -199,8 +199,8 @@ async function submit(): Promise<void> {
 }
 
 /**
- * Rollback 只管已跟踪的改动：勾选里一个已跟踪文件都没有时置灰（第二节第 9 条）。
- * 未跟踪文件用第 7 阶段右键菜单的 Delete。
+ * Rollback 只管已跟踪的改动：勾选里一个已跟踪文件都没有时置灰。
+ * 未跟踪文件用右键菜单的 Delete。
  */
 const canRollback = computed(
   () =>
@@ -237,7 +237,7 @@ async function stashChecked(): Promise<void> {
   }
 }
 
-/** 说明框里 Ctrl+Enter（Mac 上 Cmd+Enter）= 点 Commit 按钮。快捷键只有这一个（第二节第 11 条）。 */
+/** 说明框里 Ctrl+Enter（Mac 上 Cmd+Enter）= 点 Commit 按钮。快捷键只有这一个。 */
 function onMessageKeydown(event: KeyboardEvent): void {
   if (event.key !== "Enter" || !(event.ctrlKey || event.metaKey)) return;
   event.preventDefault();
@@ -418,7 +418,7 @@ onMounted(async () => {
         :disabled="!canStash"
         @click="stashChecked"
       />
-      <!-- 没有改动时置灰（第二节第 13 条）。 -->
+      <!-- 没有改动时置灰。 -->
       <ToolButton
         :icon="appIcon(AppIcon.ExpandAll)"
         title="Expand All"
@@ -470,7 +470,7 @@ onMounted(async () => {
     </div>
 
     <div class="footer">
-      <!-- 还没有任何提交时没有可改的，置灰（第二节第 8 条）。 -->
+      <!-- 还没有任何提交时没有可改的，置灰。 -->
       <vscode-checkbox
         label="Amend"
         :checked="amend"

@@ -43,7 +43,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // 不等它：只是一行日志，不该拖慢视图注册。
   void logEnvironment(channel, context, cli, gitPath);
 
-  // 未知错误的统一出口（`ARCHITECTURE.md` 第 15 题）：输出面板写全，弹一条通知，
+  // 未知错误的统一出口：输出面板写全，弹一条通知，
   // 点「Show Output」跳到输出面板。去重与文案在可在纯 node 下测的 errorGate.ts 里。
   const errors = new ErrorGate({
     // 在操作里报的带上编号（Router 与菜单在操作里交给关口）。
@@ -100,7 +100,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const directories = (vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath);
   const startup = await discoverRepositories(cli, directories);
 
-  // 没有仓库、git 不可用：视图里直接写原因，同时进输出面板，**不弹通知**（`ARCHITECTURE.md` 第 13 题）。
+  // 没有仓库、git 不可用：视图里直接写原因，同时进输出面板，**不弹通知**。
   const reason = describeStartup(startup);
   if (reason !== undefined) {
     channel.info(reason);

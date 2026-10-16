@@ -57,7 +57,7 @@ const props = defineProps<{ client: Client }>();
 
 /** `ref`：`.value` 一改，用到它的模板就重画。 */
 const repo = ref<string>();
-/** 骨架，最多一万条（`ARCHITECTURE.md` 第 8 题）。 */
+/** 骨架，最多一万条。 */
 const skeleton = ref<readonly CommitSkeleton[]>([]);
 /** 已经取到的详情。同一个 hash 的内容永远不变，刷新时不清。 */
 const details = ref(new Map<string, Commit>());
@@ -81,7 +81,7 @@ const clock = setInterval(() => {
 }, 30_000);
 onUnmounted(() => clearInterval(clock));
 
-/** 过滤条件（`.notes/design/phase-5.md`）。存进 `viewState`：重新加载窗口后还在。 */
+/** 过滤条件。存进 `viewState`：重新加载窗口后还在。 */
 const filter = ref<LogFilter>(restoreFilter(viewState.read("logFilter")));
 /**
  * 一种要问 git 的条件（说明文字、作者）：条件或骨架变了就问一次，只收最新一次的结果（先发的可能后回来）。
@@ -174,7 +174,7 @@ const rewordableCommits = computed(() =>
   rewordable(skeleton.value, refs.value.find((ref) => ref.kind === RefKind.Head)?.target),
 );
 
-/** 搜索框里正显示的字。改了立刻显示，停 300 毫秒才变成过滤条件（`NFR.md` 第 3 节：查询要防抖）。 */
+/** 搜索框里正显示的字。改了立刻显示，停 300 毫秒才变成过滤条件（查询要防抖）。 */
 const searchText = ref(filter.value.text ?? "");
 const SEARCH_DELAY_MS = 300;
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -306,7 +306,7 @@ watch(
 );
 
 /**
- * 生效的过滤条件变了：原来选中的提交还在就保持选中并滚过去，不在就清空选中（第 9 条）。
+ * 生效的过滤条件变了：原来选中的提交还在就保持选中并滚过去，不在就清空选中。
  * 搜索框那一项看结果回来的时刻，不看敲字的时刻。只看条件的变化；骨架刷新后的选中由 `load` 管。
  */
 watch(
@@ -387,7 +387,7 @@ async function load(repository: string): Promise<void> {
     skeleton.value = keepIfSame(skeleton.value, fetchedSkeleton, sameCommit);
     refs.value = fetchedRefs;
     loaded.value = true;
-    // 正在过滤的分支被删了（`TRAPS.md`）：过滤落空，按全部分支重取。
+    // 正在过滤的分支被删了：过滤落空，按全部分支重取。
     const filtered = filter.value.branch;
     if (filtered !== undefined && !branchFilters(fetchedRefs).some((b) => b.ref === filtered.ref)) {
       const { branch: _, ...rest } = filter.value;

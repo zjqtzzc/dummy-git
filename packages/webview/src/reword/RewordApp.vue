@@ -6,7 +6,7 @@ import { type Client, report } from "../logic/client.js";
 import { isBlankMessage } from "../logic/commit/message.js";
 import DialogShell from "../ui/DialogShell.vue";
 
-/** 改一条提交的说明（`.notes/design/phase-11.md`）。`subject` 是那条提交的完整 hash。 */
+/** 改一条提交的说明。`subject` 是那条提交的完整 hash。 */
 const props = defineProps<{ client: Client; subject: string }>();
 
 const repo = ref<string>();

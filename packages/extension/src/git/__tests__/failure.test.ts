@@ -44,7 +44,7 @@ describe("classifyError：认不出的失败返回 undefined，不乱认", () =>
   });
 
   it("参数写错（exit 128，同一个退出码，不同含义）", async () => {
-    // §4.3 的要点：退出码携带的是严重程度，不是错误身份。
+    // 要点：退出码携带的是严重程度，不是错误身份。
     // 128 既是「锁冲突」也是「参数错误」，分类必须靠 stderr 文本。
     const r = await cli.exec(["log", "--no-such-flag"], { cwd: fixtures.base });
     expect(r.exitCode).toBe(128);

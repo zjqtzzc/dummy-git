@@ -11,10 +11,10 @@ import type { TreeNode } from "../tree/tree.js";
 import type { BranchFilter } from "./filter.js";
 
 /**
- * 左栏分支树（`.notes/design/phase-1.md` 第 3 条）：由 `getRefs` 的结果整理而来。
+ * 左栏分支树：由 `getRefs` 的结果整理而来。
  *
  * 顶上一行 HEAD；「Local」「Remote」两组；Remote 先按远程名分，再按 `/` 折叠成目录，
- * Local 同样按 `/` 折叠。每层按名字排序，目录在前。tag 不在第 1 阶段。
+ * Local 同样按 `/` 折叠。每层按名字排序，目录在前。
  */
 export enum BranchNodeKind {
   Head = "head",
@@ -381,7 +381,7 @@ export type Tracking =
   | { readonly kind: TrackingKind.Gone };
 
 /**
- * 本地分支相对上游的同步状态（`.notes/design/phase-3.md` 第一节第 5 条）。
+ * 本地分支相对上游的同步状态。
  * 完全同步、没有上游、远程分支、HEAD 那行、目录与分组都不显示，返回 `undefined`。
  * 数字是和本地记录的远程分支比的，Fetch 之后才准。
  */

@@ -94,7 +94,7 @@ export type ViewSource =
   | { readonly kind: ViewSourceKind.Unavailable; readonly reason: string };
 
 /**
- * 注册一个 webview 视图：底部面板的 Log、侧栏的 Commit（`ARCHITECTURE.md` 第 1 题）。
+ * 注册一个 webview 视图：底部面板的 Log、侧栏的 Commit。
  * 两者的装配完全相同，只有视图 id 不同。
  *
  * ## 视图收起就销毁，展开再重建

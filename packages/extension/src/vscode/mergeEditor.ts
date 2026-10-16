@@ -16,7 +16,7 @@ export interface MergeSides {
 }
 
 /**
- * 打开 VS Code 的合并编辑器（`ARCHITECTURE.md` 第 19 题）：调内部命令 `_open.mergeEditor`，
+ * 打开 VS Code 的合并编辑器：调内部命令 `_open.mergeEditor`，
  * 三栏用 `dummygit:` URI，输出是工作区里的真实文件。左 Current、右 Incoming，rebase 时也不对调。
  *
  * 每个文件一个标签，我们不主动关合并编辑器：关的时候保存不保存取决于用户在 VS Code 里的选择

@@ -82,7 +82,7 @@ export interface RouterHooks {
   readonly operation: <T>(command: string, params: unknown, task: () => Promise<T>) => Promise<T>;
   /**
    * 请求失败时交给错误关口（`vscode/errorGate.ts`）：输出面板写全、弹通知。
-   * Router 是三个关口之一（`ARCHITECTURE.md` 第 15 题），handler 不自己 `catch`。
+   * Router 是三个关口之一，handler 不自己 `catch`。
    */
   readonly report: (error: unknown) => void;
 }
@@ -257,8 +257,8 @@ export class Router {
    * 广播「哪类数据过期了」。**只说过期，不带数据。**
    *
    * 这是扩展侧唯一主动发出的东西，而它也只是个通知。
-   * 总原则是**前端初始化时主动向后端要数据**（`DECISIONS.md`），
-   * 扩展侧永远不推数据——算新值要 1.9 秒 / 360 MB（`NFR.md` §5.3），
+   * 总原则是**前端初始化时主动向后端要数据**，
+   * 扩展侧永远不推数据——算新值要 1.9 秒 / 360 MB，
    * 而此刻可能根本没人在看那个面板，**只有前端知道自己要不要**。
    *
    * **握手之前一个字节都不发。** 这正是握手要解决的问题：webview 是一张网页，

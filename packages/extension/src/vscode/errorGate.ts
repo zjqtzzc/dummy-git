@@ -8,14 +8,14 @@ import { UserFacingError } from "../ipc/userFacingError.js";
 export interface ErrorSink {
   /** 写进日志，error 级别：我们的 bug。 */
   readonly error: (text: string) => void;
-  /** 写进日志，warn 级别：已知的情况（`CLAUDE.md` G）。 */
+  /** 写进日志，warn 级别：已知的情况。 */
   readonly warn: (text: string) => void;
   /** 弹错误通知。**通知关闭时才 resolve**——去重靠这一点知道它还开着没有。 */
   readonly show: (summary: string) => Promise<void>;
 }
 
 /**
- * 未知错误的统一出口（`ARCHITECTURE.md` 第 15 题）。
+ * 未知错误的统一出口。
  *
  * 已知错误写进命令的返回类型，由功能代码按 `kind` 换成一句话（`UserFacingError`）交过来，
  * 这里只照着显示；其余抛出来的都算未知：输出面板写全，弹一条通知让用户知道操作不是没有反馈。
@@ -39,7 +39,7 @@ export class ErrorGate {
   }
 }
 
-/** 通知用一行摘要，输出面板用完整内容。界面文字用英文（需求第 1 阶段）。 */
+/** 通知用一行摘要，输出面板用完整内容。界面文字用英文。 */
 export function describeError(error: unknown): { summary: string; detail: string } {
   if (error instanceof UserFacingError) {
     return {
