@@ -72,16 +72,16 @@ describe("parseNameStatus", () => {
     expect(files.every((f) => f.status === FileStatus.Added)).toBe(true);
   });
 
-  it("merge 提交不是空的——靠 --first-parent", async () => {
+  it("merge 提交不是空的——靠 -m --first-parent", async () => {
     // git 默认不给 merge 提交出 diff，实测输出是**零字节**。
-    // 不加 `--first-parent` 的话，界面上点开一个合并提交什么都看不到。
+    // 两个都不加的话，界面上点开一个合并提交什么都看不到。
     const merge = await hashOf(fixtures.base, "merge feat into main");
 
     const withFirstParent = await filesOf(fixtures.base, merge);
     expect(withFirstParent.length).toBeGreaterThan(0);
 
-    // 对照组：去掉 --first-parent，证明这个开关确实是必需的，不是顺手加的。
-    const bare = commitFilesArgs(merge).filter((a) => a !== "--first-parent");
+    // 对照组：两个都去掉，证明它们确实是必需的，不是顺手加的。
+    const bare = commitFilesArgs(merge).filter((a) => a !== "--first-parent" && a !== "-m");
     const r = await cli.execRaw(bare, { cwd: fixtures.base });
     expect(parseNameStatus(r.stdout, merge)).toEqual([]);
   });

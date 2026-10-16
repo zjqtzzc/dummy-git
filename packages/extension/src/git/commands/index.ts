@@ -64,7 +64,7 @@
  * | `listAuthors` | `-c log.showSignature=false log --format=%an%x00%ae --no-walk --stdin` | — | — |
  * | `listPaths` | `ls-files -z` | — | — |
  * | `getIdentity` | `config --get user.name` + `config --get user.email` | — | — |
- * | `getCommitFiles` | `-c log.showSignature=false log -1 -M --first-parent --format= --name-status -z <hash>` | — | — |
+ * | `getCommitFiles` | `-c log.showSignature=false log -1 -M -m --first-parent --format= --name-status -z <hash>` | — | — |
  *
  * `-c log.showSignature=false` 在不认识这个配置的旧 git 上是无害的空设置，不构成版本要求。
  */

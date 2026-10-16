@@ -1,7 +1,7 @@
 /**
  * 「**这一条提交**改了哪些文件」的命令与解析。
  *
- * 与 `log.ts` 同样遵守「命令行与解析放在一个文件里」——四个命令行开关每一个都对应
+ * 与 `log.ts` 同样遵守「命令行与解析放在一个文件里」——每个命令行开关都对应
  * 解析上的一个前提，分开放两个文件，改一边忘了另一边就静默错位。
  *
  * ## 为什么不并进 `log.ts`
@@ -30,23 +30,33 @@ import { decode, split } from "./scan.js";
 const NUL = 0x00;
 
 /**
- * 四个开关，每一个都来自实测（git 2.43）：
+ * 这些开关每一个都来自实测（git 2.43，`-m` 另在 2.25 上实测）：
  *
  * | 开关 | 不加会怎样 |
  * |---|---|
  * | `-c log.showSignature=false`（在 `LOG_PREFIX` 里） | 用户开了签名显示时，输出前多一行 `Good "git" signature for …`，第一个「状态」读到的是它 |
  * | `-1` | 会一路走历史，把祖先的文件也列出来 |
  * | `-M` | 用户设了 `diff.renames=false` 时，一次改名变成 `D` + `A` 两条，改名关系丢失 |
- * | `--first-parent` | **merge 提交的输出是空的**（git 默认不给 merge 出 diff），界面上点开一个合并提交什么都看不到 |
+ * | `-m --first-parent` | **merge 提交的输出是空的**（git 默认不给 merge 出 diff），界面上点开一个合并提交、展开一条 stash（它也是 merge）什么都看不到 |
  * | `--format=` | 会带上默认的提交头（hash/作者/日期），混进文件列表 |
  *
- * `-M` 与 `--first-parent` 对普通提交都没有副作用（实测输出一致）。
+ * `-M`、`-m`、`--first-parent` 对普通提交都没有副作用（实测输出一致）。
  *
- * 否决 `-m`：它对**每个父提交各输出一遍**（实测一个 merge 输出了两组文件列表）。
- * 要用就得再挑一组，那就是 `--first-parent` 绕远路。
+ * 两个缺一不可：单有 `-m` 会对**每个父提交各输出一遍**；单有 `--first-parent`，
+ * git 2.31 起才顺带给 merge 出相对第一父提交的 diff，更早的版本（如 2.25）照样输出空、退出码 0。
  */
 export function commitFilesArgs(hash: string): string[] {
-  return [...LOG_PREFIX, "-1", "-M", "--first-parent", "--format=", "--name-status", "-z", hash];
+  return [
+    ...LOG_PREFIX,
+    "-1",
+    "-M",
+    "-m",
+    "--first-parent",
+    "--format=",
+    "--name-status",
+    "-z",
+    hash,
+  ];
 }
 
 /**
