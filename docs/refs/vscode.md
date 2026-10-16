@@ -1,7 +1,7 @@
 # 架构考古笔记（来源：vscode/extensions/git @ 1.134.0）
 
 > 目的：抽取可复用的抽象，并**明确标出哪些不适用**。
-> 对照物：`jetbrains-git-graph`（见 refs/old-repo.md §1 的债务清单）。
+> 对照物：本项目重写之前的旧版本。
 
 ## 0. 规模对比
 
@@ -340,8 +340,7 @@ git 子进程
 
 参照资料现已全部本地化（`.notes/` 内，均为一次性下载物、无 git 历史）：
 `.notes/git/`（vscode extensions/git @1.134.0）、`.notes/rebased-master`（IntelliJ 裁剪源码）、
-`.notes/vscode-gitlens-main`（GitLens，已清理至 20M，见 `refs/gitlens.md`）、
-`~/Projects/jetbrains-git-graph`（只读）。
+`.notes/vscode-gitlens-main`（GitLens，已清理至 20M，见 `refs/gitlens.md`）。
 
 - [ ] `commands.ts` 5780 行的组织方式（我们的 `features/` 分法是否对得上）
 - [ ] `cache.ts` / `repositoryCache.ts` 的失效策略

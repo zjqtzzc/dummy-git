@@ -62,7 +62,7 @@ extension ──→ shared ←── webview      # 唯一合法依赖方向
 1. **按阶段推进，每阶段是一条端到端的垂直切片**（`docs/product/roadmap.md`）。
    每阶段先定细节（`docs/phases/phase-NN.md`）再实现；标「完成」前逐条核对该阶段的需求条目
    与 `docs/tech/architecture.md` 里首次用到该阶段的题目。
-2. **旧仓库 `~/Projects/jetbrains-git-graph` 与参照源码（本地副本，放在 `.notes/`，不进版本库）只读**，禁止整块 copy-paste。
+2. **参照源码（本地副本，放在 `.notes/`，不进版本库）只读**，禁止整块 copy-paste。
 3. **实现按「一步一件小事」推进**：每步只改一个概念，说明为什么这么做，
    用户确认后才进下一步。禁止一次性铺开整个模块——本项目的目标包含用户理解每一行代码。
 4. 每个重要选择记入 `docs/tech/decisions.md`（5 行即可），重点记**否决过什么**。

@@ -6,8 +6,7 @@
 > 来源代码：`.notes/rebased-master`（从 IntelliJ Community 全量源码裁剪出的子集，
 > 仅保留 git GUI 相关的 6 个模块，约 29M；**它不是独立 git 仓库，没有历史，是一次性下载物**，
 > 引用的 file:line 只在当前这份快照里有效）。
-> 对照物：`refs/vscode.md`（vscode/extensions/git @ 1.134.0）、
-> `refs/old-repo.md`（jetbrains-git-graph，模仿者视角）。
+> 对照物：`refs/vscode.md`（vscode/extensions/git @ 1.134.0）。
 
 ## 0. 规模与定位对比
 

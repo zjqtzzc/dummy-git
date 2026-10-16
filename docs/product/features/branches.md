@@ -34,7 +34,7 @@
 
 ## Checkout
 
-统一用 `git switch`：`checkout` 还兼管恢复文件，参数有歧义。
+统一用 `git switch`：`checkout` 还兼管恢复文件，参数有歧义；而且旧的 `checkout` 不检查有没有操作停在半路，`switch` 会检查。
 
 - 本地分支 `B`：`git switch B`。
 - 远程分支 `origin/feat`：本地名用 `Ref` 里不带远程前缀的 `name`，不拆字符串。
