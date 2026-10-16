@@ -15,14 +15,15 @@ export interface Log {
 /** 正在跑的操作的编号。跨 `await` 自动带着走，入口设一次，里面谁要谁取。 */
 const current = new AsyncLocalStorage<number>();
 
-/** 当前所在操作的编号；不在任何操作里（启动、文件监听）是 `undefined`。 */
-export function currentOperation(): number | undefined {
-  return current.getStore();
+/** 在操作里写的行带上它的编号；不在任何操作里（启动、文件监听）的原样。 */
+export function tagged(line: string): string {
+  const id = current.getStore();
+  return id === undefined ? line : `#${id} ${line}`;
 }
 
 /**
  * 操作：一条协议命令从入口进来到返回（`CLAUDE.md` G）。两个入口（Router、右键菜单）都经过这里，
- * 记开头与结尾两行；里面的 git 命令、问答由各自的出口取 `currentOperation()` 带上编号。
+ * 记开头与结尾两行；里面的 git 命令、问答由各自的出口经 `tagged()` 带上编号。
  *
  * 两行而不并成一行：挂住的操作只有开头那行，看得出卡在哪。
  * 编号整个扩展共用一个计数，几块页面与菜单的操作不会重号。

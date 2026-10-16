@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { Repository } from "./core/repository.js";
 import { GitCli } from "./git/cli.js";
 import { createHandlers, type HandlerUi } from "./ipc/handlers.js";
+import { loggedUi } from "./ipc/loggedUi.js";
 import { Operations } from "./ipc/operation.js";
 import { Router, type Transport } from "./ipc/router.js";
 import { copyText } from "./vscode/clipboard.js";
@@ -58,21 +59,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
   // handler 用到的界面动作。对话框的标签页要等仓库找到才有（`dialogs` 在下面），
   // 而 handler 只在有仓库之后才会被调到。
-  const ui: HandlerUi = {
-    askBranchName,
-    choose,
-    confirm,
-    confirmRollback,
-    copyText,
-    notify,
-    notifyChoice,
-    openDiff,
-    openMergeEditor,
-    pick,
-    withProgress,
-    openDialog: (dialog, subject, title) => dialogs?.open(dialog, subject, title),
-    closeDialog: (dialog) => dialogs?.close(dialog),
-  };
+  // 套一层记录：问答与完成消息进日志（`ipc/loggedUi.ts`）。
+  const ui: HandlerUi = loggedUi(
+    {
+      askBranchName,
+      choose,
+      confirm,
+      confirmRollback,
+      copyText,
+      notify,
+      notifyChoice,
+      openDiff,
+      openMergeEditor,
+      pick,
+      withProgress,
+      openDialog: (dialog, subject, title) => dialogs?.open(dialog, subject, title),
+      closeDialog: (dialog) => dialogs?.close(dialog),
+    },
+    channel,
+  );
   let dialogs: DialogPanels | undefined;
   // 一次展开配一个 Router。收起再展开，握手会带来新代号，上一代的回复自动作废。
   const createRouter = (repository: Repository, transport: Transport, source: string): Router =>

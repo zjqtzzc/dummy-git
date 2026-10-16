@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GitFailureError } from "../../git/failure.js";
 import { brief, briefResult, briefString } from "../brief.js";
-import { currentOperation, type Log, Operations } from "../operation.js";
+import { type Log, Operations, tagged } from "../operation.js";
 
 /** 记下每一行与它的级别。 */
 function recorder(): { log: Log; lines: string[] } {
@@ -30,16 +30,16 @@ describe("Operations", () => {
 
   it("编号跨 await 还在；并发的两个各是各的", async () => {
     const operations = new Operations(recorder().log);
-    const seen: (number | undefined)[] = [];
+    const seen: string[] = [];
     const task = async () => {
-      const before = currentOperation();
+      const before = tagged("x");
       await tick();
-      seen.push(before, currentOperation());
+      seen.push(before, tagged("x"));
       return null;
     };
     await Promise.all([operations.run("a", "x", {}, task), operations.run("b", "y", {}, task)]);
-    expect(seen.sort()).toEqual([1, 1, 2, 2]);
-    expect(currentOperation()).toBeUndefined();
+    expect(seen.sort()).toEqual(["#1 x", "#1 x", "#2 x", "#2 x"]);
+    expect(tagged("x")).toBe("x");
   });
 
   it("git 拒绝记 warn，别的异常记 error；照样抛出", async () => {

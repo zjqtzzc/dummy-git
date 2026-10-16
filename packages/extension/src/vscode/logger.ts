@@ -4,7 +4,7 @@ import type { GitCli } from "../git/cli.js";
 import { LOCALE } from "../git/cli.js";
 import { getGitVersion, type RepositoryLocation } from "../git/commands/index.js";
 import type { GitLogger } from "../git/types.js";
-import { currentOperation } from "../ipc/operation.js";
+import { tagged } from "../ipc/operation.js";
 
 /**
  * 「输出」里的 Dummy Git（`CLAUDE.md` G）。带级别的频道：每行自带时间戳与级别，
@@ -24,11 +24,8 @@ export function createLogChannel(): vscode.LogOutputChannel {
  */
 export function createOutputLogger(channel: vscode.LogOutputChannel): GitLogger {
   return {
-    log: (line) => {
-      // 在某个操作里跑的命令带上它的编号；启动、文件监听引起的不带。
-      const id = currentOperation();
-      channel.info(id === undefined ? line : `#${id} ${line}`);
-    },
+    // 在某个操作里跑的命令带上它的编号；启动、文件监听引起的不带。
+    log: (line) => channel.info(tagged(line)),
   };
 }
 
