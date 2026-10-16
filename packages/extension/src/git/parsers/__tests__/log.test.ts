@@ -92,7 +92,7 @@ describe("parseLog：五种输入", () => {
 describe("parseLog：log.showSignature=true 不崩", () => {
   /**
    * 只把配置设成 true 然后跑是**无效**的测法：未签名的提交不产生额外输出。
-   * 所以 fixture 里的 `signed` 仓库有**真实的 ssh 签名提交**。
+   * 所以 fixture 里的 `signed` 仓库有**真实的 GPG 签名提交**。
    */
   it("先证明：不带 -c 时 git 确实会插入额外输出", async () => {
     // 这条断言存在的意义是防止将来 fixture 退化成「没有真签名」，
@@ -100,7 +100,7 @@ describe("parseLog：log.showSignature=true 不崩", () => {
     const raw = await cli.exec(["-c", "log.showSignature=true", "log", "--format=%H"], {
       cwd: fixtures.signed,
     });
-    expect(raw.stdout).toContain("No signature");
+    expect(raw.stdout).toContain("gpg: ");
   });
 
   it("我们的 skeletonArgs 带了 -c log.showSignature=false，解析正常", async () => {

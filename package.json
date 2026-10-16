@@ -10,6 +10,7 @@
     "lint": "biome check . && node scripts/check-assertions.mjs",
     "lint:fix": "biome check --write .",
     "test": "node scripts/test.mjs",
+    "test:old-git": "node scripts/old-git/test.mjs",
     "debug:setup": "node scripts/debug/setup.mjs",
     "build": "pnpm -r run build",
     "watch": "pnpm -r --parallel run watch",

@@ -55,7 +55,9 @@ const temps: string[] = [];
 export function makeTempRepo(name = "t"): string {
   const repo = mkdtempSync(join(tmpdir(), `dummygit-${name}-`));
   temps.push(repo);
-  git(repo, ["init", "-q", "-b", "main"]);
+  // 不用 `init -b main`：git 2.28 才有，最低版本是 2.25。
+  git(repo, ["init", "-q"]);
+  git(repo, ["symbolic-ref", "HEAD", "refs/heads/main"]);
   git(repo, ["config", "user.email", "t@example.com"]);
   git(repo, ["config", "user.name", "t"]);
   writeFileSync(join(repo, "f1"), "a\n");

@@ -67,7 +67,8 @@ mkdirSync(target, { recursive: true });
 for (const entry of readdirSync(target)) {
   rmSync(join(target, entry), { recursive: true, force: true });
 }
-git(target, ["init", "-q", "-b", "main"]);
+git(target, ["init", "-q"]);
+git(target, ["symbolic-ref", "HEAD", "refs/heads/main"]);
 
 /** 交给场景的工具。场景只用这几样，不直接碰路径与进程。 */
 const g = {

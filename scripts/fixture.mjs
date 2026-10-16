@@ -65,7 +65,7 @@ function run(repo, args, extraEnv = {}) {
   });
 }
 
-function commit(repo, message) {
+function commit(repo, message, extraEnv = {}) {
   const date = nextDate();
   run(repo, ["add", "-A"]);
   // 消息走 stdin 而非 -m：-m 传不了控制字符（见「奇异消息」那条提交）。
@@ -73,7 +73,13 @@ function commit(repo, message) {
   execFileSync("git", ["commit", "-q", "--file=-", "--cleanup=verbatim"], {
     cwd: repo,
     input: message,
-    env: { ...process.env, ...IDENTITY, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date },
+    env: {
+      ...process.env,
+      ...IDENTITY,
+      ...extraEnv,
+      GIT_AUTHOR_DATE: date,
+      GIT_COMMITTER_DATE: date,
+    },
   });
 }
 
@@ -89,11 +95,15 @@ function rename(repo, from, to) {
   renameSync(join(repo, from), join(repo, to));
 }
 
-/** 建一个空仓库。`-b main` 固定初始分支名，不受用户 init.defaultBranch 影响。 */
+/**
+ * 建一个空仓库。初始分支固定成 `main`，不受用户 init.defaultBranch 影响。
+ * 不用 `init -b main`：git 2.28 才有，最低版本是 2.25。
+ */
 function initRepo(name) {
   const repo = join(outDir, name);
   mkdirSync(repo, { recursive: true });
-  run(repo, ["init", "-q", "-b", "main"]);
+  run(repo, ["init", "-q"]);
+  run(repo, ["symbolic-ref", "HEAD", "refs/heads/main"]);
   resetClock();
   return repo;
 }
@@ -256,7 +266,8 @@ function buildConflict() {
 function buildTracking() {
   const remote = join(outDir, "remote.git");
   mkdirSync(remote, { recursive: true });
-  execFileSync("git", ["init", "-q", "--bare", "-b", "main", remote], { env: process.env });
+  execFileSync("git", ["init", "-q", "--bare", remote], { env: process.env });
+  execFileSync("git", ["--git-dir", remote, "symbolic-ref", "HEAD", "refs/heads/main"]);
 
   const repo = initRepo("tracking");
   write(repo, "a.txt", "one\n");
@@ -329,29 +340,35 @@ function buildDetached() {
  * 只把配置设成 true 然后跑，输出毫无变化，因为**未签名的提交不产生额外输出**。
  * 「跑了等于没跑」在输出上和「通过」长得一模一样。
  *
- * 用 ssh 签名（git ≥ 2.34）而不是 GPG：不需要密钥环、不需要交互、
- * `ssh-keygen` 到处都有。故意**不配** `gpg.ssh.allowedSignersFile`——
- * 验证失败反而让 git 多吐两行，正是我们要复现的破坏形态：
+ * 用 GPG 签名：git 2.25 就支持（ssh 签名要 2.34）。密钥环建在仓库里的 `gnupg/`（不进历史），
+ * 只在签名时用；测试读日志时用的是默认密钥环，里面没有这把公钥，验证失败反而让 git 多吐几行，
+ * 正是我们要复现的破坏形态：
  *
- *   error: gpg.ssh.allowedSignersFile needs to be configured ...
- *   No signature
- *   <hash>...        ← 记录被顶到第三行，hash 字段整个错位
+ *   gpg: Signature made ...
+ *   gpg: Can't check signature: No public key
+ *   <hash>...        ← 记录被顶到后面，hash 字段整个错位
  */
 function buildSigned() {
   const repo = initRepo("signed");
-  const key = join(repo, "signing-key");
-  execFileSync("ssh-keygen", ["-q", "-t", "ed25519", "-N", "", "-f", key, "-C", "fixture"], {
-    stdio: "pipe",
-  });
-  run(repo, ["config", "gpg.format", "ssh"]);
-  run(repo, ["config", "user.signingkey", `${key}.pub`]);
+  const gnupg = join(repo, "gnupg");
+  mkdirSync(gnupg, { mode: 0o700 });
+  const env = { GNUPGHOME: gnupg };
+  const gpg = (args) =>
+    execFileSync("gpg", ["--batch", "--pinentry-mode", "loopback", "--passphrase", "", ...args], {
+      env: { ...process.env, ...env },
+      stdio: "pipe",
+    });
+  gpg(["--quick-gen-key", "Fixture <fixture@example.com>", "ed25519", "sign", "never"]);
+  run(repo, ["config", "user.signingkey", "fixture@example.com"]);
   run(repo, ["config", "commit.gpgsign", "true"]);
-  // 密钥本身不能进历史，否则 status 里会多出两个文件
-  writeFileSync(join(repo, ".gitignore"), "signing-key\nsigning-key.pub\n");
+  // 密钥环本身不能进历史，否则 status 里会多出一堆文件
+  writeFileSync(join(repo, ".gitignore"), "gnupg/\n");
   write(repo, "a.txt", "one\n");
-  commit(repo, "signed commit\n");
+  commit(repo, "signed commit\n", env);
   write(repo, "b.txt", "two\n");
-  commit(repo, "second signed\n");
+  commit(repo, "second signed\n", env);
+  // 签名时起的 gpg-agent 不留着
+  execFileSync("gpgconf", ["--kill", "gpg-agent"], { env: { ...process.env, ...env } });
   return repo;
 }
 

@@ -76,7 +76,8 @@ function makeRepo() {
       stdio: "ignore",
       env: { ...process.env, ...AUTHOR_ENV },
     });
-  g("init", "-q", "-b", "main");
+  g("init", "-q");
+  g("symbolic-ref", "HEAD", "refs/heads/main");
   writeFileSync(join(repo, "f.txt"), "hi\n");
   g("add", "-A");
   g("commit", "-qm", "init");

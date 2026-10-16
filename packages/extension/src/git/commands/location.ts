@@ -37,7 +37,7 @@ export interface RepositoryLocation {
  * - `--absolute-git-dir`：直接给绝对路径（git 2.13 起）。
  * - `--git-common-dir`：**相对的是执行目录**（实测：根目录下给 `.git`，
  *   `x/y/` 下给 `../../.git`；worktree 里给绝对路径）。git 直到 2.31 才有
- *   `--path-format=absolute`，而最低版本定在 2.23（`DECISIONS.md`），所以自己解析。
+ *   `--path-format=absolute`，而最低版本定在 2.25（`DECISIONS.md`），所以自己解析。
  *
  * 另外两个是 git 给的真实路径（符号链接已展开），解析出来的这个也 `realpath` 一次，
  * 三者口径一致。

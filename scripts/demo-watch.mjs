@@ -46,7 +46,8 @@ const repo = mkdtempSync(join(tmpdir(), "watch-repo-"));
 const git = (args, opts = {}) =>
   execFileSync("git", args, { cwd: repo, stdio: "pipe", encoding: "utf8", ...opts });
 
-git(["init", "-q", "-b", "main"]);
+git(["init", "-q"]);
+git(["symbolic-ref", "HEAD", "refs/heads/main"]);
 git(["config", "user.email", "a@b.c"]);
 git(["config", "user.name", "a"]);
 

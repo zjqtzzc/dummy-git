@@ -54,7 +54,8 @@ const cli = new GitCli("git");
 function makeRepo() {
   const repo = mkdtempSync(join(tmpdir(), "race-repo-"));
   const git = (args) => execFileSync("git", args, { cwd: repo, stdio: "pipe" });
-  git(["init", "-q", "-b", "main"]);
+  git(["init", "-q"]);
+  git(["symbolic-ref", "HEAD", "refs/heads/main"]);
   git(["config", "user.email", "a@b.c"]);
   git(["config", "user.name", "a"]);
   writeFileSync(join(repo, "f1"), "a\n");

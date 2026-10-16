@@ -1602,13 +1602,18 @@ describe("分支右键：合并与变基", () => {
     expect(said).toEqual(["Rebasing onto feature…", "Already up to date"]);
   });
 
+  /** rebase 停在半路：git 2.26 起默认 merge 后端（`rebase-merge/`），之前是 apply 后端（`rebase-apply/`）。 */
+  const rebasing = (repo: string) =>
+    existsSync(join(repo, ".git", "rebase-merge")) ||
+    existsSync(join(repo, ".git", "rebase-apply"));
+
   it("变基冲突：停住", async () => {
     const repo = bothTouched("rebase-stop");
     const said = await run(repo, (h) =>
       h.rebase({ repo, start: "refs/heads/feature", startName: "feature" }),
     );
     expect(said).toEqual(["Rebasing onto feature…", "Stopped for conflicts"]);
-    expect(existsSync(join(repo, ".git", "rebase-merge"))).toBe(true);
+    expect(rebasing(repo)).toBe(true);
   });
 
   it("取回暂存的改动冲突：变基已经结束，工作区留下冲突", async () => {
@@ -1625,7 +1630,7 @@ describe("分支右键：合并与变基", () => {
       "Rebasing onto feature…",
       "Rebased onto feature. Applying the stashed changes has conflicts.",
     ]);
-    expect(existsSync(join(repo, ".git", "rebase-merge"))).toBe(false);
+    expect(rebasing(repo)).toBe(false);
     expect(existsSync(join(repo, ".git", "MERGE_HEAD"))).toBe(false);
     expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe("UU f1");
     expect(git(repo, ["rev-parse", "main"])).toBe(git(repo, ["rev-parse", "feature"]));
