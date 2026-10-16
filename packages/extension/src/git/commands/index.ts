@@ -36,7 +36,7 @@
  * | `isValidBranchName` | `check-ref-format --branch <名字>` | — | — |
  * | `getStashes` | `stash list -z --format=…` | — | — |
  * | `stashAll` | `stash push -u` | — | — |
- * | `stashPaths` | `stash push -u -- <路径…>` | — | — |
+ * | `stashPaths` | `write-tree` + `diff --cached --name-only --no-renames -z` + `restore --staged -- <没勾的>` + `stash push -u -- <路径…>` + `restore --source=<树> --staged -- <没勾的>` | `git restore` | 2.23 |
  * | `applyStash` | `stash apply <hash>` | — | — |
  * | `popStash` | `stash list …` 找序号 + `stash pop stash@{n}` | — | — |
  * | `dropStash` | `stash list …` 找序号 + `stash drop stash@{n}` | — | — |
