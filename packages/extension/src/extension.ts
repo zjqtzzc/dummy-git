@@ -16,6 +16,7 @@ import {
   createLogChannel,
   createOutputLogger,
   logEnvironment,
+  logRefresh,
   logRepository,
 } from "./vscode/logger.js";
 import { registerMenuCommands } from "./vscode/menu.js";
@@ -106,6 +107,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const repository = new Repository(startup.repositories[0], cli);
   context.subscriptions.push({ dispose: () => repository.dispose() });
   logRepository(channel, repository.location);
+  const stopLoggingRefresh = repository.onDidChange((domains) =>
+    logRefresh(channel, domains, operations),
+  );
+  context.subscriptions.push({ dispose: stopLoggingRefresh });
 
   // 文件监听跟着**仓库**走，不跟视图走：外部改动要一直被感知到，
   // 哪怕此刻面板收着（下次展开时状态才是对的）。

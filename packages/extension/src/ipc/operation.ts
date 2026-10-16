@@ -31,7 +31,25 @@ export function tagged(line: string): string {
 export class Operations {
   private next = 1;
 
+  private readonly running = new Set<number>();
+  private lastEnded: { readonly id: number; readonly at: number } | undefined;
+
   constructor(private readonly log: Log) {}
+
+  /**
+   * 此刻在跑哪些操作、上一个是哪个、多久前结束的。刷新那行用它：文件监听有防抖，
+   * 分不清是哪个操作引起的，只写这些事实，不猜。都没有时是空串。
+   */
+  context(): string {
+    const parts: string[] = [];
+    if (this.running.size > 0) {
+      parts.push(`进行中 ${[...this.running].map((id) => `#${id}`).join(" ")}`);
+    }
+    if (this.lastEnded !== undefined) {
+      parts.push(`#${this.lastEnded.id} 在 ${Date.now() - this.lastEnded.at}ms 前结束`);
+    }
+    return parts.join("；");
+  }
 
   async run<T>(
     source: string,
@@ -42,6 +60,7 @@ export class Operations {
     const id = this.next++;
     const started = Date.now();
     this.log.info(`#${id} ${source} → ${command} ${briefParams(params)}`);
+    this.running.add(id);
     try {
       const value = await current.run(id, task);
       const ms = Date.now() - started;
@@ -60,6 +79,9 @@ export class Operations {
       if (expected) this.log.warn(line);
       else this.log.error(line);
       throw error;
+    } finally {
+      this.running.delete(id);
+      this.lastEnded = { id, at: Date.now() };
     }
   }
 }

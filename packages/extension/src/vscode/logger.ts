@@ -1,11 +1,12 @@
 import { release } from "node:os";
+import { GitDomain } from "@dummy-git/shared";
 import * as vscode from "vscode";
 import type { GitCli } from "../git/cli.js";
 import { LOCALE } from "../git/cli.js";
 import { getGitVersion, type RepositoryLocation } from "../git/commands/index.js";
 import type { GitLogger } from "../git/types.js";
 import { briefGitCommand } from "../ipc/brief.js";
-import { tagged } from "../ipc/operation.js";
+import { type Operations, tagged } from "../ipc/operation.js";
 
 /**
  * 「输出」里的 Dummy Git（`CLAUDE.md` G）。带级别的频道：每行自带时间戳与级别，
@@ -72,4 +73,28 @@ export function logRepository(
 ): void {
   const shared = location.commonDir === location.gitDir ? "" : `, shared ${location.commonDir}`;
   channel.info(`Repository: ${location.root} (git dir ${location.gitDir}${shared})`);
+}
+
+/** 域在日志里的叫法（`CLAUDE.md` B.2：enum 值不拼进文字，经这张表）。 */
+const DOMAIN_NAMES: Readonly<Record<GitDomain, string>> = {
+  [GitDomain.Refs]: "分支与提交",
+  [GitDomain.Worktree]: "工作区",
+  [GitDomain.Stash]: "stash",
+  [GitDomain.Operation]: "进行中的操作",
+};
+
+/**
+ * 仓库变了、要刷新：记一行哪些域过期了，以及当时的操作情况（`Operations.context`）。
+ * 之后各页面重新拉数据的请求按时间就挨在这行后面。
+ */
+export function logRefresh(
+  channel: vscode.LogOutputChannel,
+  domains: ReadonlySet<GitDomain>,
+  operations: Operations,
+): void {
+  const names = Object.values(GitDomain)
+    .filter((domain) => domains.has(domain))
+    .map((domain) => DOMAIN_NAMES[domain]);
+  const context = operations.context();
+  channel.info(`刷新：${names.join("、")}${context === "" ? "" : `（${context}）`}`);
 }

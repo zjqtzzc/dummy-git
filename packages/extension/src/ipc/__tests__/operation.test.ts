@@ -57,6 +57,20 @@ describe("Operations", () => {
   });
 });
 
+describe("Operations.context：刷新时写当时的操作情况", () => {
+  it("没有操作时为空；进行中的列出来；结束的写多久前", async () => {
+    const operations = new Operations(recorder().log);
+    expect(operations.context()).toBe("");
+    let during = "";
+    await operations.run("m", "stash", {}, async () => {
+      during = operations.context();
+      return null;
+    });
+    expect(during).toBe("进行中 #1");
+    expect(operations.context()).toMatch(/^#1 在 \d+ms 前结束$/);
+  });
+});
+
 describe("慢：超过 1 秒标 (slow)、记 warn", () => {
   afterEach(() => vi.restoreAllMocks());
 
