@@ -10,7 +10,7 @@
  */
 import { spawnSync } from "node:child_process";
 import { userInfo } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
