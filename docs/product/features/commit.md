@@ -5,7 +5,7 @@
 
 ## 位置与布局
 
-- 活动栏上 Dummy Git 自己的按钮（图标 `resources/log.svg`），点开是侧栏的 Commit 面板。不挂进源代码管理面板（`product/never.md`），也不挂进资源管理器等别人的容器。
+- 活动栏上 Dummy Git 自己的按钮（图标 `resources/log.svg`），点开是侧栏的 Commit 面板。不挂进源代码管理面板，也不挂进资源管理器等别人的容器（让用户自选挂靠在 `product/backlog.md`「暂缓」）。
 - 从上到下：
   - **Commit / Stash 切换栏**；
   - **工具栏**：Rollback、Stash、全部展开、全部收起。Rollback 放在这里，远离提交按钮，防止误点；

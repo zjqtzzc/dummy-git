@@ -284,7 +284,6 @@ IntelliJ：取消信号来自 IDE 全局的 `ProgressIndicator`/`ProcessCanceled
 - 标签可用宽度（`getAvailableWidth`）：非紧凑模式下，至少能占「文字区的一半」或「文字区 − 80px」，取较大者，即说明文字至少保留 80px。
 - 标签名放不下且超过 22 个字符时截断（`LabelPainter.shortenRefName`）：先把第一个 `/` 之前的部分换成 `..`（`../yuancai_add…`），再在末尾加省略号。
 - 分组（`GitRefManager.groupForTable`）：当前分支单独一组排第一；**本地分支和它跟踪的远程分支合并成一个标签**；其余按类型分组；HEAD 并进第一组。
-  注意：我们的需求「永不做」里有「ref 标签收敛：同名本地/远程合并」，与 IDEA 的默认做法相反。
 - 标签顺序（`GitLabelComparator`）：HEAD → 当前分支 → master/main → origin/master|main → 本地分支 → 远程分支 → tag。
 
 ### 7.8 两处高亮（不在第 8 阶段需求里）

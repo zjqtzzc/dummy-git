@@ -96,13 +96,21 @@
 
 - 上架 VS Code 商店（2026-10-16 暂缓：商店返回 429，账号可能被封）。已定：商店页面与描述只用中文；先不放仓库链接（不公开源码，打包带 `--allow-missing-repository`）。还缺：商店 README、128×128 图标、CHANGELOG、版本号改 0.1.0、`keywords` 与 `galleryBanner`、把打包脚本从本地 `.notes/` 搬进 `scripts/`（输出放 `.tmp/`），并写发布步骤。
 
-## 参照里有、还没想清楚要不要的
+## 暂缓
 
-照搬自 IDEA、GitLens 的功能清单，还没回答「我们这边谁需要它」（`CLAUDE.md` D.6(c)）。要做哪一条，先回答这个问题，再移到上面对应的组里；确定不要的移到 `product/never.md`。
+照搬自 IDEA、GitLens 的功能清单，以及以前定过「暂时不做」的。都还没回答「我们这边谁需要它」（`CLAUDE.md` D.6(c)）。要做哪一条，先回答这个问题，再移到上面对应的组里；确定永远不要的，移到 `product/never.md` 并写上理由。
 
-- Log：message 里的 URL 高亮可点；Autolink（issue / PR 引用的模式匹配，反查标题）；提交签名（GPG / SSH）验证状态；每个文件的增删行数；Copy Patch to Clipboard（单文件 / 多文件）。
-- 提交图：折叠 / 展开整张图；ref 标签的对齐方式与分组折叠、紧凑视图、彩色重叠（16px / 5px）、tag 名称单独显示开关；按 ref 类型隐藏 / 显示图上的噪声；后台建索引，未建索引的提交单独着色；cherry-pick 来的提交高亮；合并提交 / 当前分支的提交高亮。
-- 分支：已跟踪分支的操作单独成子菜单。
-- Commit 面板：按文件数阈值自动选树还是平铺；内置检查（冲突未解决、CRLF 混用、大文件、用户名未配置…）。
-- 改写历史：`fixup!` / `squash!` / `amend!` 前缀自动补全；rebase 对话框里的内联帮助。
-- 文件历史与比较：独立的 File History 视图；Line History；跟踪重命名；跟随光标与编辑器切换；单条历史版本上 Annotate；整文件 blame（gutter 逐行显示最后改动的提交、作者、时间）、当前行 blame、跳到这次改动之前的 blame、标注里上下逐个改动跳转；Diff with Revision（任意历史版本，From 变体可以先选起点）；目录级 diff；单文件 diff / 单文件取出；Open Changed File Diffs 系列（全部 / 逐个 / 与 merge-base / 与工作区）；Compare With Branch（把两个分支的差异当文件树浏览）；Diff With Local（某个 ref 与当前工作区整体比较）；比较视图的上下两个提交列表分别记忆折叠状态；保存的比较可复用、可交换方向（A..B ↔ B..A）。
+- **Log**：message 里的 URL 高亮可点；Autolink（issue / PR 引用的模式匹配，反查标题）；提交签名（GPG / SSH）验证状态；每个文件的增删行数；Copy Patch to Clipboard（单文件 / 多文件）；提交 hover 气泡预览；按提交日期 vs 作者日期排序；Pin：钉住某个提交，不随选择变化；Select in Log：从详情反查跳回列表并选中；详情模式（单提交 / 多选 / 比较）；详情的 diff 预览停靠位置可切（底部 ↔ 右侧）；另开一个 Log 视图（带独立的过滤条件）；输入框直接 checkout 一个 ref；History Up to Here；滚动预读 3 行；文件列表内搜索 / 过滤。
+- **搜索**：搜索操作符语法（`message:` / `author:` / `file:` …）；全词匹配；高亮匹配 ↔ 只显示匹配行；聚焦搜索框的快捷键；按说明搜索走日志索引（不每次现查 `git log`）；独立的 Git tab（搜 hash、分支、tag、说明）；Search & Compare 持久化视图。
+- **提交图**：折叠 / 展开整张图；ref 标签的对齐方式与分组折叠、紧凑视图、彩色重叠（16px / 5px）、tag 名称单独显示开关；HEAD 标签只显示图标；按 ref 类型隐藏 / 显示图上的噪声；后台建索引，未建索引的提交单独着色；cherry-pick 来的提交高亮；合并提交 / 当前分支的提交高亮；车道密度运行时切换；整图样式可切（auto / list / table）；Pin 分支泳道到边缘；minimap 滚动条标记；图自带可收起的侧栏（按分支 / PR / worktree）；图按 worktree 收窄范围；从图直接 Pull / Push / Force Push，直接建 / 删分支、tag、worktree；图拉出去做独立标签 / 新窗口，支持多实例；stash 内联显示在提交列表里（可分别开关）。
+- **分支**：已跟踪分支的操作单独成子菜单；最近使用的分支单独一节；视图排序（名称 / 日期，升序 / 降序）；分支比较基准内联显示（相对选定基准的 ahead / behind）；Merge Target（独立于 upstream 的第二个基准）；Checkout with Update（checkout 同时 pull）；Merge / Rebase 到 upstream；独立的 Worktrees 视图；Worktree 感知的文件操作。
+- **同步**：记住每个仓库上次输入的推送目标；推送前检查框架（可插拔，独立于 git hooks）；Push 对话框可插件化定制。
+- **Commit 面板**：按文件数阈值自动选树还是平铺；内置检查（冲突未解决、CRLF 混用、大文件、用户名未配置…）；提交说明模板（读 `.gitmessage`）；提交前检查框架（独立于 git hooks）；跳过 git hooks 提交的开关；Reformat Commit Message；Stage / Unstage 单个文件；行级回滚（编辑器 gutter 里直接 revert 某几行）；把 gutter 里的改动行移到另一个 changelist；Restore File 到指定 / 上一个版本；「提交并推送」复合按钮。
+- **Stash**：Unstash As（用对话框，可以新建分支接住或改名后 apply）；Clear All Stashes；Rollback 的「delete local copies」选项、丢弃后可恢复。
+- **冲突**：独立的 Git Conflicts 工具窗口（跨仓库列出全部冲突文件）；冲突标记计数；编辑器旁的冲突通知条；SCM 资源行上的冲突入口；import 语句块自动合并。
+- **改写历史**：`fixup!` / `squash!` / `amend!` 前缀自动补全；rebase 对话框里的内联帮助；Rebase 摘要预览卡片（执行前先看计划）；Rebase 暂停原因分类（edit / reword / break / conflict / exec）；Rebase 相关设置集中成一页；图形界面 ↔ 纯文本编辑 todo 互切；Reset 到 tag / tip；多仓库批量 reset。
+- **对话框**：弹出面板可拖拽调整大小并记忆；改动统计 legend（新增 / 修改 / 删除各多少个文件）；一个都不选时 OK 按钮禁用；选项跨会话记忆。
+- **文件历史与比较**：独立的 File History 视图（编辑器、资源管理器右键 Show File History）；Line History、按行追溯（Diff Line with Previous / with Working）；跟踪重命名；跟随光标与编辑器切换；单条历史版本上 Annotate；整文件 blame（gutter 逐行显示最后改动的提交、作者、时间）、当前行 blame、跳到这次改动之前的 blame、标注里上下逐个改动跳转；Diff with Revision（任意历史版本，From 变体可以先选起点）；目录级 diff；单文件 diff / 单文件取出；Open Changed File Diffs 系列（全部 / 逐个 / 与 merge-base / 与工作区）；Compare With Branch、Diff With Local、与 merge-base 比较、祖先与工作区比较（差异当文件树浏览）；两步式任意两个版本比较（Select for Compare / Compare with Selected）；多选提交互相比较；比较视图的两个提交列表分别记忆折叠状态；保存的比较可复用、可交换方向；Merge Changes with Working（把历史版本的改动并进工作区，而不是覆盖）。
+- **diff**：外部 diff 工具集成（单文件 / 全部改动）；组合 diff 视图（多文件改动在一个滚动视图里连续看）；二进制 / 图片 diff；文件热力图（按改动新旧着色）；文件间导航快捷键（⌘F7 / ⇧⌘F7）；打开 diff 时不隐藏侧边栏；diff 编辑器右键 Edit Source。
+- **界面与配置**：视图挂靠进原生 SCM 面板或独立成侧栏，用户自选并可互切；视图整体显隐；面板标题栏的 Refresh；配置项（每页条数、自动 fetch、图形密度、默认视图）；整套布局可命名保存 / 应用 / 重置；首次配置的通知提示；GPG Agent 配置引导（配好 pinentry）。
+- **统计**：按提交 / 按贡献者聚合；Visualize History；Copy 系列与 Deep Link（`vscode://` 直跳仓库、分支、提交）。
