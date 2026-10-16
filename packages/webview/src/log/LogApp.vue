@@ -21,6 +21,7 @@ import {
   DeleteTargetKind,
   type StartPoint,
 } from "../logic/log/branchTree.js";
+import { commitDetailsView } from "../logic/log/commitDetails.js";
 import { commitDiffSides, commitFileEntry } from "../logic/log/commitDiff.js";
 import { commitCopyText } from "../logic/log/copy.js";
 import {
@@ -70,6 +71,11 @@ const selected = ref<string>();
 const files = ref<CommitFileChange[]>([]);
 /** 右栏只有一组，没有标题。 */
 const fileGroups = computed(() => [{ id: "files", entries: files.value.map(commitFileEntry) }]);
+/** 右栏下半部分：选中提交的详情。没有选中、或详情还没取到时缺席，那块留空。 */
+const selectedDetails = computed(() => {
+  const commit = selected.value === undefined ? undefined : details.value.get(selected.value);
+  return commit === undefined ? undefined : commitDetailsView(commit);
+});
 /** 右栏正在取选中提交的文件。 */
 const filesLoading = ref(false);
 const list = ref<InstanceType<typeof CommitList>>();
@@ -694,7 +700,18 @@ onUnmounted(() => resizes.disconnect());
           <p v-if="filesLoading" class="dim loading">Loading…</p>
           <FileTree v-else :groups="fileGroups" @open="openFile" />
         </div>
-        <div slot="end" class="details"></div>
+        <div slot="end" class="details">
+          <template v-if="selectedDetails !== undefined">
+            <p v-if="selectedDetails.subject !== ''" class="subject">{{ selectedDetails.subject }}</p>
+            <p v-if="selectedDetails.body !== ''" class="body">{{ selectedDetails.body }}</p>
+            <p class="meta">
+              <span class="hash">{{ selectedDetails.hash }}</span>{{ selectedDetails.author }}
+            </p>
+            <p v-if="selectedDetails.committer !== undefined" class="meta dim">
+              {{ selectedDetails.committer }}
+            </p>
+          </template>
+        </div>
       </vscode-split-layout>
     </vscode-split-layout>
   </vscode-split-layout>
@@ -719,8 +736,28 @@ onUnmounted(() => resizes.disconnect());
   flex: 1;
   min-width: 0;
 }
+/* 提交详情：文字可以选中复制。说明照原样排，保留换行；长单词（URL、路径）在任意处折行。 */
 .details {
   height: 100%;
   overflow: auto;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border-top: 1px solid var(--vscode-panel-border);
+  user-select: text;
+}
+.details p {
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+.subject,
+.body {
+  white-space: pre-wrap;
+}
+.subject {
+  font-weight: bold;
+}
+.hash {
+  margin-right: 8px;
+  font-family: var(--vscode-editor-font-family);
 }
 </style>
