@@ -230,9 +230,15 @@ export class Router {
     };
 
     try {
-      const value: CommandResult<K> = await this.hooks.operation(command, params, () =>
-        this.handlers[command](params),
-      );
+      // 在操作里交给错误关口：详情那行带上操作编号。
+      const value: CommandResult<K> = await this.hooks.operation(command, params, async () => {
+        try {
+          return await this.handlers[command](params);
+        } catch (error) {
+          this.hooks.report(error);
+          throw error;
+        }
+      });
       respondOnce({ kind: MessageKind.Response, generation, id, result: ResponseKind.Ok, value });
     } catch (error) {
       const protocolError = toProtocolError(error);
@@ -243,8 +249,7 @@ export class Router {
         result: ResponseKind.Error,
         error: protocolError,
       });
-      // 结尾那行由操作记，详情由关口写（report）。
-      this.hooks.report(error);
+      // 结尾那行由操作记，详情已在操作里交给关口。
     }
   }
 

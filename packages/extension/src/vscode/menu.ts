@@ -18,7 +18,12 @@ import type { ErrorGate } from "./errorGate.js";
 interface MenuCommand {
   /** VS Code 命令 id，与 `package.json` 一致。 */
   readonly id: string;
-  readonly run: (handlers: HandlerMap, operations: Operations, context: unknown) => Promise<void>;
+  readonly run: (
+    handlers: HandlerMap,
+    operations: Operations,
+    errors: ErrorGate,
+    context: unknown,
+  ) => Promise<void>;
 }
 
 function menuCommand<K extends CommandName>(
@@ -29,11 +34,21 @@ function menuCommand<K extends CommandName>(
 ): MenuCommand {
   return {
     id,
-    run: async (handlers, operations, context) => {
+    run: async (handlers, operations, errors, context) => {
       const parsed = isRecord(context) ? parseParams(command, params(context)) : undefined;
       if (parsed === undefined) throw new Error(`Rejected menu command ${id}: invalid context`);
       // 来源记菜单命令 id：一看就知道是右键菜单里的哪一项。
-      await operations.run(id, command, parsed, () => handlers[command](parsed));
+      // 在操作里交给错误关口，详情那行带上操作编号；外面不再报。
+      await operations
+        .run(id, command, parsed, async () => {
+          try {
+            return await handlers[command](parsed);
+          } catch (error) {
+            errors.report(error);
+            throw error;
+          }
+        })
+        .catch(() => {});
     },
   };
 }
@@ -142,7 +157,8 @@ export function registerMenuCommands(
   return vscode.Disposable.from(
     ...MENU_COMMANDS.map(({ id, run }) =>
       vscode.commands.registerCommand(id, (context: unknown) =>
-        run(handlers, operations, context).catch((error: unknown) => errors.report(error)),
+        // 这里接住的只剩 context 不合法：handler 的错误已在操作里交给关口。
+        run(handlers, operations, errors, context).catch((error: unknown) => errors.report(error)),
       ),
     ),
   );

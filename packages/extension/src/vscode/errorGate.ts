@@ -6,8 +6,10 @@ import { UserFacingError } from "../ipc/userFacingError.js";
  * 本文件不 import vscode，为的是能在纯 node 下测去重与文案。
  */
 export interface ErrorSink {
-  /** 写进输出面板。 */
-  readonly log: (text: string) => void;
+  /** 写进日志，error 级别：我们的 bug。 */
+  readonly error: (text: string) => void;
+  /** 写进日志，warn 级别：已知的情况（`CLAUDE.md` G）。 */
+  readonly warn: (text: string) => void;
   /** 弹错误通知。**通知关闭时才 resolve**——去重靠这一点知道它还开着没有。 */
   readonly show: (summary: string) => Promise<void>;
 }
@@ -28,7 +30,9 @@ export class ErrorGate {
   report(error: unknown): void {
     const { summary, detail } = describeError(error);
     // 日志每次都写：事后排查要看到每一次，去重只针对打扰人的通知。
-    this.sink.log(detail);
+    // git 拒绝不写：那条命令连同 stderr 已经记过（`cli.ts`），操作结尾也记了，不写第三遍。
+    if (error instanceof UserFacingError) this.sink.warn(detail);
+    else if (!(error instanceof GitFailureError)) this.sink.error(detail);
     if (this.open.has(summary)) return;
     this.open.add(summary);
     void this.sink.show(summary).finally(() => this.open.delete(summary));

@@ -46,7 +46,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // 未知错误的统一出口（`ARCHITECTURE.md` 第 15 题）：输出面板写全，弹一条通知，
   // 点「Show Output」跳到输出面板。去重与文案在可在纯 node 下测的 errorGate.ts 里。
   const errors = new ErrorGate({
-    log: (text) => channel.error(text),
+    // 在操作里报的带上编号（Router 与菜单在操作里交给关口）。
+    error: (text) => channel.error(tagged(text)),
+    warn: (text) => channel.warn(tagged(text)),
     show: async (summary) => {
       const pick = await vscode.window.showErrorMessage(`Dummy Git: ${summary}`, "Show Output");
       if (pick !== undefined) channel.show();

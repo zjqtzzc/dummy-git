@@ -14,7 +14,8 @@ function fakeSink() {
     /** 关掉最早那条还开着的通知。 */
     closeOne: () => closers.shift()?.(),
     sink: {
-      log: (text: string) => logged.push(text),
+      error: (text: string) => logged.push(`error ${text}`),
+      warn: (text: string) => logged.push(`warn ${text}`),
       show: (summary: string) =>
         new Promise<void>((resolve) => {
           shown.push(summary);
@@ -25,6 +26,17 @@ function fakeSink() {
 }
 
 describe("ErrorGate：未知错误的统一出口", () => {
+  it("日志：bug 记 error、已知情况记 warn、git 拒绝不另记（命令行那行已有 stderr）", () => {
+    const f = fakeSink();
+    const gate = new ErrorGate(f.sink);
+    gate.report(new UserFacingError("Nothing to push"));
+    gate.report(new GitFailureError(["push"], 1, "rejected"));
+    gate.report(new Error("boom"));
+    expect(f.logged).toHaveLength(2);
+    expect(f.logged[0]).toBe("warn Nothing to push");
+    expect(f.logged[1]).toMatch(/^error Error: boom/);
+  });
+
   it("同一条通知还开着时不再弹，但日志每次都写", () => {
     const f = fakeSink();
     const gate = new ErrorGate(f.sink);
