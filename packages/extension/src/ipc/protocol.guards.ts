@@ -282,6 +282,13 @@ const PARAM_GUARDS = {
     const dialog = asDialogKind(raw["dialog"]);
     return dialog === undefined ? undefined : { dialog };
   },
+  reportError: (raw: Record<string, unknown>) => {
+    const message = raw["message"];
+    const stack = raw["stack"];
+    return typeof message === "string" && typeof stack === "string"
+      ? { message, stack }
+      : undefined;
+  },
   copyText: (raw: Record<string, unknown>) => {
     const text = raw["text"];
     return typeof text === "string" ? { text } : undefined;

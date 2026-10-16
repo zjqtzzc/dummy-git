@@ -63,6 +63,7 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     pickAuthor: async () => null,
     pickPath: async () => null,
     copyText: async () => null,
+    reportError: async () => null,
     openMergeEditor: async () => null,
     markResolved: async () => null,
     resetTo: async () => null,
@@ -427,6 +428,10 @@ describe("Router：边界校验（CLAUDE.md C.1）", () => {
           return null;
         },
         copyText: async () => {
+          ran = true;
+          return null;
+        },
+        reportError: async () => {
           ran = true;
           return null;
         },

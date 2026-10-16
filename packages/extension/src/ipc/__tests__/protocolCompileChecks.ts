@@ -95,6 +95,7 @@ export const _baseline = defineHandlers({
   pickAuthor: async (): Promise<PickedAuthor | null> => null,
   pickPath: async (): Promise<string | null> => null,
   copyText: openDiffStub,
+  reportError: openDiffStub,
   openMergeEditor: openDiffStub,
   markResolved: openDiffStub,
   resetTo: openDiffStub,

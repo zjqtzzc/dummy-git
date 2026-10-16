@@ -52,12 +52,24 @@ export class CommandFailedError extends Error {
   }
 }
 
+/** 异常送去扩展侧日志的出口（`main.ts` 接上）。没接时只写控制台。 */
+let sink: ((message: string, stack: string) => void) | undefined;
+
+/** 接上送异常的出口。每块页面一个 `Client`，由 `main.ts` 在建好它之后调一次。 */
+export function sendReportsTo(send: (message: string, stack: string) => void): void {
+  sink = send;
+}
+
 /**
- * 请求失败已由扩展侧的错误关口弹过通知、写过输出面板（`ARCHITECTURE.md` 第 15 题），
- * 这里不再显示第二遍。webview 自己代码里的错误扩展侧不知道，写到开发者工具的控制台。
+ * 请求失败已由扩展侧的错误关口弹过通知、写过日志（`ARCHITECTURE.md` 第 15 题），
+ * 这里不再报第二遍。webview 自己代码里的错误扩展侧不知道：写到开发者工具的控制台，
+ * 同时送一份给扩展记进日志（`CLAUDE.md` G）——用户贴来的日志里才看得到。
  */
 export function report(cause: unknown): void {
-  if (!(cause instanceof CommandFailedError)) console.error(cause);
+  if (cause instanceof CommandFailedError) return;
+  console.error(cause);
+  if (cause instanceof Error) sink?.(cause.message, cause.stack ?? "");
+  else sink?.(String(cause), "");
 }
 
 /** 只是给 `pending` 的签名取个名字。 */

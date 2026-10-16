@@ -24,6 +24,7 @@ const ANSWERING: HandlerUi = {
     return value;
   },
   copyText: async () => undefined,
+  logWebviewError: () => undefined,
   openDialog: () => undefined,
   closeDialog: () => undefined,
   openDiff: async () => undefined,

@@ -129,6 +129,8 @@ export interface HandlerUi {
   readonly pick: (title: string, items: readonly PickItem[]) => Promise<number | undefined>;
   /** 打开合并编辑器（`vscode/mergeEditor.ts`）。 */
   readonly openMergeEditor: (root: string, sides: MergeSides) => Promise<void>;
+  /** webview 的异常写进日志（error 级别）。 */
+  readonly logWebviewError: (message: string, stack: string) => void;
   /** 写进系统剪贴板（`vscode/clipboard.ts`）。 */
   readonly copyText: (text: string) => Promise<void>;
   /** 状态栏上几秒的一句话：立刻完成、不走进度出口的操作说做完了什么。 */
@@ -340,6 +342,10 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         currentTitle: titles.current,
         incomingTitle: titles.incoming,
       });
+      return null;
+    },
+    reportError: async ({ message, stack }) => {
+      ui.logWebviewError(message, stack);
       return null;
     },
     copyText: async ({ text }) => {

@@ -1,6 +1,12 @@
 import { GitDomain, GitErrorCode, MessageKind, ResponseKind } from "@dummy-git/shared";
-import { describe, expect, it } from "vitest";
-import { Client, type ClientTransport, CommandFailedError } from "../client.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  Client,
+  type ClientTransport,
+  CommandFailedError,
+  report,
+  sendReportsTo,
+} from "../client.js";
 
 const GEN = "gen-a";
 
@@ -172,5 +178,23 @@ describe("Client：代号与校验", () => {
 
     expect(await stillPending(pending)).toBe(true);
     expect(events).toBe(0);
+  });
+});
+
+describe("report：页面自己的异常送一份给扩展", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("自己的异常送去（消息与调用栈）；请求失败不送（扩展侧已经记过）", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const sent: [string, string][] = [];
+    sendReportsTo((message, stack) => void sent.push([message, stack]));
+    const bug = new Error("boom");
+    report(bug);
+    report("not an error");
+    report(new CommandFailedError("getStatus", "fatal: x"));
+    expect(sent).toEqual([
+      ["boom", bug.stack ?? ""],
+      ["not an error", ""],
+    ]);
   });
 });

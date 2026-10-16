@@ -1,9 +1,10 @@
 import * as vscode from "vscode";
 import { Repository } from "./core/repository.js";
 import { GitCli } from "./git/cli.js";
+import { withAttached } from "./ipc/brief.js";
 import { createHandlers, type HandlerUi } from "./ipc/handlers.js";
 import { loggedUi } from "./ipc/loggedUi.js";
-import { Operations } from "./ipc/operation.js";
+import { Operations, tagged } from "./ipc/operation.js";
 import { Router, type Transport } from "./ipc/router.js";
 import { copyText } from "./vscode/clipboard.js";
 import { choose, confirm, confirmRollback, notifyChoice } from "./vscode/confirm.js";
@@ -68,6 +69,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       confirm,
       confirmRollback,
       copyText,
+      logWebviewError: (message, stack) =>
+        channel.error(tagged(withAttached(`webview 异常：${message}`, stack))),
       notify,
       notifyChoice,
       openDiff,

@@ -13,8 +13,8 @@ const STRING_CHARS = 120;
 const LIST_ITEMS = 3;
 /** git 命令行最多列几个参数（选项都在前面，后面多是路径）。 */
 const GIT_ARGS = 12;
-/** stderr 最多留几行。 */
-const STDERR_LINES = 5;
+/** 附在一行下面的多行内容（stderr、调用栈）最多留几行。 */
+const ATTACHED_LINES = 5;
 /** 超过这么久算慢：行尾标 `(slow)`，记 warn。操作与 git 命令共用。 */
 export const SLOW_MS = 1000;
 
@@ -79,13 +79,18 @@ export function briefGitCommand(record: GitCommandRecord): {
   const more = record.args.length > GIT_ARGS ? ` …（共 ${record.args.length} 个参数）` : "";
   const slow = record.ms > SLOW_MS;
   const head = `> git ${shown.join(" ")}${more} [${record.ms}ms] ${record.outcome}${slow ? " (slow)" : ""}`;
-  const lines = record.stderr
+  return { line: withAttached(head, record.stderr), slow };
+}
+
+/** 一行，下面缩进附上多行内容（stderr、调用栈），最多 `ATTACHED_LINES` 行。内容为空就只有那一行。 */
+export function withAttached(head: string, text: string): string {
+  const lines = text
     .trimEnd()
     .split("\n")
     .filter((line) => line !== "");
-  const kept = lines.slice(0, STDERR_LINES).map((line) => `    ${line}`);
-  if (lines.length > STDERR_LINES) kept.push(`    …（共 ${lines.length} 行）`);
-  return { line: [head, ...kept].join("\n"), slow };
+  const kept = lines.slice(0, ATTACHED_LINES).map((line) => `    ${line}`);
+  if (lines.length > ATTACHED_LINES) kept.push(`    …（共 ${lines.length} 行）`);
+  return [head, ...kept].join("\n");
 }
 
 function clip(line: string): string {

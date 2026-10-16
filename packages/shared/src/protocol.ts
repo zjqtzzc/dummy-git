@@ -330,6 +330,11 @@ export interface Commands {
     params: { repo: string };
     result: string | null;
   };
+  /** webview 自己代码里的异常：记进扩展的日志（error 级别）。`stack` 没有时是空串。 */
+  reportError: {
+    params: { message: string; stack: string };
+    result: null;
+  };
   /** 把 `text` 写进系统剪贴板（复制提交说明、hash、分支名）。 */
   copyText: {
     params: { text: string };
