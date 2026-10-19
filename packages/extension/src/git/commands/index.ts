@@ -49,8 +49,7 @@
  * | `abortInProgress` | 同上四种的 `--abort` | — | — |
  * | `mergeRef` | `merge -m <说明> <引用>` | — | — |
  * | `rebaseOnto` | `rebase --autostash <引用> [<分支>]` | `--autostash` | 2.6 |
- * | `cherryPickCommit` | `cherry-pick --no-edit <hash>` | — | — |
- * | `revertCommit` | `revert --no-edit <hash>` | — | — |
+ * | `replayCommits` | `cherry-pick` / `revert --no-edit --stdin`，变空时 `--skip` | `--skip` | **2.23** |
  * | `resetTo` | `reset -q --soft/--mixed/--keep/--hard <hash>` | — | — |
  * | `rewordCommit` | `rev-list --first-parent --parents HEAD --not <hash>^@` + `config --bool --get commit.gpgSign` + `stripspace` + 逐条 `cat-file commit` 与 `commit-tree [-S] <tree> -p <父>` + `update-ref -m reword HEAD <新> <旧>` | — | — |
  * | `rollback` | `restore --source=HEAD --staged --worktree -- <路径…>` | `git restore` | **2.23** |
@@ -89,13 +88,14 @@ export { amendCommit, commit } from "./commit.js";
 export { getConflictStages, getFileContent, getStageContent } from "./content.js";
 export { getIdentity, type Identity } from "./identity.js";
 export {
-  cherryPickCommit,
   MergeOutcome,
   mergeRef,
   RebaseOutcome,
+  type ReplayKind,
   ReplayOutcome,
+  type ReplayResult,
   rebaseOnto,
-  revertCommit,
+  replayCommits,
 } from "./integrate.js";
 export { getRepositoryLocation, type RepositoryLocation } from "./location.js";
 export { LockPolicy } from "./lock.js";

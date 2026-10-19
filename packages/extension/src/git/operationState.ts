@@ -217,6 +217,14 @@ async function readRebase(
   };
 }
 
+/**
+ * `.git/sequencer` 在：一串 cherry-pick / revert 还没做完。
+ * 变空、碰到合并提交时 git 只留下它，没有 `CHERRY_PICK_HEAD` / `REVERT_HEAD`，`readOperation` 看不出来。
+ */
+export async function inSequence(gitDir: string): Promise<boolean> {
+  return isDirectory(join(gitDir, "sequencer"));
+}
+
 async function readText(path: string): Promise<string | undefined> {
   try {
     return await readFile(path, "utf8");

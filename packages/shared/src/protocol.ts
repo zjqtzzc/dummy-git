@@ -253,7 +253,6 @@ export interface Commands {
     params: { repo: string; start: string; startName: string };
     result: null;
   };
-  /** 把 `hash` 这条提交摘到当前分支。`hash` 是完整 hash。不确认。工作区已有的改动交给 git。 */
   /**
    * 把当前分支 reset 到 `hash`（完整 hash）。扩展弹模态框选 Soft / Mixed / Keep / Hard，对话框即二次确认；取消什么都不做。
    */
@@ -269,13 +268,20 @@ export interface Commands {
     params: { repo: string; hash: string; message: string };
     result: null;
   };
+  /**
+   * 把 `hashes`（完整 hash，至少一个）按给的顺序摘到当前分支，顺序由调用方排（页面排成从旧到新）。
+   * 不确认。工作区已有的改动交给 git。改动已经在当前分支里的自动跳过。
+   */
   cherryPick: {
-    params: { repo: string; hash: string };
+    params: { repo: string; hashes: readonly string[] };
     result: null;
   };
-  /** 为 `hash` 做一次反向提交。`hash` 是完整 hash。不确认。工作区已有的改动交给 git。 */
+  /**
+   * 按给的顺序为 `hashes`（完整 hash，至少一个）各做一次反向提交，顺序由调用方排（页面排成从新到旧）。
+   * 不确认。工作区已有的改动交给 git。已经撤过的自动跳过。
+   */
   revert: {
-    params: { repo: string; hash: string };
+    params: { repo: string; hashes: readonly string[] };
     result: null;
   };
   /** 切到一个本地分支。入口是分支树的右键菜单（协议的第二个入口，见 `extension/src/vscode/menu.ts`）。 */

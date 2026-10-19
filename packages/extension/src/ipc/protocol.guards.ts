@@ -141,7 +141,21 @@ function asRebaseTarget(
   return asNamedStart(raw, asRef(raw["start"]) ?? asCommit(raw["start"]));
 }
 
-/** 摘一条提交、做反向提交：仓库和完整 hash。 */
+/** 摘、撤一串提交：仓库和完整 hash 的列表，至少一个，每个都要是完整 hash。 */
+function asCommitsTarget(
+  raw: Record<string, unknown>,
+): { repo: string; hashes: readonly string[] } | undefined {
+  const repo = raw["repo"];
+  const hashes = asStringArray(raw["hashes"]);
+  return typeof repo === "string" &&
+    hashes !== undefined &&
+    hashes.length > 0 &&
+    hashes.every((hash) => asCommit(hash) !== undefined)
+    ? { repo, hashes }
+    : undefined;
+}
+
+/** 一条提交：仓库和完整 hash。 */
 function asCommitTarget(raw: Record<string, unknown>): { repo: string; hash: string } | undefined {
   const repo = raw["repo"];
   const hash = asCommit(raw["hash"]);
@@ -411,8 +425,8 @@ const PARAM_GUARDS = {
   },
   merge: asRefTarget,
   rebase: asRebaseTarget,
-  cherryPick: asCommitTarget,
-  revert: asCommitTarget,
+  cherryPick: asCommitsTarget,
+  revert: asCommitsTarget,
   fetch: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     return typeof repo === "string" ? { repo } : undefined;

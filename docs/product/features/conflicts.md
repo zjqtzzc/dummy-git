@@ -9,14 +9,17 @@
 |---|---|
 | 分支右键 Merge into Current | `git merge -m "Merge branch '<分支>'" <分支>` |
 | 分支右键 Rebase onto This | `git rebase --autostash <分支>` |
-| 提交右键 Cherry-Pick | `git cherry-pick --no-edit <hash>` |
-| 提交右键 Revert | `git revert --no-edit <hash>` |
+| 提交右键 Cherry-Pick（可多选） | `git cherry-pick --no-edit --stdin`，hash 从 stdin 按从旧到新喂 |
+| 提交右键 Revert（可多选） | `git revert --no-edit --stdin`，hash 按从新到旧喂 |
 | 提交右键 Rebase onto Here | `git rebase --autostash <hash>` |
 
 - **不弹确认**（同 IDEA）：出事了可以放弃。
 - 工作区有改动时：merge、cherry-pick、revert 交给 git 处理，不冲突时带着改动做，冲突时 git 拒绝、显示原文。rebase 加 `--autostash`：git 先把改动存起来，结束后再取回。
 - 完成消息：`Merged feature`、`Fast-forwarded to feature`、`Rebased onto feature`、`Already up to date`；停下时 `Stopped for conflicts`；rebase 做完了、但取回改动时冲突，写 `Rebased onto feature. Applying the stashed changes has conflicts.`。
-- cherry-pick 一个合并提交时，git 会拒绝（要求 `-m`），显示 git 原文。
+- cherry-pick 一个合并提交时，git 会拒绝（要求 `-m`），显示 git 原文。多选里有合并提交时菜单里没有 Cherry-Pick、Revert：git 在一串里碰到它会报错退出，前面的已经摘过来，只留下 `.git/sequencer`，面板看不出有操作在进行，git 却认为有（git 2.43 实测）。
+- **一串 cherry-pick、revert**：整串交给 git 的 sequencer，停在冲突时继续接着做剩下的，放弃回到整串开始之前（已经摘过来的一起撤掉）。用 stdin 不用参数：Windows 的命令行最长 32767 个字符，八百来个 hash 就超了。
+- **变空自动跳过**（同 IDEA）：某条的改动当前分支里已经有了，git 会停下来，而且这时继续过不去。我们自动 `--skip`、接着做下一条，完成消息写上跳过了几条：`Cherry-picked 2 commits, skipped 1 already applied`，全跳过了写 `Skipped 1 already applied`（revert 是 `already reverted`）。两种的说法不一样，要分开认：cherry-pick 在 stderr 写 `is now empty`、留着 `CHERRY_PICK_HEAD`；revert 在 stdout 写 `nothing to commit`、不留 `REVERT_HEAD`，一串时只剩 `.git/sequencer`，单条时什么都不留。解决冲突后点继续、结果变空的，仍是 git 报错（Skip 在需求池）。
+- 完成消息：一条写短 hash（`Cherry-picked 1a2b3c4`），多条写条数（`Cherry-picked 3 commits`）。
 - 不管操作是谁发起的（包括用户在终端里执行的 merge），面板都一样显示。
 - 要签名口令的 rebase、cherry-pick，照旧显示 git 的报错（输入密码在第 6 阶段）。
 

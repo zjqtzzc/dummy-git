@@ -30,9 +30,9 @@ export const MenuContextKey = {
   Path: "dummyGit.path",
   /** Copy Hash：要复制的完整 hash，按列表顺序。 */
   CopyHash: "dummyGit.copyHash",
-  /** Cherry-Pick：要摘的提交（完整 hash）。 */
+  /** Cherry-Pick：要摘的提交（完整 hash），按要摘的顺序（从旧到新）。 */
   CherryPick: "dummyGit.cherryPick",
-  /** Revert：要撤销的提交（完整 hash）。 */
+  /** Revert：要撤销的提交（完整 hash），按要撤的顺序（从新到旧）。 */
   Revert: "dummyGit.revert",
   /** Rebase onto Here：变基到的提交（完整 hash）。 */
   RebaseHere: "dummyGit.rebaseHere",

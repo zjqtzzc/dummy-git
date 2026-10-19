@@ -132,8 +132,14 @@ const MENU_COMMANDS: readonly MenuCommand[] = [
   }),
   menuCommand("dummyGit.resetTo", "resetTo", commitParams(MenuContextKey.ResetTo)),
   menuCommand("dummyGit.rewordCommit", "openRewordDialog", commitParams(MenuContextKey.Reword)),
-  menuCommand("dummyGit.cherryPick", "cherryPick", commitParams(MenuContextKey.CherryPick)),
-  menuCommand("dummyGit.revertCommit", "revert", commitParams(MenuContextKey.Revert)),
+  menuCommand("dummyGit.cherryPick", "cherryPick", (context) => ({
+    repo: context[MenuContextKey.Repo],
+    hashes: context[MenuContextKey.CherryPick],
+  })),
+  menuCommand("dummyGit.revertCommit", "revert", (context) => ({
+    repo: context[MenuContextKey.Repo],
+    hashes: context[MenuContextKey.Revert],
+  })),
   menuCommand("dummyGit.rebaseHere", "rebase", rebaseHereParams),
   menuCommand("dummyGit.openMergeEditor", "openMergeEditor", fileParams),
   menuCommand("dummyGit.markResolved", "markResolved", fileParams),

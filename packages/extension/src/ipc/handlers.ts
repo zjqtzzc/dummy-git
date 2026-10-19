@@ -23,7 +23,6 @@ import {
   amendCommit,
   applyStash,
   ContinueOutcome,
-  cherryPickCommit,
   commit,
   continueInProgress,
   createBranch,
@@ -61,14 +60,16 @@ import {
   popStash,
   push,
   RebaseOutcome,
+  type ReplayKind,
   ReplayOutcome,
+  type ReplayResult,
   ResetMode,
   RewordOutcome,
   rebaseOnto,
   removeConflictPath,
   renameBranch,
+  replayCommits,
   resetTo,
-  revertCommit,
   rewordCommit,
   rollback,
   stashAll,
@@ -200,6 +201,16 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       return taken.has(input) ? `A branch named '${input}' already exists.` : undefined;
     });
     return name === "" || name === value ? undefined : name;
+  }
+
+  /** 摘、撤一串提交（顺序由调用方排好），走进度出口，完成消息见 `replayDone`。 */
+  async function replay(kind: ReplayKind, hashes: readonly string[]): Promise<void> {
+    const { root, gitDir } = repository.location;
+    await ui.withProgress(
+      `${REPLAY_WORDS[kind].doing} ${commitsText(hashes)}…`,
+      () => repository.run(replayCommits, root, gitDir, kind, hashes),
+      (result) => replayDone(kind, hashes, result),
+    );
   }
 
   /**
@@ -630,24 +641,12 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       );
       return null;
     },
-    cherryPick: async ({ hash }) => {
-      const { root, gitDir } = repository.location;
-      const name = hash.slice(0, 7);
-      await ui.withProgress(
-        `Cherry-picking ${name}…`,
-        () => repository.run(cherryPickCommit, root, gitDir, hash),
-        (outcome) => replayDone(outcome, `Cherry-picked ${name}`, "Cherry-pick is now empty"),
-      );
+    cherryPick: async ({ hashes }) => {
+      await replay(OperationKind.CherryPick, hashes);
       return null;
     },
-    revert: async ({ hash }) => {
-      const { root, gitDir } = repository.location;
-      const name = hash.slice(0, 7);
-      await ui.withProgress(
-        `Reverting ${name}…`,
-        () => repository.run(revertCommit, root, gitDir, hash),
-        (outcome) => replayDone(outcome, `Reverted ${name}`, "Revert is now empty"),
-      );
+    revert: async ({ hashes }) => {
+      await replay(OperationKind.Revert, hashes);
       return null;
     },
     checkout: async ({ branch }) => {
@@ -859,16 +858,47 @@ function mergeDone(outcome: MergeOutcome, name: string): string {
   }
 }
 
-function replayDone(outcome: ReplayOutcome, done: string, empty: string): string {
-  switch (outcome) {
-    case ReplayOutcome.Done:
-      return done;
+/** 摘、撤一串提交时状态栏上的说法。表放在用它的地方。 */
+const REPLAY_WORDS: Readonly<
+  Record<ReplayKind, { readonly doing: string; readonly done: string; readonly skipped: string }>
+> = {
+  [OperationKind.CherryPick]: {
+    doing: "Cherry-picking",
+    done: "Cherry-picked",
+    skipped: "already applied",
+  },
+  [OperationKind.Revert]: { doing: "Reverting", done: "Reverted", skipped: "already reverted" },
+};
+
+/** 一条写短 hash，多条写条数：`1a2b3c4`、`3 commits`。 */
+function commitsText(hashes: readonly string[]): string {
+  const [only] = hashes;
+  return hashes.length === 1 && only !== undefined ? only.slice(0, 7) : countText(hashes.length);
+}
+
+function countText(count: number): string {
+  return count === 1 ? "1 commit" : `${count} commits`;
+}
+
+/**
+ * 摘、撤完的完成消息：`Cherry-picked 3 commits`；有跳过的写上
+ * `Cherry-picked 2 commits, skipped 1 already applied`；全跳过了写 `Skipped 1 already applied`。
+ */
+function replayDone(kind: ReplayKind, hashes: readonly string[], result: ReplayResult): string {
+  switch (result.kind) {
     case ReplayOutcome.Stopped:
       return "Stopped for conflicts";
-    case ReplayOutcome.Empty:
-      return empty;
+    case ReplayOutcome.Done: {
+      const words = REPLAY_WORDS[kind];
+      const made = hashes.length - result.skipped;
+      if (result.skipped === 0) return `${words.done} ${commitsText(hashes)}`;
+      const skipped = `${result.skipped} ${words.skipped}`;
+      return made === 0
+        ? `Skipped ${skipped}`
+        : `${words.done} ${countText(made)}, skipped ${skipped}`;
+    }
     default:
-      return assertNever(outcome, "replayDone");
+      return assertNever(result, "replayDone");
   }
 }
 

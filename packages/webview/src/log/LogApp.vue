@@ -185,6 +185,10 @@ const graph = computed(() => {
 
 /** 每个提交上的 ref 标签。 */
 const labels = computed(() => refLabels(refs.value));
+/** 合并提交（不止一个父提交），提交列表的右键菜单用。 */
+const merges = computed(
+  () => new Set(skeleton.value.flatMap((c) => (c.parents.length > 1 ? [c.hash] : []))),
+);
 const rewordableCommits = computed(() =>
   rewordable(skeleton.value, refs.value.find((ref) => ref.kind === RefKind.Head)?.target),
 );
@@ -712,6 +716,7 @@ onUnmounted(() => resizes.disconnect());
           :graph="graph"
           :labels="labels"
           :rewordable="rewordableCommits"
+          :merges="merges"
           @copy="copyCommits"
           @visible="fetchVisible"
         />

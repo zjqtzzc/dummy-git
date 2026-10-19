@@ -1,6 +1,6 @@
-import { OperationKind } from "@dummy-git/shared";
+import { assertNever, OperationKind } from "@dummy-git/shared";
 import { classifyError, GitFailureError } from "../failure.js";
-import { readOperation } from "../operationState.js";
+import { inSequence, readOperation } from "../operationState.js";
 import type { GitCommand } from "./command.js";
 import { LockPolicy } from "./lock.js";
 
@@ -91,68 +91,82 @@ function rebased(stdout: string, stderr: string): RebaseOutcome {
   return RebaseOutcome.Rebased;
 }
 
-/** 把一条提交摘过来或做一次反向提交的结果。空提交、停在冲突，都不是失败。 */
+/** 摘、撤一串提交的结果。停在冲突不是失败。 */
 export enum ReplayOutcome {
   Done = "done",
   Stopped = "stopped",
-  Empty = "empty",
 }
 
-/**
- * 改动已经在当前分支里时 git 打的那句。
- *
- * 这时退出码是 1，状态文件还在，但没有冲突。不能靠退出码当成冲突。
- */
-const EMPTY_REPLAY = "is now empty";
+export type ReplayResult =
+  /** 做完了。`skipped` 是其中改动早已在当前分支里、自动跳过的条数。 */
+  | { readonly kind: ReplayOutcome.Done; readonly skipped: number }
+  | { readonly kind: ReplayOutcome.Stopped };
 
-/**
- * 把一条提交摘到当前分支：`git cherry-pick --no-edit <hash>`。改工作区，走本地道。
- *
- * `--no-edit` 用 git 准备好的说明，不再打开编辑器。工作区已有的改动交给 git：
- * 挡路时它拒绝，并且不开始；不挡路就带着那些改动做。
- *
- * 退出码非 0 且已经写了状态文件，是停住了。改动已经存在时同样停住，但没有冲突。
- */
-export const cherryPickCommit: GitCommand<
-  [repository: string, gitDir: string, hash: string],
-  ReplayOutcome
-> = {
-  lock: LockPolicy.Exclusive,
+/** 摘还是撤。 */
+export type ReplayKind = OperationKind.CherryPick | OperationKind.Revert;
 
-  execute: async (cli, repository, gitDir, hash) => {
-    const args = ["cherry-pick", "--no-edit", hash];
-    const result = await cli.exec(args, { cwd: repository });
-    if (result.exitCode === 0) return ReplayOutcome.Done;
-    if ((await readOperation(gitDir))?.kind === OperationKind.CherryPick) {
-      return replayStopped(result.stderr);
-    }
-    throw new GitFailureError(args, result.exitCode, result.stderr, classifyError(result.stderr));
-  },
+/** 命令行上的子命令。表放在用它的地方。 */
+const REPLAY_VERB: Readonly<Record<ReplayKind, string>> = {
+  [OperationKind.CherryPick]: "cherry-pick",
+  [OperationKind.Revert]: "revert",
 };
 
 /**
- * 做一次反向提交：`git revert --no-edit <hash>`。改工作区，走本地道。
+ * 这一条的改动当前分支里已经有了（「变空」）。git 停下来让人选跳过还是留一条空提交，这时 `--continue` 过不去。
  *
- * `--no-edit` 用 git 准备好的说明，不再打开编辑器。工作区已有的改动交给 git，
- * 和摘一条提交同一套：挡路就拒绝，冲突就停住。
+ * 两种的说法不一样（git 2.43 实测）：cherry-pick 在 stderr 写 `is now empty`，留着 `CHERRY_PICK_HEAD`；
+ * revert 在 stdout 写 `nothing to commit`（工作区有未跟踪文件时是 `nothing added to commit`），
+ * 不留 `REVERT_HEAD`——一串里只剩 `.git/sequencer`，单条时什么都不留。
+ * git 一律以英文环境运行（`cli.ts`），所以能认这几句话。
  */
-export const revertCommit: GitCommand<
-  [repository: string, gitDir: string, hash: string],
-  ReplayOutcome
+function isEmptyReplay(kind: ReplayKind, stdout: string, stderr: string): boolean {
+  switch (kind) {
+    case OperationKind.CherryPick:
+      return stderr.includes("is now empty");
+    case OperationKind.Revert:
+      return /nothing (?:added )?to commit/.test(stdout);
+    default:
+      return assertNever(kind, "isEmptyReplay");
+  }
+}
+
+/**
+ * 按给的顺序摘（cherry-pick）或撤（revert）一串提交：`git <子命令> --no-edit --stdin`。改工作区，走本地道。
+ *
+ * hash 从 stdin 喂：Windows 的命令行最长 32767 个字符，八百来个完整 hash 就超了。
+ * git 按给的顺序做、不重排；中途停在冲突时由 git 的 sequencer 记住剩下的，继续、放弃走「停在半路」现成的那套。
+ * `--no-edit` 用 git 准备好的说明，不再打开编辑器。工作区已有的改动交给 git：挡路就拒绝，并且不开始。
+ *
+ * 变空的自动跳过、接着做下一条（同 IDEA），记下跳过了几条。
+ * 还有东西在进行中才 `--skip`：单条 revert 变空时 git 什么都没留，再 `--skip` 会报「没有在进行的」。
+ */
+export const replayCommits: GitCommand<
+  [repository: string, gitDir: string, kind: ReplayKind, hashes: readonly string[]],
+  ReplayResult
 > = {
   lock: LockPolicy.Exclusive,
 
-  execute: async (cli, repository, gitDir, hash) => {
-    const args = ["revert", "--no-edit", hash];
-    const result = await cli.exec(args, { cwd: repository });
-    if (result.exitCode === 0) return ReplayOutcome.Done;
-    if ((await readOperation(gitDir))?.kind === OperationKind.Revert) {
-      return replayStopped(result.stderr);
+  execute: async (cli, repository, gitDir, kind, hashes) => {
+    const verb = REPLAY_VERB[kind];
+    let args = [verb, "--no-edit", "--stdin"];
+    let result = await cli.exec(args, { cwd: repository, input: `${hashes.join("\n")}\n` });
+    let skipped = 0;
+    while (result.exitCode !== 0) {
+      if (!isEmptyReplay(kind, result.stdout, result.stderr)) {
+        if ((await readOperation(gitDir))?.kind === kind) return { kind: ReplayOutcome.Stopped };
+        throw new GitFailureError(
+          args,
+          result.exitCode,
+          result.stderr,
+          classifyError(result.stderr),
+        );
+      }
+      skipped += 1;
+      const pending = (await inSequence(gitDir)) || (await readOperation(gitDir))?.kind === kind;
+      if (!pending) break;
+      args = [verb, "--skip"];
+      result = await cli.exec(args, { cwd: repository });
     }
-    throw new GitFailureError(args, result.exitCode, result.stderr, classifyError(result.stderr));
+    return { kind: ReplayOutcome.Done, skipped };
   },
 };
-
-function replayStopped(stderr: string): ReplayOutcome {
-  return stderr.includes(EMPTY_REPLAY) ? ReplayOutcome.Empty : ReplayOutcome.Stopped;
-}

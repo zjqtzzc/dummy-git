@@ -57,13 +57,20 @@ describe("getSkeleton 的 branch", () => {
 });
 
 describe("cherry-pick / revert 的提交", () => {
-  it("收完整 hash；短 hash 和选项拒收", () => {
-    const hash = "ab".repeat(20);
-    const ok = { repo: "/r", hash };
+  const hash = "ab".repeat(20);
+
+  it("收完整 hash 的列表", () => {
+    const ok = { repo: "/r", hashes: [hash, "cd".repeat(20)] };
     expect(parseParams("cherryPick", ok)).toEqual(ok);
     expect(parseParams("revert", ok)).toEqual(ok);
-    expect(parseParams("cherryPick", { repo: "/r", hash: hash.slice(0, 7) })).toBeUndefined();
-    expect(parseParams("revert", { repo: "/r", hash: "--abort" })).toBeUndefined();
+  });
+
+  it("空列表、有一个短 hash 或选项：整条拒收", () => {
+    expect(parseParams("cherryPick", { repo: "/r", hashes: [] })).toBeUndefined();
+    expect(
+      parseParams("cherryPick", { repo: "/r", hashes: [hash, hash.slice(0, 7)] }),
+    ).toBeUndefined();
+    expect(parseParams("revert", { repo: "/r", hashes: ["--abort"] })).toBeUndefined();
   });
 });
 

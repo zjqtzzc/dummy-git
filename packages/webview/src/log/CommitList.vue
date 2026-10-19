@@ -48,6 +48,8 @@ const props = defineProps<{
   labels: ReadonlyMap<string, readonly RefLabel[]>;
   /** 能改说明的提交，右键菜单才有 `Edit Commit Message…`。 */
   rewordable: ReadonlySet<string>;
+  /** 合并提交。多选里有它时没有 Cherry-Pick、Revert。 */
+  merges: ReadonlySet<string>;
 }>();
 
 const emit = defineEmits<{
@@ -192,7 +194,7 @@ function onContextmenu(event: MouseEvent): void {
     containerMenuContext(
       hash === undefined || props.repo === undefined
         ? undefined
-        : { [MenuContextKey.Repo]: props.repo, ...commitMenuContext(picked, props.rewordable) },
+        : { [MenuContextKey.Repo]: props.repo, ...commitMenuContext(picked, props.rewordable, props.merges) },
     ),
   );
 }

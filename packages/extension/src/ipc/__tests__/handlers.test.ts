@@ -1307,17 +1307,41 @@ describe("分支右键：合并与变基", () => {
 describe("提交右键：cherry-pick、revert、变基到这条", () => {
   afterAll(cleanupTempRepos);
 
+  /** `messages` 收下每次的完成消息。 */
   const run = async (
     repo: string,
     call: (handlers: ReturnType<typeof createHandlers>) => Promise<unknown>,
+    messages: string[] = [],
   ) => {
     const repository = new Repository(plainLocation(repo), cli);
     try {
-      await call(createHandlers(repository, NO_UI));
+      await call(
+        createHandlers(repository, {
+          ...NO_UI,
+          withProgress: async (_title, task, done) => {
+            const value = await task();
+            messages.push(done(value));
+            return value;
+          },
+        }),
+      );
     } finally {
       repository.dispose();
     }
   };
+
+  /** 在当前分支上提交一个新文件（说明就是文件名），返回这条提交的 hash。 */
+  const commitFile = (repo: string, file: string, content: string): string => {
+    writeFileSync(join(repo, file), content);
+    git(repo, ["add", file]);
+    git(repo, ["commit", "-qm", file]);
+    return git(repo, ["rev-parse", "HEAD"]).trim();
+  };
+  const subjects = (repo: string, count: number): string[] =>
+    git(repo, ["log", `-${count}`, "--format=%s"])
+      .trim()
+      .split("\n");
+  const sequencer = (repo: string): boolean => existsSync(join(repo, ".git", "sequencer"));
 
   const head = (repo: string): string => git(repo, ["rev-parse", "HEAD"]).trim();
 
@@ -1330,7 +1354,7 @@ describe("提交右键：cherry-pick、revert、变基到这条", () => {
     const hash = head(repo);
     git(repo, ["switch", "-q", "main"]);
     writeFileSync(join(repo, "f1"), "dirty\n");
-    await run(repo, (h) => h.cherryPick({ repo, hash }));
+    await run(repo, (h) => h.cherryPick({ repo, hashes: [hash] }));
     expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe("feature");
     expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe(" M f1");
   });
@@ -1344,7 +1368,7 @@ describe("提交右键：cherry-pick、revert、变基到这条", () => {
     git(repo, ["switch", "-q", "main"]);
     writeFileSync(join(repo, "f1"), "main\n");
     git(repo, ["commit", "-qam", "main"]);
-    await run(repo, (h) => h.cherryPick({ repo, hash }));
+    await run(repo, (h) => h.cherryPick({ repo, hashes: [hash] }));
     expect(existsSync(join(repo, ".git", "CHERRY_PICK_HEAD"))).toBe(true);
   });
 
@@ -1356,22 +1380,67 @@ describe("提交右键：cherry-pick、revert、变基到这条", () => {
     const hash = head(repo);
     git(repo, ["switch", "-q", "main"]);
     writeFileSync(join(repo, "f1"), "dirty\n");
-    await expect(run(repo, (h) => h.cherryPick({ repo, hash }))).rejects.toThrow();
+    await expect(run(repo, (h) => h.cherryPick({ repo, hashes: [hash] }))).rejects.toThrow();
     expect(existsSync(join(repo, ".git", "CHERRY_PICK_HEAD"))).toBe(false);
   });
 
-  it("改动已经在了：停住，但不是冲突", async () => {
+  it("改动已经在了：自动跳过，不停在半路", async () => {
     const repo = makeTempRepo("pick-empty");
     git(repo, ["switch", "-q", "-c", "feature"]);
-    writeFileSync(join(repo, "extra.txt"), "extra\n");
-    git(repo, ["add", "extra.txt"]);
-    git(repo, ["commit", "-qm", "feature"]);
-    const hash = head(repo);
+    const hash = commitFile(repo, "extra.txt", "extra\n");
     git(repo, ["switch", "-q", "main"]);
-    await run(repo, (h) => h.cherryPick({ repo, hash }));
-    await run(repo, (h) => h.cherryPick({ repo, hash }));
-    expect(existsSync(join(repo, ".git", "CHERRY_PICK_HEAD"))).toBe(true);
-    expect(git(repo, ["status", "--porcelain"]).trim()).toBe("");
+    await run(repo, (h) => h.cherryPick({ repo, hashes: [hash] }));
+    const messages: string[] = [];
+    await run(repo, (h) => h.cherryPick({ repo, hashes: [hash] }), messages);
+    expect(messages).toEqual(["Skipped 1 already applied"]);
+    expect(existsSync(join(repo, ".git", "CHERRY_PICK_HEAD"))).toBe(false);
+    expect(subjects(repo, 2)).toEqual(["extra.txt", "init"]);
+  });
+
+  it("一串：按给的顺序摘，不重排", async () => {
+    const repo = makeTempRepo("pick-order");
+    git(repo, ["switch", "-q", "-c", "feature"]);
+    const a = commitFile(repo, "a.txt", "a\n");
+    const b = commitFile(repo, "b.txt", "b\n");
+    git(repo, ["switch", "-q", "main"]);
+    const messages: string[] = [];
+    await run(repo, (h) => h.cherryPick({ repo, hashes: [b, a] }), messages);
+    expect(subjects(repo, 2)).toEqual(["a.txt", "b.txt"]);
+    expect(messages).toEqual(["Cherry-picked 2 commits"]);
+  });
+
+  it("一串里有已经摘过的：跳过它，接着摘后面的", async () => {
+    const repo = makeTempRepo("pick-skip");
+    git(repo, ["switch", "-q", "-c", "feature"]);
+    const a = commitFile(repo, "a.txt", "a\n");
+    const b = commitFile(repo, "b.txt", "b\n");
+    git(repo, ["switch", "-q", "main"]);
+    git(repo, ["cherry-pick", a]);
+    const messages: string[] = [];
+    await run(repo, (h) => h.cherryPick({ repo, hashes: [a, b] }), messages);
+    expect(messages).toEqual(["Cherry-picked 1 commit, skipped 1 already applied"]);
+    expect(subjects(repo, 2)).toEqual(["b.txt", "a.txt"]);
+    expect(sequencer(repo)).toBe(false);
+  });
+
+  it("一串停在冲突：继续之后接着摘剩下的", async () => {
+    const repo = makeTempRepo("pick-batch-stop");
+    git(repo, ["switch", "-q", "-c", "feature"]);
+    writeFileSync(join(repo, "f1"), "feature\n");
+    git(repo, ["commit", "-qam", "feature f1"]);
+    const clash = head(repo);
+    const b = commitFile(repo, "b.txt", "b\n");
+    git(repo, ["switch", "-q", "main"]);
+    writeFileSync(join(repo, "f1"), "main\n");
+    git(repo, ["commit", "-qam", "main f1"]);
+    const messages: string[] = [];
+    await run(repo, (h) => h.cherryPick({ repo, hashes: [clash, b] }), messages);
+    expect(messages).toEqual(["Stopped for conflicts"]);
+    writeFileSync(join(repo, "f1"), "resolved\n");
+    git(repo, ["add", "f1"]);
+    await run(repo, (h) => h.continueOperation({ repo, message: "resolved f1" }));
+    expect(subjects(repo, 2)).toEqual(["b.txt", "resolved f1"]);
+    expect(sequencer(repo)).toBe(false);
   });
 
   it("合并提交：git 拒绝，cherry-pick 没有开始", async () => {
@@ -1386,7 +1455,7 @@ describe("提交右键：cherry-pick、revert、变基到这条", () => {
     git(repo, ["merge", "-q", "--no-edit", "side"]);
     const hash = head(repo);
     git(repo, ["reset", "-q", "--hard", "HEAD~1"]);
-    await expect(run(repo, (h) => h.cherryPick({ repo, hash }))).rejects.toThrow();
+    await expect(run(repo, (h) => h.cherryPick({ repo, hashes: [hash] }))).rejects.toThrow();
     expect(existsSync(join(repo, ".git", "CHERRY_PICK_HEAD"))).toBe(false);
   });
 
@@ -1399,7 +1468,7 @@ describe("提交右键：cherry-pick、revert、变基到这条", () => {
     git(repo, ["add", "note.txt"]);
     git(repo, ["commit", "-qm", "note"]);
     writeFileSync(join(repo, "note.txt"), "dirty\n");
-    await run(repo, (h) => h.revert({ repo, hash }));
+    await run(repo, (h) => h.revert({ repo, hashes: [hash] }));
     expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe('Revert "next"');
     expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe(" M note.txt");
   });
@@ -1411,8 +1480,30 @@ describe("提交右键：cherry-pick、revert、变基到这条", () => {
     const hash = head(repo);
     writeFileSync(join(repo, "f1"), "third\n");
     git(repo, ["commit", "-qam", "third"]);
-    await run(repo, (h) => h.revert({ repo, hash }));
+    await run(repo, (h) => h.revert({ repo, hashes: [hash] }));
     expect(existsSync(join(repo, ".git", "REVERT_HEAD"))).toBe(true);
+  });
+
+  it("撤一条已经撤过的：什么都不动，说跳过了，不报错", async () => {
+    const repo = makeTempRepo("revert-empty");
+    const hash = commitFile(repo, "a.txt", "a\n");
+    git(repo, ["revert", "--no-edit", hash]);
+    const messages: string[] = [];
+    await run(repo, (h) => h.revert({ repo, hashes: [hash] }), messages);
+    expect(messages).toEqual(["Skipped 1 already reverted"]);
+    expect(subjects(repo, 1)).toEqual(['Revert "a.txt"']);
+  });
+
+  it("一串里有已经撤过的：跳过它，接着撤后面的，不留下 sequencer", async () => {
+    const repo = makeTempRepo("revert-skip");
+    const a = commitFile(repo, "a.txt", "a\n");
+    const b = commitFile(repo, "b.txt", "b\n");
+    git(repo, ["revert", "--no-edit", a]);
+    const messages: string[] = [];
+    await run(repo, (h) => h.revert({ repo, hashes: [b, a] }), messages);
+    expect(messages).toEqual(["Reverted 1 commit, skipped 1 already reverted"]);
+    expect(subjects(repo, 1)).toEqual(['Revert "b.txt"']);
+    expect(sequencer(repo)).toBe(false);
   });
 
   it("变基到一条提交，已跟踪的改动取回", async () => {
