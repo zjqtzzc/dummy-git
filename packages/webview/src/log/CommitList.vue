@@ -247,10 +247,23 @@ const resizes = new ResizeObserver(() => {
   viewportHeight.value = scroller.value.clientHeight;
   emit("visible", range.value);
 });
+/**
+ * 列表有焦点时不许出现文字选区。Mac 上 Cmd+A 拦了按键也照样把整页文字选上（调试窗口实测），
+ * 选区不是页面自己选的，拦不住来路，只能在它出现时清掉。
+ */
+function clearTextSelection(): void {
+  if (scroller.value !== undefined && document.activeElement === scroller.value) {
+    document.getSelection()?.removeAllRanges();
+  }
+}
 onMounted(() => {
   if (scroller.value !== undefined) resizes.observe(scroller.value);
+  document.addEventListener("selectionchange", clearTextSelection);
 });
-onUnmounted(() => resizes.disconnect());
+onUnmounted(() => {
+  resizes.disconnect();
+  document.removeEventListener("selectionchange", clearTextSelection);
+});
 
 /** 拖过的列宽，存进 `viewState`；没拖过时 CSS 用 em 默认值。 */
 const columns = ref<Columns | undefined>(restoreColumns(viewState.read("columns")));
@@ -414,6 +427,7 @@ defineExpose({
   flex: 1;
   overflow-y: auto;
   outline: none;
+  user-select: none;
 }
 .row {
   position: absolute;
