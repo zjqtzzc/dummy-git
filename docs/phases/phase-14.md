@@ -68,7 +68,7 @@
 
    | 菜单项 | 多选时 |
    |---|---|
-   | Copy Hash | 有。完整 hash 按列表顺序，用空格隔开（同 IDEA） |
+   | Copy Hash | 有。完整 hash 按列表顺序，一行一个（2026-10-19 项目负责人定：多选的复制都一行一个。否决 IDEA 的空格隔开） |
    | Cherry-Pick、Revert | 有；选中里有合并提交时没有（第 9 条） |
    | Rebase onto Here、Reset Current Branch to Here…、Edit Commit Message…、New Branch from Here… | 没有：都只能对一条做 |
 
@@ -145,7 +145,7 @@
   "dummyGit.rebaseHere": "1a2b…", "dummyGit.resetTo": "1a2b…", "dummyGit.reword": "1a2b…" }
 ```
 
-- **要先实测**：键的值是列表（或字符串）时，`when` 里只写键名能不能当作「有」。VS Code 读这一段的代码不在本地。不成立就每一项另写一个布尔开关。
+- **实测可行**（2026-10-19，F5 调试窗口）：键的值是列表、是字符串时，`when` 里只写键名都当作「有」；扩展的菜单命令拿到的就是这个值。
 - **未测**：Cmd+A 一万条时，提交列表三个批量项各带一份 hash 列表，估计每次右键约 1.3 MB。
 - ⌘C 复制不是菜单项，直接用原样看。
 
@@ -153,7 +153,7 @@
 
 - `cherryPick`、`revert` 的参数 `hash` 改成 `hashes`。单个就是只有一项的列表。否决另加 `cherryPickMany`：两条命令回答同一个问题（D.6d），单条那条不是非有不可的。
 - 菜单命令取自己那个键的列表，和页面按钮过同一张参数校验表（C.1）：列表非空，每个 hash 照旧校验。
-- Copy Hash 仍是 `copyText`，扩展把 hash 用空格连起来。
+- Copy Hash 仍是 `copyText`，扩展把 hash 一行一个连起来（第 8 条）。
 - 顺手修：`shared/src/protocol.ts` 里 `cherryPick` 的说明注释错挂在了 `resetTo` 上面。
 
 ### D. 执行与日志
