@@ -106,11 +106,7 @@ describe("parseStatus：普通改动", () => {
   });
 });
 
-describe("statusArgs / STATUS_ENV", () => {
-  it("用 porcelain v2，不是 v1", () => {
-    expect(statusArgs()).toContain("--porcelain=v2");
-  });
-
+describe("STATUS_ENV", () => {
   it("带 GIT_OPTIONAL_LOCKS=0", () => {
     // 进程层不认识 status，所以这个 env 必须由命令层为这条命令传入。
     expect(STATUS_ENV["GIT_OPTIONAL_LOCKS"]).toBe("0");

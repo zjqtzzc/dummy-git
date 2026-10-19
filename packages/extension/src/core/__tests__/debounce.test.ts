@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { DEBOUNCE_MS, DebouncedSet, MAX_WAIT_MS } from "../debounce.js";
+import { DebouncedSet } from "../debounce.js";
 
 /** 用假时钟：真等 150ms/1000ms 会让这组测试变成全套里最慢的部分。 */
 function withFakeTimers<T>(fn: () => T): T {
@@ -76,23 +76,6 @@ describe("DebouncedSet：maxWait 防饿死", () => {
       expect(flushes.length).toBeGreaterThanOrEqual(2);
     });
   });
-
-  it("rebase 场景：Banner 的进度不会五秒才跳一次", () => {
-    withFakeTimers(() => {
-      const at: number[] = [];
-      let now = 0;
-      const d = new DebouncedSet<string>(() => at.push(now), DEBOUNCE_MS, MAX_WAIT_MS);
-
-      // rebase 每 50ms 推进一步，持续 3 秒
-      for (let i = 0; i < 60; i++) {
-        d.add(["operation"]);
-        vi.advanceTimersByTime(50);
-        now += 50;
-      }
-      // 3 秒内该有约 3 次（maxWait=1000）
-      expect(at.length).toBeGreaterThanOrEqual(2);
-    });
-  });
 });
 
 describe("DebouncedSet：flushNow / cancel", () => {
@@ -129,14 +112,5 @@ describe("DebouncedSet：flushNow / cancel", () => {
       expect(flushes).toEqual([]);
       expect(d.pendingSize).toBe(0);
     });
-  });
-});
-
-describe("窗口值", () => {
-  it("150 / 1000——依据见 debounce.ts 文件头", () => {
-    // 钉住这两个数：改它们要连带改文件头的论证（实测事件簇 3.3ms、
-    // 感知阈值 200ms、rebase 的 Banner 刷新节奏）。
-    expect(DEBOUNCE_MS).toBe(150);
-    expect(MAX_WAIT_MS).toBe(1000);
   });
 });

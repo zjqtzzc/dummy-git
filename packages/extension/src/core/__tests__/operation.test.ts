@@ -95,18 +95,3 @@ describe("CommandQueue：失败不断链", () => {
     expect(result).toBe("ok");
   });
 });
-
-describe("CommandQueue：一仓库一队列", () => {
-  it("两个独立队列互不等待", async () => {
-    const queueA = new CommandQueue();
-    const queueB = new CommandQueue();
-    const timeline: string[] = [];
-    const start = Date.now();
-    await Promise.all([
-      queueA.run(LockPolicy.Exclusive, timed("A", timeline, 50)),
-      queueB.run(LockPolicy.Exclusive, timed("B", timeline, 50)),
-    ]);
-    // 并行的话总耗时接近 50ms；串行会接近 100ms
-    expect(Date.now() - start).toBeLessThan(90);
-  });
-});

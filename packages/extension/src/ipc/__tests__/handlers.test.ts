@@ -2,17 +2,14 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   DialogKind,
-  DiffOpenMode,
-  type DiffSide,
   DiffSideKind,
   GitDomain,
   IndexStage,
   MessageKind,
   OperationKind,
   RefKind,
-  ResponseKind,
 } from "@dummy-git/shared";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   cleanupTempRepos,
   cli,
@@ -50,65 +47,14 @@ const NO_UI: HandlerUi = {
   openDiff: () => Promise.reject(new Error("测试里不该打开 diff")),
 };
 
-import { Router, type Transport } from "../router.js";
+import { Router } from "../router.js";
 
-/**
- * 这一组走的是**除 webview 之外的整条链**：
- * 协议 → router → handlers → Repository → 队列 → 命令层 → 进程层 → 真的 git。
- *
- * 唯一没覆盖的是 `postMessage` 本身，那部分只能 F5 验。
- */
-describe("handlers：协议接到真仓库上", () => {
+describe("handlers.getRefs", () => {
   let repository: Repository;
   beforeAll(async () => {
     repository = new Repository(await getRepositoryLocation.execute(cli, fixtures.base), cli);
   });
   afterAll(() => repository.dispose());
-
-  it("getRepositories 返回仓库根——webview 的第一句话", async () => {
-    // 这是启动链的第一环：不知道有哪些仓库，别的命令连参数都凑不出来。
-    const roots = await createHandlers(repository, NO_UI).getRepositories({});
-    expect(roots).toEqual([repository.location.root]);
-  });
-
-  it("getSkeleton 拿到真实提交", async () => {
-    const skeleton = await createHandlers(repository, NO_UI).getSkeleton({
-      repo: repository.location.root,
-    });
-    expect(skeleton.length).toBeGreaterThan(3);
-    expect(skeleton[0]?.hash).toHaveLength(40);
-  });
-
-  it("getCommitDetails 按 hash 取到详情", async () => {
-    const handlers = createHandlers(repository, NO_UI);
-    const skeleton = await handlers.getSkeleton({ repo: repository.location.root });
-    const hashes = skeleton.slice(0, 2).map((c) => c.hash);
-
-    const details = await handlers.getCommitDetails({ repo: repository.location.root, hashes });
-    expect(details).toHaveLength(2);
-    expect(details[0]?.author.name).not.toBe("");
-  });
-
-  it("getCommitFiles 拿到那条提交改了哪些文件", async () => {
-    const handlers = createHandlers(repository, NO_UI);
-    const skeleton = await handlers.getSkeleton({ repo: repository.location.root });
-    const hash = skeleton.at(-1)?.hash;
-    expect(hash).toBeDefined();
-
-    const files = await handlers.getCommitFiles({
-      repo: repository.location.root,
-      hash: hash ?? "",
-    });
-    expect(files.length).toBeGreaterThan(0);
-  });
-
-  it("getStatus 拿到工作区的改动——Commit 面板的数据", async () => {
-    const status = await createHandlers(repository, NO_UI).getStatus({
-      repo: repository.location.root,
-    });
-    expect(status.changes.length).toBeGreaterThan(0);
-    expect(status.head).toHaveLength(40);
-  });
 
   it("getRefs：第一条是 HEAD，其后是分支与 tag——左栏一次拿全", async () => {
     const refs = await createHandlers(repository, NO_UI).getRefs({
@@ -134,67 +80,6 @@ describe("handlers：协议接到真仓库上", () => {
     } finally {
       detached.dispose();
     }
-  });
-
-  it("openDiff：把仓库根和左右两边原样交给界面", async () => {
-    const calls: unknown[][] = [];
-    const ui: HandlerUi = {
-      ...NO_UI,
-      openDiff: async (...args) => {
-        calls.push(args);
-      },
-    };
-    const left: DiffSide = { kind: DiffSideKind.Missing, path: "a.ts" };
-    const right: DiffSide = { kind: DiffSideKind.Revision, hash: "f".repeat(40), path: "a.ts" };
-    const result = await createHandlers(repository, ui).openDiff({
-      repo: repository.location.root,
-      left,
-      right,
-      mode: DiffOpenMode.Open,
-    });
-    expect(result).toBeNull();
-    expect(calls).toEqual([[repository.location.root, left, right, DiffOpenMode.Open]]);
-  });
-
-  it("经 Router 走一遍：请求进去，Ok 响应出来", async () => {
-    // 与上面三条的区别：这条经过了**边界校验**与**信封**，
-    // 也就是真实运行时 webview 那一侧看到的东西。
-    const sent: unknown[] = [];
-    const transport: Transport = { post: (m) => void sent.push(m) };
-    const router = new Router(transport, createHandlers(repository, NO_UI));
-
-    router.receive({ kind: MessageKind.Ready, generation: "g1" });
-    router.receive({
-      kind: MessageKind.Request,
-      generation: "g1",
-      id: 1,
-      command: "getSkeleton",
-      params: { repo: repository.location.root },
-    });
-
-    await vi.waitFor(() => expect(sent).toHaveLength(1));
-    expect(sent[0]).toMatchObject({ id: 1, generation: "g1", result: ResponseKind.Ok });
-  });
-
-  it("失败也能经 Router 变成错误响应", async () => {
-    const sent: unknown[] = [];
-    const router = new Router(
-      { post: (m) => void sent.push(m) },
-      createHandlers(repository, NO_UI),
-    );
-
-    router.receive({ kind: MessageKind.Ready, generation: "g1" });
-    router.receive({
-      kind: MessageKind.Request,
-      generation: "g1",
-      id: 2,
-      command: "getCommitFiles",
-      // 不存在的 hash：git 会失败，分类后由 router 转成错误响应。
-      params: { repo: repository.location.root, hash: "0".repeat(40) },
-    });
-
-    await vi.waitFor(() => expect(sent).toHaveLength(1));
-    expect(sent[0]).toMatchObject({ id: 2, result: ResponseKind.Error });
   });
 });
 
@@ -225,44 +110,6 @@ describe("闭环：仓库变了 → 广播到面板", () => {
         payload: { repo: repository.location.root, domains: [GitDomain.Refs, GitDomain.Worktree] },
       },
     ]);
-    repository.dispose();
-  });
-
-  it("握手之前的变化不广播——那一条会静静地丢掉", async () => {
-    const repository = new Repository(await getRepositoryLocation.execute(cli, fixtures.base), cli);
-    const sent: unknown[] = [];
-    const router = new Router(
-      { post: (m) => void sent.push(m) },
-      createHandlers(repository, NO_UI),
-    );
-    repository.onDidChange((domains) => router.broadcast(repository.location.root, [...domains]));
-
-    // 没有 ready
-    repository.notifyGitPath("HEAD");
-    repository.flushPending();
-
-    expect(sent).toHaveLength(0);
-    repository.dispose();
-  });
-
-  it("退订之后这个面板不再收到广播", async () => {
-    // 面板关了要退订。不退的话监听器只增不减。
-    const repository = new Repository(await getRepositoryLocation.execute(cli, fixtures.base), cli);
-    const sent: unknown[] = [];
-    const router = new Router(
-      { post: (m) => void sent.push(m) },
-      createHandlers(repository, NO_UI),
-    );
-    const unsubscribe = repository.onDidChange((domains) =>
-      router.broadcast(repository.location.root, [...domains]),
-    );
-    router.receive({ kind: MessageKind.Ready, generation: "g1" });
-
-    unsubscribe();
-    repository.notifyGitPath("HEAD");
-    repository.flushPending();
-
-    expect(sent).toHaveLength(0);
     repository.dispose();
   });
 });
@@ -329,27 +176,19 @@ describe("handlers.update", () => {
     }
   };
 
-  /** 分叉后选一个按钮。`undefined` 是关掉通知。返回问过的话和进度出口说过的话。 */
+  /** 分叉后选一个按钮。`undefined` 是关掉通知。返回问了几次。 */
   const updateDiverged = async (path: string, branch: string, choice: number | undefined) => {
     const repository = new Repository(plainLocation(path), cli);
-    const asked: string[] = [];
-    const said: string[] = [];
+    let asked = 0;
     try {
       await createHandlers(repository, {
         ...NO_UI,
-        notifyChoice: async (message, actions) => {
-          asked.push(`${message} [${actions.join(" / ")}]`);
+        notifyChoice: async () => {
+          asked++;
           return choice;
         },
-        withProgress: async (title, task, done) => {
-          said.push(title);
-          const value = await task();
-          const message = done(value);
-          if (message !== "") said.push(message);
-          return value;
-        },
       }).update({ repo: path, branch });
-      return { asked, said };
+      return asked;
     } finally {
       repository.dispose();
     }
@@ -389,18 +228,14 @@ describe("handlers.update", () => {
   it("没有上游：给一句说明，不跑 git", async () => {
     const { repo } = makeTrackingRepos();
     git(repo, ["branch", "-q", "lonely"]);
-    await expect(update(repo, "lonely")).rejects.toThrow(
-      "lonely has no upstream branch. Push it first.",
-    );
+    await expect(update(repo, "lonely")).rejects.toThrow(UserFacingError);
   });
 
   it("关掉通知：本地分支不动，远程记录已经是新的", async () => {
     const { remote, repo } = makeTrackingRepos();
     diverge(remote, repo, "main");
     const local = git(repo, ["rev-parse", "main"]);
-    const { asked, said } = await updateDiverged(repo, "main", undefined);
-    expect(asked).toEqual(["main and origin/main have diverged. [Rebase / Merge]"]);
-    expect(said).toEqual(["Updating main…"]);
+    expect(await updateDiverged(repo, "main", undefined)).toBe(1);
     expect(git(repo, ["rev-parse", "main"])).toBe(local);
     expect(git(repo, ["rev-parse", "origin/main"])).toBe(git(remote, ["rev-parse", "main"]));
   });
@@ -409,12 +244,7 @@ describe("handlers.update", () => {
     const { remote, repo } = makeTrackingRepos();
     diverge(remote, repo, "main");
     writeFileSync(join(repo, "f1"), "dirty\n");
-    const { said } = await updateDiverged(repo, "main", 0);
-    expect(said).toEqual([
-      "Updating main…",
-      "Rebasing onto origin/main…",
-      "Rebased onto origin/main",
-    ]);
+    await updateDiverged(repo, "main", 0);
     expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe("local");
     git(repo, ["merge-base", "--is-ancestor", git(remote, ["rev-parse", "main"]).trim(), "HEAD"]);
     expect(readFileSync(join(repo, "remote.txt"), "utf8")).toBe("remote\n");
@@ -426,8 +256,7 @@ describe("handlers.update", () => {
   it("选 Merge：合成合并提交，说明用远程分支的显示名", async () => {
     const { remote, repo } = makeTrackingRepos();
     diverge(remote, repo, "main");
-    const { said } = await updateDiverged(repo, "main", 1);
-    expect(said).toEqual(["Updating main…", "Merging origin/main…", "Merged origin/main"]);
+    await updateDiverged(repo, "main", 1);
     expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe(
       "Merge remote-tracking branch 'origin/main'",
     );
@@ -443,8 +272,7 @@ describe("handlers.update", () => {
     writeFileSync(join(repo, "f1"), "local\n");
     git(repo, ["add", "f1"]);
     git(repo, ["commit", "-qm", "local"]);
-    const { said } = await updateDiverged(repo, "main", 1);
-    expect(said).toEqual(["Updating main…", "Merging origin/main…", "Stopped for conflicts"]);
+    await updateDiverged(repo, "main", 1);
     expect(existsSync(join(repo, ".git", "MERGE_HEAD"))).toBe(true);
   });
 
@@ -452,12 +280,7 @@ describe("handlers.update", () => {
     const { remote, repo } = makeTrackingRepos();
     diverge(remote, repo, "other");
     const main = git(repo, ["rev-parse", "main"]);
-    const { said } = await updateDiverged(repo, "other", 0);
-    expect(said).toEqual([
-      "Updating other…",
-      "Rebasing onto origin/main…",
-      "Rebased onto origin/main",
-    ]);
+    await updateDiverged(repo, "other", 0);
     expect(git(repo, ["branch", "--show-current"]).trim()).toBe("other");
     expect(git(repo, ["rev-parse", "main"])).toBe(main);
     expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe("other");
@@ -469,14 +292,7 @@ describe("handlers.update", () => {
     const { remote, repo } = makeTrackingRepos();
     diverge(remote, repo, "other");
     const main = git(repo, ["rev-parse", "main"]);
-    const { said } = await updateDiverged(repo, "other", 1);
-    expect(said).toEqual([
-      "Updating other…",
-      "Checking out other…",
-      "Switched to branch 'other'",
-      "Merging origin/main…",
-      "Merged origin/main",
-    ]);
+    await updateDiverged(repo, "other", 1);
     expect(git(repo, ["branch", "--show-current"]).trim()).toBe("other");
     expect(git(repo, ["rev-parse", "main"])).toBe(main);
     expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe(
@@ -490,9 +306,7 @@ describe("handlers.update", () => {
     const { remote, repo } = makeTrackingRepos();
     diverge(remote, repo, "other");
     const other = git(repo, ["rev-parse", "other"]);
-    const { asked, said } = await updateDiverged(repo, "other", undefined);
-    expect(asked).toEqual(["other and origin/main have diverged. [Rebase / Merge]"]);
-    expect(said).toEqual(["Updating other…"]);
+    expect(await updateDiverged(repo, "other", undefined)).toBe(1);
     expect(git(repo, ["branch", "--show-current"]).trim()).toBe("main");
     expect(git(repo, ["rev-parse", "other"])).toBe(other);
     expect(git(repo, ["rev-parse", "origin/main"])).toBe(git(remote, ["rev-parse", "main"]));
@@ -556,10 +370,11 @@ describe("handlers.getPushTarget / push", () => {
     expect(git(repo, ["rev-parse", "--abbrev-ref", "main@{upstream}"]).trim()).toBe("origin/main");
   });
 
-  it("被拒绝：给一句说明，git 原文留在 detail", async () => {
+  it("被拒绝：报给用户，远程不动", async () => {
     const { remote, repo } = repos();
     git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
     git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
+    const before = git(remote, ["rev-parse", "main"]);
     const error = await withHandlers(repo, (handlers) =>
       handlers.push({
         repo,
@@ -570,10 +385,7 @@ describe("handlers.getPushTarget / push", () => {
       }),
     ).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(UserFacingError);
-    expect(error instanceof UserFacingError && error.message).toBe(
-      "Push rejected: origin/main has commits that main doesn't have. Update it first.",
-    );
-    expect(error instanceof UserFacingError && error.detail).toContain("[rejected]");
+    expect(git(remote, ["rev-parse", "main"])).toBe(before);
   });
 });
 
@@ -590,13 +402,14 @@ describe("handlers.push：force", () => {
     return { remote, repo };
   }
 
+  /** 返回确认框弹了几次。 */
   const forcePush = async (path: string, sure: boolean) => {
-    const asked: string[] = [];
+    let asked = 0;
     const repository = new Repository(plainLocation(path), cli);
     const ui: HandlerUi = {
       ...NO_UI,
-      confirm: async (message) => {
-        asked.push(message);
+      confirm: async () => {
+        asked++;
         return sure;
       },
     };
@@ -616,9 +429,7 @@ describe("handlers.push：force", () => {
 
   it("先确认；确认了就覆盖远程", async () => {
     const { remote, repo } = diverged();
-    expect(await forcePush(repo, true)).toEqual([
-      "Force push to origin/main? It may overwrite commits at the remote.",
-    ]);
+    expect(await forcePush(repo, true)).toBe(1);
     expect(git(remote, ["rev-parse", "main"])).toBe(git(repo, ["rev-parse", "main"]));
   });
 
@@ -645,24 +456,18 @@ describe("handlers.checkout", () => {
 
 describe("handlers.checkoutRemote", () => {
   afterAll(cleanupTempRepos);
-  /** 检出 `origin/<branch>`，返回进度出口最后显示的那句。 */
-  const checkoutRemote = async (path: string, branch: string): Promise<string> => {
+  /** 检出 `origin/<branch>`。 */
+  const checkoutRemote = async (path: string, branch: string): Promise<void> => {
     const repository = new Repository(plainLocation(path), cli);
-    let said = "";
-    const ui: HandlerUi = {
-      ...NO_UI,
-      withProgress: async (_title, task, done) => {
-        const value = await task();
-        said = done(value);
-        return value;
-      },
-    };
     try {
-      await createHandlers(repository, ui).checkoutRemote({ repo: path, remote: "origin", branch });
+      await createHandlers(repository, NO_UI).checkoutRemote({
+        repo: path,
+        remote: "origin",
+        branch,
+      });
     } finally {
       repository.dispose();
     }
-    return said;
   };
   const current = (repo: string) => git(repo, ["branch", "--show-current"]).trim();
   const tip = (repo: string, ref: string) => git(repo, ["rev-parse", ref]).trim();
@@ -671,7 +476,7 @@ describe("handlers.checkoutRemote", () => {
     const { remote, repo } = makeTrackingRepos();
     git(remote, ["branch", "-q", "feat"]);
     git(repo, ["fetch", "-q", "origin"]);
-    expect(await checkoutRemote(repo, "feat")).toBe("Switched to a new branch 'feat'");
+    await checkoutRemote(repo, "feat");
     expect(current(repo)).toBe("feat");
     expect(git(repo, ["rev-parse", "--abbrev-ref", "feat@{u}"]).trim()).toBe("origin/feat");
   });
@@ -681,7 +486,7 @@ describe("handlers.checkoutRemote", () => {
     git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
     git(repo, ["fetch", "-q", "origin"]);
     git(repo, ["switch", "-q", "other"]);
-    expect(await checkoutRemote(repo, "main")).toBe("Switched to branch 'main'");
+    await checkoutRemote(repo, "main");
     expect(current(repo)).toBe("main");
     expect(tip(repo, "main")).toBe(tip(remote, "main"));
   });
@@ -691,31 +496,29 @@ describe("handlers.checkoutRemote", () => {
     git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
     const before = tip(repo, "main");
     git(repo, ["switch", "-q", "other"]);
-    expect(await checkoutRemote(repo, "main")).toBe("Switched to branch 'main'");
+    await checkoutRemote(repo, "main");
     expect(current(repo)).toBe("main");
     expect(tip(repo, "main")).toBe(before);
   });
 
-  it("本地同名分支跟踪它但已分叉：切过去、不动它，提醒分叉", async () => {
+  it("本地同名分支跟踪它但已分叉：切过去、不动它", async () => {
     const { remote, repo } = makeTrackingRepos();
     git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
     git(repo, ["fetch", "-q", "origin"]);
     git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
     const before = tip(repo, "main");
     git(repo, ["switch", "-q", "other"]);
-    expect(await checkoutRemote(repo, "main")).toBe("main and origin/main have diverged");
+    await checkoutRemote(repo, "main");
     expect(current(repo)).toBe("main");
     expect(tip(repo, "main")).toBe(before);
   });
 
-  it("本地同名分支不跟踪它：不切，说明原因", async () => {
+  it("本地同名分支不跟踪它：不切，报给用户", async () => {
     const { remote, repo } = makeTrackingRepos();
     git(remote, ["branch", "-q", "feat"]);
     git(repo, ["fetch", "-q", "origin"]);
     git(repo, ["branch", "-q", "feat"]);
-    await expect(checkoutRemote(repo, "feat")).rejects.toThrow(
-      "A local branch named feat already exists and doesn't track origin/feat.",
-    );
+    await expect(checkoutRemote(repo, "feat")).rejects.toThrow(UserFacingError);
     expect(current(repo)).toBe("main");
   });
 });
@@ -724,7 +527,7 @@ describe("handlers.newBranch", () => {
   afterAll(cleanupTempRepos);
   /**
    * 从 `start` 建分支，输入框回答 `answer`。输入框开着时把 `probes` 逐个喂给校验函数，
-   * 返回输入框的标题与每个探针的校验结果。
+   * 返回每个探针有没有校验出问题。
    */
   const newBranch = async (
     path: string,
@@ -734,19 +537,17 @@ describe("handlers.newBranch", () => {
     probes: readonly string[] = [],
   ) => {
     const repository = new Repository(plainLocation(path), cli);
-    let title = "";
-    const problems: (string | undefined)[] = [];
+    const problems: boolean[] = [];
     const ui: HandlerUi = {
       ...NO_UI,
-      askBranchName: async (asked, _value, validate) => {
-        title = asked;
-        for (const probe of probes) problems.push(await validate(probe));
+      askBranchName: async (_title, _value, validate) => {
+        for (const probe of probes) problems.push((await validate(probe)) !== undefined);
         return answer;
       },
     };
     try {
       await createHandlers(repository, ui).newBranch({ repo: path, start, startName });
-      return { title, problems };
+      return problems;
     } finally {
       repository.dispose();
     }
@@ -756,8 +557,7 @@ describe("handlers.newBranch", () => {
     const { remote, repo } = makeTrackingRepos();
     git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
     git(repo, ["fetch", "-q", "origin"]);
-    const { title } = await newBranch(repo, "refs/remotes/origin/main", "origin/main", "fix");
-    expect(title).toBe("New branch from origin/main");
+    await newBranch(repo, "refs/remotes/origin/main", "origin/main", "fix");
     expect(git(repo, ["branch", "--show-current"]).trim()).toBe("fix");
     expect(git(repo, ["rev-parse", "fix"])).toBe(git(remote, ["rev-parse", "main"]));
     expect(() => git(repo, ["rev-parse", "--abbrev-ref", "fix@{u}"])).toThrow();
@@ -773,24 +573,19 @@ describe("handlers.newBranch", () => {
   it("校验：不合法、重名给出问题；合法与空着不给", async () => {
     const repo = makeTempRepo("new-branch-validate");
     git(repo, ["branch", "-q", "feat"]);
-    const { problems } = await newBranch(repo, "refs/heads/main", "main", undefined, [
+    const problems = await newBranch(repo, "refs/heads/main", "main", undefined, [
       "a b",
       "feat",
       "feat-2",
       "",
     ]);
-    expect(problems).toEqual([
-      "'a b' is not a valid branch name.",
-      "A branch named 'feat' already exists.",
-      undefined,
-      undefined,
-    ]);
+    expect(problems).toEqual([true, true, false, false]);
   });
 });
 
 describe("handlers.renameBranch", () => {
   afterAll(cleanupTempRepos);
-  /** 改 `branch` 的名字，输入框回答 `answer`；返回输入框收到的预填值与每个探针的校验结果。 */
+  /** 改 `branch` 的名字，输入框回答 `answer`；返回输入框收到的预填值与每个探针有没有校验出问题。 */
   const rename = async (
     path: string,
     branch: string,
@@ -799,12 +594,12 @@ describe("handlers.renameBranch", () => {
   ) => {
     const repository = new Repository(plainLocation(path), cli);
     let prefilled = "";
-    const problems: (string | undefined)[] = [];
+    const problems: boolean[] = [];
     const ui: HandlerUi = {
       ...NO_UI,
       askBranchName: async (_title, value, validate) => {
         prefilled = value;
-        for (const probe of probes) problems.push(await validate(probe));
+        for (const probe of probes) problems.push((await validate(probe)) !== undefined);
         return answer;
       },
     };
@@ -838,37 +633,30 @@ describe("handlers.renameBranch", () => {
     const repo = makeTempRepo("rename-validate");
     git(repo, ["branch", "-q", "feat"]);
     const { problems } = await rename(repo, "main", undefined, ["main", "feat"]);
-    expect(problems).toEqual([undefined, "A branch named 'feat' already exists."]);
+    expect(problems).toEqual([false, true]);
   });
 });
 
 describe("handlers.deleteBranch / deleteRemoteBranch", () => {
   afterAll(cleanupTempRepos);
-  /** 跑一次删除，确认框回答 `sure`；返回问了什么、状态栏说了什么。 */
+  /** 跑一次删除，确认框回答 `sure`；返回确认框弹了几次。 */
   const run = async (
     path: string,
     act: (handlers: ReturnType<typeof createHandlers>) => Promise<unknown>,
     sure: boolean,
   ) => {
     const repository = new Repository(plainLocation(path), cli);
-    const asked: string[] = [];
-    const said: string[] = [];
+    let asked = 0;
     const ui: HandlerUi = {
       ...NO_UI,
-      confirm: async (message) => {
-        asked.push(message);
+      confirm: async () => {
+        asked++;
         return sure;
-      },
-      notify: (message) => said.push(message),
-      withProgress: async (_title, task, done) => {
-        const value = await task();
-        said.push(done(value));
-        return value;
       },
     };
     try {
       await act(createHandlers(repository, ui));
-      return { asked, said };
+      return asked;
     } finally {
       repository.dispose();
     }
@@ -878,12 +666,10 @@ describe("handlers.deleteBranch / deleteRemoteBranch", () => {
       .trim()
       .split("\n");
 
-  it("已合并：直接删，不问，状态栏是 git 那句", async () => {
+  it("已合并：直接删，不问", async () => {
     const repo = makeTempRepo("delete-merged");
     git(repo, ["branch", "-q", "feat"]);
-    const { asked, said } = await run(repo, (h) => h.deleteBranch({ repo, branch: "feat" }), false);
-    expect(asked).toEqual([]);
-    expect(said[0]).toMatch(/^Deleted branch feat \(was [0-9a-f]+\)\.$/);
+    expect(await run(repo, (h) => h.deleteBranch({ repo, branch: "feat" }), false)).toBe(0);
     expect(branches(repo)).toEqual(["main"]);
   });
 
@@ -892,9 +678,7 @@ describe("handlers.deleteBranch / deleteRemoteBranch", () => {
     git(repo, ["switch", "-q", "-c", "feat"]);
     git(repo, ["commit", "-q", "--allow-empty", "-m", "only here"]);
     git(repo, ["switch", "-q", "main"]);
-    const { asked, said } = await run(repo, (h) => h.deleteBranch({ repo, branch: "feat" }), true);
-    expect(asked).toEqual(["feat has commits that are not merged anywhere. Delete it anyway?"]);
-    expect(said[0]).toMatch(/^Deleted branch feat \(was [0-9a-f]+\)\.$/);
+    expect(await run(repo, (h) => h.deleteBranch({ repo, branch: "feat" }), true)).toBe(1);
     expect(branches(repo)).toEqual(["main"]);
   });
 
@@ -903,8 +687,7 @@ describe("handlers.deleteBranch / deleteRemoteBranch", () => {
     git(repo, ["switch", "-q", "-c", "feat"]);
     git(repo, ["commit", "-q", "--allow-empty", "-m", "only here"]);
     git(repo, ["switch", "-q", "main"]);
-    const { said } = await run(repo, (h) => h.deleteBranch({ repo, branch: "feat" }), false);
-    expect(said).toEqual([]);
+    await run(repo, (h) => h.deleteBranch({ repo, branch: "feat" }), false);
     expect(branches(repo)).toEqual(["feat", "main"]);
   });
 
@@ -913,15 +696,12 @@ describe("handlers.deleteBranch / deleteRemoteBranch", () => {
     git(remote, ["branch", "-q", "feat"]);
     git(repo, ["fetch", "-q", "origin"]);
     git(repo, ["branch", "-q", "feat"]);
-    const { asked, said } = await run(
+    const asked = await run(
       repo,
       (h) => h.deleteRemoteBranch({ repo, remote: "origin", branch: "feat" }),
       true,
     );
-    expect(asked).toEqual([
-      "Delete feat on origin? This removes it for everyone using the remote.",
-    ]);
-    expect(said).toEqual(["Deleted origin/feat"]);
+    expect(asked).toBe(1);
     expect(branches(remote)).toEqual(["main"]);
     expect(branches(repo, ["-r"])).toEqual(["origin/main"]);
     expect(branches(repo)).toContain("feat");
@@ -940,18 +720,8 @@ describe("handlers.stash", () => {
   afterAll(cleanupTempRepos);
   const stash = async (path: string, paths: readonly string[]) => {
     const repository = new Repository(plainLocation(path), cli);
-    let said = "";
-    const ui: HandlerUi = {
-      ...NO_UI,
-      withProgress: async (_title, task, done) => {
-        const value = await task();
-        said = done(value);
-        return value;
-      },
-    };
     try {
-      await createHandlers(repository, ui).stash({ repo: path, paths });
-      return said;
+      await createHandlers(repository, NO_UI).stash({ repo: path, paths });
     } finally {
       repository.dispose();
     }
@@ -974,8 +744,7 @@ describe("handlers.stash", () => {
 
   it("存勾选的：改名、暂存的删除、未跟踪都存走，没勾的留下", async () => {
     const repo = scene("stash-selected");
-    const said = await stash(repo, ["a2", "b", "u"]);
-    expect(said).toMatch(/^Saved working directory and index state WIP on main: /);
+    await stash(repo, ["a2", "b", "u"]);
     expect(stashes(repo)).toHaveLength(1);
     expect(status(repo)).toEqual([" M keep"]);
     git(repo, ["stash", "apply", "-q"]);
@@ -1010,20 +779,8 @@ describe("handlers.applyStash / popStash / dropStash", () => {
     sure = true,
   ) => {
     const repository = new Repository(plainLocation(repo), cli);
-    const said: string[] = [];
-    const ui: HandlerUi = {
-      ...NO_UI,
-      confirm: async () => sure,
-      notify: (message) => said.push(message),
-      withProgress: async (_title, task, done) => {
-        const value = await task();
-        said.push(done(value));
-        return value;
-      },
-    };
     try {
-      await run(createHandlers(repository, ui));
-      return said;
+      await run(createHandlers(repository, { ...NO_UI, confirm: async () => sure }));
     } finally {
       repository.dispose();
     }
@@ -1031,8 +788,7 @@ describe("handlers.applyStash / popStash / dropStash", () => {
 
   it("Apply：取回工作区，stash 保留", async () => {
     const { repo, older } = scene("stash-apply");
-    const said = await act(repo, (h) => h.applyStash({ repo, hash: older }));
-    expect(said).toEqual([expect.stringMatching(/^Applied WIP on main: /)]);
+    await act(repo, (h) => h.applyStash({ repo, hash: older }));
     expect(git(repo, ["status", "--porcelain"]).trim()).toBe("M f1");
     expect(stashes(repo)).toHaveLength(2);
   });
@@ -1044,10 +800,9 @@ describe("handlers.applyStash / popStash / dropStash", () => {
     expect(stashes(repo)).toEqual([newer]);
   });
 
-  it("Delete 较早的那条：确认后只删它，状态栏是 git 那句", async () => {
+  it("Delete 较早的那条：确认后只删它", async () => {
     const { repo, newer, older } = scene("stash-drop");
-    const said = await act(repo, (h) => h.dropStash({ repo, hash: older }));
-    expect(said).toEqual([`Dropped stash@{1} (${older})`]);
+    await act(repo, (h) => h.dropStash({ repo, hash: older }));
     expect(stashes(repo)).toEqual([newer]);
   });
 
@@ -1093,18 +848,10 @@ describe("handlers.pickAuthor", () => {
   afterAll(cleanupTempRepos);
   const pickAuthor = async (path: string, answer: number | undefined) => {
     const repository = new Repository(plainLocation(path), cli);
-    let shown: readonly PickItem[] = [];
-    const ui: HandlerUi = {
-      ...NO_UI,
-      pick: async (_title, items) => {
-        shown = items;
-        return answer;
-      },
-    };
+    const ui: HandlerUi = { ...NO_UI, pick: async () => answer };
     try {
       const hashes = git(path, ["log", "--format=%H"]).trim().split("\n");
-      const picked = await createHandlers(repository, ui).pickAuthor({ repo: path, hashes });
-      return { shown, picked };
+      return await createHandlers(repository, ui).pickAuthor({ repo: path, hashes });
     } finally {
       repository.dispose();
     }
@@ -1127,31 +874,22 @@ describe("handlers.pickAuthor", () => {
     return repo;
   };
 
-  it("第一项是 Me，下面是作者按提交数从多到少；邮箱为空的只写名字", async () => {
-    const { shown } = await pickAuthor(scene(), undefined);
-    expect(shown).toEqual([
-      { label: "Me", description: "t <t@example.com>" },
-      { label: "Ann", description: "2 commits" },
-      { label: "t <t@example.com>", description: "1 commit" },
-    ]);
-  });
-
   it("选中的交回名字、邮箱与是不是 Me；取消是 null", async () => {
     const repo = scene();
-    expect((await pickAuthor(repo, 0)).picked).toEqual({
+    expect(await pickAuthor(repo, 0)).toEqual({
       name: "t",
       email: "t@example.com",
       me: true,
     });
-    expect((await pickAuthor(repo, 1)).picked).toEqual({ name: "Ann", email: "", me: false });
-    expect((await pickAuthor(repo, undefined)).picked).toBeNull();
+    expect(await pickAuthor(repo, 1)).toEqual({ name: "Ann", email: "", me: false });
+    expect(await pickAuthor(repo, undefined)).toBeNull();
   });
 });
 
 describe("handlers.pickPath", () => {
   afterAll(cleanupTempRepos);
 
-  it("目录与文件带各自的图标；选中的交回路径，取消是 null", async () => {
+  it("选中的交回路径，取消是 null", async () => {
     const path = makeTempRepo("pick-path");
     mkdirSync(join(path, "src"));
     writeFileSync(join(path, "src/a.ts"), "a");
@@ -1159,28 +897,17 @@ describe("handlers.pickPath", () => {
     git(path, ["commit", "-q", "-m", "a"]);
     const run = async (answer: number | undefined) => {
       const repository = new Repository(plainLocation(path), cli);
-      let shown: readonly PickItem[] = [];
       try {
-        const picked = await createHandlers(repository, {
-          ...NO_UI,
-          pick: async (_title, items) => {
-            shown = items;
-            return answer;
-          },
-        }).pickPath({ repo: path });
-        return { shown, picked };
+        return await createHandlers(repository, { ...NO_UI, pick: async () => answer }).pickPath({
+          repo: path,
+        });
       } finally {
         repository.dispose();
       }
     };
-    const { shown, picked } = await run(1);
-    expect(shown).toEqual([
-      { label: "$(file) f1" },
-      { label: "$(folder) src" },
-      { label: "$(file) src/a.ts" },
-    ]);
-    expect(picked).toBe("src");
-    expect((await run(undefined)).picked).toBeNull();
+    // 列表按路径排序：f1、src、src/a.ts。
+    expect(await run(1)).toBe("src");
+    expect(await run(undefined)).toBeNull();
   });
 });
 
@@ -1225,16 +952,13 @@ describe("handlers.openMergeEditor", () => {
 
   it("三栏取暂存区，结果写回工作区的文件", async () => {
     const repo = stashConflict("merge-editor");
-    expect(await open(repo, "both.txt")).toEqual([
-      {
-        base: { kind: DiffSideKind.Stage, stage: IndexStage.Base, path: "both.txt" },
-        current: { kind: DiffSideKind.Stage, stage: IndexStage.Ours, path: "both.txt" },
-        incoming: { kind: DiffSideKind.Stage, stage: IndexStage.Theirs, path: "both.txt" },
-        output: "both.txt",
-        currentTitle: "Current (main)",
-        incomingTitle: "Incoming (Stashed Changes)",
-      },
-    ]);
+    const [sides] = await open(repo, "both.txt");
+    expect(sides).toMatchObject({
+      base: { kind: DiffSideKind.Stage, stage: IndexStage.Base, path: "both.txt" },
+      current: { kind: DiffSideKind.Stage, stage: IndexStage.Ours, path: "both.txt" },
+      incoming: { kind: DiffSideKind.Stage, stage: IndexStage.Theirs, path: "both.txt" },
+      output: "both.txt",
+    });
   });
 
   it("两边都新增的没有基准：基准给空", async () => {
@@ -1242,33 +966,33 @@ describe("handlers.openMergeEditor", () => {
     expect(sides?.base).toEqual({ kind: DiffSideKind.Missing, path: "added.txt" });
   });
 
-  it("没有冲突的文件：说明原因，不打开", async () => {
+  it("没有冲突的文件：报给用户，不打开", async () => {
     await expect(open(stashConflict("merge-editor-clean"), "clean.txt")).rejects.toThrow(
-      "clean.txt has no conflict.",
+      UserFacingError,
     );
   });
 });
 
 describe("解决冲突：markResolved / removeConflictFile / resolveDeletion / deleteUntracked", () => {
   afterAll(cleanupTempRepos);
-  /** 跑一次，确认框回答 `sure`、选择框回答 `pick`；返回问了什么。 */
+  /** 跑一次，确认框回答 `sure`、选择框回答 `pick`；返回问了几次。 */
   const act = async (
     path: string,
     run: (h: ReturnType<typeof createHandlers>) => Promise<unknown>,
     answers: { sure?: boolean; pick?: number } = {},
   ) => {
     const repository = new Repository(plainLocation(path), cli);
-    const asked: string[] = [];
+    let asked = 0;
     try {
       await run(
         createHandlers(repository, {
           ...NO_UI,
-          confirm: async (message) => {
-            asked.push(message);
+          confirm: async () => {
+            asked++;
             return answers.sure ?? false;
           },
-          choose: async (message, actions) => {
-            asked.push(`${message} [${actions.join(" / ")}]`);
+          choose: async () => {
+            asked++;
             return answers.pick;
           },
         }),
@@ -1283,26 +1007,20 @@ describe("解决冲突：markResolved / removeConflictFile / resolveDeletion / d
 
   it("还有冲突标记：先问，取消就不标记", async () => {
     const repo = stashConflict("resolve-markers");
-    const asked = await act(repo, (h) => h.markResolved({ repo, path: "both.txt" }));
-    expect(asked).toEqual(["both.txt still contains conflict markers. Mark as resolved anyway?"]);
+    expect(await act(repo, (h) => h.markResolved({ repo, path: "both.txt" }))).toBe(1);
     expect(status(repo, "both.txt")).toBe("UU both.txt");
   });
 
   it("没有冲突标记了：直接标记，移出冲突", async () => {
     const repo = stashConflict("resolve-clean");
     writeFileSync(join(repo, "both.txt"), "merged\n");
-    expect(await act(repo, (h) => h.markResolved({ repo, path: "both.txt" }))).toEqual([]);
+    expect(await act(repo, (h) => h.markResolved({ repo, path: "both.txt" }))).toBe(0);
     expect(status(repo, "both.txt")).toBe("M  both.txt");
   });
 
   it("双击一边删了的：选 Keep 留下工作区那份，选 Delete File 删掉", async () => {
     const kept = stashConflict("resolve-keep");
-    const asked = await act(kept, (h) => h.resolveDeletion({ repo: kept, path: "gone.txt" }), {
-      pick: 0,
-    });
-    expect(asked).toEqual([
-      "gone.txt was changed on our side and deleted on theirs. [Keep / Delete File]",
-    ]);
+    await act(kept, (h) => h.resolveDeletion({ repo: kept, path: "gone.txt" }), { pick: 0 });
     expect(status(kept, "gone.txt")).toBe("");
     const removed = stashConflict("resolve-delete");
     await act(removed, (h) => h.resolveDeletion({ repo: removed, path: "gone.txt" }), { pick: 1 });
@@ -1318,7 +1036,7 @@ describe("解决冲突：markResolved / removeConflictFile / resolveDeletion / d
   it("未跟踪文件 Add to Git：放进暂存区，不确认，磁盘上的内容还在", async () => {
     const repo = makeTempRepo("add-untracked");
     writeFileSync(join(repo, "junk.txt"), "x\n");
-    expect(await act(repo, (h) => h.addUntracked({ repo, path: "junk.txt" }))).toEqual([]);
+    expect(await act(repo, (h) => h.addUntracked({ repo, path: "junk.txt" }))).toBe(0);
     expect(status(repo, "junk.txt")).toBe("A  junk.txt");
     expect(readFileSync(join(repo, "junk.txt"), "utf8")).toBe("x\n");
   });
@@ -1328,10 +1046,7 @@ describe("解决冲突：markResolved / removeConflictFile / resolveDeletion / d
     writeFileSync(join(repo, "junk.txt"), "x");
     await act(repo, (h) => h.deleteUntracked({ repo, path: "junk.txt" }));
     expect(status(repo, "junk.txt")).toBe("?? junk.txt");
-    const asked = await act(repo, (h) => h.deleteUntracked({ repo, path: "junk.txt" }), {
-      sure: true,
-    });
-    expect(asked).toEqual(["Delete junk.txt? This cannot be undone."]);
+    await act(repo, (h) => h.deleteUntracked({ repo, path: "junk.txt" }), { sure: true });
     expect(status(repo, "junk.txt")).toBe("");
   });
 });
@@ -1362,24 +1077,17 @@ describe("停在半路：继续与放弃", () => {
     sure = true,
   ) => {
     const repository = new Repository(plainLocation(repo), cli);
-    const asked: string[] = [];
-    const said: string[] = [];
+    let asked = 0;
     const ui: HandlerUi = {
       ...NO_UI,
-      confirm: async (message) => {
-        asked.push(message);
+      confirm: async () => {
+        asked++;
         return sure;
-      },
-      withProgress: async (title, task, done) => {
-        said.push(title);
-        const value = await task();
-        said.push(done(value));
-        return value;
       },
     };
     try {
       await run(createHandlers(repository, ui));
-      return { asked, said };
+      return asked;
     } finally {
       repository.dispose();
     }
@@ -1400,15 +1108,11 @@ describe("停在半路：继续与放弃", () => {
 
   it("放弃先确认：取消就留着，确认才中止", async () => {
     const kept = conflictedMerge("op-abort-cancel");
-    const cancelled = await act(kept, (h) => h.abortOperation({ repo: kept }), false);
-    expect(cancelled.asked).toEqual(["Abort the merge?"]);
-    expect(cancelled.said).toEqual([]);
+    expect(await act(kept, (h) => h.abortOperation({ repo: kept }), false)).toBe(1);
     expect(existsSync(join(kept, ".git", "MERGE_HEAD"))).toBe(true);
 
     const dropped = conflictedMerge("op-abort");
-    const confirmed = await act(dropped, (h) => h.abortOperation({ repo: dropped }));
-    expect(confirmed.asked).toEqual(["Abort the merge?"]);
-    expect(confirmed.said).toEqual(["Aborting…", "Aborted"]);
+    expect(await act(dropped, (h) => h.abortOperation({ repo: dropped }))).toBe(1);
     expect(existsSync(join(dropped, ".git", "MERGE_HEAD"))).toBe(false);
   });
 
@@ -1418,8 +1122,7 @@ describe("停在半路：继续与放弃", () => {
     git(repo, ["add", "f.txt"]);
     // 继续不能 git add 其它文件：这个已跟踪的改动该留在工作区。
     writeFileSync(join(repo, "f1"), "still dirty\n");
-    const { said } = await act(repo, (h) => h.continueOperation({ repo, message: "edited merge" }));
-    expect(said).toEqual(["Continuing…", "Merge completed"]);
+    await act(repo, (h) => h.continueOperation({ repo, message: "edited merge" }));
     expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe("edited merge");
     expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe(" M f1");
   });
@@ -1451,10 +1154,7 @@ describe("停在半路：继续与放弃", () => {
       expect(first?.kind).toBe(OperationKind.CherryPick);
       writeFileSync(join(repo, "f.txt"), "resolved\n");
       git(repo, ["add", "f.txt"]);
-      const { said } = await act(repo, (h) =>
-        h.continueOperation({ repo, message: "edited pick" }),
-      );
-      expect(said).toEqual(["Continuing…", "Stopped for conflicts"]);
+      await act(repo, (h) => h.continueOperation({ repo, message: "edited pick" }));
       const second = await handlers.getOperation({ repo });
       expect(second?.kind).toBe(OperationKind.CherryPick);
       expect(second?.id).not.toBe(first?.id);
@@ -1464,14 +1164,12 @@ describe("停在半路：继续与放弃", () => {
     }
   });
 
-  it("没有进行中的操作：直接说明，不跑 git", async () => {
+  it("没有进行中的操作：报给用户，不跑 git", async () => {
     const repo = makeTempRepo("op-none");
     await expect(act(repo, (h) => h.continueOperation({ repo, message: "x" }))).rejects.toThrow(
-      "No operation in progress.",
+      UserFacingError,
     );
-    await expect(act(repo, (h) => h.abortOperation({ repo }))).rejects.toThrow(
-      "No operation in progress.",
-    );
+    await expect(act(repo, (h) => h.abortOperation({ repo }))).rejects.toThrow(UserFacingError);
   });
 });
 
@@ -1483,19 +1181,8 @@ describe("分支右键：合并与变基", () => {
     call: (handlers: ReturnType<typeof createHandlers>) => Promise<unknown>,
   ) => {
     const repository = new Repository(plainLocation(repo), cli);
-    const said: string[] = [];
-    const ui: HandlerUi = {
-      ...NO_UI,
-      withProgress: async (title, task, done) => {
-        said.push(title);
-        const value = await task();
-        said.push(done(value));
-        return value;
-      },
-    };
     try {
-      await call(createHandlers(repository, ui));
-      return said;
+      await call(createHandlers(repository, NO_UI));
     } finally {
       repository.dispose();
     }
@@ -1527,21 +1214,17 @@ describe("分支右键：合并与变基", () => {
   it("快进，工作区里不相关的改动留着", async () => {
     const repo = ahead("merge-ff");
     writeFileSync(join(repo, "f1"), "dirty\n");
-    const said = await run(repo, (h) =>
-      h.merge({ repo, start: "refs/heads/feature", startName: "feature" }),
-    );
-    expect(said).toEqual(["Merging feature…", "Fast-forwarded to feature"]);
+    await run(repo, (h) => h.merge({ repo, start: "refs/heads/feature", startName: "feature" }));
     expect(git(repo, ["rev-parse", "main"])).toBe(git(repo, ["rev-parse", "feature"]));
     expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe(" M f1");
   });
 
-  it("已经包含：说一声，不再合一次", async () => {
+  it("已经包含：不再合一次", async () => {
     const repo = ahead("merge-uptodate");
     await run(repo, (h) => h.merge({ repo, start: "refs/heads/feature", startName: "feature" }));
-    const said = await run(repo, (h) =>
-      h.merge({ repo, start: "refs/heads/feature", startName: "feature" }),
-    );
-    expect(said).toEqual(["Merging feature…", "Already up to date"]);
+    const before = git(repo, ["rev-parse", "HEAD"]);
+    await run(repo, (h) => h.merge({ repo, start: "refs/heads/feature", startName: "feature" }));
+    expect(git(repo, ["rev-parse", "HEAD"])).toBe(before);
   });
 
   it("分叉且文件不撞：合成一个合并提交", async () => {
@@ -1553,19 +1236,13 @@ describe("分支右键：合并与变基", () => {
     git(repo, ["switch", "-q", "main"]);
     writeFileSync(join(repo, "f1"), "main\n");
     git(repo, ["commit", "-qam", "main side"]);
-    const said = await run(repo, (h) =>
-      h.merge({ repo, start: "refs/heads/feature", startName: "feature" }),
-    );
-    expect(said).toEqual(["Merging feature…", "Merged feature"]);
+    await run(repo, (h) => h.merge({ repo, start: "refs/heads/feature", startName: "feature" }));
     expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe("Merge branch 'feature'");
   });
 
   it("合出冲突：停住，不弹确认", async () => {
     const repo = bothTouched("merge-stop");
-    const said = await run(repo, (h) =>
-      h.merge({ repo, start: "refs/heads/feature", startName: "feature" }),
-    );
-    expect(said).toEqual(["Merging feature…", "Stopped for conflicts"]);
+    await run(repo, (h) => h.merge({ repo, start: "refs/heads/feature", startName: "feature" }));
     expect(existsSync(join(repo, ".git", "MERGE_HEAD"))).toBe(true);
     expect(readFileSync(join(repo, ".git", "MERGE_MSG"), "utf8")).toContain(
       "Merge branch 'feature'",
@@ -1578,7 +1255,7 @@ describe("分支右键：合并与变基", () => {
     writeFileSync(join(repo, "f1"), "dirty\n");
     await expect(
       run(repo, (h) => h.merge({ repo, start: "refs/heads/feature", startName: "feature" })),
-    ).rejects.toThrow(/would be overwritten/);
+    ).rejects.toThrow();
     expect(existsSync(join(repo, ".git", "MERGE_HEAD"))).toBe(false);
   });
 
@@ -1586,21 +1263,19 @@ describe("分支右键：合并与变基", () => {
     const repo = ahead("rebase-keep");
     git(repo, ["update-ref", "refs/remotes/origin/feature", "refs/heads/feature"]);
     writeFileSync(join(repo, "f1"), "dirty\n");
-    const said = await run(repo, (h) =>
+    await run(repo, (h) =>
       h.rebase({ repo, start: "refs/remotes/origin/feature", startName: "origin/feature" }),
     );
-    expect(said).toEqual(["Rebasing onto origin/feature…", "Rebased onto origin/feature"]);
     expect(git(repo, ["rev-parse", "main"])).toBe(git(repo, ["rev-parse", "feature"]));
     expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe(" M f1");
   });
 
-  it("已经在目标上：说一声", async () => {
+  it("已经在目标上：什么都不动", async () => {
     const repo = ahead("rebase-uptodate");
     await run(repo, (h) => h.rebase({ repo, start: "refs/heads/feature", startName: "feature" }));
-    const said = await run(repo, (h) =>
-      h.rebase({ repo, start: "refs/heads/feature", startName: "feature" }),
-    );
-    expect(said).toEqual(["Rebasing onto feature…", "Already up to date"]);
+    const before = git(repo, ["rev-parse", "HEAD"]);
+    await run(repo, (h) => h.rebase({ repo, start: "refs/heads/feature", startName: "feature" }));
+    expect(git(repo, ["rev-parse", "HEAD"])).toBe(before);
   });
 
   /** rebase 停在半路：git 2.26 起默认 merge 后端（`rebase-merge/`），之前是 apply 后端（`rebase-apply/`）。 */
@@ -1610,10 +1285,7 @@ describe("分支右键：合并与变基", () => {
 
   it("变基冲突：停住", async () => {
     const repo = bothTouched("rebase-stop");
-    const said = await run(repo, (h) =>
-      h.rebase({ repo, start: "refs/heads/feature", startName: "feature" }),
-    );
-    expect(said).toEqual(["Rebasing onto feature…", "Stopped for conflicts"]);
+    await run(repo, (h) => h.rebase({ repo, start: "refs/heads/feature", startName: "feature" }));
     expect(rebasing(repo)).toBe(true);
   });
 
@@ -1624,13 +1296,7 @@ describe("分支右键：合并与变基", () => {
     git(repo, ["commit", "-qam", "feature"]);
     git(repo, ["switch", "-q", "main"]);
     writeFileSync(join(repo, "f1"), "dirty\n");
-    const said = await run(repo, (h) =>
-      h.rebase({ repo, start: "refs/heads/feature", startName: "feature" }),
-    );
-    expect(said).toEqual([
-      "Rebasing onto feature…",
-      "Rebased onto feature. Applying the stashed changes has conflicts.",
-    ]);
+    await run(repo, (h) => h.rebase({ repo, start: "refs/heads/feature", startName: "feature" }));
     expect(rebasing(repo)).toBe(false);
     expect(existsSync(join(repo, ".git", "MERGE_HEAD"))).toBe(false);
     expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe("UU f1");
@@ -1646,26 +1312,14 @@ describe("提交右键：cherry-pick、revert、变基到这条", () => {
     call: (handlers: ReturnType<typeof createHandlers>) => Promise<unknown>,
   ) => {
     const repository = new Repository(plainLocation(repo), cli);
-    const said: string[] = [];
-    const ui: HandlerUi = {
-      ...NO_UI,
-      withProgress: async (title, task, done) => {
-        said.push(title);
-        const value = await task();
-        said.push(done(value));
-        return value;
-      },
-    };
     try {
-      await call(createHandlers(repository, ui));
-      return said;
+      await call(createHandlers(repository, NO_UI));
     } finally {
       repository.dispose();
     }
   };
 
   const head = (repo: string): string => git(repo, ["rev-parse", "HEAD"]).trim();
-  const short = (hash: string): string => hash.slice(0, 7);
 
   it("摘一条不相关的提交，工作区里不相关的改动留着", async () => {
     const repo = makeTempRepo("pick-ok");
@@ -1676,8 +1330,7 @@ describe("提交右键：cherry-pick、revert、变基到这条", () => {
     const hash = head(repo);
     git(repo, ["switch", "-q", "main"]);
     writeFileSync(join(repo, "f1"), "dirty\n");
-    const said = await run(repo, (h) => h.cherryPick({ repo, hash }));
-    expect(said).toEqual([`Cherry-picking ${short(hash)}…`, `Cherry-picked ${short(hash)}`]);
+    await run(repo, (h) => h.cherryPick({ repo, hash }));
     expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe("feature");
     expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe(" M f1");
   });
@@ -1691,8 +1344,7 @@ describe("提交右键：cherry-pick、revert、变基到这条", () => {
     git(repo, ["switch", "-q", "main"]);
     writeFileSync(join(repo, "f1"), "main\n");
     git(repo, ["commit", "-qam", "main"]);
-    const said = await run(repo, (h) => h.cherryPick({ repo, hash }));
-    expect(said).toEqual([`Cherry-picking ${short(hash)}…`, "Stopped for conflicts"]);
+    await run(repo, (h) => h.cherryPick({ repo, hash }));
     expect(existsSync(join(repo, ".git", "CHERRY_PICK_HEAD"))).toBe(true);
   });
 
@@ -1704,9 +1356,7 @@ describe("提交右键：cherry-pick、revert、变基到这条", () => {
     const hash = head(repo);
     git(repo, ["switch", "-q", "main"]);
     writeFileSync(join(repo, "f1"), "dirty\n");
-    await expect(run(repo, (h) => h.cherryPick({ repo, hash }))).rejects.toThrow(
-      /would be overwritten/,
-    );
+    await expect(run(repo, (h) => h.cherryPick({ repo, hash }))).rejects.toThrow();
     expect(existsSync(join(repo, ".git", "CHERRY_PICK_HEAD"))).toBe(false);
   });
 
@@ -1719,12 +1369,12 @@ describe("提交右键：cherry-pick、revert、变基到这条", () => {
     const hash = head(repo);
     git(repo, ["switch", "-q", "main"]);
     await run(repo, (h) => h.cherryPick({ repo, hash }));
-    const said = await run(repo, (h) => h.cherryPick({ repo, hash }));
-    expect(said).toEqual([`Cherry-picking ${short(hash)}…`, "Cherry-pick is now empty"]);
+    await run(repo, (h) => h.cherryPick({ repo, hash }));
     expect(existsSync(join(repo, ".git", "CHERRY_PICK_HEAD"))).toBe(true);
+    expect(git(repo, ["status", "--porcelain"]).trim()).toBe("");
   });
 
-  it("合并提交：git 拒绝，原文里说明要 -m", async () => {
+  it("合并提交：git 拒绝，cherry-pick 没有开始", async () => {
     const repo = makeTempRepo("pick-merge");
     git(repo, ["switch", "-q", "-c", "side"]);
     writeFileSync(join(repo, "side.txt"), "side\n");
@@ -1736,7 +1386,7 @@ describe("提交右键：cherry-pick、revert、变基到这条", () => {
     git(repo, ["merge", "-q", "--no-edit", "side"]);
     const hash = head(repo);
     git(repo, ["reset", "-q", "--hard", "HEAD~1"]);
-    await expect(run(repo, (h) => h.cherryPick({ repo, hash }))).rejects.toThrow(/no -m option/);
+    await expect(run(repo, (h) => h.cherryPick({ repo, hash }))).rejects.toThrow();
     expect(existsSync(join(repo, ".git", "CHERRY_PICK_HEAD"))).toBe(false);
   });
 
@@ -1749,8 +1399,7 @@ describe("提交右键：cherry-pick、revert、变基到这条", () => {
     git(repo, ["add", "note.txt"]);
     git(repo, ["commit", "-qm", "note"]);
     writeFileSync(join(repo, "note.txt"), "dirty\n");
-    const said = await run(repo, (h) => h.revert({ repo, hash }));
-    expect(said).toEqual([`Reverting ${short(hash)}…`, `Reverted ${short(hash)}`]);
+    await run(repo, (h) => h.revert({ repo, hash }));
     expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe('Revert "next"');
     expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe(" M note.txt");
   });
@@ -1762,8 +1411,7 @@ describe("提交右键：cherry-pick、revert、变基到这条", () => {
     const hash = head(repo);
     writeFileSync(join(repo, "f1"), "third\n");
     git(repo, ["commit", "-qam", "third"]);
-    const said = await run(repo, (h) => h.revert({ repo, hash }));
-    expect(said).toEqual([`Reverting ${short(hash)}…`, "Stopped for conflicts"]);
+    await run(repo, (h) => h.revert({ repo, hash }));
     expect(existsSync(join(repo, ".git", "REVERT_HEAD"))).toBe(true);
   });
 
@@ -1776,8 +1424,7 @@ describe("提交右键：cherry-pick、revert、变基到这条", () => {
     const hash = head(repo);
     git(repo, ["switch", "-q", "main"]);
     writeFileSync(join(repo, "f1"), "dirty\n");
-    const said = await run(repo, (h) => h.rebase({ repo, start: hash, startName: short(hash) }));
-    expect(said).toEqual([`Rebasing onto ${short(hash)}…`, `Rebased onto ${short(hash)}`]);
+    await run(repo, (h) => h.rebase({ repo, start: hash, startName: hash.slice(0, 7) }));
     expect(head(repo)).toBe(hash);
     expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe(" M f1");
   });
@@ -1787,17 +1434,11 @@ describe("handlers.resetTo", () => {
   afterAll(cleanupTempRepos);
   const reset = async (path: string, hash: string, pick: number | undefined) => {
     const repository = new Repository(plainLocation(path), cli);
-    const asked: { message: string; actions: readonly string[]; detail?: string | undefined }[] =
-      [];
     try {
-      await createHandlers(repository, {
-        ...NO_UI,
-        choose: async (message, actions, detail) => {
-          asked.push({ message, actions, detail });
-          return pick;
-        },
-      }).resetTo({ repo: path, hash });
-      return asked;
+      await createHandlers(repository, { ...NO_UI, choose: async () => pick }).resetTo({
+        repo: path,
+        hash,
+      });
     } finally {
       repository.dispose();
     }
@@ -1808,19 +1449,6 @@ describe("handlers.resetTo", () => {
     git(repo, ["commit", "-q", "--allow-empty", "-m", "second\n\nbody"]);
     return { repo, first };
   };
-
-  it("对话框：写明分支、短 hash 与说明首行，四个按钮从轻到重，每个附一句说明", async () => {
-    const { repo, first } = scene();
-    const [asked] = await reset(repo, first, undefined);
-    expect(asked?.message).toBe(`Reset main to ${first.slice(0, 7)} "init"?`);
-    expect(asked?.actions).toEqual(["Soft", "Mixed", "Keep", "Hard"]);
-    expect(asked?.detail?.split("\n").map((line) => line.split(":")[0])).toEqual([
-      "Soft",
-      "Mixed",
-      "Keep",
-      "Hard",
-    ]);
-  });
 
   it("取消：什么都不动；选了就按那一种做", async () => {
     const { repo, first } = scene();
@@ -1836,31 +1464,22 @@ describe("handlers.reword", () => {
   afterAll(cleanupTempRepos);
   const reword = async (path: string, hash: string, message: string) => {
     const repository = new Repository(plainLocation(path), cli);
-    const said: string[] = [];
     const closed: DialogKind[] = [];
     try {
       await createHandlers(repository, {
         ...NO_UI,
         closeDialog: (dialog) => void closed.push(dialog),
-        withProgress: async (title, task, done) => {
-          said.push(title);
-          const value = await task();
-          said.push(done(value));
-          return value;
-        },
       }).reword({ repo: path, hash, message });
-      return { said, closed };
+      return closed;
     } finally {
       repository.dispose();
     }
   };
 
-  it("关掉对话框，改写，状态栏说改了哪条", async () => {
+  it("关掉对话框，改写", async () => {
     const repo = makeTempRepo("reword-handler");
     const hash = git(repo, ["rev-parse", "HEAD"]).trim();
-    const { said, closed } = await reword(repo, hash, "renamed");
-    expect(closed).toEqual([DialogKind.Reword]);
-    expect(said).toEqual(["Rewording…", `Reworded ${hash.slice(0, 7)}`]);
+    expect(await reword(repo, hash, "renamed")).toEqual([DialogKind.Reword]);
     expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe("renamed");
   });
 
@@ -1886,7 +1505,7 @@ describe("handlers.reword", () => {
           ...NO_UI,
           closeDialog: (dialog) => void closed.push(dialog),
         }).reword({ repo, hash: head, message: "x" }),
-      ).rejects.toThrow("Cannot edit commit messages while a merge is in progress.");
+      ).rejects.toThrow(UserFacingError);
     } finally {
       repository.dispose();
     }

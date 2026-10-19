@@ -125,26 +125,20 @@ describe("进程起不来时 reject，不伪造退出码", () => {
 });
 
 describe("日志", () => {
-  it("一条命令只记一次", async () => {
+  it("成功与失败的命令都只记一次；失败的 stderr 照记", async () => {
     const records: GitCommandRecord[] = [];
     const logger: GitLogger = { command: (r) => records.push(r) };
     const logged = new GitCli("git", logger);
     await logged.exec(["log", "-1", "--format=%H"], { cwd: fixtures.base });
-    expect(records).toHaveLength(1);
+    await logged.exec(["rev-parse", "--verify", "nosuchref"], { cwd: fixtures.base });
+    expect(records).toHaveLength(2);
     expect(records[0]).toMatchObject({
       args: ["log", "-1", "--format=%H"],
       outcome: "exit 0",
       stderr: "",
     });
-  });
-
-  it("失败的命令也只记一次", async () => {
-    const records: GitCommandRecord[] = [];
-    const logged = new GitCli("git", { command: (r) => records.push(r) });
-    await logged.exec(["rev-parse", "--verify", "nosuchref"], { cwd: fixtures.base });
-    expect(records).toHaveLength(1);
-    // stderr 照记：拒绝的原因在这里。
-    expect(records[0]?.stderr).toContain("fatal:");
+    // 拒绝的原因在这里。
+    expect(records[1]?.stderr).toContain("fatal:");
   });
 });
 

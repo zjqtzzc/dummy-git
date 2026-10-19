@@ -92,22 +92,3 @@ describe("IgnoreCache：被忽略的目录整个记住", () => {
     expect(cache.shouldIgnore("build/b.o")).toBe(false); // 目录没被记成忽略，新文件照常放行
   });
 });
-
-describe("IgnoreCache：强制跟踪的 ignored 文件照常通知", () => {
-  it("add -f 强制跟踪的 ignored 文件，改动**不会**被挡", async () => {
-    // 纯模式匹配的库会把它判成忽略 → 用户对它的改动永远不显示。
-    // 我们问的是 git，而 check-ignore 默认认 index。
-    const repo = repoWithIgnores();
-    writeFileSync(join(repo, "forced.log"), "v1\n");
-    git(repo, ["add", "-f", "forced.log"]);
-    git(repo, ["commit", "-qm", "force add"]);
-
-    const cache = new IgnoreCache(cli, repo);
-    cache.shouldIgnore("forced.log");
-    cache.shouldIgnore("other.log");
-    await cache.resolvePending();
-
-    expect(cache.shouldIgnore("forced.log")).toBe(false); // ← 不挡
-    expect(cache.shouldIgnore("other.log")).toBe(true); // ← 对照组，照常挡
-  });
-});

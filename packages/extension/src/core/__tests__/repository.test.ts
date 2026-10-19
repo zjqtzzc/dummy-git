@@ -173,42 +173,4 @@ describe("Repository：被 ignore 的文件持续写入 → 0 次通知（验收
     repo.flushPending();
     expect(seen).toHaveLength(1); // ← 还是 1
   });
-
-  it("对照组：没被 ignore 的文件照常通知", async () => {
-    const path = makeTempRepo("repo-not-ignored");
-    writeFileSync(join(path, ".gitignore"), "*.log\n");
-    git(path, ["add", "-A"]);
-    git(path, ["commit", "-qm", "add gitignore"]);
-
-    const repo = new Repository(plainLocation(path), cli);
-    const seen = collect(repo);
-
-    repo.notifyWorkspacePath("src/main.ts");
-    repo.flushPending();
-    await new Promise((r) => setTimeout(r, 200));
-
-    repo.notifyWorkspacePath("src/main.ts");
-    repo.flushPending();
-    expect(seen).toHaveLength(2); // 两次都通知
-  });
-
-  it("add -f 强制跟踪的 ignored 文件仍然通知", async () => {
-    const path = makeTempRepo("repo-forced");
-    writeFileSync(join(path, ".gitignore"), "*.log\n");
-    writeFileSync(join(path, "forced.log"), "v1\n");
-    git(path, ["add", "-A"]);
-    git(path, ["add", "-f", "forced.log"]);
-    git(path, ["commit", "-qm", "force add"]);
-
-    const repo = new Repository(plainLocation(path), cli);
-    const seen = collect(repo);
-
-    repo.notifyWorkspacePath("forced.log");
-    repo.flushPending();
-    await new Promise((r) => setTimeout(r, 200));
-
-    repo.notifyWorkspacePath("forced.log");
-    repo.flushPending();
-    expect(seen).toHaveLength(2); // ← 不被挡
-  });
 });

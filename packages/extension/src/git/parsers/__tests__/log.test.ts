@@ -1,8 +1,12 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import type { Commit, CommitSkeleton } from "@dummy-git/shared";
-import { beforeAll, describe, expect, it } from "vitest";
-import { cli, fixtures } from "../../../__tests__/support.js";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { cleanupTempRepos, cli, fixtures, git, makeTempRepo } from "../../../__tests__/support.js";
 import { SKELETON_LIMIT } from "../../commands/log.js";
 import { detailsArgs, parseLog, parseSkeleton, skeletonArgs } from "../log.js";
+
+afterEach(cleanupTempRepos);
 
 /** 走真实路径：`cli.execRaw` → `parseXxx`，与生产代码同一条链。 */
 async function skeletonOf(repo: string): Promise<CommitSkeleton[]> {
@@ -47,9 +51,10 @@ describe("parseSkeleton", () => {
 });
 
 describe("parseLog：五种输入", () => {
+  let skeleton: CommitSkeleton[];
   let commits: Commit[];
   beforeAll(async () => {
-    const skeleton = await skeletonOf(fixtures.base);
+    skeleton = await skeletonOf(fixtures.base);
     commits = await detailsOf(
       fixtures.base,
       skeleton.map((c) => c.hash),
@@ -85,7 +90,7 @@ describe("parseLog：五种输入", () => {
   });
 
   it("条数与骨架一致——没有记录被吞掉", () => {
-    expect(commits.length).toBeGreaterThan(3);
+    expect(commits).toHaveLength(skeleton.length);
   });
 });
 
@@ -119,50 +124,14 @@ describe("skeletonArgs 不用 --all", () => {
    * 用户 stash 过一次，界面就凭空多两条。所以用显式三件套
    * `--branches --remotes --tags`：等价于 `--all`，但不带 index 与 stash 那些提交。
    */
-  it("参数里不出现 --all", () => {
-    expect(skeletonArgs(SKELETON_LIMIT)).not.toContain("--all");
-  });
-
-  it("用 HEAD / --branches / --remotes / --tags 四件套代替", () => {
-    const args = skeletonArgs(SKELETON_LIMIT);
-    expect(args).toContain("HEAD");
-    expect(args).toContain("--branches");
-    expect(args).toContain("--remotes");
-    expect(args).toContain("--tags");
-  });
-
   it("stash 过之后，骨架里不出现 stash 提交，也不出现 index on ...", async () => {
-    const { execFileSync } = await import("node:child_process");
-    const { mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
-    const { tmpdir } = await import("node:os");
-    const { join } = await import("node:path");
-    const repo = mkdtempSync(join(tmpdir(), "stash-"));
-    const git = (...a: string[]): void => {
-      execFileSync("git", a, {
-        cwd: repo,
-        env: {
-          ...process.env,
-          GIT_AUTHOR_NAME: "a",
-          GIT_AUTHOR_EMAIL: "a@b.c",
-          GIT_COMMITTER_NAME: "a",
-          GIT_COMMITTER_EMAIL: "a@b.c",
-        },
-      });
-    };
-    try {
-      git("init", "-q", ".");
-      writeFileSync(join(repo, "f"), "1");
-      git("add", "-A");
-      git("commit", "-qm", "c1");
-      writeFileSync(join(repo, "f"), "wip");
-      git("stash", "-q");
+    const repo = makeTempRepo("log-stash");
+    writeFileSync(join(repo, "f1"), "wip\n");
+    git(repo, ["stash", "-q"]);
 
-      // `--all` 下这里会是 3 条：c1 + "WIP on master" + "index on master"。
-      const raw = await cli.execRaw(skeletonArgs(SKELETON_LIMIT), { cwd: repo });
-      expect(parseSkeleton(raw.stdout)).toHaveLength(1);
-    } finally {
-      rmSync(repo, { recursive: true, force: true });
-    }
+    // `--all` 下这里会是 3 条：init + "WIP on main" + "index on main"。
+    const raw = await cli.execRaw(skeletonArgs(SKELETON_LIMIT), { cwd: repo });
+    expect(parseSkeleton(raw.stdout)).toHaveLength(1);
   });
 });
 

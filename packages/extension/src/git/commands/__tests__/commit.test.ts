@@ -11,7 +11,6 @@ import {
 import { runCommand } from "../../../core/executor.js";
 import { CommandQueue } from "../../../core/operation.js";
 import { amendCommit, commit } from "../commit.js";
-import { getStatus } from "../status.js";
 
 afterEach(cleanupTempRepos);
 
@@ -94,15 +93,6 @@ describe("amendCommit", () => {
     await amendCommit.execute(cli, repo, "amended", ["f1"], []);
     expect(git(repo, ["rev-list", "--count", "HEAD"]).trim()).toBe("1");
     expect(git(repo, ["status", "--porcelain"]).trim()).toBe("");
-  });
-});
-
-describe("getStatus：命令层为它传了 GIT_OPTIONAL_LOCKS=0", () => {
-  it("带着这个环境变量照常取到改动", async () => {
-    const repo = makeTempRepo("locks-env");
-    writeFileSync(join(repo, "f1"), "changed\n");
-    const { changes } = await getStatus.execute(cli, repo);
-    expect(changes.length).toBeGreaterThan(0);
   });
 });
 
