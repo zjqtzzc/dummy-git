@@ -116,27 +116,43 @@
 - 否决每一行都带上整组：选中一变，每个可见的选中行都要重写一遍整串；Ctrl+A 一万条时是几十 MB。
 - 否决点了菜单项以后再回头问页面选了什么：已经否决过（`tech/decisions.md`「原生右键菜单是协议的第二个入口」）——只解决得了点下去做什么，解决不了菜单里出现哪些项，而且要求页面还开着。
 
-**这份 JSON 统一算成「名单」**（单个、目录、多选三种右键共用；所有树和提交列表共用）：
-- 第一步只看结构：这次右键涉及哪些项。单个就是它自己；目录、分组是它下面的全部叶子；多选是选中的全部，目录展开，去掉重复（选了 `feat/` 又选了 `feat/a`，`feat/a` 只算一次，同 IDEA `VcsTreeModelData` 的 `selected`）。这一步不认识提交、分支还是文件，放 `logic/`，所有树和提交列表共用。
-- 第二步由各面板决定菜单：每个菜单项只看名单，不管它是怎么来的。
-  - **只能对一个做的项**（Rebase onto Here、Reset、Edit Commit Message、New Branch from Here…）：只在右键的恰好是一个叶子时出现。这时 JSON 里写着现在的那几个单选键（`dummyGit.node` 等），`package.json` 里这些项的 `when` 不用改。目录和多选时不写 `dummyGit.node`，它们自然消失。
-  - **能批量做的项**（Copy Hash、Cherry-Pick、Revert，第 15 阶段的 Delete、Update、Rollback、Add…）：每项一个开关键，页面按名单算好写进去（比如 `dummyGit.canCherryPick`：名单里没有合并提交时为 `true`，第 9 条）。`when` 表达不了「全部都是」「至少有一个」，所以在页面里算，纯函数、有测试。
-  - 名单本身写在 `dummyGit.items` 里，每项是它那份单选键，按列表顺序；扩展的批量命令从这里取。
+**菜单项怎么定义：每个菜单项一个键**（2026-10-19 项目负责人定，所有树和提交列表共用）
+
+右键时，页面对每个菜单项算出「这次要作用于哪些东西」，算得出就写一个键，算不出就不写：
+- 键在，菜单项就出现；键的值就是交给扩展的参数。`package.json` 的 `when` 一律是 `webviewId == … && dummyGit.<这一项的键>`。
+- 扩展的菜单命令只取自己那个键，过同一张参数校验表（C.1），交给处理函数，自己不再判断。
+- 竖按钮、工具栏按钮用同一个菜单项定义，「能不能做、对谁做」只有一份。
+- 依据：IDEA 每个菜单项的 `update()` 与 `actionPerformed()` 读同一份选中、用同一段判断。VS Code 弹菜单时不回来跑我们的代码，所以改成右键那一刻由页面替每一项算好。现有的 New Branch from Here… 就是这样（`when` 是 `dummyGit.start`，竖按钮用同一个 `startOf`），推广到全部。
+- 否决「名单 + 节点类型 + 开关键」：每一项真正要动的是名单的一部分（Delete 跳过当前分支），挑这一部分的规则页面要写一份（决定出不出现），扩展又要写一份（决定动谁）；现在 Delete 的 `when` 和竖按钮的 `deleteTargetOf` 就是两份。而且 `when` 是没人测的字符串。
+
+**一个菜单项写三样东西**：
+- **看法**：「展开看」是选中的叶子加上选中目录下面列出的全部叶子，去掉重复（同 IDEA `VcsTreeModelData.selected`）；「原样看」是点中的节点本身，目录就是目录（同 `exactlySelected`）。目录只是归类时用展开看（分支目录、Commit 面板的目录、提交列表没有目录）；目录本身就是对象时用原样看（以后的「Fetch 这个远程」「这个目录的历史」）。同 IDEA 改动树与 VS Code SCM 的目录（展开）、GitLens 的 Stage Directory 与 IDEA 的远程名（对象）。
+- **单个判断**：这一个东西能不能做。
+- **整体条件**（可选）：对整体的要求，比如「正好一个」（Reset、Reword）、「至少两个且相邻」（以后的 Squash）。只能单选和只能多选是同一回事。
+
+**框架怎么算**（`logic/` 里一个共用函数，配测试）：按看法取出东西 → **每一个都通过单个判断**，否则不出现 → 通过整体条件，否则不出现 → 出现，值是这些东西。
+- **全部严格**（2026-10-19 项目负责人定）：不跳过任何东西，点了就是全做。否决「直接选的严格、目录带进来的只取能做的」：要给每一项带上「怎么进来的」标记，规则多一层，参照里也没有人这么做。代价：一个目录里只要有一个做不了的，整组就没有这一项（右键 `Local` 没有 Delete，因为里面有当前分支）。
 
 ```jsonc
-// 右键一条提交（名单只有一项）
-{ "dummyGit.node": "commit", "dummyGit.repo": "/r", "dummyGit.hash": "1a2b…", "dummyGit.rewordable": true,
-  "dummyGit.canCherryPick": true, "dummyGit.items": [ { "dummyGit.hash": "1a2b…" } ] }
+// 提交列表，选了三条
+{ "dummyGit.repo": "/r", "preventDefaultContextMenuItems": true,
+  "dummyGit.copyHash": ["1a2b…", "3c4d…", "5e6f…"] }
+  // Reset、Edit Commit Message 的整体条件是「正好一个」，这里没有它们的键
 
-// 选了三条，其中有合并提交
-{ "dummyGit.repo": "/r",
-  "dummyGit.items": [ { "dummyGit.hash": "1a2b…" }, { "dummyGit.hash": "3c4d…" }, { "dummyGit.hash": "5e6f…" } ] }
+// 右键一条能改说明的提交
+{ "dummyGit.repo": "/r", "preventDefaultContextMenuItems": true,
+  "dummyGit.copyHash": ["1a2b…"], "dummyGit.cherryPick": ["1a2b…"], "dummyGit.revert": ["1a2b…"],
+  "dummyGit.rebaseHere": "1a2b…", "dummyGit.resetTo": "1a2b…", "dummyGit.reword": "1a2b…" }
 ```
+
+- **要先实测**：键的值是列表（或字符串）时，`when` 里只写键名能不能当作「有」。VS Code 读这一段的代码不在本地。不成立就每一项另写一个布尔开关。
+- **未测**：Cmd+A 一万条时，提交列表三个批量项各带一份 hash 列表，估计每次右键约 1.3 MB。
+- ⌘C 复制不是菜单项，直接用原样看。
 
 ### C. 协议：命令改成收一个列表
 
 - `cherryPick`、`revert` 的参数 `hash` 改成 `hashes`。单个就是只有一项的列表。否决另加 `cherryPickMany`：两条命令回答同一个问题（D.6d），单条那条不是非有不可的。
-- 菜单命令从 `dummyGit.items` 取出列表，和页面按钮过同一张参数校验表（C.1）：列表非空，每个 hash 照旧校验。
+- 菜单命令取自己那个键的列表，和页面按钮过同一张参数校验表（C.1）：列表非空，每个 hash 照旧校验。
 - Copy Hash 仍是 `copyText`，扩展把 hash 用空格连起来。
 - 顺手修：`shared/src/protocol.ts` 里 `cherryPick` 的说明注释错挂在了 `resetTo` 上面。
 
@@ -154,6 +170,7 @@
 1. **右键菜单改为右键时写在外层**（仍是单选，JSON 的内容不变）：提交列表和 `Tree.vue` 都是行上去掉 JSON，右键时写到容器上；菜单和现在完全一样。测试：由被点的行算出容器上写什么（点在行上、点在空白处、点在没有菜单的行上）。手测：第四节 B 实测的那几种。
 2. **选中规则**：`logic/` 里的纯函数与测试，不接界面。
 3. **提交列表接上多选**：点选、键盘、右键改选中；刷新、过滤后的收缩；右栏 `N commits selected`（第 5 条）。
-4. **名单与开关键**：JSON 改成第四节 B 的「名单」形状，Copy Hash、Cherry-Pick、Revert 的 `when` 改看开关键；Copy Hash 多条；Ctrl+C 多条。测试：由选中算名单与开关键。
-5. **批量 Cherry-Pick、Revert**：协议改成 `hashes`，`--stdin`，顺序，变空。测试：真 git 下的顺序、变空、停下后继续接着做剩下的；`pnpm test:old-git`。
-6. **验收**：要核对的条目勾过；验收句手动走一遍；并进 `product/features/log.md`、`product/features/trees.md`，删掉本文。
+4. **菜单框架**：先实测键的值能不能直接当 `when` 的条件（第四节 B）。再写两种看法与共用的计算函数，提交列表的 6 项（Copy Hash、Cherry-Pick、Revert、Rebase onto Here、Reset、Edit Commit Message）改成「每项一个键」；只能对一条做的整体条件是「正好一个」，Cherry-Pick、Revert 这一步也先是「正好一个」。多选时出现 Copy Hash。树的菜单项第 15 阶段再改，其间两种写法并存。测试：由选中算出各项的键。
+5. **复制改成一条一行**（第 10 条）：⌘C 单选多选都是 `说明第一行 作者 日期`；`product/features/log.md` 同步改。
+6. **批量 Cherry-Pick、Revert**：协议改成 `hashes`，`--stdin`，顺序，变空；去掉「正好一个」，单个判断改为「不是合并提交」（只有一条时照旧交给 git 报错，第 9 条）。测试：真 git 下的顺序、变空、停下后继续接着做剩下的；`pnpm test:old-git`。
+7. **验收**：要核对的条目勾过；验收句手动走一遍；并进 `product/features/log.md`、`product/features/trees.md`，删掉本文。
