@@ -68,19 +68,28 @@
     - Add to Git、Delete：选中的全是未跟踪文件时出现；`Unversioned Files` 组和它下面的目录算作选中下面的全部文件。Delete 只问一次：`Delete 3 files? This cannot be undone.`，列出前 5 个文件名。
     - 冲突文件只能单选（待定，推荐）：它有自己的解决方式（`product/features/conflicts.md`），批量 Accept Ours / Theirs 在需求池「冲突」。
 
-## 三、技术方案（在第 14 阶段之上多出来的）
+## 三、复制（所有树）
+
+11. **⌘C / Ctrl+C 复制字面值**（2026-10-19 项目负责人定）：选中的每一行复制它显示的文字，多选时按显示顺序一行一个。同 IDEA 的文件树（`ChangesBrowserNodeCopyProvider.java`：每行取显示的文字，用换行连起来；文件是文件名）。
+    - 复制的是**看到的那几行**，目录只复制目录名、不展开：和右键菜单的「名单」不同，名单要把目录展开成下面的全部（第 1 条）。
+    - 由 `Tree.vue` 统一响应快捷键，各树不再各写一份；`BranchTree.vue` 现在那段按键处理随之删掉。
+    - **分支例外，复制全名**（2026-10-19 项目负责人定）：分支树显示的是最后一段（`feat/login/a` 显示 `a`），只有 `a` 贴出去用不了，所以照现在复制 `feat/login/a`；HEAD 那行（显示 `HEAD → main`）照现在复制 `main`。否决严格照字面值。
+    - 复制路径（完整路径、相对仓库的路径）不在本条：项目负责人提过「直接复制文件名或路径」，路径要不要另配快捷键还没定。
+
+## 四、技术方案（在第 14 阶段之上多出来的）
 
 - **`Tree.vue` 接上第 14 阶段的选中规则**：所有树都能多选，不设开关（2026-10-19 项目负责人定：默认都要支持多选，才符合操作逻辑）。Stash 多选后能做什么还没想好，现有的 Pop、Apply、Drop 只在右键恰好一个 stash 时出现（同 IDEA 的 `GitSingleStashAction`）；Log 右栏的文件现在没有菜单项，多选的菜单进需求池。选中变了发事件给使用方（竖按钮、Rollback 按钮要用）。
 - **展开目录的纯函数**：输入选中的节点，输出要操作的分支或文件，第 2、3、9、10 条的取舍规则都在这里。菜单的 JSON 和竖按钮用同一个函数，配测试。
 - **菜单的 JSON** 用第 14 阶段的「名单」形状（`phases/phase-14.md` 第四节 B），名单由同一个共用函数展开目录。各面板加自己的开关键：`dummyGit.canDelete`、`dummyGit.canUpdate`、`dummyGit.canRollback`、`dummyGit.canAdd`，以及 `dummyGit.group`（选中里有目录时写，扩展据此弹第 4 条的总确认框）。
 - **协议**：`addUntracked`、`deleteUntracked` 的 `path` 改成 `paths`；`update` 的 `branch` 改成 `branches`；删除合成一条 `deleteBranches`，收本地分支名的列表和远程分支 `{ remote, branch }` 的列表（本地远程混选时，点一下只能对应一条命令）。
 
-## 四、实现顺序
+## 五、实现顺序
 
-1. **`Tree.vue` 接上选中规则**；树的菜单 JSON 同样改成右键时写在外层。
-2. **分支批量 Delete**：`deleteBranches`，竖按钮与右键，确认框（第 4 条），每个分支一行完成消息。测试：已合并、没合并、远程混选。
-3. **分支批量 Update**（第 6 条选 A 或 B 时）。
-4. **目录、分组的菜单**：展开目录的纯函数与测试，总确认框，竖按钮跟着放开。
-5. **Rollback 作用于选中**：工具栏与右键同一条规则；什么都没选时作用于全部；按钮置灰只看 `Changes` 组。测试：由选中算出要撤的路径（目录、组、混选）。
-6. **Add to Git、Delete 批量**：`paths`，含 `Unversioned Files` 整组；Delete 一个确认框。
-7. **验收**：并进 `product/features/branches.md`、`product/features/commit.md`、`product/features/trees.md`，删掉本文。
+1. **`Tree.vue` 接上选中规则**（右键时写在容器上已在第 14 阶段第 1 步做完）。
+2. **复制**（第 11 条）：`Tree.vue` 响应 ⌘C，按显示顺序复制选中各行。测试：多选、含目录时复制出的文字。
+3. **分支批量 Delete**：`deleteBranches`，竖按钮与右键，确认框（第 4 条），每个分支一行完成消息。测试：已合并、没合并、远程混选。
+4. **分支批量 Update**（第 6 条选 A 或 B 时）。
+5. **目录、分组的菜单**：展开目录的纯函数与测试，总确认框，竖按钮跟着放开。
+6. **Rollback 作用于选中**：工具栏与右键同一条规则；什么都没选时作用于全部；按钮置灰只看 `Changes` 组。测试：由选中算出要撤的路径（目录、组、混选）。
+7. **Add to Git、Delete 批量**：`paths`，含 `Unversioned Files` 整组；Delete 一个确认框。
+8. **验收**：并进 `product/features/branches.md`、`product/features/commit.md`、`product/features/trees.md`，删掉本文。
