@@ -5,7 +5,7 @@
 
 ## 跨功能
 
-- **大** 列表多选：提交列表、分支树、Commit 面板的文件、提交详情的文件。多选后，提交列表能批量 drop、squash、cherry-pick、revert；分支树能批量删除、更新；Commit 面板的 Rollback、Add、Delete 作用于选中项。Rollback 同时改为作用于**选中**的项，同 IDEA（项目负责人提）：选中目录等于选中它下面的全部；什么都没选时，弹出含全部改动的确认框。
+- 多选以后还能做的（列表多选本身已排进第 14、15 阶段）：提交列表批量 drop、squash（见「改写历史」）；Stash 多选后能做什么（还没想好）；Log 右栏文件多选后的菜单项（要先有单个文件的 Revert / Apply 等，见「Log」）。
 - 提示文字统一处理：现在各处直接显示 git 原文（少数已知错误自己写了一句）。以后集中成一处：一张「情况 → 文案」的表，或者让错误出口从 git 原文里挑出有用的那一行（跳过 `To …`、`hint:`，优先 `error:` / `fatal:`），顺带统一语气。
 - 多仓库批量 fetch / pull / push。现在只支持单仓库（`tech/architecture.md` 第 13 题）。
 
@@ -18,6 +18,8 @@
 - 区间过滤（`branchA..branchB`）。
 - 搜索框的正则开关、大小写敏感开关。
 - 合并提交：可以切换着看相对每个父提交的改动。
+- 提交列表多选时，右栏合并显示（同 IDEA，2026-10-19 项目负责人定要做，排在提交列表多选之后）：文件区把选中各条的改动按文件合并成一份，每个文件的 diff 是「选中里最早改它的那条之前」对「最晚改它的那条之后」；详情区逐条列出（IDEA 最多 50 条）。IDEA 的做法：`VcsLogUtil.collectChanges` 从旧到新收齐各条的改动，`CommittedChangesTreeBrowser.zipChanges` 按路径合并；改动的文件太多时先显示条数，点了才展开（`VcsLogAsyncChangesTreeModel.kt` 的 `ManyDetails`）。
+  难度中等，约三步：取文件的命令改成一次收多个 hash（一条 `git log --no-walk --name-status`）；按路径合并的纯函数，难在改名链（`a→b` 又 `b→c`）、选中里先加后删、选得不连续时中间没选的那条也改过这个文件（IDEA 源码注释承认只做到「够用」）；右栏接上，加文件太多时的上限。diff 的两边用现成的「某个提交里的文件」就能表达，`openDiff` 不用改。
 - 提交详情里对文件：Revert Selected Changes（从这条提交撤销这几个文件的改动）、Cherry-Pick Selected Changes、Apply Selected Changes（把这几个文件的改动应用到工作区）。
 
 ## 提交图（`product/features/graph.md`）
