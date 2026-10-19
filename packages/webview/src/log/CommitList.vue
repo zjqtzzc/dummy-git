@@ -11,6 +11,7 @@ import { codicon, type IconRef, IconSize } from "../logic/icons.js";
 import { ColumnHandle, type Columns, resizeColumns, restoreColumns } from "../logic/log/columns.js";
 import type { Graph } from "../logic/log/graph/types.js";
 import type { RefLabel } from "../logic/log/refLabels.js";
+import { containerMenuContext } from "../logic/menuContext.js";
 import { formatTime } from "../logic/utils/time.js";
 import {
   keepRowInPlace,
@@ -162,13 +163,24 @@ function optionId(hash: string): string {
 }
 
 /** 一行的右键菜单上下文：和 `package.json` 菜单项的 `when` 条件对应。 */
-function menuOf(hash: string): string {
-  return JSON.stringify({
+function menuOf(hash: string): Record<string, string | boolean> {
+  return {
     [MenuContextKey.Node]: MenuNodeValue.Commit,
     [MenuContextKey.Hash]: hash,
     ...(props.repo === undefined ? {} : { [MenuContextKey.Repo]: props.repo }),
     ...(props.rewordable.has(hash) ? { [MenuContextKey.Rewordable]: true } : {}),
-  });
+  };
+}
+
+/** 右键：先选中那一行，再把它的菜单上下文写到列表容器上（为什么写在容器上见 `containerMenuContext`）。 */
+function onContextmenu(event: MouseEvent): void {
+  onClick(event);
+  if (!(event.currentTarget instanceof HTMLElement) || !(event.target instanceof Element)) return;
+  const hash = event.target.closest("[data-hash]")?.getAttribute("data-hash") ?? undefined;
+  event.currentTarget.setAttribute(
+    "data-vscode-context",
+    containerMenuContext(hash === undefined ? undefined : menuOf(hash)),
+  );
 }
 
 /** 上下键：选中相邻一行并让它出现在视口里。复制快捷键：复制选中的那条。 */
@@ -274,9 +286,8 @@ defineExpose({
       @scroll="onScroll"
       @mousedown="onMousedown"
       @click="onClick"
-      @contextmenu="onClick"
+      @contextmenu="onContextmenu"
       @keydown="onKeydown"
-      data-vscode-context='{"preventDefaultContextMenuItems": true}'
     >
       <div :style="{ height: `${hashes.length * ROW_HEIGHT}px`, position: 'relative' }">
         <div
@@ -286,7 +297,6 @@ defineExpose({
           role="option"
           tabindex="-1"
           :data-hash="row.hash"
-          :data-vscode-context="menuOf(row.hash)"
           :aria-selected="row.hash === selected"
           :class="['columns', 'row', { selected: row.hash === selected }]"
           :style="{ top: `${row.index * ROW_HEIGHT}px`, height: `${ROW_HEIGHT}px` }"

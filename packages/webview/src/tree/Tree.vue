@@ -2,6 +2,7 @@
 import { assertNever } from "@dummy-git/shared";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import type { IconRef } from "../logic/icons.js";
+import { containerMenuContext } from "../logic/menuContext.js";
 import {
   CheckState,
   checkState,
@@ -142,10 +143,16 @@ function onDblclick(event: MouseEvent): void {
   if (row !== undefined && row.expanded === undefined) emit("activate", row.node);
 }
 
-/** 右键：先选中那一行（同 VS Code 原生的树），菜单由 VS Code 按这一行的 `data-vscode-context` 弹出。 */
+/**
+ * 右键：先选中那一行（同 VS Code 原生的树），再把它的菜单上下文写到树的容器上
+ * （为什么写在容器上见 `containerMenuContext`）。
+ */
 function onContextmenu(event: MouseEvent): void {
   const index = rowAt(event);
   if (index !== undefined && index !== selectedIndex.value) select(index);
+  if (!(event.currentTarget instanceof HTMLElement)) return;
+  const row = index === undefined ? undefined : rows.value[index];
+  event.currentTarget.setAttribute("data-vscode-context", containerMenuContext(row?.node.menu));
 }
 
 /**
@@ -204,7 +211,6 @@ function rowId(index: number): string {
   <div
     ref="scroller"
     class="tree"
-    data-vscode-context='{"preventDefaultContextMenuItems": true}'
     role="tree"
     tabindex="0"
     :aria-activedescendant="selectedIndex === -1 ? undefined : rowId(selectedIndex)"
@@ -221,7 +227,6 @@ function rowId(index: number): string {
         :id="rowId(index)"
         :key="row.node.id"
         role="treeitem"
-        :data-vscode-context="row.node.menu === undefined ? undefined : JSON.stringify(row.node.menu)"
         tabindex="-1"
         :aria-level="row.depth + 1"
         :aria-expanded="row.expanded"

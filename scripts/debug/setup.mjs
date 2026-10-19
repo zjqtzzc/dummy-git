@@ -72,7 +72,9 @@ git(target, ["symbolic-ref", "HEAD", "refs/heads/main"]);
 
 /** 交给场景的工具。场景只用这几样，不直接碰路径与进程。 */
 const g = {
+  /** 写一个文件；所在目录不存在时先建出来。 */
   write(file, content) {
+    mkdirSync(dirname(join(target, file)), { recursive: true });
     writeFileSync(join(target, file), content, "utf8");
   },
   git(...args) {

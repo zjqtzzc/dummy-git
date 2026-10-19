@@ -39,4 +39,5 @@ agent 把一步交给用户手测前：
 | `reword` | 改提交说明：main 上 --no-ff 合并过 feature，之后 one（多行说明）、two、three；只有这三条能改；`a.txt` 已暂存、`b.txt` 未暂存、`c.txt` 未跟踪 |
 | `graph` | 看提交图：`--no-ff` 合并（feature/a）、三方合并（x y z）、没合回的 feature/b、跨 35 行的长线（old）、tag v1.0、`origin/main` 落后一个提交；feature/b 跟踪同一提交上的 `origin/feature/b`，a: second 上另有超长名字的分支；全是空提交，工作区干净 |
 | `graph-large` | 10,500 个空提交（fast-import 造，约 0.3 秒），同时最多 6 个分支反复分出合回；骨架只取一万条，最后几行父提交缺失、线渐隐；测图的耗时用 |
+| `context-menu` | 右键菜单：每块面板上各种节点都有一个。在 main（当前分支），合并过 side，之后 one、two、three 能改说明；本地 topic、feat/login/a、feat/login/b，远程 origin/main、origin/feat/x；stash pop 在 `f.txt` 上冲突、stash 还在；`a.txt` 有修改，未跟踪的 `new.txt` 与 `docs/new/notes.txt` |
 | `reset` | 在 main，四条提交（`a.txt` 在后三条里各改一次），`origin/main` 停在第二条；`b.txt` 已暂存、`c.txt` 未暂存的本地改动。看 Keep 被拒：先改工作区的 `a.txt` |
