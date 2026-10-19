@@ -155,7 +155,7 @@
 
 ### 第 14 阶段 · 提交列表多选
 
-（2026-10-19 从池子移入；细节见 `phases/phase-14.md`）
+（2026-10-19 从池子移入；细节见 `product/features/log.md`「提交列表」「提交的右键菜单」、`product/features/conflicts.md`）
 - 提交列表能多选：Ctrl/Cmd+单击、Shift+单击、Shift+↑↓、Ctrl/Cmd+A。
 - 多选后右键：Copy Hash、Cherry-Pick、Revert 作用于全部；只能对一条做的菜单项不出现。
 - 多选时右栏只写选了几条（合并显示进池子）。
