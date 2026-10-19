@@ -108,7 +108,12 @@ export {
   matchCommits,
   SKELETON_LIMIT,
 } from "./log.js";
-export { abortInProgress, ContinueOutcome, continueInProgress } from "./operation.js";
+export {
+  abortInProgress,
+  ContinueOutcome,
+  type ContinueResult,
+  continueInProgress,
+} from "./operation.js";
 export { listPaths, type TrackedPath } from "./paths.js";
 export { PushKind, type PushResult, push } from "./push.js";
 export { getHead, getRefs } from "./refs.js";

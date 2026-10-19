@@ -23,6 +23,7 @@ import {
   amendCommit,
   applyStash,
   ContinueOutcome,
+  type ContinueResult,
   commit,
   continueInProgress,
   createBranch,
@@ -917,8 +918,24 @@ function rebaseDone(outcome: RebaseOutcome, name: string): string {
   }
 }
 
-function continueDone(kind: OperationKind, outcome: ContinueOutcome): string {
-  if (outcome === ContinueOutcome.Stopped) return "Stopped for conflicts";
+/** 继续做完的完成消息。cherry-pick、revert 里有变空跳过的，写上跳过了几条。 */
+function continueDone(kind: OperationKind, result: ContinueResult): string {
+  if (result.kind === ContinueOutcome.Stopped) return "Stopped for conflicts";
+  const done = completedText(kind);
+  if (result.skipped === 0) return done;
+  switch (kind) {
+    case OperationKind.CherryPick:
+    case OperationKind.Revert:
+      return `${done}, skipped ${result.skipped} ${REPLAY_WORDS[kind].skipped}`;
+    case OperationKind.Merge:
+    case OperationKind.Rebase:
+      return done;
+    default:
+      return assertNever(kind, "continueDone");
+  }
+}
+
+function completedText(kind: OperationKind): string {
   switch (kind) {
     case OperationKind.Merge:
       return "Merge completed";
@@ -929,7 +946,7 @@ function continueDone(kind: OperationKind, outcome: ContinueOutcome): string {
     case OperationKind.Revert:
       return "Revert completed";
     default:
-      return assertNever(kind, "continueDone");
+      return assertNever(kind, "completedText");
   }
 }
 

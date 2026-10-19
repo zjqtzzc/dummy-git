@@ -1484,6 +1484,44 @@ describe("提交右键：cherry-pick、revert、变基到这条", () => {
     expect(existsSync(join(repo, ".git", "REVERT_HEAD"))).toBe(true);
   });
 
+  it("一串停在冲突、解决时留了当前分支那一边：继续后跳过这条，接着摘剩下的", async () => {
+    const repo = makeTempRepo("pick-resolve-ours");
+    git(repo, ["switch", "-q", "-c", "feature"]);
+    writeFileSync(join(repo, "f1"), "feature\n");
+    git(repo, ["commit", "-qam", "feature f1"]);
+    const clash = head(repo);
+    const b = commitFile(repo, "b.txt", "b\n");
+    git(repo, ["switch", "-q", "main"]);
+    writeFileSync(join(repo, "f1"), "main\n");
+    git(repo, ["commit", "-qam", "main f1"]);
+    await run(repo, (h) => h.cherryPick({ repo, hashes: [clash, b] }));
+    writeFileSync(join(repo, "f1"), "main\n");
+    git(repo, ["add", "f1"]);
+    const messages: string[] = [];
+    await run(repo, (h) => h.continueOperation({ repo, message: "feature f1" }), messages);
+    expect(messages).toEqual(["Cherry-pick completed, skipped 1 already applied"]);
+    expect(subjects(repo, 2)).toEqual(["b.txt", "main f1"]);
+    expect(existsSync(join(repo, ".git", "CHERRY_PICK_HEAD"))).toBe(false);
+    expect(sequencer(repo)).toBe(false);
+  });
+
+  it("反向提交冲突、解决时留了当前分支那一边：继续后跳过，不停在半路", async () => {
+    const repo = makeTempRepo("revert-resolve-ours");
+    writeFileSync(join(repo, "f1"), "second\n");
+    git(repo, ["commit", "-qam", "second"]);
+    const hash = head(repo);
+    writeFileSync(join(repo, "f1"), "third\n");
+    git(repo, ["commit", "-qam", "third"]);
+    await run(repo, (h) => h.revert({ repo, hashes: [hash] }));
+    writeFileSync(join(repo, "f1"), "third\n");
+    git(repo, ["add", "f1"]);
+    const messages: string[] = [];
+    await run(repo, (h) => h.continueOperation({ repo, message: "x" }), messages);
+    expect(messages).toEqual(["Revert completed, skipped 1 already reverted"]);
+    expect(existsSync(join(repo, ".git", "REVERT_HEAD"))).toBe(false);
+    expect(subjects(repo, 1)).toEqual(["third"]);
+  });
+
   it("撤一条已经撤过的：什么都不动，说跳过了，不报错", async () => {
     const repo = makeTempRepo("revert-empty");
     const hash = commitFile(repo, "a.txt", "a\n");

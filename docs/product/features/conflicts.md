@@ -18,7 +18,7 @@
 - 完成消息：`Merged feature`、`Fast-forwarded to feature`、`Rebased onto feature`、`Already up to date`；停下时 `Stopped for conflicts`；rebase 做完了、但取回改动时冲突，写 `Rebased onto feature. Applying the stashed changes has conflicts.`。
 - cherry-pick 一个合并提交时，git 会拒绝（要求 `-m`），显示 git 原文。多选里有合并提交时菜单里没有 Cherry-Pick、Revert：git 在一串里碰到它会报错退出，前面的已经摘过来，只留下 `.git/sequencer`，面板看不出有操作在进行，git 却认为有（git 2.43 实测）。
 - **一串 cherry-pick、revert**：整串交给 git 的 sequencer，停在冲突时继续接着做剩下的，放弃回到整串开始之前（已经摘过来的一起撤掉）。用 stdin 不用参数：Windows 的命令行最长 32767 个字符，八百来个 hash 就超了。
-- **变空自动跳过**（同 IDEA）：某条的改动当前分支里已经有了，git 会停下来，而且这时继续过不去。我们自动 `--skip`、接着做下一条，完成消息写上跳过了几条：`Cherry-picked 2 commits, skipped 1 already applied`，全跳过了写 `Skipped 1 already applied`（revert 是 `already reverted`）。两种的说法不一样，要分开认：cherry-pick 在 stderr 写 `is now empty`、留着 `CHERRY_PICK_HEAD`；revert 在 stdout 写 `nothing to commit`、不留 `REVERT_HEAD`，一串时只剩 `.git/sequencer`，单条时什么都不留。解决冲突后点继续、结果变空的，仍是 git 报错（Skip 在需求池）。
+- **变空自动跳过**（同 IDEA）：某条的改动当前分支里已经有了，git 会停下来，而且这时继续过不去。我们自动 `--skip`、接着做下一条，完成消息写上跳过了几条：`Cherry-picked 2 commits, skipped 1 already applied`，全跳过了写 `Skipped 1 already applied`（revert 是 `already reverted`）。两种的说法不一样，要分开认：cherry-pick 在 stderr 写 `is now empty`、留着 `CHERRY_PICK_HEAD`；revert 在 stdout 写 `nothing to commit`、不留 `REVERT_HEAD`，一串时只剩 `.git/sequencer`，单条时什么都不留。解决冲突时留了当前分支那一边、点继续后变空的，同样跳过、接着做剩下的（2026-10-19 项目负责人定：留当前分支那一边就是不要这一条了；照 git 报错的话继续永远过不去，只能放弃整串），完成消息是 `Cherry-pick completed, skipped 1 already applied`。
 - 完成消息：一条写短 hash（`Cherry-picked 1a2b3c4`），多条写条数（`Cherry-picked 3 commits`）。
 - 不管操作是谁发起的（包括用户在终端里执行的 merge），面板都一样显示。
 - 要签名口令的 rebase、cherry-pick，照旧显示 git 的报错（输入密码在第 6 阶段）。

@@ -1,6 +1,8 @@
 import { assertNever, OperationKind } from "@dummy-git/shared";
+import type { GitCli } from "../cli.js";
 import { classifyError, GitFailureError } from "../failure.js";
 import { inSequence, readOperation } from "../operationState.js";
+import type { ExecResult } from "../types.js";
 import type { GitCommand } from "./command.js";
 import { LockPolicy } from "./lock.js";
 
@@ -119,7 +121,7 @@ const REPLAY_VERB: Readonly<Record<ReplayKind, string>> = {
  * 不留 `REVERT_HEAD`——一串里只剩 `.git/sequencer`，单条时什么都不留。
  * git 一律以英文环境运行（`cli.ts`），所以能认这几句话。
  */
-function isEmptyReplay(kind: ReplayKind, stdout: string, stderr: string): boolean {
+export function isEmptyReplay(kind: ReplayKind, stdout: string, stderr: string): boolean {
   switch (kind) {
     case OperationKind.CherryPick:
       return stderr.includes("is now empty");
@@ -137,8 +139,7 @@ function isEmptyReplay(kind: ReplayKind, stdout: string, stderr: string): boolea
  * git 按给的顺序做、不重排；中途停在冲突时由 git 的 sequencer 记住剩下的，继续、放弃走「停在半路」现成的那套。
  * `--no-edit` 用 git 准备好的说明，不再打开编辑器。工作区已有的改动交给 git：挡路就拒绝，并且不开始。
  *
- * 变空的自动跳过、接着做下一条（同 IDEA），记下跳过了几条。
- * 还有东西在进行中才 `--skip`：单条 revert 变空时 git 什么都没留，再 `--skip` 会报「没有在进行的」。
+ * 变空的自动跳过、接着做下一条（同 IDEA），见 `finishReplay`。
  */
 export const replayCommits: GitCommand<
   [repository: string, gitDir: string, kind: ReplayKind, hashes: readonly string[]],
@@ -147,26 +148,40 @@ export const replayCommits: GitCommand<
   lock: LockPolicy.Exclusive,
 
   execute: async (cli, repository, gitDir, kind, hashes) => {
-    const verb = REPLAY_VERB[kind];
-    let args = [verb, "--no-edit", "--stdin"];
-    let result = await cli.exec(args, { cwd: repository, input: `${hashes.join("\n")}\n` });
-    let skipped = 0;
-    while (result.exitCode !== 0) {
-      if (!isEmptyReplay(kind, result.stdout, result.stderr)) {
-        if ((await readOperation(gitDir))?.kind === kind) return { kind: ReplayOutcome.Stopped };
-        throw new GitFailureError(
-          args,
-          result.exitCode,
-          result.stderr,
-          classifyError(result.stderr),
-        );
-      }
-      skipped += 1;
-      const pending = (await inSequence(gitDir)) || (await readOperation(gitDir))?.kind === kind;
-      if (!pending) break;
-      args = [verb, "--skip"];
-      result = await cli.exec(args, { cwd: repository });
-    }
-    return { kind: ReplayOutcome.Done, skipped };
+    const args = [REPLAY_VERB[kind], "--no-edit", "--stdin"];
+    const result = await cli.exec(args, { cwd: repository, input: `${hashes.join("\n")}\n` });
+    return finishReplay(cli, repository, gitDir, kind, args, result);
   },
 };
+
+/**
+ * 接着一次 cherry-pick / revert（开始执行，或解决冲突后继续）的结果往下做：
+ * 变空的自动 `--skip`、接着做下一条，直到做完或停在冲突，记下跳过了几条。
+ * 解决冲突时留了当前分支那一边，这一条同样会变空：意思是不要它了，一样跳过（项目负责人定）。
+ * 还有东西在进行中才 `--skip`：单条 revert 变空时 git 什么都没留，再 `--skip` 会报「没有在进行的」。
+ */
+export async function finishReplay(
+  cli: GitCli,
+  repository: string,
+  gitDir: string,
+  kind: ReplayKind,
+  firstArgs: readonly string[],
+  first: ExecResult,
+): Promise<ReplayResult> {
+  const verb = REPLAY_VERB[kind];
+  let args = firstArgs;
+  let result = first;
+  let skipped = 0;
+  while (result.exitCode !== 0) {
+    if (!isEmptyReplay(kind, result.stdout, result.stderr)) {
+      if ((await readOperation(gitDir))?.kind === kind) return { kind: ReplayOutcome.Stopped };
+      throw new GitFailureError(args, result.exitCode, result.stderr, classifyError(result.stderr));
+    }
+    skipped += 1;
+    const pending = (await inSequence(gitDir)) || (await readOperation(gitDir))?.kind === kind;
+    if (!pending) break;
+    args = [verb, "--skip"];
+    result = await cli.exec(args, { cwd: repository });
+  }
+  return { kind: ReplayOutcome.Done, skipped };
+}

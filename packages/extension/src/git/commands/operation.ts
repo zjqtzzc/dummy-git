@@ -4,6 +4,7 @@ import { OperationKind } from "@dummy-git/shared";
 import { classifyError, GitFailureError, run } from "../failure.js";
 import { readOperation } from "../operationState.js";
 import type { GitCommand } from "./command.js";
+import { finishReplay, isEmptyReplay, ReplayOutcome } from "./integrate.js";
 import { LockPolicy } from "./lock.js";
 
 /**
@@ -16,11 +17,19 @@ import { LockPolicy } from "./lock.js";
  *
  * `--continue` 在下一条又冲突时以非 0 退出，状态文件还在、而且换了一条提交。
  * 那是又停住了，不是失败：调用方看退出码，身份变了就当停住。
+ *
+ * cherry-pick、revert 解决冲突后变空（留了当前分支那一边），`--continue` 过不去：
+ * 和开始执行时变空一样跳过它、接着做剩下的（`finishReplay`）。
  */
 export enum ContinueOutcome {
   Finished = "finished",
   Stopped = "stopped",
 }
+
+export type ContinueResult =
+  /** 做完了。`skipped` 是 cherry-pick、revert 里变空、自动跳过的条数；merge、rebase 总是 0。 */
+  | { readonly kind: ContinueOutcome.Finished; readonly skipped: number }
+  | { readonly kind: ContinueOutcome.Stopped };
 
 const CONTINUE: Readonly<Record<OperationKind, readonly [string, string]>> = {
   [OperationKind.Merge]: ["merge", "--continue"],
@@ -38,7 +47,7 @@ const ABORT: Readonly<Record<OperationKind, readonly [string, string]>> = {
 
 export const continueInProgress: GitCommand<
   [repository: string, gitDir: string, message: string],
-  ContinueOutcome
+  ContinueResult
 > = {
   lock: LockPolicy.Exclusive,
 
@@ -50,9 +59,19 @@ export const continueInProgress: GitCommand<
     await writeFile(file, body);
     const args = CONTINUE[before.kind];
     const result = await cli.exec(args, { cwd: repository, env: { GIT_EDITOR: "true" } });
-    if (result.exitCode === 0) return ContinueOutcome.Finished;
+    if (result.exitCode === 0) return { kind: ContinueOutcome.Finished, skipped: 0 };
+    const { kind } = before;
+    if (
+      (kind === OperationKind.CherryPick || kind === OperationKind.Revert) &&
+      isEmptyReplay(kind, result.stdout, result.stderr)
+    ) {
+      const replay = await finishReplay(cli, repository, gitDir, kind, args, result);
+      return replay.kind === ReplayOutcome.Done
+        ? { kind: ContinueOutcome.Finished, skipped: replay.skipped }
+        : { kind: ContinueOutcome.Stopped };
+    }
     const after = await readOperation(gitDir);
-    if (after !== null && after.id !== before.id) return ContinueOutcome.Stopped;
+    if (after !== null && after.id !== before.id) return { kind: ContinueOutcome.Stopped };
     throw new GitFailureError(args, result.exitCode, result.stderr, classifyError(result.stderr));
   },
 };
