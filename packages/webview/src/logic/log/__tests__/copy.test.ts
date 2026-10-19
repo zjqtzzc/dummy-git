@@ -13,15 +13,17 @@ const commit = (message: string, email: string): Commit => ({
   message,
 });
 
-describe("commitCopyText", () => {
-  it("完整说明、空一行、作者与绝对日期", () => {
-    expect(commitCopyText(commit("fix login\n\nbody line\n", "a@x"))).toBe(
-      "fix login\n\nbody line\n\nAuthor: Ann <a@x>\nDate: 2026/9/20 09:05",
+describe("commitCopyText：一条一行，同 IDEA", () => {
+  it("说明的第一行、作者名字、绝对日期，用空格隔开", () => {
+    expect(commitCopyText([commit("fix login\n\nbody line\n", "a@x")])).toBe(
+      "fix login Ann 2026/9/20 09:05",
     );
   });
 
-  it("邮箱为空时只写名字", () => {
-    expect(commitCopyText(commit("m", ""))).toBe("m\n\nAuthor: Ann\nDate: 2026/9/20 09:05");
+  it("多条按给的顺序一行一条", () => {
+    expect(commitCopyText([commit("two", ""), commit("one", "")])).toBe(
+      "two Ann 2026/9/20 09:05\none Ann 2026/9/20 09:05",
+    );
   });
 });
 

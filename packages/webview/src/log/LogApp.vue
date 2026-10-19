@@ -516,14 +516,26 @@ async function copyText(text: string): Promise<void> {
   }
 }
 
-/** 提交列表上的复制快捷键：说明、作者与日期（`commitCopyText`）。选中的那条一般早已取到详情，没取到就现取。 */
-async function copyCommit(hash: string): Promise<void> {
+/**
+ * 提交列表上的复制快捷键：选中的提交一条一行（`commitCopyText`）。
+ * 看得见的行一般早已取到详情；Ctrl+A 选上的、滚出去的没取到，一次补齐（走 stdin，条数不受命令行长度限制）。
+ */
+async function copyCommits(hashes: readonly string[]): Promise<void> {
   if (repo.value === undefined) return;
   try {
-    const commit =
-      details.value.get(hash) ??
-      (await props.client.request("getCommitDetails", { repo: repo.value, hashes: [hash] }))[0];
-    if (commit !== undefined) await copyText(commitCopyText(commit));
+    const missing = hashes.filter((hash) => !details.value.has(hash));
+    if (missing.length > 0) {
+      const fetched = await props.client.request("getCommitDetails", {
+        repo: repo.value,
+        hashes: missing,
+      });
+      for (const commit of fetched) details.value.set(commit.hash, commit);
+    }
+    const commits = hashes.flatMap((hash) => {
+      const commit = details.value.get(hash);
+      return commit === undefined ? [] : [commit];
+    });
+    if (commits.length > 0) await copyText(commitCopyText(commits));
   } catch (cause) {
     report(cause);
   }
@@ -700,7 +712,7 @@ onUnmounted(() => resizes.disconnect());
           :graph="graph"
           :labels="labels"
           :rewordable="rewordableCommits"
-          @copy="copyCommit"
+          @copy="copyCommits"
           @visible="fetchVisible"
         />
       </div>

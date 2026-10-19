@@ -52,8 +52,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   "update:selection": [selection: Selection];
-  /** 按了复制快捷键（Ctrl+C / Cmd+C），`hash` 是光标所在的那条。复制什么由父组件定。 */
-  copy: [hash: string];
+  /** 按了复制快捷键（Ctrl+C / Cmd+C）：选中的提交，按列表顺序。复制成什么由父组件定。 */
+  copy: [hashes: readonly string[]];
   /** 可见范围变了（滚动、尺寸变化、行数变化后）。 */
   visible: [range: RowRange];
 }>();
@@ -199,15 +199,18 @@ function onContextmenu(event: MouseEvent): void {
 
 /**
  * 上下键（Shift 时选一段）：挪到相邻一行并让它出现在视口里。Ctrl+A：全选。
- * 复制快捷键：复制光标所在的那条。
+ * 复制快捷键：复制选中的全部。
  */
 function onKeydown(event: KeyboardEvent): void {
   const command = event.ctrlKey || event.metaKey;
   const key = event.key.toLowerCase();
   if (command && key === "c") {
-    if (props.selection.cursor === undefined) return;
+    if (props.selection.ids.size === 0) return;
     event.preventDefault();
-    emit("copy", props.selection.cursor);
+    emit(
+      "copy",
+      props.hashes.filter((hash) => props.selection.ids.has(hash)),
+    );
     return;
   }
   if (command && key === "a") {

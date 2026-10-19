@@ -1,15 +1,19 @@
 import { assertNever, type Commit, RefKind } from "@dummy-git/shared";
 import { formatDateTime } from "../utils/time.js";
 import { type BranchNode, BranchNodeKind } from "./branchTree.js";
-import { personText } from "./commitDetails.js";
 
 /**
- * 提交列表上 Ctrl+C 复制的文字：完整说明，空一行，作者与日期各一行。
- * 邮箱为空时只写名字。日期写绝对时间。
+ * 提交列表上 Ctrl+C 复制的文字，同 IDEA：一条一行，说明的第一行、作者名字、日期，用空格隔开；
+ * 多条按列表顺序一行一条。日期写绝对时间：贴出去的文字不该写「5 minutes ago」。
  */
-export function commitCopyText(commit: Commit): string {
-  const author = personText(commit.author);
-  return `${commit.message.trimEnd()}\n\nAuthor: ${author}\nDate: ${formatDateTime(commit.author.at)}`;
+export function commitCopyText(commits: readonly Commit[]): string {
+  return commits
+    .map((commit) => {
+      const end = commit.message.indexOf("\n");
+      const subject = end === -1 ? commit.message : commit.message.slice(0, end);
+      return `${subject} ${commit.author.name} ${formatDateTime(commit.author.at)}`;
+    })
+    .join("\n");
 }
 
 /**
