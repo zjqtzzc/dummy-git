@@ -235,22 +235,22 @@
         },
         {
           "command": "dummyGit.copyHash",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'commit'",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.copyHash",
           "group": "1_switch@1"
         },
         {
           "command": "dummyGit.cherryPick",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'commit'",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.cherryPick",
           "group": "2_pick@1"
         },
         {
           "command": "dummyGit.revertCommit",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'commit'",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.revert",
           "group": "2_pick@2"
         },
         {
           "command": "dummyGit.rebaseHere",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'commit'",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.rebaseHere",
           "group": "2_pick@3"
         },
         {
@@ -295,12 +295,12 @@
         },
         {
           "command": "dummyGit.resetTo",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'commit'",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.resetTo",
           "group": "3_edit@1"
         },
         {
           "command": "dummyGit.rewordCommit",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'commit' && dummyGit.rewordable",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.reword",
           "group": "3_edit@2"
         }
       ],

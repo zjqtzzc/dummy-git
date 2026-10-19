@@ -1,7 +1,7 @@
 import { type CommandName, MenuContextKey } from "@dummy-git/shared";
 import * as vscode from "vscode";
 import type { Operations } from "../ipc/operation.js";
-import { isRecord, parseParams } from "../ipc/protocol.guards.js";
+import { asStringArray, isRecord, parseParams } from "../ipc/protocol.guards.js";
 import type { HandlerMap } from "../ipc/router.js";
 import type { ErrorGate } from "./errorGate.js";
 
@@ -63,14 +63,14 @@ function stashParams(context: Record<string, unknown>): Record<string, unknown> 
   return { repo: context[MenuContextKey.Repo], hash: context[MenuContextKey.Stash] };
 }
 
-/** 提交列表的一行：仓库与完整 hash。 */
-function commitParams(context: Record<string, unknown>): Record<string, unknown> {
-  return { repo: context[MenuContextKey.Repo], hash: context[MenuContextKey.Hash] };
+/** 提交列表的菜单项：仓库，与这一项自己那个键里的完整 hash。 */
+function commitParams(key: string): (context: Record<string, unknown>) => Record<string, unknown> {
+  return (context) => ({ repo: context[MenuContextKey.Repo], hash: context[key] });
 }
 
 /** 把当前分支变基到这一行提交上。显示名用 7 位，和别处的短 hash 一样长。 */
 function rebaseHereParams(context: Record<string, unknown>): Record<string, unknown> {
-  const hash = context[MenuContextKey.Hash];
+  const hash = context[MenuContextKey.RebaseHere];
   return {
     repo: context[MenuContextKey.Repo],
     start: hash,
@@ -125,13 +125,15 @@ const MENU_COMMANDS: readonly MenuCommand[] = [
     remote: context[MenuContextKey.Remote],
     branch: context[MenuContextKey.Branch],
   })),
-  menuCommand("dummyGit.copyHash", "copyText", (context) => ({
-    text: context[MenuContextKey.Hash],
-  })),
-  menuCommand("dummyGit.resetTo", "resetTo", commitParams),
-  menuCommand("dummyGit.rewordCommit", "openRewordDialog", commitParams),
-  menuCommand("dummyGit.cherryPick", "cherryPick", commitParams),
-  menuCommand("dummyGit.revertCommit", "revert", commitParams),
+  // 一行一个：贴进终端、编辑器都好用。有一项不是字符串就整条拒收（text 缺席，校验不过）。
+  menuCommand("dummyGit.copyHash", "copyText", (context) => {
+    const hashes = asStringArray(context[MenuContextKey.CopyHash]);
+    return hashes === undefined ? {} : { text: hashes.join("\n") };
+  }),
+  menuCommand("dummyGit.resetTo", "resetTo", commitParams(MenuContextKey.ResetTo)),
+  menuCommand("dummyGit.rewordCommit", "openRewordDialog", commitParams(MenuContextKey.Reword)),
+  menuCommand("dummyGit.cherryPick", "cherryPick", commitParams(MenuContextKey.CherryPick)),
+  menuCommand("dummyGit.revertCommit", "revert", commitParams(MenuContextKey.Revert)),
   menuCommand("dummyGit.rebaseHere", "rebase", rebaseHereParams),
   menuCommand("dummyGit.openMergeEditor", "openMergeEditor", fileParams),
   menuCommand("dummyGit.markResolved", "markResolved", fileParams),

@@ -1,14 +1,9 @@
 <script setup lang="ts">
-import {
-  assertNever,
-  type Commit,
-  MenuContextKey,
-  MenuNodeValue,
-  RefKind,
-} from "@dummy-git/shared";
+import { assertNever, type Commit, MenuContextKey, RefKind } from "@dummy-git/shared";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { codicon, type IconRef, IconSize } from "../logic/icons.js";
 import { ColumnHandle, type Columns, resizeColumns, restoreColumns } from "../logic/log/columns.js";
+import { commitMenuContext } from "../logic/log/commitMenu.js";
 import type { Graph } from "../logic/log/graph/types.js";
 import type { RefLabel } from "../logic/log/refLabels.js";
 import { containerMenuContext } from "../logic/menuContext.js";
@@ -181,29 +176,24 @@ function optionId(hash: string): string {
   return `commit-${hash}`;
 }
 
-/** 一行的右键菜单上下文：和 `package.json` 菜单项的 `when` 条件对应。 */
-function menuOf(hash: string): Record<string, string | boolean> {
-  return {
-    [MenuContextKey.Node]: MenuNodeValue.Commit,
-    [MenuContextKey.Hash]: hash,
-    ...(props.repo === undefined ? {} : { [MenuContextKey.Repo]: props.repo }),
-    ...(props.rewordable.has(hash) ? { [MenuContextKey.Rewordable]: true } : {}),
-  };
-}
-
 /**
  * 右键：点在已选中的行上选中不变，点在别的行上先改成只选它；
- * 再把菜单上下文写到列表容器上（为什么写在容器上见 `containerMenuContext`）。
- * 选中多条时还没有能作用于全部的菜单项，什么都不出：只给被点那一条的菜单，看上去却选着好几条。
+ * 再把这次的菜单上下文写到列表容器上（为什么写在容器上见 `containerMenuContext`）。
+ * 出现哪些菜单项、各自作用于哪些提交，由 `commitMenuContext` 按选中算。点在空白处不出菜单项。
  */
 function onContextmenu(event: MouseEvent): void {
   const hash = hashAt(event);
   const selection = hash === undefined ? props.selection : contextMenuOn(props.selection, hash);
   if (selection !== props.selection) emit("update:selection", selection);
   if (!(event.currentTarget instanceof HTMLElement)) return;
+  const picked = props.hashes.filter((h) => selection.ids.has(h));
   event.currentTarget.setAttribute(
     "data-vscode-context",
-    containerMenuContext(hash === undefined || selection.ids.size > 1 ? undefined : menuOf(hash)),
+    containerMenuContext(
+      hash === undefined || props.repo === undefined
+        ? undefined
+        : { [MenuContextKey.Repo]: props.repo, ...commitMenuContext(picked, props.rewordable) },
+    ),
   );
 }
 

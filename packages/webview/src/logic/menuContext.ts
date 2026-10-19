@@ -12,7 +12,7 @@
  * 总是带上 `preventDefaultContextMenuItems`：否则 VS Code 会在菜单里加上剪切、复制、粘贴这些浏览器默认项。
  */
 export function containerMenuContext(
-  row: Readonly<Record<string, string | boolean>> | undefined,
+  row: Readonly<Record<string, string | boolean | readonly string[]>> | undefined,
 ): string {
   return JSON.stringify({ ...row, preventDefaultContextMenuItems: true });
 }

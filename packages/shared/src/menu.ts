@@ -3,6 +3,11 @@
  *
  * VS Code 用它决定菜单项出不出现（`package.json` 菜单项的 `when` 条件），点了之后把整份交给扩展的菜单命令。
  * 键与值都是**对外的字符串**：和 `package.json` 里的 `when` 逐字对应，改一边必须改另一边。
+ *
+ * 两种写法并存，树的菜单项还没改过来：
+ * - 每个菜单项一个键（提交列表）：键在，这一项就出现；值是它要作用的对象，扩展的菜单命令只读这个键。
+ *   出不出现、作用于谁，都由页面按选中算好（`webview/src/logic/menuItems.ts`）。
+ * - 节点类型加属性（树）：`when` 按 `Node` 等键组合条件，菜单命令从这些键里取参数。
  */
 export const MenuContextKey = {
   /** 节点类型，值见 `MenuNodeValue`。 */
@@ -21,12 +26,20 @@ export const MenuContextKey = {
   StartName: "dummyGit.startName",
   /** stash 的 hash。 */
   Stash: "dummyGit.stash",
-  /** 提交的 hash（Log 提交列表的一行）。 */
-  Hash: "dummyGit.hash",
-  /** 这条提交能改说明（`true`；不能时不写这个键）。 */
-  Rewordable: "dummyGit.rewordable",
   /** 文件路径，相对仓库根（Commit 面板的一个文件）。 */
   Path: "dummyGit.path",
+  /** Copy Hash：要复制的完整 hash，按列表顺序。 */
+  CopyHash: "dummyGit.copyHash",
+  /** Cherry-Pick：要摘的提交（完整 hash）。 */
+  CherryPick: "dummyGit.cherryPick",
+  /** Revert：要撤销的提交（完整 hash）。 */
+  Revert: "dummyGit.revert",
+  /** Rebase onto Here：变基到的提交（完整 hash）。 */
+  RebaseHere: "dummyGit.rebaseHere",
+  /** Reset Current Branch to Here…：目标提交（完整 hash）。 */
+  ResetTo: "dummyGit.resetTo",
+  /** Edit Commit Message…：要改说明的提交（完整 hash）。 */
+  Reword: "dummyGit.reword",
 } as const;
 
 /** `MenuContextKey.Node` 的取值。 */
@@ -34,7 +47,6 @@ export const MenuNodeValue = {
   LocalBranch: "localBranch",
   RemoteBranch: "remoteBranch",
   Stash: "stash",
-  Commit: "commit",
   /** 冲突文件，两边都有内容（合并编辑器解决）。 */
   ConflictMerge: "conflictMerge",
   /** 冲突文件，一边删了、一边改了或只有一边新增（保留或删除）。 */
