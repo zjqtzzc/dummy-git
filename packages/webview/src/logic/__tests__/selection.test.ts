@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  clickRow,
   contextMenuOn,
   EMPTY_SELECTION,
   extendTo,
@@ -8,6 +9,7 @@ import {
   selectAll,
   selectOnly,
   singleOf,
+  stepCursor,
   toggle,
 } from "../selection.js";
 
@@ -114,5 +116,64 @@ describe("singleOf：恰好选中一行", () => {
   it("多行或没有时缺席", () => {
     expect(singleOf(toggle(selectOnly("a"), "b"))).toBeUndefined();
     expect(singleOf(EMPTY_SELECTION)).toBeUndefined();
+  });
+});
+
+describe("clickRow：点一行时按着的键", () => {
+  const start = selectOnly("b");
+
+  it("什么都不按：只选这一行", () => {
+    expect(clickRow(start, ORDER, "d", { toggle: false, range: false })).toEqual(selectOnly("d"));
+  });
+
+  it("Ctrl：加进选中", () => {
+    expect(ids(clickRow(start, ORDER, "d", { toggle: true, range: false }))).toEqual(["b", "d"]);
+  });
+
+  it("Shift：从锚点选到这一行", () => {
+    expect(ids(clickRow(start, ORDER, "d", { toggle: false, range: true }))).toEqual([
+      "b",
+      "c",
+      "d",
+    ]);
+  });
+
+  it("Ctrl+Shift：这一段加进原来的选中", () => {
+    const s = toggle(start, "e");
+    expect(ids(clickRow(s, ORDER, "c", { toggle: true, range: true }))).toEqual([
+      "b",
+      "c",
+      "d",
+      "e",
+    ]);
+  });
+});
+
+describe("stepCursor：↑↓ 与 Shift+↑↓", () => {
+  it("↓：只选下一行", () => {
+    expect(stepCursor(selectOnly("b"), ORDER, 1, false)).toEqual(selectOnly("c"));
+  });
+
+  it("多选时 ↑：从光标出发，只选上一行", () => {
+    const s = extendTo(selectOnly("b"), ORDER, "d", false);
+    expect(stepCursor(s, ORDER, -1, false)).toEqual(selectOnly("c"));
+  });
+
+  it("Shift+↓ 两次：锚点不动，范围往下伸", () => {
+    const s = stepCursor(stepCursor(selectOnly("b"), ORDER, 1, true), ORDER, 1, true);
+    expect(ids(s)).toEqual(["b", "c", "d"]);
+    expect([s.anchor, s.cursor]).toEqual(["b", "d"]);
+  });
+
+  it("到头就停", () => {
+    expect(stepCursor(selectOnly("e"), ORDER, 1, false)).toEqual(selectOnly("e"));
+  });
+
+  it("没有光标时从第一行开始", () => {
+    expect(stepCursor(EMPTY_SELECTION, ORDER, 1, false)).toEqual(selectOnly("a"));
+  });
+
+  it("列表为空时不变", () => {
+    expect(stepCursor(EMPTY_SELECTION, [], 1, false)).toBe(EMPTY_SELECTION);
   });
 });

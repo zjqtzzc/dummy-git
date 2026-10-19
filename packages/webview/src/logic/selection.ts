@@ -85,3 +85,36 @@ export function singleOf(selection: Selection): string | undefined {
   const [id] = selection.ids;
   return id;
 }
+
+/** 点一行时按着的键：`toggle` 是 Ctrl（Mac 上 Cmd），`range` 是 Shift。 */
+export interface ClickModifiers {
+  readonly toggle: boolean;
+  readonly range: boolean;
+}
+
+/** 点一行：按修饰键分给单击、Ctrl+单击、Shift+单击、Ctrl+Shift+单击。 */
+export function clickRow(
+  selection: Selection,
+  order: readonly string[],
+  id: string,
+  modifiers: ClickModifiers,
+): Selection {
+  if (modifiers.range) return extendTo(selection, order, id, modifiers.toggle);
+  return modifiers.toggle ? toggle(selection, id) : selectOnly(id);
+}
+
+/**
+ * ↑↓（`delta` 为 -1 / 1）：从光标挪一行，到头就停。`extend`（Shift）时从锚点选到新的那行，否则只选新的那行。
+ * 没有光标时从第一行开始。
+ */
+export function stepCursor(
+  selection: Selection,
+  order: readonly string[],
+  delta: number,
+  extend: boolean,
+): Selection {
+  const current = selection.cursor === undefined ? -1 : order.indexOf(selection.cursor);
+  const next = order[Math.min(order.length - 1, Math.max(0, current + delta))];
+  if (next === undefined) return selection;
+  return extend ? extendTo(selection, order, next, false) : selectOnly(next);
+}

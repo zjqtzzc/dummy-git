@@ -43,6 +43,13 @@ import { type Layout, restoreLayout, splitPercent, splitPosition } from "../logi
 import { hashesToFetch } from "../logic/log/prefetch.js";
 import { refLabels } from "../logic/log/refLabels.js";
 import { rewordable } from "../logic/log/rewordable.js";
+import {
+  EMPTY_SELECTION,
+  retain,
+  type Selection,
+  selectOnly,
+  singleOf,
+} from "../logic/selection.js";
 import type { FileEntry } from "../logic/tree/fileTree.js";
 import { keepIfSame } from "../logic/utils/list.js";
 import type { RowRange } from "../logic/virtualList.js";
@@ -67,7 +74,9 @@ const inFlight = new Set<string>();
 const loaded = ref(false);
 /** 分支、tag 与 HEAD，左栏用。 */
 const refs = ref<Ref[]>([]);
-const selected = ref<string>();
+const selection = ref<Selection>(EMPTY_SELECTION);
+/** 恰好选中一条时是它：右栏只在这时显示文件与详情。 */
+const selected = computed(() => singleOf(selection.value));
 const files = ref<CommitFileChange[]>([]);
 /** 右栏只有一组，没有标题。 */
 const fileGroups = computed(() => [{ id: "files", entries: files.value.map(commitFileEntry) }]);
@@ -311,8 +320,14 @@ watch(
   },
 );
 
+/** 光标所在行的行号；光标不在列表里时是 -1。刷新、过滤后靠它让视图不跳。 */
+function cursorRow(): number {
+  const { cursor } = selection.value;
+  return cursor === undefined ? -1 : hashes.value.indexOf(cursor);
+}
+
 /**
- * 生效的过滤条件变了：原来选中的提交还在就保持选中并滚过去，不在就清空选中。
+ * 生效的过滤条件变了：原来选中的提交还在的留着、滚到光标那行，一条都不剩就清空选中。
  * 搜索框那一项看结果回来的时刻，不看敲字的时刻。只看条件的变化；骨架刷新后的选中由 `load` 管。
  */
 watch(
@@ -324,13 +339,12 @@ watch(
   ],
   async () => {
   await nextTick();
-  const row = selected.value === undefined ? -1 : hashes.value.indexOf(selected.value);
-  if (row !== -1) {
-    list.value?.reveal(row);
+  selection.value = retain(selection.value, hashes.value);
+  if (selection.value.ids.size > 0) {
+    const row = cursorRow();
+    if (row !== -1) list.value?.reveal(row);
     return;
   }
-  selected.value = undefined;
-  files.value = [];
   list.value?.reveal(0);
   },
 );
@@ -355,10 +369,11 @@ async function fetchVisible(range: RowRange): Promise<void> {
   }
 }
 
-async function select(hash: string): Promise<void> {
-  selected.value = hash;
+/** 选中变成恰好一条（且换了一条）时取它的文件；选中多条或没有选中时清空。 */
+watch(selected, async (hash) => {
   files.value = [];
-  if (repo.value === undefined) return;
+  filesLoading.value = false;
+  if (hash === undefined || repo.value === undefined) return;
   filesLoading.value = true;
   try {
     const fetched = await props.client.request("getCommitFiles", { repo: repo.value, hash });
@@ -369,13 +384,13 @@ async function select(hash: string): Promise<void> {
   } finally {
     if (selected.value === hash) filesLoading.value = false;
   }
-}
+});
 
 /**
  * 拉骨架与 refs。首次打开、以及 refs 变了之后都走这里。
  *
- * 选中的提交还在：让它停在屏幕上原来的位置（上方多了新提交时视图不跳）。
- * 不在了（或首次打开）：改选 HEAD 所在的提交并滚过去——列表第一行不一定是 HEAD。
+ * 选中的提交还有留在列表里的：留着，光标那行停在屏幕上原来的位置（上方多了新提交时视图不跳）。
+ * 一条都不剩（或首次打开）：改选 HEAD 所在的提交并滚过去——列表第一行不一定是 HEAD。
  */
 async function load(repository: string): Promise<void> {
   try {
@@ -387,7 +402,7 @@ async function load(repository: string): Promise<void> {
       ),
       props.client.request("getRefs", { repo: repository }),
     ]);
-    const previous = selected.value === undefined ? -1 : hashes.value.indexOf(selected.value);
+    const previous = cursorRow();
     // 内容没变就沿用旧数组：refs 变了而提交没变（fetch 没拉到新东西、切到同一提交上的分支）时，
     // 图结构不重算、筛选不重查。
     skeleton.value = keepIfSame(skeleton.value, fetchedSkeleton, sameCommit);
@@ -402,16 +417,17 @@ async function load(repository: string): Promise<void> {
     }
     await nextTick();
 
-    const kept = selected.value === undefined ? -1 : hashes.value.indexOf(selected.value);
-    if (previous !== -1 && kept !== -1) {
-      list.value?.shift(previous, kept);
+    selection.value = retain(selection.value, hashes.value);
+    if (selection.value.ids.size > 0) {
+      const kept = cursorRow();
+      if (previous !== -1 && kept !== -1) list.value?.shift(previous, kept);
       return;
     }
     const head = fetchedRefs.find((r) => r.kind === RefKind.Head)?.target;
     const row = head === undefined ? -1 : hashes.value.indexOf(head);
     if (head === undefined || row === -1) return;
     list.value?.reveal(row);
-    await select(head);
+    selection.value = selectOnly(head);
   } catch (cause) {
     report(cause);
   }
@@ -678,13 +694,12 @@ onUnmounted(() => resizes.disconnect());
           ref="list"
           :hashes="hashes"
           :details="details"
-          :selected="selected"
+          v-model:selection="selection"
           :now="now"
           :repo="repo"
           :graph="graph"
           :labels="labels"
           :rewordable="rewordableCommits"
-          @select="select"
           @copy="copyCommit"
           @visible="fetchVisible"
         />
@@ -697,7 +712,8 @@ onUnmounted(() => resizes.disconnect());
         @vsc-split-layout-change="onDetailsSplit"
       >
         <div slot="start" class="pane">
-          <p v-if="filesLoading" class="dim loading">Loading…</p>
+          <p v-if="selection.ids.size > 1" class="dim loading">{{ selection.ids.size }} commits selected</p>
+          <p v-else-if="filesLoading" class="dim loading">Loading…</p>
           <FileTree v-else :groups="fileGroups" @open="openFile" />
         </div>
         <div slot="end" class="details">

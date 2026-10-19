@@ -12,6 +12,13 @@ import { ColumnHandle, type Columns, resizeColumns, restoreColumns } from "../lo
 import type { Graph } from "../logic/log/graph/types.js";
 import type { RefLabel } from "../logic/log/refLabels.js";
 import { containerMenuContext } from "../logic/menuContext.js";
+import {
+  clickRow,
+  contextMenuOn,
+  type Selection,
+  selectAll,
+  stepCursor,
+} from "../logic/selection.js";
 import { formatTime } from "../logic/utils/time.js";
 import {
   keepRowInPlace,
@@ -34,7 +41,8 @@ const props = defineProps<{
   hashes: readonly string[];
   /** 已经取到的详情。没取到的行显示占位。 */
   details: ReadonlyMap<string, Commit>;
-  selected: string | undefined;
+  /** 选中由父组件持有（`v-model:selection`），规则见 `logic/selection.ts`。 */
+  selection: Selection;
   /** 「现在」，秒。父组件定时刷新它，相对时间才会走。 */
   now: number;
   /** 仓库根。菜单命令拿它拼协议参数。还没打开仓库时缺席。 */
@@ -48,8 +56,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  select: [hash: string];
-  /** 选中一行时按了复制快捷键（Ctrl+C / Cmd+C）。复制什么由父组件定。 */
+  "update:selection": [selection: Selection];
+  /** 按了复制快捷键（Ctrl+C / Cmd+C），`hash` 是光标所在的那条。复制什么由父组件定。 */
   copy: [hash: string];
   /** 可见范围变了（滚动、尺寸变化、行数变化后）。 */
   visible: [range: RowRange];
@@ -135,13 +143,24 @@ function onScroll(): void {
 
 /**
  * 点击由列表统一处理（行上带 `data-hash`），焦点留在列表本身，用 `aria-activedescendant`
- * 指向选中行——listbox 的标准写法，行不单独挂事件、不单独获得焦点。
+ * 指向光标所在行——listbox 的标准写法，行不单独挂事件、不单独获得焦点。
  */
-/** 单击选中一行；右键也先选中它，菜单作用的就是看得见的那一行。 */
+function hashAt(event: MouseEvent): string | undefined {
+  if (!(event.target instanceof Element)) return undefined;
+  return event.target.closest("[data-hash]")?.getAttribute("data-hash") ?? undefined;
+}
+
+/** 点一行：Ctrl（Mac 上 Cmd）加选减选，Shift 选一段。Mac 上 Ctrl+单击是右键，走不到这里。 */
 function onClick(event: MouseEvent): void {
-  if (!(event.target instanceof Element)) return;
-  const hash = event.target.closest("[data-hash]")?.getAttribute("data-hash");
-  if (hash !== null && hash !== undefined) emit("select", hash);
+  const hash = hashAt(event);
+  if (hash === undefined) return;
+  emit(
+    "update:selection",
+    clickRow(props.selection, props.hashes, hash, {
+      toggle: event.ctrlKey || event.metaKey,
+      range: event.shiftKey,
+    }),
+  );
 }
 
 /**
@@ -172,34 +191,49 @@ function menuOf(hash: string): Record<string, string | boolean> {
   };
 }
 
-/** 右键：先选中那一行，再把它的菜单上下文写到列表容器上（为什么写在容器上见 `containerMenuContext`）。 */
+/**
+ * 右键：点在已选中的行上选中不变，点在别的行上先改成只选它；
+ * 再把菜单上下文写到列表容器上（为什么写在容器上见 `containerMenuContext`）。
+ * 选中多条时还没有能作用于全部的菜单项，什么都不出：只给被点那一条的菜单，看上去却选着好几条。
+ */
 function onContextmenu(event: MouseEvent): void {
-  onClick(event);
-  if (!(event.currentTarget instanceof HTMLElement) || !(event.target instanceof Element)) return;
-  const hash = event.target.closest("[data-hash]")?.getAttribute("data-hash") ?? undefined;
+  const hash = hashAt(event);
+  const selection = hash === undefined ? props.selection : contextMenuOn(props.selection, hash);
+  if (selection !== props.selection) emit("update:selection", selection);
+  if (!(event.currentTarget instanceof HTMLElement)) return;
   event.currentTarget.setAttribute(
     "data-vscode-context",
-    containerMenuContext(hash === undefined ? undefined : menuOf(hash)),
+    containerMenuContext(hash === undefined || selection.ids.size > 1 ? undefined : menuOf(hash)),
   );
 }
 
-/** 上下键：选中相邻一行并让它出现在视口里。复制快捷键：复制选中的那条。 */
+/**
+ * 上下键（Shift 时选一段）：挪到相邻一行并让它出现在视口里。Ctrl+A：全选。
+ * 复制快捷键：复制光标所在的那条。
+ */
 function onKeydown(event: KeyboardEvent): void {
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c") {
-    if (props.selected === undefined) return;
+  const command = event.ctrlKey || event.metaKey;
+  const key = event.key.toLowerCase();
+  if (command && key === "c") {
+    if (props.selection.cursor === undefined) return;
     event.preventDefault();
-    emit("copy", props.selected);
+    emit("copy", props.selection.cursor);
+    return;
+  }
+  if (command && key === "a") {
+    // 不拦的话浏览器会选中整页的文字。
+    event.preventDefault();
+    emit("update:selection", selectAll(props.selection, props.hashes));
     return;
   }
   const step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
   if (step === 0) return;
   event.preventDefault();
-  const current = props.selected === undefined ? -1 : props.hashes.indexOf(props.selected);
-  const next = Math.min(props.hashes.length - 1, Math.max(0, current + step));
-  const hash = props.hashes[next];
-  if (hash === undefined) return;
-  emit("select", hash);
-  scrollTo(scrollIntoView(next, scrollTop.value, viewportHeight.value));
+  const selection = stepCursor(props.selection, props.hashes, step, event.shiftKey);
+  if (selection === props.selection || selection.cursor === undefined) return;
+  emit("update:selection", selection);
+  const row = props.hashes.indexOf(selection.cursor);
+  scrollTo(scrollIntoView(row, scrollTop.value, viewportHeight.value));
 }
 
 function scrollTo(top: number): void {
@@ -282,7 +316,8 @@ defineExpose({
       role="listbox"
       tabindex="0"
       aria-label="Commits"
-      :aria-activedescendant="selected === undefined ? undefined : optionId(selected)"
+      aria-multiselectable="true"
+      :aria-activedescendant="selection.cursor === undefined ? undefined : optionId(selection.cursor)"
       @scroll="onScroll"
       @mousedown="onMousedown"
       @click="onClick"
@@ -297,8 +332,8 @@ defineExpose({
           role="option"
           tabindex="-1"
           :data-hash="row.hash"
-          :aria-selected="row.hash === selected"
-          :class="['columns', 'row', { selected: row.hash === selected }]"
+          :aria-selected="selection.ids.has(row.hash)"
+          :class="['columns', 'row', { selected: selection.ids.has(row.hash) }]"
           :style="{ top: `${row.index * ROW_HEIGHT}px`, height: `${ROW_HEIGHT}px` }"
         >
           <GraphCell v-if="row.graph !== undefined" :row="row.graph.row" :base="row.graph.base" />
