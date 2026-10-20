@@ -20,12 +20,17 @@
 - `B` 不是当前分支：一条 `git fetch origin refs/heads/M:refs/heads/B`，不带 `+`，只允许快进；不碰工作区和暂存区，不占本地道。
 - `B` 是当前分支：git 不允许 fetch 直接更新检出的分支，所以拆成远程道的 `git fetch origin refs/heads/M`，加本地道的 `git merge --ff-only origin/M`。
 - 完成消息：动了就是 `Updated feat from origin/feat`，没动就是 `feat is up to date`。
-- `B` 没有上游：不跑命令，提示 `feat has no upstream branch. Push it first.`。不去猜：猜错了会把一个无关的同名分支快进进来，不容易察觉。
+- `B` 没有上游、或上游在远程已被删掉（`gone`）：菜单里没有 Update，竖按钮置灰（2026-10-20 项目负责人定）。不去猜上游：猜错了会把一个无关的同名分支快进进来，不容易察觉。万一按时上游刚被去掉，提示 `feat has no upstream branch. Push it first.`。
 - **分叉时**：远程分支的记录已经取回来了，弹一条原生通知 `feat and origin/feat have diverged.`，两个按钮：
   - **Rebase**：把 `B` 变基到 `origin/M` 上（指名分支，不用先切过去）；
   - **Merge**：先切到 `B`（合并只改当前检出的分支），再合并 `origin/M`。
   - 都用刚取回的记录，不再联网。关掉通知就停在这里，本地分支不动。不另加 Pull (Rebase)、Pull (Merge) 菜单项（项目负责人定：和 Update 按钮统一）。
 - 工作区的改动挡住了：显示 git 原文。
+- **一次更新好几个**（多选，或右键目录、`Local` 组，2026-10-20 项目负责人定）：
+  - 展开看、全部严格：每一个都要能更新（配了上游、上游还在），有一个不行 Update 就不出现。所以 `Local` 组里只要有只在本地的分支，就没有 Update；远程分支、远程名、`Remote` 组都没有。
+  - 按顺序逐个走上面的单分支 Update，算一次操作；每个分支状态栏各说一句，最后汇总 `Updated 2 branches, 1 already up to date, 1 diverged`（为 0 的不写）。
+  - **分叉的不问**变基还是合并，跳过它接着做别的，做完报错 `2 branches have diverged from their upstream and were not updated: a, b. Update them one at a time.`，让人单个更新。否决挨个弹 Rebase / Merge 通知：通知要等人答，后面的分支都得卡着。IDEA 对非当前分支也只快进、分叉就报失败。
+  - 某一个被 git 拒绝：已经更新的不撤回，剩下的不再做，显示 git 原文。
 - **为什么叫 Update，不叫 Pull**（同 IDEA 的 Update Selected）：叫 Pull 会被当成 `git pull`，那是取整个远程、只作用于当前分支、按配置合并；IDEA 的 Pull 也是另一个带对话框的功能。界面、协议、git 层用同一个名字（按钮 `Update Selected`、右键 `Update`、请求 `update`、`git/commands/update.ts`），读代码不用多翻译一次。图标仍是 `AppIcon.Pull`：它描述的是箭头的形状，ahead / behind 标记也在用。
 
 ## Push

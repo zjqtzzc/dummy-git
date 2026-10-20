@@ -183,11 +183,12 @@ export interface Commands {
     result: null;
   };
   /**
-   * 更新选中的本地分支：只取它跟踪的远程分支，能快进就快进，分叉时扩展问变基还是合并。
+   * 更新本地分支（至少一个）：只取各自跟踪的远程分支，能快进就快进。
+   * 只有一个时分叉了扩展问变基还是合并；好几个时分叉的跳过，最后报错列出来，让人单个更新。
    * 是不是当前分支、上游是什么由扩展自己问 git。
    */
   update: {
-    params: { repo: string; branch: string };
+    params: { repo: string; branches: readonly string[] };
     result: null;
   };
   /** 为 `branch` 打开推送对话框（分支右键 `Push…`）。已经开着就切过去，换成这个分支。 */

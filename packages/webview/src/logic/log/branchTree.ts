@@ -1,4 +1,11 @@
-import { assertNever, MenuContextKey, type Ref, RefKind, UpstreamState } from "@dummy-git/shared";
+import {
+  assertNever,
+  MenuContextKey,
+  type Ref,
+  RefKind,
+  type Upstream,
+  UpstreamState,
+} from "@dummy-git/shared";
 import { codicon } from "../icons.js";
 import {
   exactlyOne,
@@ -39,6 +46,8 @@ export type BranchNode =
       readonly target: string;
       /** HEAD 所在的本地分支；detached 时缺席。 */
       readonly branch?: string;
+      /** 那个本地分支的上游（Update 要用）；detached、没配上游时缺席。 */
+      readonly upstream?: Upstream;
     }
   | {
       readonly kind: BranchNodeKind.Group | BranchNodeKind.Folder;
@@ -111,6 +120,7 @@ export function buildBranchTree(refs: readonly Ref[]): readonly BranchNode[] {
             label: `HEAD → ${head.branch}`,
             target: head.target,
             branch: head.branch,
+            ...upstreamOf(local, head.branch),
           },
     );
   }
@@ -135,6 +145,16 @@ export function buildBranchTree(refs: readonly Ref[]): readonly BranchNode[] {
     ),
   });
   return nodes;
+}
+
+/** 当前分支的上游，摊进 HEAD 那行；没配上游时什么都不摊。 */
+function upstreamOf(local: readonly Leaf[], branch: string): { readonly upstream?: Upstream } {
+  const ref = local.find(
+    (leaf) => leaf.ref.kind === RefKind.LocalBranch && leaf.ref.name === branch,
+  )?.ref;
+  return ref?.kind === RefKind.LocalBranch && ref.upstream !== undefined
+    ? { upstream: ref.upstream }
+    : {};
 }
 
 /** 待折叠的一个分支：`path` 是还没折进目录的那部分名字，`ref` 是它对应的引用。 */
@@ -488,13 +508,30 @@ function isRemoteContainer(node: BranchNode): boolean {
   );
 }
 
-/** Update：本地分支（含当前分支）。竖按钮 Update Selected 用同一份。 */
+/** 能 Update 的本地分支（含当前分支）：配了上游，上游也还在（不是 `gone`）。给出它的名字。 */
+function updatableOf(node: BranchNode): string | undefined {
+  const local = localOf(node);
+  const upstream =
+    node.kind === BranchNodeKind.Head
+      ? node.upstream
+      : node.kind === BranchNodeKind.Branch && node.ref.kind === RefKind.LocalBranch
+        ? node.ref.upstream
+        : undefined;
+  return local === undefined || upstream === undefined || upstream.state.kind === UpstreamState.Gone
+    ? undefined
+    : local.branch;
+}
+
+/**
+ * Update：展开看，目录、`Local` 组等于它下面的全部本地分支。每一个都要能更新（`updatableOf`），
+ * 否则整项不出现（全部严格）。竖按钮 Update Selected 用同一份。
+ * HEAD 那行和当前分支那行是同一个分支，一起选时只算一次。
+ */
 export const UPDATE_BRANCH = menuItem({
-  view: MenuView.Exact,
+  view: MenuView.Expanded,
   key: MenuContextKey.UpdateBranch,
-  pick: (node: BranchNode) => localOf(node)?.branch,
-  whole: exactlyOne,
-  value: ([branch]) => ({ branch }),
+  pick: (node: BranchNode) => updatableOf(node),
+  value: (branches) => ({ branches: [...new Set(branches)] }),
 });
 
 /** New Branch：HEAD 那行（含 detached）、所有分支都能当起点。竖按钮 New Branch from Selected 用同一份。 */

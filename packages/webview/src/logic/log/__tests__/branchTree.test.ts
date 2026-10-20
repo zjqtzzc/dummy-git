@@ -278,15 +278,27 @@ describe("分支树的右键菜单项", () => {
     }
     return index;
   }
-  const byId = menus([head("main"), local("main"), local("feat/x"), remote("origin", "feat/x")]);
+  /** 跟踪 `origin/<name>` 的本地分支：能 Update。 */
+  const tracked = (name: string, gone = false): Ref => ({
+    kind: RefKind.LocalBranch,
+    name,
+    target: T,
+    upstream: {
+      remote: "origin",
+      name,
+      state: gone
+        ? { kind: UpstreamState.Gone }
+        : { kind: UpstreamState.Tracking, ahead: 0, behind: 0 },
+    },
+  });
+  const byId = menus([head("main"), tracked("main"), local("feat/x"), remote("origin", "feat/x")]);
   const keysOf = (id: string) => Object.keys(byId.get(id) ?? {}).sort();
   const start = { start: "refs/heads/feat/x", startName: "feat/x" };
 
-  it("别的本地分支：全部，参数是它的名字或起点", () => {
+  it("别的本地分支（没有上游）：除了 Update 都有，参数是它的名字或起点", () => {
     expect(byId.get("local/feat/x")).toEqual({
       [MenuContextKey.Repo]: "/r",
       [MenuContextKey.Checkout]: { branch: "feat/x" },
-      [MenuContextKey.UpdateBranch]: { branch: "feat/x" },
       [MenuContextKey.PushBranch]: { branch: "feat/x" },
       [MenuContextKey.MergeBranch]: start,
       [MenuContextKey.RebaseBranch]: start,
@@ -333,6 +345,29 @@ describe("分支树的右键菜单项", () => {
       [MenuContextKey.Repo]: "/r",
       [MenuContextKey.NewBranch]: { start: T, startName: T.slice(0, 7) },
     });
+  });
+
+  it("Update：配了上游的本地分支，HEAD 那行与当前分支一起选只算一次；上游没了的不行", () => {
+    expect(byId.get("local/main")).toHaveProperty(MenuContextKey.UpdateBranch, {
+      branches: ["main"],
+    });
+    const nodes = branchNodesById(
+      buildBranchTree([head("main"), tracked("main"), tracked("feat/a"), tracked("feat/b", true)]),
+    );
+    const update = (ids: readonly string[]) =>
+      branchMenuContext(branchViews(ids, nodes), "/r")[MenuContextKey.UpdateBranch];
+    expect(update(["head", "local/main"])).toEqual({ branches: ["main"] });
+    expect(update(["local/main", "local/feat/a"])).toEqual({ branches: ["main", "feat/a"] });
+    expect(update(["local/feat/b"])).toBeUndefined();
+    expect(update(["local/feat"])).toBeUndefined();
+  });
+
+  it("目录：下面都配了上游的，Update 更新它下面的全部本地分支", () => {
+    const nodes = branchNodesById(buildBranchTree([tracked("feat/a"), tracked("feat/b")]));
+    expect(branchMenuContext(branchViews(["local/feat"], nodes), "/r")).toHaveProperty(
+      MenuContextKey.UpdateBranch,
+      { branches: ["feat/a", "feat/b"] },
+    );
   });
 
   it("目录：只有 Delete，删它下面的全部分支", () => {

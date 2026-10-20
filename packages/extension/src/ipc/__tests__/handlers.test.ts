@@ -170,7 +170,7 @@ describe("handlers.update", () => {
   const update = async (path: string, branch: string) => {
     const repository = new Repository(plainLocation(path), cli);
     try {
-      await createHandlers(repository, NO_UI).update({ repo: path, branch });
+      await createHandlers(repository, NO_UI).update({ repo: path, branches: [branch] });
     } finally {
       repository.dispose();
     }
@@ -187,7 +187,7 @@ describe("handlers.update", () => {
           asked++;
           return choice;
         },
-      }).update({ repo: path, branch });
+      }).update({ repo: path, branches: [branch] });
       return asked;
     } finally {
       repository.dispose();
@@ -310,6 +310,69 @@ describe("handlers.update", () => {
     expect(git(repo, ["branch", "--show-current"]).trim()).toBe("main");
     expect(git(repo, ["rev-parse", "other"])).toBe(other);
     expect(git(repo, ["rev-parse", "origin/main"])).toBe(git(remote, ["rev-parse", "main"]));
+  });
+
+  /** 一次更新好几个：返回状态栏说过的话、最后的完成消息，以及问没问过变基还是合并。 */
+  const updateMany = async (path: string, branches: readonly string[]) => {
+    const repository = new Repository(plainLocation(path), cli);
+    const said: string[] = [];
+    let asked = false;
+    try {
+      const done = await createHandlers(repository, {
+        ...NO_UI,
+        notify: (message) => {
+          said.push(message);
+        },
+        notifyChoice: async () => {
+          asked = true;
+          return undefined;
+        },
+        withProgress: async (_title, task, finish) => {
+          const value = await task();
+          said.push(finish(value));
+          return value;
+        },
+      })
+        .update({ repo: path, branches })
+        .then(
+          () => undefined,
+          (error: unknown) => error,
+        );
+      return { said, asked, error: done };
+    } finally {
+      repository.dispose();
+    }
+  };
+
+  it("好几个：逐个快进，每个各说一句，最后汇总", async () => {
+    const { remote, repo } = makeTrackingRepos();
+    git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
+    git(repo, ["fetch", "-q", "origin"]);
+    git(repo, ["branch", "-q", "--track", "latest", "origin/main"]);
+    const { said, error } = await updateMany(repo, ["main", "other", "latest"]);
+    expect(error).toBeUndefined();
+    expect(said).toEqual([
+      "Updated main from origin/main",
+      "Updated other from origin/main",
+      "latest is up to date",
+      "Updated 2 branches, 1 already up to date",
+    ]);
+    const tip = git(remote, ["rev-parse", "main"]);
+    expect(git(repo, ["rev-parse", "main"])).toBe(tip);
+    expect(git(repo, ["rev-parse", "other"])).toBe(tip);
+  });
+
+  it("好几个里有分叉的：不问，跳过它接着做别的，最后报错列出来", async () => {
+    const { remote, repo } = makeTrackingRepos();
+    diverge(remote, repo, "other");
+    const other = git(repo, ["rev-parse", "other"]);
+    const { said, asked, error } = await updateMany(repo, ["other", "main"]);
+    expect(asked).toBe(false);
+    expect(said).toEqual(["Updated main from origin/main", "Updated 1 branch, 1 diverged"]);
+    expect(error).toBeInstanceOf(UserFacingError);
+    expect(String(error)).toContain("other has diverged from its upstream and was not updated");
+    expect(git(repo, ["rev-parse", "other"])).toBe(other);
+    expect(git(repo, ["rev-parse", "main"])).toBe(git(remote, ["rev-parse", "main"]));
   });
 });
 

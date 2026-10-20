@@ -434,8 +434,10 @@ const PARAM_GUARDS = {
   },
   update: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
-    const branch = raw["branch"];
-    return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;
+    const branches = asStringArray(raw["branches"]);
+    return typeof repo === "string" && branches !== undefined && branches.length > 0
+      ? { repo, branches }
+      : undefined;
   },
   merge: asRefTarget,
   rebase: asRebaseTarget,

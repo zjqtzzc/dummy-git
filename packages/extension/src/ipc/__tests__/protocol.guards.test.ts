@@ -110,3 +110,14 @@ describe("deleteBranches 的参数", () => {
     ).toBeUndefined();
   });
 });
+
+describe("update 的参数", () => {
+  it("分支名的列表，至少一个", () => {
+    expect(parseParams("update", { repo: "/r", branches: ["main"] })).toEqual({
+      repo: "/r",
+      branches: ["main"],
+    });
+    expect(parseParams("update", { repo: "/r", branches: [] })).toBeUndefined();
+    expect(parseParams("update", { repo: "/r", branch: "main" })).toBeUndefined();
+  });
+});

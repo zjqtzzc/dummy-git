@@ -208,6 +208,78 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
     return name === "" || name === value ? undefined : name;
   }
 
+  /**
+   * 更新一个本地分支：只取它跟踪的远程分支，能快进就快进。分叉时远程分支记录已经更新，
+   * 后面的变基或合并用这份记录，不再取一次。
+   */
+  async function updateOne(branch: string): Promise<{
+    readonly result: UpdateResult;
+    readonly tracked: string;
+    readonly current: boolean;
+  }> {
+    const root = repository.location.root;
+    const [head, refs] = await Promise.all([
+      repository.run(getHead, root),
+      repository.run(getRefs, root),
+    ]);
+    const before = localBranch(refs, branch);
+    if (before === undefined) throw new UserFacingError(`Branch ${branch} no longer exists.`);
+    const upstream = before.upstream;
+    if (upstream === undefined) {
+      throw new UserFacingError(`${branch} has no upstream branch. Push it first.`);
+    }
+    const tracked = `${upstream.remote}/${upstream.name}`;
+    const current = head.kind === RefKind.Head && head.branch === branch;
+    // 当前分支：git 不许 fetch 直接更新检出的分支，拆成远程道的 fetch + 本地道的快进。
+    let forward: FastForwardResult;
+    if (current) {
+      await repository.run(fetchBranch, root, upstream.remote, upstream.name);
+      forward = await repository.run(fastForward, root, `refs/remotes/${tracked}`);
+    } else {
+      forward = await repository.run(fetchInto, root, upstream.remote, upstream.name, branch);
+    }
+    if (forward.kind === FastForwardKind.Diverged) {
+      return { result: { kind: UpdateKind.Diverged, branch, tracked }, tracked, current };
+    }
+    const moved =
+      localBranch(await repository.run(getRefs, root), branch)?.target !== before.target;
+    return {
+      result: { kind: moved ? UpdateKind.Updated : UpdateKind.UpToDate, branch, tracked },
+      tracked,
+      current,
+    };
+  }
+
+  /**
+   * 一次更新好几个：按顺序逐个更新，算一次操作，每个分支状态栏各说一句。
+   * 分叉的不问变基还是合并（问了就得等人答，后面的都卡着），跳过它接着做，最后报错列出来，让人单个更新
+   * （项目负责人定）。某一个被 git 拒绝时，已经更新的不撤回，剩下的不再做，显示 git 的报错。
+   */
+  async function updateMany(branches: readonly string[]): Promise<void> {
+    const diverged: string[] = [];
+    await ui.withProgress(
+      `Updating ${branches.length} branches…`,
+      async () => {
+        const results: UpdateResult[] = [];
+        for (const branch of branches) {
+          const { result } = await updateOne(branch);
+          if (result.kind === UpdateKind.Diverged) diverged.push(branch);
+          else ui.notify(updateDone(result));
+          results.push(result);
+        }
+        return results;
+      },
+      updateSummary,
+    );
+    const [first] = diverged;
+    if (first === undefined) return;
+    throw new UserFacingError(
+      diverged.length === 1
+        ? `${first} has diverged from its upstream and was not updated. Update it on its own.`
+        : `${diverged.length} branches have diverged from their upstream and were not updated: ${diverged.join(", ")}. Update them one at a time.`,
+    );
+  }
+
   /** 摘、撤一串提交（顺序由调用方排好），走进度出口，完成消息见 `replayDone`。 */
   async function replay(kind: ReplayKind, hashes: readonly string[]): Promise<void> {
     const { root, gitDir } = repository.location;
@@ -427,53 +499,21 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       );
       return null;
     },
-    update: async ({ branch }) => {
+    update: async ({ branches }) => {
       const { root, gitDir } = repository.location;
-      const [head, refs] = await Promise.all([
-        repository.run(getHead, root),
-        repository.run(getRefs, root),
-      ]);
-      const before = localBranch(refs, branch);
-      if (before === undefined) throw new UserFacingError(`Branch ${branch} no longer exists.`);
-      const upstream = before.upstream;
-      if (upstream === undefined) {
-        throw new UserFacingError(`${branch} has no upstream branch. Push it first.`);
+      const [only] = branches;
+      if (branches.length > 1 || only === undefined) {
+        await updateMany(branches);
+        return null;
       }
-      const tracked = `${upstream.remote}/${upstream.name}`;
-      const current = head.kind === RefKind.Head && head.branch === branch;
-      const step = await ui.withProgress(
-        `Updating ${branch}…`,
-        async () => {
-          // 当前分支：git 不许 fetch 直接更新检出的分支，拆成远程道的 fetch + 本地道的快进。
-          let result: FastForwardResult;
-          if (current) {
-            await repository.run(fetchBranch, root, upstream.remote, upstream.name);
-            result = await repository.run(fastForward, root, `refs/remotes/${tracked}`);
-          } else {
-            result = await repository.run(fetchInto, root, upstream.remote, upstream.name, branch);
-          }
-          // 分叉时远程分支记录已经更新。后面的变基或合并用这份记录，不再取一次。
-          if (result.kind === FastForwardKind.Diverged) return { kind: "diverged" as const };
-          const moved =
-            localBranch(await repository.run(getRefs, root), branch)?.target !== before.target;
-          return { kind: "done" as const, moved };
-        },
-        (finished) => {
-          switch (finished.kind) {
-            case "diverged":
-              return "";
-            case "done":
-              return finished.moved
-                ? `Updated ${branch} from ${tracked}`
-                : `${branch} is up to date`;
-            default:
-              return assertNever(finished, "update");
-          }
-        },
+      const { result, tracked, current } = await ui.withProgress(
+        `Updating ${only}…`,
+        () => updateOne(only),
+        ({ result }) => updateDone(result),
       );
-      if (step.kind === "done") return null;
+      if (result.kind !== UpdateKind.Diverged) return null;
       // 关掉通知就停在这里：本地分支不动。
-      const choice = await ui.notifyChoice(`${branch} and ${tracked} have diverged.`, [
+      const choice = await ui.notifyChoice(`${only} and ${tracked} have diverged.`, [
         "Rebase",
         "Merge",
       ]);
@@ -481,15 +521,15 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       if (choice === 0) {
         await ui.withProgress(
           `Rebasing onto ${tracked}…`,
-          () => repository.run(rebaseOnto, root, gitDir, onto, current ? undefined : branch),
+          () => repository.run(rebaseOnto, root, gitDir, onto, current ? undefined : only),
           (outcome) => rebaseDone(outcome, tracked),
         );
       } else if (choice === 1) {
         // 合并只改当前检出的分支，所以先切过去。变基可以在参数里指名分支。
         if (!current) {
           await ui.withProgress(
-            `Checking out ${branch}…`,
-            () => repository.run(switchBranch, root, branch),
+            `Checking out ${only}…`,
+            () => repository.run(switchBranch, root, only),
             (said) => said,
           );
         }
@@ -907,6 +947,46 @@ function mergeDone(outcome: MergeOutcome, name: string): string {
     default:
       return assertNever(outcome, "mergeDone");
   }
+}
+
+enum UpdateKind {
+  Updated = "updated",
+  UpToDate = "upToDate",
+  Diverged = "diverged",
+}
+
+/** 更新一个分支的结局：快进了、本来就是最新、分叉了。 */
+interface UpdateResult {
+  readonly kind: UpdateKind;
+  readonly branch: string;
+  /** 跟踪的远程分支，`origin/feat`。 */
+  readonly tracked: string;
+}
+
+/** 一个分支更新完的说法。分叉时是空的：接下来要问变基还是合并，或者在汇总里报。 */
+function updateDone({ kind, branch, tracked }: UpdateResult): string {
+  switch (kind) {
+    case UpdateKind.Updated:
+      return `Updated ${branch} from ${tracked}`;
+    case UpdateKind.UpToDate:
+      return `${branch} is up to date`;
+    case UpdateKind.Diverged:
+      return "";
+    default:
+      return assertNever(kind, "updateDone");
+  }
+}
+
+/** 一次更新好几个的汇总：`Updated 2 branches, 1 already up to date, 1 diverged`，为 0 的不写。 */
+function updateSummary(results: readonly UpdateResult[]): string {
+  const count = (kind: UpdateKind) => results.filter((result) => result.kind === kind).length;
+  const updated = count(UpdateKind.Updated);
+  const parts = [
+    ...(count(UpdateKind.UpToDate) > 0 ? [`${count(UpdateKind.UpToDate)} already up to date`] : []),
+    ...(count(UpdateKind.Diverged) > 0 ? [`${count(UpdateKind.Diverged)} diverged`] : []),
+  ];
+  const head = `Updated ${updated === 1 ? "1 branch" : `${updated} branches`}`;
+  return [head, ...parts].join(", ");
 }
 
 /** 摘、撤一串提交时状态栏上的说法。表放在用它的地方。 */
