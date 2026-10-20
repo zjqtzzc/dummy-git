@@ -42,5 +42,6 @@ agent 把一步交给用户手测前：
 | `branch-update` | 批量更新分支：在 main；远程 origin 是本地裸仓库，main、feat/a、feat/b 远程各多一条（能快进），fix 本地和远程各多一条（分叉），lonely 没有上游；本地的远程记录还没 Fetch，分叉要 Update 之后才看得出 |
 | `branch-delete` | 批量删分支：在 main；本地 topic、feat/login/a、feat/login/b 已合并，wip/x、wip/y 没合并；远程 origin 是本地裸仓库（能真删），上面有 main、old/a、old/b |
 | `cherry-pick-batch` | 批量 cherry-pick / revert：在 main，feature 上从旧到新 a、applied、clash、b 四条；applied 已经摘到 main 过（再摘就变空），clash 改 `f.txt` 和 main 冲突；工作区干净 |
+| `commit-batch` | Commit 面板的批量操作：停在 merge 冲突里；Conflicts 有 m1、m2（两边都改）、gone1、gone2（一边删了）；Changes 有 src/a、src/b、top；Unversioned 有 new/x、new/y、z |
 | `context-menu` | 右键菜单：每块面板上各种节点都有一个。在 main（当前分支），合并过 side，之后 one、two、three 能改说明；本地 topic、feat/login/a、feat/login/b，远程 origin/main、origin/feat/x；stash pop 在 `f.txt` 上冲突、stash 还在；`a.txt` 有修改，未跟踪的 `new.txt` 与 `docs/new/notes.txt` |
 | `reset` | 在 main，四条提交（`a.txt` 在后三条里各改一次），`origin/main` 停在第二条；`b.txt` 已暂存、`c.txt` 未暂存的本地改动。看 Keep 被拒：先改工作区的 `a.txt` |
