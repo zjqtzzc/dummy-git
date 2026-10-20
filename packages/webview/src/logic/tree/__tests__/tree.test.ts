@@ -12,6 +12,7 @@ import {
   type TreeNode,
   type TreeRow,
   treeKeyAction,
+  viewsOfIds,
 } from "../tree.js";
 
 const leaf = (id: string): TreeNode => ({ id, label: id });
@@ -183,5 +184,13 @@ describe("copiedText：复制快捷键复制的文字", () => {
   it("使用方改的行用它给的，没改的仍是显示的文字", () => {
     const full = (node: TreeNode) => (node.id === "x" ? "feat/x" : undefined);
     expect(copiedText([leaf("x"), leaf("y")], full)).toBe("feat/x\ny");
+  });
+});
+
+describe("viewsOfIds：刷新后按当前的树重新算", () => {
+  it("没了的不算；目录下面的叶子都算", () => {
+    const views = viewsOfIds(TREE, ["b", "gone", "z"]);
+    expect(views.exact.map((node) => node.id)).toEqual(["b", "z"]);
+    expect(views.expanded.map((node) => node.id)).toEqual(["x", "z"]);
   });
 });

@@ -12,8 +12,8 @@ import {
   conflictFiles,
   conflictHeading,
   opensMergeEditor,
+  rollbackArgs,
   type WorkingFile,
-  WorkingStatus,
   workingDiffSides,
   workingFiles,
   workingGroups,
@@ -211,22 +211,24 @@ async function submit(): Promise<void> {
   }
 }
 
+/** 文件树的选中（两种看法），工具栏的 Rollback 用。 */
+const fileSelection = ref<MenuViews<FileEntry | null>>({ exact: [], expanded: [] });
 /**
- * Rollback 只管已跟踪的改动：勾选里一个已跟踪文件都没有时置灰。
+ * 工具栏 Rollback 撤哪些：和右键的 Rollback 同一份规则；什么都没选时撤全部已跟踪的改动（`rollbackArgs`）。
  * 未跟踪文件用右键菜单的 Delete。
  */
-const canRollback = computed(
-  () =>
-    !busy.value &&
-    files.value.some((file) => file.status !== WorkingStatus.Untracked && checked.value.has(file.path)),
+const rollbackTarget = computed(() =>
+  rollbackArgs(conflicts.value, files.value, fileSelection.value),
 );
+const canRollback = computed(() => !busy.value && rollbackTarget.value !== undefined);
 
-/** 确认框由扩展弹；勾选里的未跟踪文件扩展会跳过。失败由错误关口报。 */
-async function rollbackChecked(): Promise<void> {
-  if (repo.value === undefined || !canRollback.value) return;
+/** 确认框由扩展弹。失败由错误关口报。 */
+async function rollbackSelected(): Promise<void> {
+  const target = rollbackTarget.value;
+  if (repo.value === undefined || !canRollback.value || target === undefined) return;
   rollingBack.value = true;
   try {
-    await props.client.request("rollback", { repo: repo.value, paths: [...checked.value] });
+    await props.client.request("rollback", { repo: repo.value, paths: target.paths });
   } catch (cause) {
     report(cause);
   } finally {
@@ -423,7 +425,7 @@ onMounted(async () => {
         :icon="codicon('discard')"
         title="Rollback"
         :disabled="!canRollback"
-        @click="rollbackChecked"
+        @click="rollbackSelected"
       />
       <ToolButton
         :icon="appIcon(AppIcon.Stash)"
@@ -457,6 +459,7 @@ onMounted(async () => {
         :menu="menuOf"
         @check="onCheck"
         @copy="copyText"
+        @select="(views) => (fileSelection = views)"
         @open="openFile"
       >
         <template v-if="heading?.actions" #after="{ node }">

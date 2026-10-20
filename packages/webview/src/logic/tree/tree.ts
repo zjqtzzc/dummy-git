@@ -70,18 +70,44 @@ export function selectionViews(
   ids: ReadonlySet<string>,
 ): MenuViews<TreeNode> {
   const exact = rows.filter((row) => ids.has(row.node.id)).map((row) => row.node);
+  return { exact, expanded: leavesOf(exact) };
+}
+
+/**
+ * 由点中的节点 id 按当前的树重新算两种看法（刷新后用：没了的不算，目录里新出现的也算）。
+ * 原样看按给的顺序；展开看同 `selectionViews`。
+ */
+export function viewsOfIds(
+  nodes: readonly TreeNode[],
+  ids: readonly string[],
+): MenuViews<TreeNode> {
+  const byId = new Map<string, TreeNode>();
+  const index = (node: TreeNode): void => {
+    byId.set(node.id, node);
+    for (const child of node.children ?? []) index(child);
+  };
+  for (const node of nodes) index(node);
+  const exact = ids.flatMap((id) => {
+    const node = byId.get(id);
+    return node === undefined ? [] : [node];
+  });
+  return { exact, expanded: leavesOf(exact) };
+}
+
+/** 这些节点下面的全部叶子（叶子就是它自己），按顺序、去掉重复。 */
+function leavesOf(nodes: readonly TreeNode[]): TreeNode[] {
   const seen = new Set<string>();
-  const expanded: TreeNode[] = [];
+  const leaves: TreeNode[] = [];
   const collect = (node: TreeNode): void => {
     if (node.children === undefined) {
-      if (!seen.has(node.id)) expanded.push(node);
+      if (!seen.has(node.id)) leaves.push(node);
       seen.add(node.id);
       return;
     }
     for (const child of node.children) collect(child);
   };
-  for (const node of exact) collect(node);
-  return { exact, expanded };
+  for (const node of nodes) collect(node);
+  return leaves;
 }
 
 /**

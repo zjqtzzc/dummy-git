@@ -12,6 +12,7 @@ import {
   conflictFiles,
   conflictHeading,
   opensMergeEditor,
+  rollbackArgs,
   WorkingStatus,
   workingDiffSides,
   workingFiles,
@@ -108,9 +109,11 @@ describe("workingMenuContext：Commit 面板的右键菜单项", () => {
     { path: "a.ts", status: WorkingStatus.Modified },
     { path: "new.txt", status: WorkingStatus.Untracked },
   ];
+  /** 选中这些文件（`null` 是一个目录或组，下面什么都不算）：展开看就是这些文件本身。 */
   const menuOf = (...paths: (string | null)[]) => {
     const exact = paths.map((path) => (path === null ? null : { path }));
-    return workingMenuContext("/repo", conflicts, files, { exact, expanded: [] });
+    const expanded = paths.flatMap((path) => (path === null ? [] : [{ path }]));
+    return workingMenuContext("/repo", conflicts, files, { exact, expanded });
   };
 
   it("各种文件：各自的菜单项，参数是路径", () => {
@@ -139,9 +142,34 @@ describe("workingMenuContext：Commit 面板的右键菜单项", () => {
     });
   });
 
-  it("目录或组、多选：只有仓库，没有菜单项（都只能对一个文件做）", () => {
+  it("空的目录、混着选：只有仓库，没有菜单项", () => {
     expect(menuOf(null)).toEqual({ [MenuContextKey.Repo]: "/repo" });
     expect(menuOf("new.txt", "a.ts")).toEqual({ [MenuContextKey.Repo]: "/repo" });
+  });
+});
+
+describe("rollbackArgs：工具栏与右键的 Rollback 撤哪些", () => {
+  const tracked = [
+    { path: "src/a.ts", status: WorkingStatus.Modified },
+    { path: "src/b.ts", status: WorkingStatus.Deleted },
+  ];
+  const untracked = [{ path: "new.txt", status: WorkingStatus.Untracked }];
+  const files = [...tracked, ...untracked];
+
+  it("选中目录或 Changes 组：撤它下面列出的全部", () => {
+    const folder = { exact: [null], expanded: [{ path: "src/a.ts" }, { path: "src/b.ts" }] };
+    expect(rollbackArgs([], files, folder)).toEqual({ paths: ["src/a.ts", "src/b.ts"] });
+  });
+
+  it("混着未跟踪文件：撤不了（全部严格）", () => {
+    const both = [{ path: "src/a.ts" }, { path: "new.txt" }];
+    expect(rollbackArgs([], files, { exact: both, expanded: both })).toBeUndefined();
+  });
+
+  it("什么都没选：撤全部已跟踪的改动；没有已跟踪的改动时撤不了", () => {
+    const none = { exact: [], expanded: [] };
+    expect(rollbackArgs([], files, none)).toEqual({ paths: ["src/a.ts", "src/b.ts"] });
+    expect(rollbackArgs([], untracked, none)).toBeUndefined();
   });
 });
 

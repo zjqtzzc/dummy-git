@@ -137,6 +137,17 @@ function pathOf(kind: FileMenuKind.Change | FileMenuKind.Untracked) {
     target?.kind === kind ? target.path : undefined;
 }
 
+/**
+ * Rollback：展开看，目录、`Changes` 组等于它下面列出的全部文件。每一个都要是已跟踪的改动，
+ * 混着未跟踪文件、冲突文件就不出现（全部严格）。工具栏的 Rollback 用同一份（`rollbackArgs`）。
+ */
+const ROLLBACK = menuItem({
+  view: MenuView.Expanded,
+  key: MenuContextKey.RollbackFile,
+  pick: pathOf(FileMenuKind.Change),
+  value: (paths) => ({ paths }),
+});
+
 /** Commit 面板文件的右键菜单项，顺序无关（菜单里的顺序由 `package.json` 的 `group` 定）。 */
 const FILE_MENU: readonly MenuItem<FileMenuTarget | null>[] = [
   menuItem({
@@ -167,13 +178,7 @@ const FILE_MENU: readonly MenuItem<FileMenuTarget | null>[] = [
     whole: exactlyOne,
     value: ([path]) => ({ path }),
   }),
-  menuItem({
-    view: MenuView.Exact,
-    key: MenuContextKey.RollbackFile,
-    pick: pathOf(FileMenuKind.Change),
-    whole: exactlyOne,
-    value: (paths) => ({ paths }),
-  }),
+  ROLLBACK,
   menuItem({
     view: MenuView.Exact,
     key: MenuContextKey.AddUntracked,
@@ -211,6 +216,18 @@ function fileMenuTargets(
   return targets;
 }
 
+/** 选中（文件树已换成文件，目录与组是 `null`）→ 各文件是哪一种；对不上的（刚没了的）也当 `null`。 */
+function targetViews(
+  conflicts: readonly ConflictFile[],
+  files: readonly WorkingFile[],
+  views: MenuViews<{ readonly path: string } | null>,
+): MenuViews<FileMenuTarget | null> {
+  const targets = fileMenuTargets(conflicts, files);
+  const toTarget = (entry: { readonly path: string } | null): FileMenuTarget | null =>
+    entry === null ? null : (targets.get(entry.path) ?? null);
+  return { exact: views.exact.map(toTarget), expanded: views.expanded.map(toTarget) };
+}
+
 /**
  * Commit 面板的右键菜单上下文：选中（两种看法；文件树已换成文件，目录与组是 `null`）→ 仓库，加上能做的各菜单项的键。
  */
@@ -220,16 +237,25 @@ export function workingMenuContext(
   files: readonly WorkingFile[],
   views: MenuViews<{ readonly path: string } | null>,
 ): Readonly<Record<string, string | MenuArgs>> {
-  const targets = fileMenuTargets(conflicts, files);
-  const toTarget = (entry: { readonly path: string } | null): FileMenuTarget | null =>
-    entry === null ? null : (targets.get(entry.path) ?? null);
   return {
     [MenuContextKey.Repo]: repo,
-    ...menuItemsContext(
-      { exact: views.exact.map(toTarget), expanded: views.expanded.map(toTarget) },
-      FILE_MENU,
-    ),
+    ...menuItemsContext(targetViews(conflicts, files, views), FILE_MENU),
   };
+}
+
+/**
+ * 工具栏 Rollback 撤哪些：和右键的 Rollback 同一份规则（`ROLLBACK`）；
+ * 什么都没选时撤 `Changes` 组的全部（同 IDEA：`RollbackAction` 里 `changes.isEmpty()` 时取全部）。
+ * 撤不了（选中的不全是已跟踪的改动，或没选且没有已跟踪的改动）时缺席，按钮置灰。不看勾选：勾选只管提交与 Stash。
+ */
+export function rollbackArgs(
+  conflicts: readonly ConflictFile[],
+  files: readonly WorkingFile[],
+  views: MenuViews<{ readonly path: string } | null>,
+): { readonly paths: readonly string[] } | undefined {
+  if (views.exact.length > 0) return ROLLBACK.evaluate(targetViews(conflicts, files, views));
+  const tracked = files.filter((file) => file.status !== WorkingStatus.Untracked);
+  return tracked.length === 0 ? undefined : { paths: tracked.map((file) => file.path) };
 }
 
 function conflictEntry(file: ConflictFile): FileEntry {

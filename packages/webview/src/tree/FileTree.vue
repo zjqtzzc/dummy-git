@@ -3,7 +3,7 @@ import { DiffOpenMode } from "@dummy-git/shared";
 import { computed, ref, watch } from "vue";
 import type { MenuArgs, MenuViews } from "../logic/menuItems.js";
 import { buildFileTree, type FileEntry, type FileGroup, toTreeNodes } from "../logic/tree/fileTree.js";
-import { branchIds, type TreeNode } from "../logic/tree/tree.js";
+import { branchIds, type TreeNode, viewsOfIds } from "../logic/tree/tree.js";
 import { useLightTheme } from "../ui/lightTheme.js";
 import Tree from "./Tree.vue";
 
@@ -28,6 +28,11 @@ const emit = defineEmits<{
   check: [paths: readonly string[], value: boolean];
   /** 复制快捷键：选中的行显示的文字，一行一个（文件名、目录名、组的标题）。 */
   copy: [text: string];
+  /**
+   * 选中（两种看法），换成了文件，目录与组是 `null`。工具栏按钮用。
+   * 文件列表一变就按当前的树重新报一次：刚撤掉的文件不再算在选中里。
+   */
+  select: [views: MenuViews<FileEntry | null>];
 }>();
 const slots = defineSlots<{
   after?(props: { node: TreeNode }): unknown;
@@ -78,8 +83,17 @@ defineExpose({
   },
 });
 
+/** 点中的节点 id（看得见的选中行）。 */
+const selectedIds = ref<readonly string[]>([]);
+watch([selectedIds, nodes], ([ids, current]) => {
+  const views = viewsOfIds(current, ids);
+  const toEntry = (node: TreeNode): FileEntry | null => byId.value.get(node.id) ?? null;
+  emit("select", { exact: views.exact.map(toEntry), expanded: views.expanded.map(toEntry) });
+});
+
 /** diff 跟随：只在恰好选中一个文件时（同提交列表的右栏）。 */
 function onSelect({ exact }: MenuViews<TreeNode>): void {
+  selectedIds.value = exact.map((node) => node.id);
   const [node] = exact;
   const entry = exact.length === 1 && node !== undefined ? byId.value.get(node.id) : undefined;
   if (entry === undefined || entry.path === followed) return;
