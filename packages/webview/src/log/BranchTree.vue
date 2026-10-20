@@ -2,7 +2,9 @@
 import type { Ref } from "@dummy-git/shared";
 import { computed, ref, watch } from "vue";
 import {
+  type BranchNode,
   branchFilterOf,
+  branchMenuContext,
   branchNodesById,
   buildBranchTree,
   type DeleteTarget,
@@ -18,6 +20,7 @@ import {
 } from "../logic/log/branchTree.js";
 import { branchCopyText } from "../logic/log/copy.js";
 import type { BranchFilter } from "../logic/log/filter.js";
+import type { MenuViews } from "../logic/menuItems.js";
 import type { TreeNode } from "../logic/tree/tree.js";
 import Tree from "../tree/Tree.vue";
 import { viewState } from "../vscodeApi.js";
@@ -46,7 +49,7 @@ const emit = defineEmits<{
 }>();
 
 const tree = computed(() => buildBranchTree(props.refs));
-const nodes = computed(() => toTreeNodes(tree.value, props.repo));
+const nodes = computed(() => toTreeNodes(tree.value));
 const byId = computed(() => branchNodesById(tree.value));
 
 /** 一行的同步状态（ahead / behind / gone），画在分支名后面。 */
@@ -102,6 +105,25 @@ watch(
   { immediate: true },
 );
 
+/** 选中变了：竖按钮跟着恰好选中的那一个走，多选时都置灰。 */
+function onSelect(selected: readonly TreeNode[]): void {
+  const [only] = selected;
+  selectedId.value = selected.length === 1 ? only?.id : undefined;
+}
+
+/** 右键菜单：树节点换回分支树的节点，交给 `branchMenuContext`。 */
+function menuOf(views: MenuViews<TreeNode>) {
+  const toBranch = (list: readonly TreeNode[]): BranchNode[] =>
+    list.flatMap((node) => {
+      const branch = byId.value.get(node.id);
+      return branch === undefined ? [] : [branch];
+    });
+  return branchMenuContext(
+    { exact: toBranch(views.exact), expanded: toBranch(views.expanded) },
+    props.repo,
+  );
+}
+
 function onExpanded(next: ReadonlySet<string>): void {
   expanded.value = next;
   viewState.write("branches", [...next]);
@@ -109,9 +131,15 @@ function onExpanded(next: ReadonlySet<string>): void {
 </script>
 
 <template>
-  <Tree :nodes="nodes" :expanded="expanded" @update:expanded="onExpanded" @select="(node) => (selectedId = node.id)"
+  <Tree
+    :nodes="nodes"
+    :expanded="expanded"
+    :menu="menuOf"
+    @update:expanded="onExpanded"
+    @select="onSelect"
     @activate="onActivate"
-    @keydown="onKeydown">
+    @keydown="onKeydown"
+  >
     <template #after="{ node }">
       <TrackingBadge :state="tracking(node)" />
     </template>

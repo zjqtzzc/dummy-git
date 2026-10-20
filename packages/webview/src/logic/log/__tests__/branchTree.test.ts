@@ -1,11 +1,11 @@
 import { MenuContextKey, type Ref, RefKind, UpstreamState } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
-import type { TreeNode } from "../../tree/tree.js";
 import {
   type BranchNode,
   BranchNodeKind,
   branchFilterOf,
   branchFilters,
+  branchMenuContext,
   branchNodesById,
   buildBranchTree,
   DeleteTargetKind,
@@ -15,7 +15,6 @@ import {
   restoreExpanded,
   startOf,
   TrackingKind,
-  toTreeNodes,
   trackingOf,
 } from "../branchTree.js";
 
@@ -302,14 +301,12 @@ describe("trackingOf：分支名后面的同步状态", () => {
 });
 
 describe("分支树的右键菜单项", () => {
-  /** 树压平成 id → 菜单。 */
-  function menus(refs: readonly Ref[]): ReadonlyMap<string, TreeNode["menu"]> {
-    const index = new Map<string, TreeNode["menu"]>();
-    const visit = (node: TreeNode): void => {
-      index.set(node.id, node.menu);
-      for (const child of node.children ?? []) visit(child);
-    };
-    for (const node of toTreeNodes(buildBranchTree(refs), "/r")) visit(node);
+  /** 每个节点单独右键时的菜单上下文：id → 菜单。 */
+  function menus(refs: readonly Ref[]): ReadonlyMap<string, Readonly<Record<string, unknown>>> {
+    const index = new Map<string, Readonly<Record<string, unknown>>>();
+    for (const [id, node] of branchNodesById(buildBranchTree(refs))) {
+      index.set(id, branchMenuContext({ exact: [node], expanded: [] }, "/r"));
+    }
     return index;
   }
   const byId = menus([head("main"), local("main"), local("feat/x"), remote("origin", "feat/x")]);
@@ -366,8 +363,18 @@ describe("分支树的右键菜单项", () => {
     });
   });
 
-  it("目录、分组：没有菜单", () => {
-    expect(byId.get("local/feat")).toBeUndefined();
-    expect(byId.get("remote")).toBeUndefined();
+  it("目录、分组：没有菜单项", () => {
+    expect(keysOf("local/feat")).toEqual([MenuContextKey.Repo]);
+    expect(keysOf("remote")).toEqual([MenuContextKey.Repo]);
+  });
+
+  it("多选：只能对一个分支做的都不出现", () => {
+    const [main, feat] = ["local/main", "local/feat/x"].map((id) =>
+      branchNodesById(buildBranchTree([head("main"), local("main"), local("feat/x")])).get(id),
+    );
+    if (main === undefined || feat === undefined) throw new Error("没有节点");
+    expect(branchMenuContext({ exact: [main, feat], expanded: [] }, "/r")).toEqual({
+      [MenuContextKey.Repo]: "/r",
+    });
   });
 });

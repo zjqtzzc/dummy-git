@@ -1,6 +1,5 @@
 import { assertNever } from "@dummy-git/shared";
 import { codicon, IconKind } from "../icons.js";
-import type { MenuArgs } from "../menuItems.js";
 import { setiIcon } from "./setiIcon.js";
 import type { TreeNode } from "./tree.js";
 
@@ -28,8 +27,6 @@ export interface FileEntry {
   readonly color: string;
   /** 文件名后面的灰字（冲突类型）。改名的写「renamed from …」，两者不会同时有。 */
   readonly description?: string;
-  /** 右键菜单上下文，原样交给树节点（`TreeNode.menu`）。 */
-  readonly menu?: Readonly<Record<string, string | MenuArgs>>;
 }
 
 /**
@@ -240,7 +237,6 @@ export function toTreeNodes(
           color: node.entry.color,
           decoration: node.entry.letter,
           ...flag,
-          ...(node.entry.menu === undefined ? {} : { menu: node.entry.menu }),
         } as const;
         const description =
           node.renamedFrom === undefined

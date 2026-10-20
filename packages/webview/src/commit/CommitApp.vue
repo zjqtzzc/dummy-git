@@ -17,8 +17,10 @@ import {
   workingDiffSides,
   workingFiles,
   workingGroups,
+  workingMenuContext,
 } from "../logic/commit/workingChanges.js";
 import { AppIcon, appIcon, codicon } from "../logic/icons.js";
+import type { MenuViews } from "../logic/menuItems.js";
 import { type FileEntry, groupNodeId, keepChecked } from "../logic/tree/fileTree.js";
 import FileTree from "../tree/FileTree.vue";
 import Icon from "../ui/Icon.vue";
@@ -52,9 +54,11 @@ const loaded = ref(false);
 const conflicts = ref<ConflictFile[]>([]);
 /** 停在半路的操作。没有是 `null`（stash 取出冲突也是 `null`）。 */
 const operation = ref<OngoingOperation | null>(null);
-const groups = computed(() =>
-  workingGroups(repo.value ?? "", conflicts.value, files.value, operation.value),
-);
+const groups = computed(() => workingGroups(conflicts.value, files.value, operation.value));
+/** 右键菜单：选中的文件交给 `workingMenuContext`。 */
+function menuOf(views: MenuViews<FileEntry | null>) {
+  return workingMenuContext(repo.value ?? "", conflicts.value, files.value, views);
+}
 const heading = computed(() => conflictHeading(operation.value, conflicts.value.length));
 /** 有没有任何要显示的文件（冲突也算）。停在半路时标题行也要画，哪怕文件已经清完。 */
 const hasFiles = computed(
@@ -441,6 +445,7 @@ onMounted(async () => {
         ref="tree"
         :groups="groups"
         :checked="checked"
+        :menu="menuOf"
         @check="onCheck"
         @open="openFile"
       >

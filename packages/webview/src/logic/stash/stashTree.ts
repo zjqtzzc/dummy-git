@@ -1,6 +1,14 @@
 import { type CommitFileChange, MenuContextKey, type Stash } from "@dummy-git/shared";
 import { commitFileEntry } from "../log/commitDiff.js";
-import { exactlyOne, type MenuItem, menuItem, menuItemsContext } from "../menuItems.js";
+import {
+  exactlyOne,
+  type MenuArgs,
+  type MenuItem,
+  MenuView,
+  type MenuViews,
+  menuItem,
+  menuItemsContext,
+} from "../menuItems.js";
 import { buildFileTree, toTreeNodes as fileTreeNodes } from "../tree/fileTree.js";
 import type { TreeNode } from "../tree/tree.js";
 import { formatTime } from "../utils/time.js";
@@ -21,14 +29,31 @@ export interface StashFile {
   readonly file: CommitFileChange;
 }
 
-/** stash 的右键菜单项（选中的是 stash 的 hash）。都只能对一条做，同 IDEA 的 `GitSingleStashAction`。 */
-const STASH_MENU: readonly MenuItem<string>[] = [
+/**
+ * stash 的右键菜单项。选中的是 stash 那一行时是它的 hash，是它下面的文件、目录时是 `null`。
+ * 都只能对一条做，同 IDEA 的 `GitSingleStashAction`；多选后能做什么还没定。
+ */
+const STASH_MENU: readonly MenuItem<string | null>[] = [
   MenuContextKey.PopStash,
   MenuContextKey.ApplyStash,
   MenuContextKey.DropStash,
 ].map((key) =>
-  menuItem({ key, pick: (hash: string) => hash, whole: exactlyOne, value: ([hash]) => ({ hash }) }),
+  menuItem({
+    view: MenuView.Exact,
+    key,
+    pick: (hash: string | null) => hash ?? undefined,
+    whole: exactlyOne,
+    value: ([hash]) => ({ hash }),
+  }),
 );
+
+/** 选中（两种看法）→ 右键菜单上下文：仓库，加上能做的各菜单项的键。 */
+export function stashMenuContext(
+  views: MenuViews<string | null>,
+  repo: string,
+): Readonly<Record<string, string | MenuArgs>> {
+  return { [MenuContextKey.Repo]: repo, ...menuItemsContext(views, STASH_MENU) };
+}
 
 /**
  * Stash 模式的树：每条 stash 一个顶层节点，
@@ -40,7 +65,6 @@ const STASH_MENU: readonly MenuItem<string>[] = [
  */
 export function stashTreeNodes(
   list: readonly StashFiles[],
-  repo: string,
   light: boolean,
   now: number,
 ): TreeNode[] {
@@ -51,10 +75,6 @@ export function stashTreeNodes(
       id: stash.hash,
       label: stash.message,
       description: formatTime(stash.at, now),
-      menu: {
-        [MenuContextKey.Repo]: repo,
-        ...menuItemsContext([stash.hash], STASH_MENU),
-      },
       children: scoped(stash.hash, files),
     };
   });

@@ -4,6 +4,8 @@ import {
   exactlyOne,
   type MenuArgs,
   type MenuItem,
+  MenuView,
+  type MenuViews,
   menuItem,
   menuItemsContext,
 } from "../menuItems.js";
@@ -221,22 +223,17 @@ export function restoreExpanded(saved: unknown): ReadonlySet<string> | undefined
  * 分支树 → 基础树的节点。图标是 codicon：HEAD 靶心、两组各自的图标、目录文件夹、分支图标；
  * 当前分支用主题的图表黄标签、文字加粗，比对勾醒目，跟着主题走不写死颜色。
  */
-export function toTreeNodes(nodes: readonly BranchNode[], repo: string): TreeNode[] {
+export function toTreeNodes(nodes: readonly BranchNode[]): TreeNode[] {
   return nodes.map((node): TreeNode => {
     switch (node.kind) {
       case BranchNodeKind.Head:
-        return {
-          id: node.id,
-          label: node.label,
-          icon: codicon("target"),
-          menu: menuOf(node, repo),
-        };
+        return { id: node.id, label: node.label, icon: codicon("target") };
       case BranchNodeKind.Group:
         return {
           id: node.id,
           label: node.label,
           icon: codicon(node.id === LOCAL_ID ? "device-desktop" : "cloud"),
-          children: toTreeNodes(node.children, repo),
+          children: toTreeNodes(node.children),
         };
       case BranchNodeKind.Folder:
         return {
@@ -244,10 +241,9 @@ export function toTreeNodes(nodes: readonly BranchNode[], repo: string): TreeNod
           label: node.label,
           icon: codicon("folder"),
           openedIcon: codicon("folder-opened"),
-          children: toTreeNodes(node.children, repo),
+          children: toTreeNodes(node.children),
         };
-      case BranchNodeKind.Branch: {
-        const menu = { menu: menuOf(node, repo) };
+      case BranchNodeKind.Branch:
         return node.current
           ? {
               id: node.id,
@@ -255,10 +251,8 @@ export function toTreeNodes(nodes: readonly BranchNode[], repo: string): TreeNod
               bold: true,
               icon: codicon("tag"),
               iconColor: "var(--vscode-charts-yellow)",
-              ...menu,
             }
-          : { id: node.id, label: node.label, icon: codicon("git-branch"), ...menu };
-      }
+          : { id: node.id, label: node.label, icon: codicon("git-branch") };
       default:
         return assertNever(node, "toTreeNodes");
     }
@@ -445,27 +439,34 @@ function pointOf(node: PointNode): StartPoint {
   }
 }
 
-/** 本地分支（含 HEAD 那行代表的当前分支）：名字与是不是当前分支。远程分支、detached 的 HEAD 不是。 */
+/** 本地分支（含 HEAD 那行代表的当前分支）：名字与是不是当前分支。远程分支、detached 的 HEAD、目录、分组不是。 */
 function localOf(
-  node: PointNode,
+  node: BranchNode,
 ): { readonly branch: string; readonly current: boolean } | undefined {
-  if (node.kind === BranchNodeKind.Head) {
-    return node.branch === undefined ? undefined : { branch: node.branch, current: true };
+  switch (node.kind) {
+    case BranchNodeKind.Head:
+      return node.branch === undefined ? undefined : { branch: node.branch, current: true };
+    case BranchNodeKind.Branch:
+      return node.ref.kind === RefKind.LocalBranch
+        ? { branch: node.ref.name, current: node.current }
+        : undefined;
+    case BranchNodeKind.Group:
+    case BranchNodeKind.Folder:
+      return undefined;
+    default:
+      return assertNever(node, "localOf");
   }
-  return node.ref.kind === RefKind.LocalBranch
-    ? { branch: node.ref.name, current: node.current }
-    : undefined;
 }
 
 /** 不是当前分支的本地分支的名字：能切过去、能删、能合进来。 */
-function otherLocalOf(node: PointNode): string | undefined {
+function otherLocalOf(node: BranchNode): string | undefined {
   const local = localOf(node);
   return local === undefined || local.current ? undefined : local.branch;
 }
 
 /** 远程分支：远程名与不带远程名的那段。 */
 function remoteOf(
-  node: PointNode,
+  node: BranchNode,
 ): { readonly remote: string; readonly branch: string } | undefined {
   return node.kind === BranchNodeKind.Branch && node.ref.kind === RefKind.RemoteBranch
     ? { remote: node.ref.remote, branch: node.ref.name }
@@ -478,26 +479,30 @@ function startArgs(point: StartPoint): MenuArgs {
 }
 
 /** 分支树的右键菜单项，顺序无关（菜单里的顺序由 `package.json` 的 `group` 定）。 */
-const BRANCH_MENU: readonly MenuItem<PointNode>[] = [
+const BRANCH_MENU: readonly MenuItem<BranchNode>[] = [
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.Checkout,
     pick: otherLocalOf,
     whole: exactlyOne,
     value: ([branch]) => ({ branch }),
   }),
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.CheckoutRemote,
     pick: remoteOf,
     whole: exactlyOne,
     value: ([{ remote, branch }]) => ({ remote, branch }),
   }),
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.UpdateBranch,
     pick: (node) => localOf(node)?.branch,
     whole: exactlyOne,
     value: ([branch]) => ({ branch }),
   }),
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.PushBranch,
     pick: (node) => localOf(node)?.branch,
     whole: exactlyOne,
@@ -505,27 +510,31 @@ const BRANCH_MENU: readonly MenuItem<PointNode>[] = [
   }),
   // 合进当前分支、把当前分支变基上去：别的本地分支或远程分支，当前分支自己不行。
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.MergeBranch,
     pick: (node) =>
-      (otherLocalOf(node) ?? remoteOf(node)) === undefined ? undefined : pointOf(node),
+      (otherLocalOf(node) ?? remoteOf(node)) === undefined ? undefined : startOf(node),
     whole: exactlyOne,
     value: ([point]) => startArgs(point),
   }),
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.RebaseBranch,
     pick: (node) =>
-      (otherLocalOf(node) ?? remoteOf(node)) === undefined ? undefined : pointOf(node),
+      (otherLocalOf(node) ?? remoteOf(node)) === undefined ? undefined : startOf(node),
     whole: exactlyOne,
     value: ([point]) => startArgs(point),
   }),
   // HEAD 那行（含 detached）、所有分支都能当起点。
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.NewBranch,
-    pick: pointOf,
+    pick: startOf,
     whole: exactlyOne,
     value: ([point]) => startArgs(point),
   }),
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.RenameBranch,
     pick: (node) => localOf(node)?.branch,
     whole: exactlyOne,
@@ -533,12 +542,14 @@ const BRANCH_MENU: readonly MenuItem<PointNode>[] = [
   }),
   // git 不许删当前分支。
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.DeleteBranch,
     pick: otherLocalOf,
     whole: exactlyOne,
     value: ([branch]) => ({ branch }),
   }),
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.DeleteRemoteBranch,
     pick: remoteOf,
     whole: exactlyOne,
@@ -546,7 +557,10 @@ const BRANCH_MENU: readonly MenuItem<PointNode>[] = [
   }),
 ];
 
-/** 一个节点的右键菜单上下文：仓库，加上能对它做的各菜单项的键。 */
-function menuOf(node: PointNode, repo: string): Readonly<Record<string, string | MenuArgs>> {
-  return { [MenuContextKey.Repo]: repo, ...menuItemsContext([node], BRANCH_MENU) };
+/** 选中的节点（两种看法）→ 右键菜单上下文：仓库，加上能做的各菜单项的键。 */
+export function branchMenuContext(
+  views: MenuViews<BranchNode>,
+  repo: string,
+): Readonly<Record<string, string | MenuArgs>> {
+  return { [MenuContextKey.Repo]: repo, ...menuItemsContext(views, BRANCH_MENU) };
 }

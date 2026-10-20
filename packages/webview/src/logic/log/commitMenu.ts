@@ -1,8 +1,10 @@
 import { MenuContextKey } from "@dummy-git/shared";
 import {
   exactlyOne,
+  flatViews,
   type MenuArgs,
   type MenuItem,
+  MenuView,
   menuItem,
   menuItemsContext,
   type NonEmpty,
@@ -28,22 +30,25 @@ function replayable(items: NonEmpty<CommitMenuTarget>): boolean {
 
 const hashOf = (item: CommitMenuTarget): string => item.hash;
 
-/** 提交列表的右键菜单项，顺序无关（菜单里的顺序由 `package.json` 的 `group` 定）。 */
+/** 提交列表的右键菜单项，顺序无关（菜单里的顺序由 `package.json` 的 `group` 定）。提交列表没有目录，看法都写原样看。 */
 const COMMIT_MENU: readonly MenuItem<CommitMenuTarget>[] = [
   // 复制的文字由这里拼：完整 hash 一行一个（多选的复制都一行一个，项目负责人定）。
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.CopyHash,
     pick: hashOf,
     value: (hashes) => ({ text: hashes.join("\n") }),
   }),
   // 选中是列表顺序（从新到旧）。cherry-pick 从旧到新摘，revert 从新到旧撤，同 IDEA。
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.CherryPick,
     pick: (item) => item,
     whole: replayable,
     value: (items) => ({ hashes: items.map(hashOf).reverse() }),
   }),
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.Revert,
     pick: (item) => item,
     whole: replayable,
@@ -51,18 +56,21 @@ const COMMIT_MENU: readonly MenuItem<CommitMenuTarget>[] = [
   }),
   // 变基到一条提交：起点就是它，显示名用 7 位，和别处的短 hash 一样长。
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.RebaseHere,
     pick: hashOf,
     whole: exactlyOne,
     value: ([hash]) => ({ start: hash, startName: hash.slice(0, 7) }),
   }),
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.ResetTo,
     pick: hashOf,
     whole: exactlyOne,
     value: ([hash]) => ({ hash }),
   }),
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.Reword,
     pick: (item) => (item.rewordable ? item.hash : undefined),
     whole: exactlyOne,
@@ -77,7 +85,9 @@ export function commitMenuContext(
   merges: ReadonlySet<string>,
 ): Record<string, MenuArgs> {
   return menuItemsContext(
-    hashes.map((hash) => ({ hash, rewordable: rewordable.has(hash), merge: merges.has(hash) })),
+    flatViews(
+      hashes.map((hash) => ({ hash, rewordable: rewordable.has(hash), merge: merges.has(hash) })),
+    ),
     COMMIT_MENU,
   );
 }

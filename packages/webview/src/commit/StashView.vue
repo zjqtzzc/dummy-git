@@ -4,10 +4,12 @@ import { computed, onMounted, ref, watch } from "vue";
 import { type Client, report } from "../logic/client.js";
 import { AppIcon, appIcon, codicon } from "../logic/icons.js";
 import { commitDiffSides } from "../logic/log/commitDiff.js";
+import type { MenuViews } from "../logic/menuItems.js";
 import {
   type StashFiles,
   stashByNodeId,
   stashFilesById,
+  stashMenuContext,
   stashTreeNodes,
 } from "../logic/stash/stashTree.js";
 import { branchIds, type TreeNode } from "../logic/tree/tree.js";
@@ -30,7 +32,7 @@ const light = useLightTheme();
 /** 时间按载入那一刻写；stash 列表一变就重新载入。 */
 const now = ref(Date.now() / 1000);
 
-const nodes = computed(() => stashTreeNodes(list.value, props.repo ?? "", light.value, now.value));
+const nodes = computed(() => stashTreeNodes(list.value, light.value, now.value));
 const filesById = computed(() => stashFilesById(list.value));
 const owners = computed(() => stashByNodeId(nodes.value));
 
@@ -110,9 +112,21 @@ async function act(command: "applyStash" | "dropStash"): Promise<void> {
   }
 }
 
-function onSelect(node: TreeNode): void {
-  selectedId.value = node.id;
-  void open(node, DiffOpenMode.Follow);
+/** 选中变了：按钮跟着恰好选中的那一个走，多选时置灰；diff 只在恰好选中一个文件时跟。 */
+function onSelect(selected: readonly TreeNode[]): void {
+  const [node] = selected;
+  selectedId.value = selected.length === 1 ? node?.id : undefined;
+  if (selected.length === 1 && node !== undefined) void open(node, DiffOpenMode.Follow);
+}
+
+/** 右键菜单：stash 那一行换成它的 hash，它下面的文件、目录是 `null`。 */
+function menuOf(views: MenuViews<TreeNode>) {
+  const stashes = new Set(list.value.map(({ stash }) => stash.hash));
+  const toHash = (node: TreeNode): string | null => (stashes.has(node.id) ? node.id : null);
+  return stashMenuContext(
+    { exact: views.exact.map(toHash), expanded: views.expanded.map(toHash) },
+    props.repo ?? "",
+  );
 }
 
 /** 上次跟随的文件：同一个文件重复选中时不再跟，免得 diff 反复打开。 */
@@ -155,6 +169,7 @@ async function open(node: TreeNode, mode: DiffOpenMode): Promise<void> {
         v-else
         v-model:expanded="expanded"
         :nodes="nodes"
+        :menu="menuOf"
         @select="onSelect"
         @activate="(node) => open(node, DiffOpenMode.Open)"
       />

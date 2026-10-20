@@ -1,5 +1,5 @@
 import type { IconRef } from "../icons.js";
-import type { MenuArgs } from "../menuItems.js";
+import type { MenuViews } from "../menuItems.js";
 
 /**
  * 所有树共用的纯逻辑：节点的统一形状、按展开状态压平成行、
@@ -24,11 +24,6 @@ export interface TreeNode {
   readonly description?: string;
   /** 行尾的字母，比如 `M`。 */
   readonly decoration?: string;
-  /**
-   * 原生右键菜单的上下文：右键这一行时写到树的容器上（键见 `shared/src/menu.ts`）。
-   * 缺席即这一行没有菜单。
-   */
-  readonly menu?: Readonly<Record<string, string | MenuArgs>>;
   /** 有就是可展开的（哪怕是空数组）。 */
   /** 给了勾选集合的树里，这个节点也不画复选框（Commit 面板的冲突组：冲突文件不能勾去提交）。 */
   readonly uncheckable?: boolean;
@@ -63,6 +58,30 @@ export function flattenTree(nodes: readonly TreeNode[], expanded: ReadonlySet<st
   };
   for (const node of nodes) visit(node, 0, undefined);
   return rows;
+}
+
+/**
+ * 选中的两种看法（右键菜单用，见 `logic/menuItems.ts` 的 `MenuView`），都按显示顺序：
+ * 原样看是看得见的选中行；展开看是其中的叶子，加上选中目录下面的全部叶子（收起着的也算），去掉重复。
+ * 只看看得见的行：收起的目录里原来选中的不算，展开后又算（id 一直留在选中里）。
+ */
+export function selectionViews(
+  rows: readonly TreeRow[],
+  ids: ReadonlySet<string>,
+): MenuViews<TreeNode> {
+  const exact = rows.filter((row) => ids.has(row.node.id)).map((row) => row.node);
+  const seen = new Set<string>();
+  const expanded: TreeNode[] = [];
+  const collect = (node: TreeNode): void => {
+    if (node.children === undefined) {
+      if (!seen.has(node.id)) expanded.push(node);
+      seen.add(node.id);
+      return;
+    }
+    for (const child of node.children) collect(child);
+  };
+  for (const node of exact) collect(node);
+  return { exact, expanded };
 }
 
 /** 所有可展开节点的 id。全部展开就是它。 */

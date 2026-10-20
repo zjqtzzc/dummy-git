@@ -3,11 +3,22 @@ import { assertNever } from "@dummy-git/shared";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import type { IconRef } from "../logic/icons.js";
 import { containerMenuContext } from "../logic/menuContext.js";
+import type { MenuArgs, MenuViews } from "../logic/menuItems.js";
+import {
+  clickRow,
+  contextMenuOn,
+  EMPTY_SELECTION,
+  extendTo,
+  type Selection,
+  selectAll,
+  selectOnly,
+} from "../logic/selection.js";
 import {
   CheckState,
   checkState,
   flattenTree,
   leafIds,
+  selectionViews,
   setExpanded,
   TreeKeyActionKind,
   type TreeNode,
@@ -29,16 +40,20 @@ import Icon from "../ui/Icon.vue";
  *
  * 给了 `checked`（勾选的叶子 id）才画复选框，勾选状态同样由使用方持有：
  * 这里只发出 `check`（想把哪些叶子改成勾 / 不勾），上级的全选 / 半选由叶子推出来。
+ *
+ * 多选照 `logic/selection.ts`（同提交列表）；选中由这里持有，变了就发 `select`。
+ * 右键菜单由使用方的 `menu` 按选中的两种看法算（`selectionViews`），没给就不出我们的菜单项。
  */
 const props = defineProps<{
   nodes: readonly TreeNode[];
   expanded: ReadonlySet<string>;
   checked?: ReadonlySet<string> | undefined;
+  menu?: ((views: MenuViews<TreeNode>) => Readonly<Record<string, string | MenuArgs>>) | undefined;
 }>();
 const emit = defineEmits<{
   "update:expanded": [expanded: ReadonlySet<string>];
-  /** 单击、上下键：选中的行。 */
-  select: [node: TreeNode];
+  /** 选中变了（点、键盘、右键）：看得见的选中行，按显示顺序。 */
+  select: [nodes: readonly TreeNode[]];
   /** 双击、回车落在叶子上：打开。 */
   activate: [node: TreeNode];
   /** 点了复选框：把这些叶子改成勾（`true`）或不勾。 */
@@ -53,9 +68,13 @@ const slots = defineSlots<{ after?(props: { node: TreeNode }): unknown }>();
 
 const rows = computed(() => flattenTree(props.nodes, props.expanded));
 
-/** 选中的节点 id。节点消失了就没有选中行，id 留着，再出现时还是选中的。 */
-const selected = ref<string>();
-const selectedIndex = computed(() => rows.value.findIndex((row) => row.node.id === selected.value));
+/** 选中的节点 id。节点消失了（刷新、收起）就不算，id 留着，再出现时还是选中的。 */
+const selection = ref<Selection>(EMPTY_SELECTION);
+/** 光标所在行的行号；不在看得见的行里时是 -1。键盘从它出发。 */
+const cursorIndex = computed(() =>
+  rows.value.findIndex((row) => row.node.id === selection.value.cursor),
+);
+const order = computed(() => rows.value.map((row) => row.node.id));
 
 const scroller = ref<HTMLElement>();
 const scrollTop = ref(0);
@@ -80,10 +99,23 @@ function onScroll(): void {
 const resizes = new ResizeObserver(() => {
   if (scroller.value !== undefined) viewportHeight.value = scroller.value.clientHeight;
 });
+/**
+ * 树有焦点时不许出现文字选区。Mac 上 Cmd+A 拦了按键也照样把整页文字选上（调试窗口实测），
+ * 选区不是页面自己选的，拦不住来路，只能在它出现时清掉。
+ */
+function clearTextSelection(): void {
+  if (scroller.value !== undefined && document.activeElement === scroller.value) {
+    document.getSelection()?.removeAllRanges();
+  }
+}
 onMounted(() => {
   if (scroller.value !== undefined) resizes.observe(scroller.value);
+  document.addEventListener("selectionchange", clearTextSelection);
 });
-onUnmounted(() => resizes.disconnect());
+onUnmounted(() => {
+  resizes.disconnect();
+  document.removeEventListener("selectionchange", clearTextSelection);
+});
 
 /** 每层缩进 11px。 */
 const INDENT = 11;
@@ -95,11 +127,15 @@ function toggle(row: TreeRow): void {
   emit("update:expanded", setExpanded(props.expanded, row.node, !row.expanded));
 }
 
-function select(index: number): void {
-  const row = rows.value[index];
-  if (row === undefined) return;
-  selected.value = row.node.id;
-  emit("select", row.node);
+/** 换一个选中，告诉使用方。 */
+function setSelection(next: Selection): void {
+  if (next === selection.value) return;
+  selection.value = next;
+  emit("select", selectionViews(rows.value, next.ids).exact);
+}
+
+/** 让第 `index` 行出现在视口里（键盘挪动时）。 */
+function reveal(index: number): void {
   if (scroller.value !== undefined) {
     scroller.value.scrollTop = scrollIntoView(index, scrollTop.value, viewportHeight.value);
   }
@@ -114,7 +150,8 @@ function rowAt(event: MouseEvent): number | undefined {
 /**
  * 单击：点在复选框上只切换勾选（全勾时全不勾，否则全勾），不选中、不展开；
  * 点在插槽上什么都不做（按钮自己处理，不能顺带选中或展开这一行）；
- * 点在别处选中这一行，可展开的节点同时展开 / 收起（VS Code 默认的单击展开）。
+ * 点在别处选中这一行，可展开的节点同时展开 / 收起（VS Code 默认的单击展开）；
+ * 按着 Ctrl（Mac 上 Cmd）或 Shift 时只改选中、不展开收起（同 VS Code）。
  */
 function hit(event: MouseEvent, selector: string): boolean {
   return event.target instanceof Element && event.target.closest(selector) !== null;
@@ -131,8 +168,11 @@ function onClick(event: MouseEvent): void {
     return;
   }
   if (hit(event, ".after")) return;
-  select(index);
-  toggle(row);
+  const toggles = event.ctrlKey || event.metaKey;
+  setSelection(
+    clickRow(selection.value, order.value, row.node.id, { toggle: toggles, range: event.shiftKey }),
+  );
+  if (!toggles && !event.shiftKey) toggle(row);
 }
 
 function onDblclick(event: MouseEvent): void {
@@ -144,15 +184,22 @@ function onDblclick(event: MouseEvent): void {
 }
 
 /**
- * 右键：先选中那一行（同 VS Code 原生的树），再把它的菜单上下文写到树的容器上
- * （为什么写在容器上见 `containerMenuContext`）。
+ * 右键：点在已选中的行上选中不变，点在别的行上先改成只选它（同 VS Code 原生的树）；
+ * 再按选中算出菜单上下文写到树的容器上（为什么写在容器上见 `containerMenuContext`）。点在空白处不出菜单项。
  */
 function onContextmenu(event: MouseEvent): void {
   const index = rowAt(event);
-  if (index !== undefined && index !== selectedIndex.value) select(index);
-  if (!(event.currentTarget instanceof HTMLElement)) return;
   const row = index === undefined ? undefined : rows.value[index];
-  event.currentTarget.setAttribute("data-vscode-context", containerMenuContext(row?.node.menu));
+  if (row !== undefined) setSelection(contextMenuOn(selection.value, row.node.id));
+  if (!(event.currentTarget instanceof HTMLElement)) return;
+  event.currentTarget.setAttribute(
+    "data-vscode-context",
+    containerMenuContext(
+      row === undefined || props.menu === undefined
+        ? undefined
+        : props.menu(selectionViews(rows.value, selection.value.ids)),
+    ),
+  );
 }
 
 /**
@@ -167,15 +214,29 @@ function onMousedown(event: MouseEvent): void {
   scroller.value?.focus();
 }
 
+/** 上下左右、回车照 VS Code 的树（`treeKeyAction`）；Shift+↑↓ 选一段；Ctrl+A（Mac 上 Cmd+A）全选看得见的行。 */
 function onKeydown(event: KeyboardEvent): void {
-  const action = treeKeyAction(rows.value, selectedIndex.value, event.key);
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a") {
+    // 不拦的话浏览器会选中整页的文字。
+    event.preventDefault();
+    setSelection(selectAll(selection.value, order.value));
+    return;
+  }
+  const action = treeKeyAction(rows.value, cursorIndex.value, event.key);
   if (action === undefined) return;
   event.preventDefault();
-  const row = rows.value[selectedIndex.value];
+  const row = rows.value[cursorIndex.value];
   switch (action.kind) {
-    case TreeKeyActionKind.Select:
-      select(action.index);
+    case TreeKeyActionKind.Select: {
+      const target = rows.value[action.index];
+      if (target === undefined) return;
+      const id = target.node.id;
+      setSelection(
+        event.shiftKey ? extendTo(selection.value, order.value, id, false) : selectOnly(id),
+      );
+      reveal(action.index);
       return;
+    }
     case TreeKeyActionKind.Expand:
       if (row !== undefined) emit("update:expanded", setExpanded(props.expanded, row.node, action.open));
       return;
@@ -213,7 +274,8 @@ function rowId(index: number): string {
     class="tree"
     role="tree"
     tabindex="0"
-    :aria-activedescendant="selectedIndex === -1 ? undefined : rowId(selectedIndex)"
+    aria-multiselectable="true"
+    :aria-activedescendant="cursorIndex === -1 ? undefined : rowId(cursorIndex)"
     @scroll="onScroll"
     @mousedown="onMousedown"
     @click="onClick"
@@ -230,9 +292,9 @@ function rowId(index: number): string {
         tabindex="-1"
         :aria-level="row.depth + 1"
         :aria-expanded="row.expanded"
-        :aria-selected="index === selectedIndex"
+        :aria-selected="selection.ids.has(row.node.id)"
         :data-index="index"
-        :class="['row', { selected: index === selectedIndex }]"
+        :class="['row', { selected: selection.ids.has(row.node.id) }]"
         :style="{ top: `${index * ROW_HEIGHT}px`, paddingLeft: `${row.depth * INDENT}px` }"
       >
         <span

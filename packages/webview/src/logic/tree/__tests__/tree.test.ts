@@ -5,6 +5,7 @@ import {
   checkState,
   flattenTree,
   leafIds,
+  selectionViews,
   setExpanded,
   TreeKeyActionKind,
   type TreeNode,
@@ -146,5 +147,29 @@ describe("复选框", () => {
   it("勾一个上级，就是勾它下面所有叶子", () => {
     if (a === undefined) throw new Error("没有 a");
     expect(leafIds(a)).toEqual(["x", "y"]);
+  });
+});
+
+describe("selectionViews：选中的两种看法", () => {
+  const ids = (nodes: readonly TreeNode[]) => nodes.map((node) => node.id);
+  const all = new Set(["a", "b"]);
+
+  it("原样看是看得见的选中行；展开看把目录换成下面的全部叶子（收起着的也算）", () => {
+    const rows = flattenTree(TREE, new Set(["a"]));
+    const views = selectionViews(rows, new Set(["b", "z"]));
+    expect(ids(views.exact)).toEqual(["b", "z"]);
+    expect(ids(views.expanded)).toEqual(["x", "z"]);
+  });
+
+  it("目录和它下面的一起选：叶子只算一次", () => {
+    const rows = flattenTree(TREE, all);
+    expect(ids(selectionViews(rows, new Set(["a", "x", "y"])).expanded)).toEqual(["x", "y"]);
+  });
+
+  it("收起的目录里原来选中的不算", () => {
+    const rows = flattenTree(TREE, new Set());
+    const views = selectionViews(rows, new Set(["x", "z"]));
+    expect(ids(views.exact)).toEqual(["z"]);
+    expect(ids(views.expanded)).toEqual(["z"]);
   });
 });

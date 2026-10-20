@@ -14,6 +14,8 @@ import {
   exactlyOne,
   type MenuArgs,
   type MenuItem,
+  MenuView,
+  type MenuViews,
   menuItem,
   menuItemsContext,
 } from "../menuItems.js";
@@ -122,58 +124,65 @@ type FileMenuTarget =
     }
   | { readonly kind: FileMenuKind.Change | FileMenuKind.Untracked; readonly path: string };
 
-/** 冲突文件、且解决方式是给出的几种之一时，取出路径。 */
+/** 冲突文件、且解决方式是给出的几种之一时，取出路径。`null` 是目录或组。 */
 function conflictPath(...resolutions: readonly ConflictResolution[]) {
-  return (target: FileMenuTarget): string | undefined =>
-    target.kind === FileMenuKind.Conflict && resolutions.includes(target.resolution)
+  return (target: FileMenuTarget | null): string | undefined =>
+    target?.kind === FileMenuKind.Conflict && resolutions.includes(target.resolution)
       ? target.path
       : undefined;
 }
 
 function pathOf(kind: FileMenuKind.Change | FileMenuKind.Untracked) {
-  return (target: FileMenuTarget): string | undefined =>
-    target.kind === kind ? target.path : undefined;
+  return (target: FileMenuTarget | null): string | undefined =>
+    target?.kind === kind ? target.path : undefined;
 }
 
 /** Commit 面板文件的右键菜单项，顺序无关（菜单里的顺序由 `package.json` 的 `group` 定）。 */
-const FILE_MENU: readonly MenuItem<FileMenuTarget>[] = [
+const FILE_MENU: readonly MenuItem<FileMenuTarget | null>[] = [
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.OpenMergeEditor,
     pick: conflictPath(ConflictResolution.Merge),
     whole: exactlyOne,
     value: ([path]) => ({ path }),
   }),
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.MarkResolved,
     pick: conflictPath(ConflictResolution.Merge),
     whole: exactlyOne,
     value: ([path]) => ({ path }),
   }),
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.KeepFile,
     pick: conflictPath(ConflictResolution.KeepOrDelete),
     whole: exactlyOne,
     value: ([path]) => ({ path }),
   }),
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.RemoveConflictFile,
     pick: conflictPath(ConflictResolution.KeepOrDelete, ConflictResolution.DeleteOnly),
     whole: exactlyOne,
     value: ([path]) => ({ path }),
   }),
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.RollbackFile,
     pick: pathOf(FileMenuKind.Change),
     whole: exactlyOne,
     value: (paths) => ({ paths }),
   }),
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.AddUntracked,
     pick: pathOf(FileMenuKind.Untracked),
     whole: exactlyOne,
     value: ([path]) => ({ path }),
   }),
   menuItem({
+    view: MenuView.Exact,
     key: MenuContextKey.DeleteUntracked,
     pick: pathOf(FileMenuKind.Untracked),
     whole: exactlyOne,
@@ -181,21 +190,50 @@ const FILE_MENU: readonly MenuItem<FileMenuTarget>[] = [
   }),
 ];
 
-/** 一个文件的右键菜单上下文：仓库，加上能对它做的各菜单项的键。 */
-function fileMenu(
-  repo: string,
-  target: FileMenuTarget,
-): Readonly<Record<string, string | MenuArgs>> {
-  return { [MenuContextKey.Repo]: repo, ...menuItemsContext([target], FILE_MENU) };
-}
-
-function conflictEntry(repo: string, file: ConflictFile): FileEntry {
-  return {
-    menu: fileMenu(repo, {
+/** 每个文件的右键菜单要用的：路径 → 它是哪一种。 */
+function fileMenuTargets(
+  conflicts: readonly ConflictFile[],
+  files: readonly WorkingFile[],
+): ReadonlyMap<string, FileMenuTarget> {
+  const targets = new Map<string, FileMenuTarget>();
+  for (const file of files) {
+    const kind =
+      file.status === WorkingStatus.Untracked ? FileMenuKind.Untracked : FileMenuKind.Change;
+    targets.set(file.path, { kind, path: file.path });
+  }
+  for (const file of conflicts) {
+    targets.set(file.path, {
       kind: FileMenuKind.Conflict,
       path: file.path,
       resolution: resolutionOf(file.conflict),
-    }),
+    });
+  }
+  return targets;
+}
+
+/**
+ * Commit 面板的右键菜单上下文：选中（两种看法；文件树已换成文件，目录与组是 `null`）→ 仓库，加上能做的各菜单项的键。
+ */
+export function workingMenuContext(
+  repo: string,
+  conflicts: readonly ConflictFile[],
+  files: readonly WorkingFile[],
+  views: MenuViews<{ readonly path: string } | null>,
+): Readonly<Record<string, string | MenuArgs>> {
+  const targets = fileMenuTargets(conflicts, files);
+  const toTarget = (entry: { readonly path: string } | null): FileMenuTarget | null =>
+    entry === null ? null : (targets.get(entry.path) ?? null);
+  return {
+    [MenuContextKey.Repo]: repo,
+    ...menuItemsContext(
+      { exact: views.exact.map(toTarget), expanded: views.expanded.map(toTarget) },
+      FILE_MENU,
+    ),
+  };
+}
+
+function conflictEntry(file: ConflictFile): FileEntry {
+  return {
     path: file.path,
     // 同资源管理器与源代码管理：冲突是 `!` 加冲突色。
     letter: "!",
@@ -301,14 +339,8 @@ const DISPLAY: Readonly<
   },
 };
 
-function toEntry(repo: string, file: WorkingFile): FileEntry {
-  const kind =
-    file.status === WorkingStatus.Untracked ? FileMenuKind.Untracked : FileMenuKind.Change;
-  const entry = {
-    path: file.path,
-    ...DISPLAY[file.status],
-    menu: fileMenu(repo, { kind, path: file.path }),
-  };
+function toEntry(file: WorkingFile): FileEntry {
+  const entry = { path: file.path, ...DISPLAY[file.status] };
   return file.oldPath === undefined ? entry : { ...entry, oldPath: file.oldPath };
 }
 
@@ -377,7 +409,6 @@ function operationTitle(operation: OngoingOperation): string {
  * 空组由树自己不画；停在半路且冲突已清完时冲突组仍留着标题行。
  */
 export function workingGroups(
-  repo: string,
   conflicts: readonly ConflictFile[],
   files: readonly WorkingFile[],
   operation: OngoingOperation | null = null,
@@ -389,7 +420,7 @@ export function workingGroups(
     {
       id: CONFLICTS_GROUP,
       label: heading?.label ?? "Conflicts",
-      entries: conflicts.map((file) => conflictEntry(repo, file)),
+      entries: conflicts.map(conflictEntry),
       uncheckable: true,
       ...(heading === undefined
         ? {}
@@ -399,11 +430,11 @@ export function workingGroups(
             ...(heading.actions ? { alignEnd: true } : {}),
           }),
     },
-    { id: "changes", label: "Changes", entries: tracked.map((file) => toEntry(repo, file)) },
+    { id: "changes", label: "Changes", entries: tracked.map(toEntry) },
     {
       id: "unversioned",
       label: "Unversioned Files",
-      entries: untracked.map((file) => toEntry(repo, file)),
+      entries: untracked.map(toEntry),
     },
   ];
 }
