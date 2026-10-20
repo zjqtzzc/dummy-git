@@ -17,8 +17,9 @@ export function commitCopyText(commits: readonly Commit[]): string {
 }
 
 /**
- * 分支树上 Ctrl+C 复制的名字：本地分支是全名，远程分支是 `origin/feat`，
- * HEAD 那行是当前分支名、detached 时是完整 hash。目录与分组没有，返回 `undefined`。
+ * 分支树上 Ctrl+C 时一行复制什么：本地分支是全名，远程分支是 `origin/feat`，
+ * HEAD 那行是当前分支名、detached 时是完整 hash（树上显示的只是最后一段，贴出去用不了）。
+ * 目录与分组返回 `undefined`：复制它显示的文字。
  */
 export function branchCopyText(node: BranchNode): string | undefined {
   switch (node.kind) {

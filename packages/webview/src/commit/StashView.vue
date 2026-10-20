@@ -119,6 +119,15 @@ function onSelect(selected: readonly TreeNode[]): void {
   if (selected.length === 1 && node !== undefined) void open(node, DiffOpenMode.Follow);
 }
 
+/** 复制快捷键：交给扩展写剪贴板。 */
+async function copyText(text: string): Promise<void> {
+  try {
+    await props.client.request("copyText", { text });
+  } catch (cause) {
+    report(cause);
+  }
+}
+
 /** 右键菜单：stash 那一行换成它的 hash，它下面的文件、目录是 `null`。 */
 function menuOf(views: MenuViews<TreeNode>) {
   const stashes = new Set(list.value.map(({ stash }) => stash.hash));
@@ -183,6 +192,7 @@ async function open(node: TreeNode, mode: DiffOpenMode): Promise<void> {
         :nodes="nodes"
         :menu="menuOf"
         @select="onSelect"
+        @copy="copyText"
         @activate="(node) => open(node, DiffOpenMode.Open)"
       />
     </div>

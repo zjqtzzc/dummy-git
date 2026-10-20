@@ -26,6 +26,8 @@ const emit = defineEmits<{
   open: [entry: FileEntry, mode: DiffOpenMode];
   /** 叶子的 id 就是文件路径。 */
   check: [paths: readonly string[], value: boolean];
+  /** 复制快捷键：选中的行显示的文字，一行一个（文件名、目录名、组的标题）。 */
+  copy: [text: string];
 }>();
 const slots = defineSlots<{
   after?(props: { node: TreeNode }): unknown;
@@ -111,6 +113,7 @@ function onActivate(node: TreeNode): void {
     @select="onSelect"
     @activate="onActivate"
     @check="(paths, value) => emit('check', paths, value)"
+    @copy="(text) => emit('copy', text)"
   >
     <template v-if="slots.after" #after="slotProps">
       <slot name="after" v-bind="slotProps" />

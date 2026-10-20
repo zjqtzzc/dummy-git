@@ -746,7 +746,7 @@ onUnmounted(() => resizes.disconnect());
         <div slot="start" class="pane">
           <p v-if="selection.ids.size > 1" class="dim loading">{{ selection.ids.size }} commits selected</p>
           <p v-else-if="filesLoading" class="dim loading">Loading…</p>
-          <FileTree v-else :groups="fileGroups" @open="openFile" />
+          <FileTree v-else :groups="fileGroups" @open="openFile" @copy="copyText" />
         </div>
         <div slot="end" class="details">
           <template v-if="selectedDetails !== undefined">

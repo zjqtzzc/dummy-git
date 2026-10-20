@@ -3,6 +3,7 @@ import {
   branchIds,
   CheckState,
   checkState,
+  copiedText,
   flattenTree,
   leafIds,
   selectionViews,
@@ -171,5 +172,16 @@ describe("selectionViews：选中的两种看法", () => {
     const views = selectionViews(rows, new Set(["x", "z"]));
     expect(ids(views.exact)).toEqual(["z"]);
     expect(ids(views.expanded)).toEqual(["z"]);
+  });
+});
+
+describe("copiedText：复制快捷键复制的文字", () => {
+  it("每行显示的文字，按给的顺序一行一个", () => {
+    expect(copiedText([leaf("x"), branch("a", [])])).toBe("x\na");
+  });
+
+  it("使用方改的行用它给的，没改的仍是显示的文字", () => {
+    const full = (node: TreeNode) => (node.id === "x" ? "feat/x" : undefined);
+    expect(copiedText([leaf("x"), leaf("y")], full)).toBe("feat/x\ny");
   });
 });

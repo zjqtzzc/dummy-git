@@ -16,6 +16,7 @@ import {
 import {
   CheckState,
   checkState,
+  copiedText,
   flattenTree,
   leafIds,
   selectionViews,
@@ -49,6 +50,8 @@ const props = defineProps<{
   expanded: ReadonlySet<string>;
   checked?: ReadonlySet<string> | undefined;
   menu?: ((views: MenuViews<TreeNode>) => Readonly<Record<string, string | MenuArgs>>) | undefined;
+  /** 复制时某一行复制什么；缺席或返回 `undefined` 时复制它显示的文字（`copiedText`）。 */
+  copyTextOf?: ((node: TreeNode) => string | undefined) | undefined;
 }>();
 const emit = defineEmits<{
   "update:expanded": [expanded: ReadonlySet<string>];
@@ -58,6 +61,8 @@ const emit = defineEmits<{
   activate: [node: TreeNode];
   /** 点了复选框：把这些叶子改成勾（`true`）或不勾。 */
   check: [ids: readonly string[], value: boolean];
+  /** 按了复制快捷键（Ctrl+C / Cmd+C）：要复制的文字。写剪贴板由使用方交给扩展。 */
+  copy: [text: string];
 }>();
 
 /**
@@ -214,8 +219,18 @@ function onMousedown(event: MouseEvent): void {
   scroller.value?.focus();
 }
 
-/** 上下左右、回车照 VS Code 的树（`treeKeyAction`）；Shift+↑↓ 选一段；Ctrl+A（Mac 上 Cmd+A）全选看得见的行。 */
+/**
+ * 上下左右、回车照 VS Code 的树（`treeKeyAction`）；Shift+↑↓ 选一段；Ctrl+A（Mac 上 Cmd+A）全选看得见的行；
+ * Ctrl+C 复制选中的行，一行一个。
+ */
 function onKeydown(event: KeyboardEvent): void {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c") {
+    const selected = selectionViews(rows.value, selection.value.ids).exact;
+    if (selected.length === 0) return;
+    event.preventDefault();
+    emit("copy", copiedText(selected, props.copyTextOf));
+    return;
+  }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a") {
     // 不拦的话浏览器会选中整页的文字。
     event.preventDefault();

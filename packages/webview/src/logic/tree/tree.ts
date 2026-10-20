@@ -84,6 +84,17 @@ export function selectionViews(
   return { exact, expanded };
 }
 
+/**
+ * 复制快捷键复制的文字：选中的行（原样看）按显示顺序一行一个，每行默认是它显示的文字。
+ * `textOf` 让使用方改某些行复制什么（分支复制全名而不是最后一段）；它不管的行（缺席）仍复制显示的文字。
+ */
+export function copiedText(
+  nodes: readonly TreeNode[],
+  textOf?: (node: TreeNode) => string | undefined,
+): string {
+  return nodes.map((node) => textOf?.(node) ?? node.label).join("\n");
+}
+
 /** 所有可展开节点的 id。全部展开就是它。 */
 export function branchIds(nodes: readonly TreeNode[]): string[] {
   return nodes.flatMap((node) =>

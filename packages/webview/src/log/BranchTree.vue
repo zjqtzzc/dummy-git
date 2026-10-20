@@ -44,7 +44,7 @@ const emit = defineEmits<{
   ];
   /** 双击（或回车）一个分支：按它过滤 Log。HEAD 那行是当前分支；detached、目录、分组没有反应。 */
   filter: [branch: BranchFilter];
-  /** 选中一行时按了复制快捷键：要复制的分支名（`branchCopyText`）。 */
+  /** 按了复制快捷键：选中的行一行一个，分支是全名（`branchCopyText`），目录、分组是显示的文字。 */
   copy: [text: string];
 }>();
 
@@ -73,14 +73,10 @@ watch([selectedId, byId], ([id, index]) => {
   );
 });
 
-/** 复制快捷键（Ctrl+C / Cmd+C）：复制选中那行的分支名。目录与分组没有。 */
-function onKeydown(event: KeyboardEvent): void {
-  if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "c") return;
-  const node = selectedId.value === undefined ? undefined : byId.value.get(selectedId.value);
-  const text = node === undefined ? undefined : branchCopyText(node);
-  if (text === undefined) return;
-  event.preventDefault();
-  emit("copy", text);
+/** 复制时分支复制全名（显示的只是最后一段），HEAD 那行复制当前分支名；目录、分组复制显示的文字。 */
+function copyTextOf(node: TreeNode): string | undefined {
+  const branch = byId.value.get(node.id);
+  return branch === undefined ? undefined : branchCopyText(branch);
 }
 
 function onActivate(node: TreeNode): void {
@@ -147,8 +143,9 @@ defineExpose({
     :menu="menuOf"
     @update:expanded="onExpanded"
     @select="onSelect"
+    :copy-text-of="copyTextOf"
     @activate="onActivate"
-    @keydown="onKeydown"
+    @copy="(text) => emit('copy', text)"
   >
     <template #after="{ node }">
       <TrackingBadge :state="tracking(node)" />

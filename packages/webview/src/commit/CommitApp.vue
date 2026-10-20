@@ -55,6 +55,15 @@ const conflicts = ref<ConflictFile[]>([]);
 /** 停在半路的操作。没有是 `null`（stash 取出冲突也是 `null`）。 */
 const operation = ref<OngoingOperation | null>(null);
 const groups = computed(() => workingGroups(conflicts.value, files.value, operation.value));
+/** 复制快捷键：交给扩展写剪贴板。 */
+async function copyText(text: string): Promise<void> {
+  try {
+    await props.client.request("copyText", { text });
+  } catch (cause) {
+    report(cause);
+  }
+}
+
 /** 右键菜单：选中的文件交给 `workingMenuContext`。 */
 function menuOf(views: MenuViews<FileEntry | null>) {
   return workingMenuContext(repo.value ?? "", conflicts.value, files.value, views);
@@ -447,6 +456,7 @@ onMounted(async () => {
         :checked="checked"
         :menu="menuOf"
         @check="onCheck"
+        @copy="copyText"
         @open="openFile"
       >
         <template v-if="heading?.actions" #after="{ node }">
