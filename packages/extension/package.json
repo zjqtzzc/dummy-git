@@ -68,11 +68,7 @@
         "title": "Rename…"
       },
       {
-        "command": "dummyGit.deleteBranch",
-        "title": "Delete"
-      },
-      {
-        "command": "dummyGit.deleteRemoteBranch",
+        "command": "dummyGit.deleteBranches",
         "title": "Delete"
       },
       {
@@ -179,13 +175,8 @@
           "group": "3_edit@2"
         },
         {
-          "command": "dummyGit.deleteBranch",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.deleteBranch",
-          "group": "4_delete@1"
-        },
-        {
-          "command": "dummyGit.deleteRemoteBranch",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.deleteRemoteBranch",
+          "command": "dummyGit.deleteBranches",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.deleteBranches",
           "group": "4_delete@1"
         },
         {
@@ -307,11 +298,7 @@
           "when": "false"
         },
         {
-          "command": "dummyGit.deleteBranch",
-          "when": "false"
-        },
-        {
-          "command": "dummyGit.deleteRemoteBranch",
+          "command": "dummyGit.deleteBranches",
           "when": "false"
         },
         {

@@ -107,17 +107,18 @@ export const forceDeleteBranch: GitCommand<[repository: string, branch: string],
 };
 
 /**
- * 删远程分支：`git push <remote> --delete refs/heads/<B>`。git 顺带删掉本地记录的 `<remote>/<B>`。
- * 网络命令，走远程道。远程名与分支名分开传，不会删成同名的本地分支。
+ * 删同一个远程上的几个分支：`git push <remote> --delete refs/heads/<B>…`，一条命令一次推送。
+ * git 顺带删掉本地记录的 `<remote>/<B>`。网络命令，走远程道。远程名与分支名分开传，不会删成同名的本地分支。
  */
-export const deleteRemoteBranch: GitCommand<
-  [repository: string, remote: string, branch: string],
+export const deleteRemoteBranches: GitCommand<
+  [repository: string, remote: string, branches: readonly string[]],
   void
 > = {
   lock: LockPolicy.Remote,
 
-  execute: async (cli, repository, remote, branch) => {
-    await run(cli, ["push", remote, "--delete", `refs/heads/${branch}`], { cwd: repository });
+  execute: async (cli, repository, remote, branches) => {
+    const refs = branches.map((branch) => `refs/heads/${branch}`);
+    await run(cli, ["push", remote, "--delete", ...refs], { cwd: repository });
   },
 };
 

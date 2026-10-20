@@ -6,14 +6,10 @@ import {
   branchFilterOf,
   branchMenuContext,
   branchNodesById,
+  branchViews,
   buildBranchTree,
-  type DeleteTarget,
   defaultExpanded,
-  deleteTargetOf,
-  localBranchOf,
   restoreExpanded,
-  type StartPoint,
-  startOf,
   type Tracking,
   toTreeNodes,
   trackingOf,
@@ -32,16 +28,8 @@ import TrackingBadge from "./TrackingBadge.vue";
  */
 const props = defineProps<{ refs: readonly Ref[]; repo: string }>();
 const emit = defineEmits<{
-  /**
-   * 选中的本地分支名（更新的对象），选中的不是本地分支时是 `undefined`；
-   * 选中节点的起点（新建分支），目录与分组是 `undefined`；
-   * 能删的话删什么（`deleteTargetOf`）。
-   */
-  select: [
-    branch: string | undefined,
-    start: StartPoint | undefined,
-    deletable: DeleteTarget | undefined,
-  ];
+  /** 选中（两种看法，`branchViews`）：竖按钮拿它算能不能点、作用于谁，和右键菜单同一份定义。 */
+  select: [views: MenuViews<BranchNode>];
   /** 双击（或回车）一个分支：按它过滤 Log。HEAD 那行是当前分支；detached、目录、分组没有反应。 */
   filter: [branch: BranchFilter];
   /** 按了复制快捷键：选中的行一行一个，分支是全名（`branchCopyText`），目录、分组是显示的文字。 */
@@ -59,19 +47,11 @@ function tracking(node: TreeNode): Tracking | undefined {
 }
 
 /**
- * 选中的节点 id。分支数据每次变化都按它重新报一次选中的是什么：节点没了（比如删掉了选中的分支）
- * 就报「没选」，Update / Delete 随之置灰；HEAD 那行在 Checkout 后报新的当前分支。
+ * 点中的节点 id（看得见的选中行）。分支数据每次变化都按它重新报一次选中：节点没了（比如删掉了选中的分支）
+ * 就不算，按钮随之置灰；HEAD 那行在 Checkout 后代表新的当前分支。
  */
-const selectedId = ref<string>();
-watch([selectedId, byId], ([id, index]) => {
-  const node = id === undefined ? undefined : index.get(id);
-  emit(
-    "select",
-    node === undefined ? undefined : localBranchOf(node),
-    node === undefined ? undefined : startOf(node),
-    node === undefined ? undefined : deleteTargetOf(node),
-  );
-});
+const selectedIds = ref<readonly string[]>([]);
+watch([selectedIds, byId], ([ids, index]) => emit("select", branchViews(ids, index)));
 
 /** 复制时分支复制全名（显示的只是最后一段），HEAD 那行复制当前分支名；目录、分组复制显示的文字。 */
 function copyTextOf(node: TreeNode): string | undefined {
@@ -101,21 +81,17 @@ watch(
   { immediate: true },
 );
 
-/** 选中变了：竖按钮跟着恰好选中的那一个走，多选时都置灰。 */
-function onSelect(selected: readonly TreeNode[]): void {
-  const [only] = selected;
-  selectedId.value = selected.length === 1 ? only?.id : undefined;
+function onSelect(views: MenuViews<TreeNode>): void {
+  selectedIds.value = views.exact.map((node) => node.id);
 }
 
-/** 右键菜单：树节点换回分支树的节点，交给 `branchMenuContext`。 */
+/** 右键菜单：点中的节点换回分支树的节点，交给 `branchMenuContext`。 */
 function menuOf(views: MenuViews<TreeNode>) {
-  const toBranch = (list: readonly TreeNode[]): BranchNode[] =>
-    list.flatMap((node) => {
-      const branch = byId.value.get(node.id);
-      return branch === undefined ? [] : [branch];
-    });
   return branchMenuContext(
-    { exact: toBranch(views.exact), expanded: toBranch(views.expanded) },
+    branchViews(
+      views.exact.map((node) => node.id),
+      byId.value,
+    ),
     props.repo,
   );
 }

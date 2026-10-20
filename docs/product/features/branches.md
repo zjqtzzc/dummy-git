@@ -15,7 +15,7 @@
 ## 竖按钮区
 
 分支树左边一条竖的按钮区，从上到下：**New Branch from Selected**、**Update Selected**、**Delete Selected**、**Fetch**（同 IDEA 的 Log 窗口），隔开一点再是全部展开、全部收起（同 Commit 面板工具栏，2026-10-20 项目负责人提；展开状态照样存进 `setState`）。前三个作用于分支树里选中的节点，选中的东西不适用时置灰。Commit 面板不放同步操作。
-- Delete Selected 和右键的 Delete 用同一个函数判断删什么（`deleteTargetOf`：不是当前分支的本地分支，或者远程分支），确认框由扩展弹。
+- 竖按钮和右键菜单用同一份菜单项定义（`logic/log/branchTree.ts` 的 `NEW_BRANCH`、`UPDATE_BRANCH`、`DELETE_BRANCHES`）：算不出就置灰，算出来的就是请求的参数，规则只有一份。确认框由扩展弹。
 - Push 不放在这里，只在右键菜单（项目负责人定）：推送会影响别人，也比 Update 用得少。
 
 ## 右键菜单
@@ -30,7 +30,7 @@
 | 当前分支（含 HEAD 行） | — | Update、Push… | ✓ | —（git 不许删当前分支） |
 | 远程分支 | ✓（见下） | Merge、Rebase | New Branch | ✓（删远程） |
 | HEAD 行（detached） | — | — | New Branch（从当前提交） | — |
-| 目录、分组 | 不弹菜单 | | | |
+| 目录、分组、远程名 | — | — | — | 目录、`Local` 组：下面的分支全都能删时（见下）；远程名、`Remote` 组没有 |
 
 ## Checkout
 
@@ -64,6 +64,11 @@
 - 本地分支（同 IDEA）：先 `git branch -d`。已合并的直接删、不确认，状态栏显示 git 那句 `Deleted branch feat (was 1a2b3c4).`，短 hash 留着方便找回。没合并的（`not fully merged`）弹原生模态确认 `feat has commits that are not merged anywhere. Delete it anyway?`，按钮 `Delete`，确认后用 `-D`。
 - 远程分支：`git push origin --delete feat`，每次都弹模态确认 `Delete feat on origin? This removes it for everyone using the remote.`。这是网络操作，走远程道和进度出口。
 - 本地分支和远程分支在 `Ref` 里是不同的类型，菜单命令拿到的是带类型的节点，不会把远程删成本地。
+- **一次删好几个**（多选，或右键目录、`Local` 组，2026-10-20 项目负责人定）：一条 `deleteBranches`，规则和删一个完全一样，只看删的是什么、不看删几个（同 IDEA：批量删除就是把单个删除循环一遍）。
+  - **全部严格**：选中的、目录展开后的，每一个都要能删（不是当前分支的本地分支、远程分支），有一个不能删 Delete 就不出现。所以里面有当前分支的目录、分组没有 Delete，Ctrl+A 之后也没有。
+  - **远程名、`Remote` 组不给 Delete**：删掉一个远程上的全部分支等于替所有人清空它；远程名下面的目录照常能删。
+  - 先删本地、再删远程。本地每个分支各一条 `branch -d`，状态栏各说一句 git 那句，日志里每个分支的 `(was <hash>)` 都在。没合并的收在一起问一次（`3 branches have commits that are not merged anywhere. Delete them anyway?`，说明里列出前 5 个名字），取消就留着它们、接着问远程。远程的收在一起问一次（`Delete 2 branches on remotes? …`），每个远程一条 `git push <远程> --delete <分支>…`。删了不止一个时，最后状态栏说 `Deleted 5 branches`。
+  - 不加「删不止一个时先总问一次」：同一个删除会因个数不同而表现不同。代价：右键一个全是已合并分支的目录点 Delete，会不提醒直接全删，只能从日志里找回。
 - 删除后不弹带 Restore 的通知（`product/never.md`）。
 
 ## Merge、Rebase

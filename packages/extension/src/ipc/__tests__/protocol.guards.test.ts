@@ -96,3 +96,17 @@ describe("merge / rebase 的起点", () => {
     ).toBeUndefined();
   });
 });
+
+describe("deleteBranches 的参数", () => {
+  it("本地名字的列表与远程分支 { remote, branch } 的列表", () => {
+    const ok = { repo: "/r", local: ["feat"], remote: [{ remote: "origin", branch: "fix" }] };
+    expect(parseParams("deleteBranches", ok)).toEqual(ok);
+  });
+
+  it("一个都没有、远程那项缺字段：拒收", () => {
+    expect(parseParams("deleteBranches", { repo: "/r", local: [], remote: [] })).toBeUndefined();
+    expect(
+      parseParams("deleteBranches", { repo: "/r", local: [], remote: [{ remote: "origin" }] }),
+    ).toBeUndefined();
+  });
+});

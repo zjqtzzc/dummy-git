@@ -22,6 +22,8 @@ export enum BranchNodeKind {
   Head = "head",
   Group = "group",
   Folder = "folder",
+  /** Remote 组下面的远程名（`origin`）：本身是一个远程，删分支时它和目录一样只是归类。 */
+  Remote = "remote",
   Branch = "branch",
 }
 
@@ -43,6 +45,14 @@ export type BranchNode =
       /** 展开状态按它记。同一层级结构下稳定：`local`、`remote/origin/feat`。 */
       readonly id: string;
       readonly label: string;
+      readonly children: readonly BranchNode[];
+    }
+  | {
+      readonly kind: BranchNodeKind.Remote;
+      readonly id: string;
+      readonly label: string;
+      /** 远程名。 */
+      readonly remote: string;
       readonly children: readonly BranchNode[];
     }
   | {
@@ -116,9 +126,10 @@ export function buildBranchTree(refs: readonly Ref[]): readonly BranchNode[] {
     label: "Remote",
     children: [...remotes.keys()].sort(byName).map(
       (remote): BranchNode => ({
-        kind: BranchNodeKind.Folder,
+        kind: BranchNodeKind.Remote,
         id: `${REMOTE_ID}/${remote}`,
         label: remote,
+        remote,
         children: folderize(`${REMOTE_ID}/${remote}`, remotes.get(remote) ?? [], undefined),
       }),
     ),
@@ -198,6 +209,7 @@ export function defaultExpanded(nodes: readonly BranchNode[]): ReadonlySet<strin
         return;
       case BranchNodeKind.Group:
       case BranchNodeKind.Folder:
+      case BranchNodeKind.Remote:
         for (const child of node.children) visit(child, [...ancestors, node.id]);
         return;
       default:
@@ -236,6 +248,7 @@ export function toTreeNodes(nodes: readonly BranchNode[]): TreeNode[] {
           children: toTreeNodes(node.children),
         };
       case BranchNodeKind.Folder:
+      case BranchNodeKind.Remote:
         return {
           id: node.id,
           label: node.label,
@@ -257,25 +270,6 @@ export function toTreeNodes(nodes: readonly BranchNode[]): TreeNode[] {
         return assertNever(node, "toTreeNodes");
     }
   });
-}
-
-/**
- * 选中的节点是不是一个本地分支，是就给出它的全名（更新、推送的对象）。
- * 顶上那行 HEAD 代表当前分支（detached 时不是）；远程分支、目录、分组都不是。
- * 是不是当前分支、上游是什么，由扩展执行时自己问 git，不用这里可能过时的状态。
- */
-export function localBranchOf(node: BranchNode): string | undefined {
-  switch (node.kind) {
-    case BranchNodeKind.Head:
-      return node.branch;
-    case BranchNodeKind.Branch:
-      return node.ref.kind === RefKind.LocalBranch ? node.ref.name : undefined;
-    case BranchNodeKind.Group:
-    case BranchNodeKind.Folder:
-      return undefined;
-    default:
-      return assertNever(node, "localBranchOf");
-  }
 }
 
 export enum DeleteTargetKind {
@@ -302,6 +296,7 @@ export function deleteTargetOf(node: BranchNode): DeleteTarget | undefined {
     case BranchNodeKind.Head:
     case BranchNodeKind.Group:
     case BranchNodeKind.Folder:
+    case BranchNodeKind.Remote:
       return undefined;
     default:
       return assertNever(node, "deleteTargetOf");
@@ -324,6 +319,7 @@ export function branchFilterOf(node: BranchNode): BranchFilter | undefined {
     }
     case BranchNodeKind.Group:
     case BranchNodeKind.Folder:
+    case BranchNodeKind.Remote:
       return undefined;
     default:
       return assertNever(node, "branchFilterOf");
@@ -354,7 +350,11 @@ export function branchNodesById(nodes: readonly BranchNode[]): ReadonlyMap<strin
   const index = new Map<string, BranchNode>();
   const visit = (node: BranchNode): void => {
     index.set(node.id, node);
-    if (node.kind === BranchNodeKind.Group || node.kind === BranchNodeKind.Folder) {
+    if (
+      node.kind === BranchNodeKind.Group ||
+      node.kind === BranchNodeKind.Folder ||
+      node.kind === BranchNodeKind.Remote
+    ) {
       for (const child of node.children) visit(child);
     }
   };
@@ -416,6 +416,7 @@ export function startOf(node: BranchNode): StartPoint | undefined {
       return pointOf(node);
     case BranchNodeKind.Group:
     case BranchNodeKind.Folder:
+    case BranchNodeKind.Remote:
       return undefined;
     default:
       return assertNever(node, "startOf");
@@ -452,6 +453,7 @@ function localOf(
         : undefined;
     case BranchNodeKind.Group:
     case BranchNodeKind.Folder:
+    case BranchNodeKind.Remote:
       return undefined;
     default:
       return assertNever(node, "localOf");
@@ -474,9 +476,52 @@ function remoteOf(
 }
 
 /** 起点作为协议参数：New Branch、Merge、Rebase 都收这一对。 */
-function startArgs(point: StartPoint): MenuArgs {
+function startArgs(point: StartPoint): { readonly start: string; readonly startName: string } {
   return { start: point.start, startName: point.name };
 }
+
+/** 点中的是远程名或 `Remote` 组：删掉一个远程上的全部分支等于替所有人清空它，不给 Delete（项目负责人定）。 */
+function isRemoteContainer(node: BranchNode): boolean {
+  return (
+    node.kind === BranchNodeKind.Remote ||
+    (node.kind === BranchNodeKind.Group && node.id === REMOTE_ID)
+  );
+}
+
+/** Update：本地分支（含当前分支）。竖按钮 Update Selected 用同一份。 */
+export const UPDATE_BRANCH = menuItem({
+  view: MenuView.Exact,
+  key: MenuContextKey.UpdateBranch,
+  pick: (node: BranchNode) => localOf(node)?.branch,
+  whole: exactlyOne,
+  value: ([branch]) => ({ branch }),
+});
+
+/** New Branch：HEAD 那行（含 detached）、所有分支都能当起点。竖按钮 New Branch from Selected 用同一份。 */
+export const NEW_BRANCH = menuItem({
+  view: MenuView.Exact,
+  key: MenuContextKey.NewBranch,
+  pick: (node: BranchNode) => startOf(node),
+  whole: exactlyOne,
+  value: ([point]) => startArgs(point),
+});
+
+/**
+ * Delete：展开看，目录、分组等于它下面的全部分支。每一个都要能删（不是当前分支的本地分支、远程分支），
+ * 否则整项不出现（全部严格）。竖按钮 Delete Selected 用同一份。
+ */
+export const DELETE_BRANCHES = menuItem({
+  view: MenuView.Expanded,
+  key: MenuContextKey.DeleteBranches,
+  pick: (node: BranchNode) => deleteTargetOf(node),
+  whole: (_targets, views) => !views.exact.some(isRemoteContainer),
+  value: (targets) => ({
+    local: targets.flatMap((t) => (t.kind === DeleteTargetKind.Local ? [t.branch] : [])),
+    remote: targets.flatMap((t) =>
+      t.kind === DeleteTargetKind.Remote ? [{ remote: t.remote, branch: t.branch }] : [],
+    ),
+  }),
+});
 
 /** 分支树的右键菜单项，顺序无关（菜单里的顺序由 `package.json` 的 `group` 定）。 */
 const BRANCH_MENU: readonly MenuItem<BranchNode>[] = [
@@ -494,13 +539,7 @@ const BRANCH_MENU: readonly MenuItem<BranchNode>[] = [
     whole: exactlyOne,
     value: ([{ remote, branch }]) => ({ remote, branch }),
   }),
-  menuItem({
-    view: MenuView.Exact,
-    key: MenuContextKey.UpdateBranch,
-    pick: (node) => localOf(node)?.branch,
-    whole: exactlyOne,
-    value: ([branch]) => ({ branch }),
-  }),
+  UPDATE_BRANCH,
   menuItem({
     view: MenuView.Exact,
     key: MenuContextKey.PushBranch,
@@ -525,14 +564,7 @@ const BRANCH_MENU: readonly MenuItem<BranchNode>[] = [
     whole: exactlyOne,
     value: ([point]) => startArgs(point),
   }),
-  // HEAD 那行（含 detached）、所有分支都能当起点。
-  menuItem({
-    view: MenuView.Exact,
-    key: MenuContextKey.NewBranch,
-    pick: startOf,
-    whole: exactlyOne,
-    value: ([point]) => startArgs(point),
-  }),
+  NEW_BRANCH,
   menuItem({
     view: MenuView.Exact,
     key: MenuContextKey.RenameBranch,
@@ -540,22 +572,42 @@ const BRANCH_MENU: readonly MenuItem<BranchNode>[] = [
     whole: exactlyOne,
     value: ([branch]) => ({ branch }),
   }),
-  // git 不许删当前分支。
-  menuItem({
-    view: MenuView.Exact,
-    key: MenuContextKey.DeleteBranch,
-    pick: otherLocalOf,
-    whole: exactlyOne,
-    value: ([branch]) => ({ branch }),
-  }),
-  menuItem({
-    view: MenuView.Exact,
-    key: MenuContextKey.DeleteRemoteBranch,
-    pick: remoteOf,
-    whole: exactlyOne,
-    value: ([{ remote, branch }]) => ({ remote, branch }),
-  }),
+  DELETE_BRANCHES,
 ];
+
+/**
+ * 由点中的节点 id 算出两种看法：原样看是这些节点本身；展开看是其中的分支（含 HEAD 那行），
+ * 加上点中目录、分组、远程名下面的全部分支，去掉重复。按当前的树算：刷新后新出现在目录里的分支也算，没了的不算。
+ */
+export function branchViews(
+  ids: readonly string[],
+  byId: ReadonlyMap<string, BranchNode>,
+): MenuViews<BranchNode> {
+  const exact = ids.flatMap((id) => {
+    const node = byId.get(id);
+    return node === undefined ? [] : [node];
+  });
+  const seen = new Set<string>();
+  const expanded: BranchNode[] = [];
+  const collect = (node: BranchNode): void => {
+    switch (node.kind) {
+      case BranchNodeKind.Head:
+      case BranchNodeKind.Branch:
+        if (!seen.has(node.id)) expanded.push(node);
+        seen.add(node.id);
+        return;
+      case BranchNodeKind.Group:
+      case BranchNodeKind.Folder:
+      case BranchNodeKind.Remote:
+        for (const child of node.children) collect(child);
+        return;
+      default:
+        assertNever(node, "branchViews");
+    }
+  };
+  for (const node of exact) collect(node);
+  return { exact, expanded };
+}
 
 /** 选中的节点（两种看法）→ 右键菜单上下文：仓库，加上能做的各菜单项的键。 */
 export function branchMenuContext(

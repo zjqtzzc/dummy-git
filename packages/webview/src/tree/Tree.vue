@@ -55,8 +55,8 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{
   "update:expanded": [expanded: ReadonlySet<string>];
-  /** 选中变了（点、键盘、右键）：看得见的选中行，按显示顺序。 */
-  select: [nodes: readonly TreeNode[]];
+  /** 选中变了（点、键盘、右键）：两种看法，按显示顺序（`selectionViews`）。 */
+  select: [views: MenuViews<TreeNode>];
   /** 双击、回车落在叶子上：打开。 */
   activate: [node: TreeNode];
   /** 点了复选框：把这些叶子改成勾（`true`）或不勾。 */
@@ -136,7 +136,7 @@ function toggle(row: TreeRow): void {
 function setSelection(next: Selection): void {
   if (next === selection.value) return;
   selection.value = next;
-  emit("select", selectionViews(rows.value, next.ids).exact);
+  emit("select", selectionViews(rows.value, next.ids));
 }
 
 /** 让第 `index` 行出现在视口里（键盘挪动时）。 */

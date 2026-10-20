@@ -16,10 +16,11 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { type Client, report } from "../logic/client.js";
 import { AppIcon, appIcon, codicon } from "../logic/icons.js";
 import {
+  type BranchNode,
   branchFilters,
-  type DeleteTarget,
-  DeleteTargetKind,
-  type StartPoint,
+  DELETE_BRANCHES,
+  NEW_BRANCH,
+  UPDATE_BRANCH,
 } from "../logic/log/branchTree.js";
 import { commitDetailsView } from "../logic/log/commitDetails.js";
 import { commitDiffSides, commitFileEntry } from "../logic/log/commitDiff.js";
@@ -43,6 +44,7 @@ import { type Layout, restoreLayout, splitPercent, splitPosition } from "../logi
 import { hashesToFetch } from "../logic/log/prefetch.js";
 import { refLabels } from "../logic/log/refLabels.js";
 import { rewordable } from "../logic/log/rewordable.js";
+import type { MenuViews } from "../logic/menuItems.js";
 import {
   EMPTY_SELECTION,
   retain,
@@ -438,22 +440,14 @@ async function load(repository: string): Promise<void> {
   }
 }
 
-/** 分支树里选中的本地分支：Update 的对象。选中的不是本地分支时置灰。 */
-const selectedBranch = ref<string>();
-/** 分支树里选中节点的起点：New Branch 的起点。选中的是目录、分组或没选时置灰。 */
-const selectedStart = ref<StartPoint>();
-/** 分支树里选中的、能删的分支：Delete 的对象。当前分支、HEAD 行、目录、分组时置灰。 */
-const selectedDelete = ref<DeleteTarget>();
-
-function onBranchSelect(
-  branch: string | undefined,
-  start: StartPoint | undefined,
-  deletable: DeleteTarget | undefined,
-): void {
-  selectedBranch.value = branch;
-  selectedStart.value = start;
-  selectedDelete.value = deletable;
-}
+/**
+ * 分支树的选中（两种看法）。竖按钮 New Branch、Update、Delete 用和右键菜单同一份定义（`branchTree.ts`）算：
+ * 算不出就置灰，算出来的就是请求的参数。
+ */
+const branchSelection = ref<MenuViews<BranchNode>>({ exact: [], expanded: [] });
+const newBranchArgs = computed(() => NEW_BRANCH.evaluate(branchSelection.value));
+const updateArgs = computed(() => UPDATE_BRANCH.evaluate(branchSelection.value));
+const deleteArgs = computed(() => DELETE_BRANCHES.evaluate(branchSelection.value));
 
 /**
  * 分支树左边竖按钮区的 Fetch：取全部远程。进度与完成消息由扩展侧显示在状态栏；
@@ -470,9 +464,10 @@ async function fetchRemotes(): Promise<void> {
 
 /** Update Selected：只取选中分支跟踪的远程分支，能快进就快进，分叉时扩展问变基还是合并。 */
 async function updateSelected(): Promise<void> {
-  if (repo.value === undefined || selectedBranch.value === undefined) return;
+  const args = updateArgs.value;
+  if (repo.value === undefined || args === undefined) return;
   try {
-    await props.client.request("update", { repo: repo.value, branch: selectedBranch.value });
+    await props.client.request("update", { repo: repo.value, ...args });
   } catch (cause) {
     report(cause);
   }
@@ -480,23 +475,10 @@ async function updateSelected(): Promise<void> {
 
 /** Delete Selected：与右键菜单的 Delete 同一条请求，确认由扩展问。 */
 async function deleteSelected(): Promise<void> {
-  const target = selectedDelete.value;
-  if (repo.value === undefined || target === undefined) return;
+  const args = deleteArgs.value;
+  if (repo.value === undefined || args === undefined) return;
   try {
-    switch (target.kind) {
-      case DeleteTargetKind.Local:
-        await props.client.request("deleteBranch", { repo: repo.value, branch: target.branch });
-        break;
-      case DeleteTargetKind.Remote:
-        await props.client.request("deleteRemoteBranch", {
-          repo: repo.value,
-          remote: target.remote,
-          branch: target.branch,
-        });
-        break;
-      default:
-        assertNever(target, "deleteSelected");
-    }
+    await props.client.request("deleteBranches", { repo: repo.value, ...args });
   } catch (cause) {
     report(cause);
   }
@@ -504,10 +486,10 @@ async function deleteSelected(): Promise<void> {
 
 /** New Branch from Selected：名字由扩展弹输入框问，与右键菜单的 New Branch from Here… 同一条命令。 */
 async function newBranchFromSelected(): Promise<void> {
-  if (repo.value === undefined || selectedStart.value === undefined) return;
-  const { start, name } = selectedStart.value;
+  const args = newBranchArgs.value;
+  if (repo.value === undefined || args === undefined) return;
   try {
-    await props.client.request("newBranch", { repo: repo.value, start, startName: name });
+    await props.client.request("newBranch", { repo: repo.value, ...args });
   } catch (cause) {
     report(cause);
   }
@@ -658,19 +640,19 @@ onUnmounted(() => resizes.disconnect());
         <ToolButton
           :icon="codicon('add')"
           title="New Branch from Selected"
-          :disabled="selectedStart === undefined"
+          :disabled="newBranchArgs === undefined"
           @click="newBranchFromSelected"
         />
         <ToolButton
           :icon="appIcon(AppIcon.Pull)"
           title="Update Selected"
-          :disabled="selectedBranch === undefined"
+          :disabled="updateArgs === undefined"
           @click="updateSelected"
         />
         <ToolButton
           :icon="codicon('trash')"
           title="Delete Selected"
-          :disabled="selectedDelete === undefined"
+          :disabled="deleteArgs === undefined"
           @click="deleteSelected"
         />
         <ToolButton :icon="appIcon(AppIcon.Fetch)" title="Fetch" @click="fetchRemotes" />
@@ -693,7 +675,7 @@ onUnmounted(() => resizes.disconnect());
           ref="branchTree"
           :refs="refs"
           :repo="repo ?? ''"
-          @select="onBranchSelect"
+          @select="(views) => (branchSelection = views)"
           @filter="(branch) => setFilter({ ...filter, branch })"
           @copy="copyText"
         />

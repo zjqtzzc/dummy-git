@@ -113,7 +113,7 @@ async function act(command: "applyStash" | "dropStash"): Promise<void> {
 }
 
 /** 选中变了：按钮跟着恰好选中的那一个走，多选时置灰；diff 只在恰好选中一个文件时跟。 */
-function onSelect(selected: readonly TreeNode[]): void {
+function onSelect({ exact: selected }: MenuViews<TreeNode>): void {
   const [node] = selected;
   selectedId.value = selected.length === 1 ? node?.id : undefined;
   if (selected.length === 1 && node !== undefined) void open(node, DiffOpenMode.Follow);

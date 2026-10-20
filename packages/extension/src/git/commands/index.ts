@@ -34,7 +34,7 @@
  * | `renameBranch` | `branch -m <旧名> <新名>` | — | — |
  * | `deleteBranch` | `branch -d <分支>` | — | — |
  * | `forceDeleteBranch` | `branch -D <分支>` | — | — |
- * | `deleteRemoteBranch` | `push <远程> --delete refs/heads/<分支>` | — | — |
+ * | `deleteRemoteBranches` | `push <远程> --delete refs/heads/<分支>…` | — | — |
  * | `isValidBranchName` | `check-ref-format --branch <名字>` | — | — |
  * | `getStashes` | `stash list -z --format=…` | — | — |
  * | `stashAll` | `stash push -u` | — | — |
@@ -76,7 +76,7 @@ export {
   DeleteBranchKind,
   type DeleteBranchResult,
   deleteBranch,
-  deleteRemoteBranch,
+  deleteRemoteBranches,
   forceDeleteBranch,
   isValidBranchName,
   renameBranch,

@@ -7,11 +7,11 @@ import {
   branchFilters,
   branchMenuContext,
   branchNodesById,
+  branchViews,
   buildBranchTree,
   DeleteTargetKind,
   defaultExpanded,
   deleteTargetOf,
-  localBranchOf,
   restoreExpanded,
   startOf,
   TrackingKind,
@@ -156,38 +156,6 @@ describe("deleteTargetOf：选中的能不能删", () => {
   });
 });
 
-describe("localBranchOf：选中的是不是本地分支", () => {
-  const tree = buildBranchTree([
-    head("main"),
-    local("main"),
-    local("feat/x"),
-    remote("origin", "main"),
-  ]);
-  const byId = branchNodesById(tree);
-  const of = (id: string) => {
-    const node = byId.get(id);
-    if (node === undefined) throw new Error(`没有 ${id}`);
-    return localBranchOf(node);
-  };
-
-  it("本地分支：给出全名", () => {
-    expect(of("local/main")).toBe("main");
-    expect(of("local/feat/x")).toBe("feat/x");
-  });
-
-  it("HEAD 那行代表当前分支；detached 时不是", () => {
-    expect(of("head")).toBe("main");
-    const detached = branchNodesById(buildBranchTree([head(), local("main")])).get("head");
-    expect(detached && localBranchOf(detached)).toBeUndefined();
-  });
-
-  it("远程分支、目录、分组都不是", () => {
-    expect(of("remote/origin/main")).toBeUndefined();
-    expect(of("local/feat")).toBeUndefined();
-    expect(of("local")).toBeUndefined();
-  });
-});
-
 describe("startOf：新分支的起点", () => {
   const tree = buildBranchTree([head("main"), local("main"), remote("origin", "feat/x")]);
   const byId = branchNodesById(tree);
@@ -304,8 +272,9 @@ describe("分支树的右键菜单项", () => {
   /** 每个节点单独右键时的菜单上下文：id → 菜单。 */
   function menus(refs: readonly Ref[]): ReadonlyMap<string, Readonly<Record<string, unknown>>> {
     const index = new Map<string, Readonly<Record<string, unknown>>>();
-    for (const [id, node] of branchNodesById(buildBranchTree(refs))) {
-      index.set(id, branchMenuContext({ exact: [node], expanded: [] }, "/r"));
+    const nodes = branchNodesById(buildBranchTree(refs));
+    for (const id of nodes.keys()) {
+      index.set(id, branchMenuContext(branchViews([id], nodes), "/r"));
     }
     return index;
   }
@@ -323,7 +292,7 @@ describe("分支树的右键菜单项", () => {
       [MenuContextKey.RebaseBranch]: start,
       [MenuContextKey.NewBranch]: start,
       [MenuContextKey.RenameBranch]: { branch: "feat/x" },
-      [MenuContextKey.DeleteBranch]: { branch: "feat/x" },
+      [MenuContextKey.DeleteBranches]: { local: ["feat/x"], remote: [] },
     });
   });
 
@@ -342,7 +311,10 @@ describe("分支树的右键菜单项", () => {
   it("远程分支：Checkout、Merge、Rebase、New Branch、Delete，带远程名", () => {
     expect(byId.get("remote/origin/feat/x")).toMatchObject({
       [MenuContextKey.CheckoutRemote]: { remote: "origin", branch: "feat/x" },
-      [MenuContextKey.DeleteRemoteBranch]: { remote: "origin", branch: "feat/x" },
+      [MenuContextKey.DeleteBranches]: {
+        local: [],
+        remote: [{ remote: "origin", branch: "feat/x" }],
+      },
     });
     expect(keysOf("remote/origin/feat/x")).toEqual(
       [
@@ -351,7 +323,7 @@ describe("分支树的右键菜单项", () => {
         MenuContextKey.MergeBranch,
         MenuContextKey.RebaseBranch,
         MenuContextKey.NewBranch,
-        MenuContextKey.DeleteRemoteBranch,
+        MenuContextKey.DeleteBranches,
       ].sort(),
     );
   });
@@ -363,18 +335,56 @@ describe("分支树的右键菜单项", () => {
     });
   });
 
-  it("目录、分组：没有菜单项", () => {
-    expect(keysOf("local/feat")).toEqual([MenuContextKey.Repo]);
+  it("目录：只有 Delete，删它下面的全部分支", () => {
+    expect(byId.get("local/feat")).toEqual({
+      [MenuContextKey.Repo]: "/r",
+      [MenuContextKey.DeleteBranches]: { local: ["feat/x"], remote: [] },
+    });
+  });
+
+  it("里面有当前分支的分组：没有 Delete（全部严格）", () => {
+    expect(keysOf("local")).toEqual([MenuContextKey.Repo]);
+  });
+
+  it("远程名、Remote 组：不给 Delete", () => {
+    expect(keysOf("remote/origin")).toEqual([MenuContextKey.Repo]);
     expect(keysOf("remote")).toEqual([MenuContextKey.Repo]);
   });
 
-  it("多选：只能对一个分支做的都不出现", () => {
-    const [main, feat] = ["local/main", "local/feat/x"].map((id) =>
-      branchNodesById(buildBranchTree([head("main"), local("main"), local("feat/x")])).get(id),
+  it("远程名下面的目录：能删", () => {
+    const nodes = branchNodesById(
+      buildBranchTree([remote("origin", "feat/a"), remote("origin", "feat/b")]),
     );
-    if (main === undefined || feat === undefined) throw new Error("没有节点");
-    expect(branchMenuContext({ exact: [main, feat], expanded: [] }, "/r")).toEqual({
+    expect(branchMenuContext(branchViews(["remote/origin/feat"], nodes), "/r")).toEqual({
+      [MenuContextKey.Repo]: "/r",
+      [MenuContextKey.DeleteBranches]: {
+        local: [],
+        remote: [
+          { remote: "origin", branch: "feat/a" },
+          { remote: "origin", branch: "feat/b" },
+        ],
+      },
+    });
+  });
+
+  it("多选：只能对一个分支做的都不出现；里面有当前分支就没有 Delete", () => {
+    const nodes = branchNodesById(
+      buildBranchTree([head("main"), local("main"), local("feat/x"), local("y")]),
+    );
+    expect(branchMenuContext(branchViews(["local/feat/x", "local/y"], nodes), "/r")).toEqual({
+      [MenuContextKey.Repo]: "/r",
+      [MenuContextKey.DeleteBranches]: { local: ["feat/x", "y"], remote: [] },
+    });
+    expect(branchMenuContext(branchViews(["local/main", "local/y"], nodes), "/r")).toEqual({
       [MenuContextKey.Repo]: "/r",
     });
+  });
+
+  it("目录和它下面的分支一起选：只算一次", () => {
+    const nodes = branchNodesById(buildBranchTree([local("feat/x"), local("feat/y")]));
+    expect(branchViews(["local/feat", "local/feat/x"], nodes).expanded.map((n) => n.id)).toEqual([
+      "local/feat/x",
+      "local/feat/y",
+    ]);
   });
 });

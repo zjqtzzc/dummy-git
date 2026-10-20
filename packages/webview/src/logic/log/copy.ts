@@ -31,6 +31,7 @@ export function branchCopyText(node: BranchNode): string | undefined {
         : `${node.ref.remote}/${node.ref.name}`;
     case BranchNodeKind.Group:
     case BranchNodeKind.Folder:
+    case BranchNodeKind.Remote:
       return undefined;
     default:
       return assertNever(node, "branchCopyText");

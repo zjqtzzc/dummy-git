@@ -96,6 +96,22 @@ function asStringArray(value: unknown): readonly string[] | undefined {
   return value.every((item) => typeof item === "string") ? value : undefined;
 }
 
+/** 远程分支的列表：每项是 `{ remote, branch }`，都是字符串。有一项不对就整条拒收。 */
+function asRemoteBranches(
+  value: unknown,
+): readonly { readonly remote: string; readonly branch: string }[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const list: { readonly remote: string; readonly branch: string }[] = [];
+  for (const item of value) {
+    if (!isRecord(item)) return undefined;
+    const remote = item["remote"];
+    const branch = item["branch"];
+    if (typeof remote !== "string" || typeof branch !== "string") return undefined;
+    list.push({ remote, branch });
+  }
+  return list;
+}
+
 /**
  * 会进 git 命令行的引用。只认 `refs/` 开头：`-` 开头的值会被当成选项。
  */
@@ -367,17 +383,15 @@ const PARAM_GUARDS = {
     const branch = raw["branch"];
     return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;
   },
-  deleteBranch: (raw: Record<string, unknown>) => {
+  deleteBranches: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
-    const branch = raw["branch"];
-    return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;
-  },
-  deleteRemoteBranch: (raw: Record<string, unknown>) => {
-    const repo = raw["repo"];
-    const remote = raw["remote"];
-    const branch = raw["branch"];
-    return typeof repo === "string" && typeof remote === "string" && typeof branch === "string"
-      ? { repo, remote, branch }
+    const local = asStringArray(raw["local"]);
+    const remote = asRemoteBranches(raw["remote"]);
+    return typeof repo === "string" &&
+      local !== undefined &&
+      remote !== undefined &&
+      local.length + remote.length > 0
+      ? { repo, local, remote }
       : undefined;
   },
   getPushTarget: (raw: Record<string, unknown>) => {

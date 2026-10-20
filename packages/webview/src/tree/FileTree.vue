@@ -79,9 +79,9 @@ defineExpose({
 });
 
 /** diff 跟随：只在恰好选中一个文件时（同提交列表的右栏）。 */
-function onSelect(nodes: readonly TreeNode[]): void {
-  const [node] = nodes;
-  const entry = nodes.length === 1 && node !== undefined ? byId.value.get(node.id) : undefined;
+function onSelect({ exact }: MenuViews<TreeNode>): void {
+  const [node] = exact;
+  const entry = exact.length === 1 && node !== undefined ? byId.value.get(node.id) : undefined;
   if (entry === undefined || entry.path === followed) return;
   followed = entry.path;
   emit("open", entry, DiffOpenMode.Follow);

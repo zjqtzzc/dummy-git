@@ -30,7 +30,7 @@ import {
   createTrackingBranch,
   DeleteBranchKind,
   deleteBranch,
-  deleteRemoteBranch,
+  deleteRemoteBranches,
   dropStash,
   FastForwardKind,
   type FastForwardResult,
@@ -118,8 +118,12 @@ export interface PickItem {
 }
 
 export interface HandlerUi {
-  /** 删除前的确认（原生模态框）：`action` 是确认按钮，`true` 是确认。 */
-  readonly confirm: (message: string, action: string) => Promise<boolean>;
+  /** 删除前的确认（原生模态框）：`action` 是确认按钮，`true` 是确认。给了 `names` 就在说明里列出（前 5 个）。 */
+  readonly confirm: (
+    message: string,
+    action: string,
+    names?: readonly string[],
+  ) => Promise<boolean>;
   /** 原生模态框，几个按钮选一个：返回按钮的序号，取消是 `undefined`。 */
   readonly choose: (
     message: string,
@@ -708,39 +712,85 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       await repository.run(renameBranch, repository.location.root, branch, name);
       return null;
     },
-    deleteBranch: async ({ branch }) => {
-      // 只改一个引用、立刻看得见，不走进度出口；完成消息是 git 那句（带短 hash，留着找回）。
+    deleteBranches: async ({ local, remote }) => {
       const root = repository.location.root;
-      const result = await repository.run(deleteBranch, root, branch);
-      switch (result.kind) {
-        case DeleteBranchKind.Deleted:
-          ui.notify(result.said);
-          return null;
-        case DeleteBranchKind.NotMerged: {
-          const sure = await ui.confirm(
-            `${branch} has commits that are not merged anywhere. Delete it anyway?`,
-            "Delete",
-          );
-          if (sure) ui.notify(await repository.run(forceDeleteBranch, root, branch));
-          return null;
+      let deleted = 0;
+      // 本地：每个分支各一条 `branch -d`，状态栏各说一句 git 那句（带短 hash，日志里留着找回）。
+      // 只改引用、立刻看得见，不走进度出口。
+      const unmerged: string[] = [];
+      for (const branch of local) {
+        const result = await repository.run(deleteBranch, root, branch);
+        switch (result.kind) {
+          case DeleteBranchKind.Deleted:
+            ui.notify(result.said);
+            deleted += 1;
+            break;
+          case DeleteBranchKind.NotMerged:
+            unmerged.push(branch);
+            break;
+          default:
+            assertNever(result, "delete branch");
         }
-        default:
-          return assertNever(result, "delete branch");
       }
-    },
-    deleteRemoteBranch: async ({ remote, branch }) => {
-      const tracked = `${remote}/${branch}`;
-      const sure = await ui.confirm(
-        `Delete ${branch} on ${remote}? This removes it for everyone using the remote.`,
-        "Delete",
-      );
-      if (!sure) return null;
-      // git 只说 `To <地址>` 与 ` - [deleted] feat`，没有能直接用的一句，完成消息自己写。
-      await ui.withProgress(
-        `Deleting ${tracked}…`,
-        () => repository.run(deleteRemoteBranch, repository.location.root, remote, branch),
-        () => `Deleted ${tracked}`,
-      );
+      const [onlyUnmerged] = unmerged;
+      if (onlyUnmerged !== undefined) {
+        const sure =
+          unmerged.length === 1
+            ? await ui.confirm(
+                `${onlyUnmerged} has commits that are not merged anywhere. Delete it anyway?`,
+                "Delete",
+              )
+            : await ui.confirm(
+                `${unmerged.length} branches have commits that are not merged anywhere. Delete them anyway?`,
+                "Delete",
+                unmerged,
+              );
+        if (sure) {
+          for (const branch of unmerged) {
+            ui.notify(await repository.run(forceDeleteBranch, root, branch));
+            deleted += 1;
+          }
+        }
+      }
+      // 远程：问一次，每个远程一条 push --delete。
+      const [onlyRemote] = remote;
+      if (onlyRemote !== undefined) {
+        const names = remote.map(({ remote: r, branch }) => `${r}/${branch}`);
+        const sure =
+          remote.length === 1
+            ? await ui.confirm(
+                `Delete ${onlyRemote.branch} on ${onlyRemote.remote}? This removes it for everyone using the remote.`,
+                "Delete",
+              )
+            : await ui.confirm(
+                `Delete ${remote.length} branches on remotes? This removes them for everyone using the remote.`,
+                "Delete",
+                names,
+              );
+        if (sure) {
+          const byRemote = new Map<string, string[]>();
+          for (const { remote: r, branch } of remote) {
+            byRemote.set(r, [...(byRemote.get(r) ?? []), branch]);
+          }
+          // git 只说 `To <地址>` 与 ` - [deleted] feat`，没有能直接用的一句，完成消息自己写。
+          const [onlyName] = names;
+          const what =
+            names.length === 1 && onlyName !== undefined
+              ? onlyName
+              : `${names.length} remote branches`;
+          await ui.withProgress(
+            `Deleting ${what}…`,
+            async () => {
+              for (const [r, branches] of byRemote) {
+                await repository.run(deleteRemoteBranches, root, r, branches);
+              }
+            },
+            () => `Deleted ${what}`,
+          );
+          deleted += remote.length;
+        }
+      }
+      if (deleted > 1) ui.notify(`Deleted ${deleted} branches`);
       return null;
     },
     stash: async ({ paths }) => {

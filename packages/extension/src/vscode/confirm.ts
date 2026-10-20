@@ -1,7 +1,12 @@
 import * as vscode from "vscode";
 
-/** 列出前几个文件名，更多的以 `…` 结尾。 */
+/** 列出前几个名字，更多的以 `…` 结尾。 */
 const LISTED = 5;
+
+/** 确认框说明里的名单：前 5 个，一行一个，更多的以 `…` 结尾。 */
+function listed(names: readonly string[]): string {
+  return [...names.slice(0, LISTED), ...(names.length > LISTED ? ["…"] : [])].join("\n");
+}
 
 /**
  * Rollback 前的确认：VS Code 原生模态框，
@@ -10,8 +15,7 @@ const LISTED = 5;
  */
 export async function confirmRollback(paths: readonly string[]): Promise<boolean> {
   const count = paths.length === 1 ? "1 file" : `${paths.length} files`;
-  const listed = paths.slice(0, LISTED).map((path) => path.slice(path.lastIndexOf("/") + 1));
-  const detail = [...listed, ...(paths.length > LISTED ? ["…"] : [])].join("\n");
+  const detail = listed(paths.map((path) => path.slice(path.lastIndexOf("/") + 1)));
   const pick = await vscode.window.showWarningMessage(
     `Rollback ${count}? This cannot be undone.`,
     { modal: true, detail },
@@ -20,9 +24,17 @@ export async function confirmRollback(paths: readonly string[]): Promise<boolean
   return pick === "Rollback";
 }
 
-/** 删除这类找不回或影响别人的操作前的确认：原生模态框，`action` 是确认按钮，另有自带的取消。 */
-export async function confirm(message: string, action: string): Promise<boolean> {
-  return (await vscode.window.showWarningMessage(message, { modal: true }, action)) === action;
+/**
+ * 删除这类找不回或影响别人的操作前的确认：原生模态框，`action` 是确认按钮，另有自带的取消。
+ * 给了 `names` 就在说明里列出来（前 5 个），比如一次删好几个分支时。
+ */
+export async function confirm(
+  message: string,
+  action: string,
+  names?: readonly string[],
+): Promise<boolean> {
+  const options = names === undefined ? { modal: true } : { modal: true, detail: listed(names) };
+  return (await vscode.window.showWarningMessage(message, options, action)) === action;
 }
 
 /**

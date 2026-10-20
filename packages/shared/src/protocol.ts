@@ -371,14 +371,16 @@ export interface Commands {
     params: { repo: string; hash: string };
     result: null;
   };
-  /** 删本地分支（不能是当前分支）。没合并时扩展先问用户。 */
-  deleteBranch: {
-    params: { repo: string; branch: string };
-    result: null;
-  };
-  /** 删远程分支 `remote/branch`，扩展先问用户。 */
-  deleteRemoteBranch: {
-    params: { repo: string; remote: string; branch: string };
+  /**
+   * 删一批分支（至少一个）：`local` 是本地分支（不能是当前分支），`remote` 是远程分支。
+   * 先删本地、再删远程。本地已合并的直接删，没合并的收在一起问一次；远程的收在一起问一次。
+   */
+  deleteBranches: {
+    params: {
+      repo: string;
+      local: readonly string[];
+      remote: readonly { readonly remote: string; readonly branch: string }[];
+    };
     result: null;
   };
 }

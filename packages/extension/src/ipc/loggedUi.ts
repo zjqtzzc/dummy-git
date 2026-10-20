@@ -16,8 +16,8 @@ export function loggedUi(ui: HandlerUi, log: Log): HandlerUi {
 
   return {
     ...ui,
-    confirm: async (message, action) => {
-      const sure = await ui.confirm(message, action);
+    confirm: async (message, action, names) => {
+      const sure = await ui.confirm(message, action, names);
       note(`确认${quote(message)} → ${sure ? action : "取消"}`);
       return sure;
     },
