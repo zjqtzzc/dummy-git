@@ -42,7 +42,7 @@ Commit 面板工具栏上，Rollback 旁边的 **Stash** 按钮（codicon `archi
 
 ## 取回与删除
 
-- 工具栏：**Apply**（`AppIcon.Unstash`，取回、保留这条）、**Delete**（codicon `trash`）。
+- 工具栏：**Apply**（`AppIcon.Unstash`，取回、保留这条）、**Delete**（codicon `trash`），以及全部展开、全部收起（同 Commit 模式的工具栏，2026-10-20 项目负责人提）。
 - stash 那一行的右键菜单：Pop、Apply ｜ Delete。Pop 是取回成功后删掉，最常用，排在最前。
 - 选中 stash 那一行，或者它下面的任何一个文件，都算选中了这条 stash。
 - **一律按 hash 认 stash。** `git stash drop` / `pop` 只认 `stash@{n}`、不认 hash，而序号会随存、删而变，拿界面上的序号去删可能删错一条。所以 drop / pop 在同一条本地道命令里，先按 hash 查出它现在的序号，再执行。`apply` 直接认 hash。

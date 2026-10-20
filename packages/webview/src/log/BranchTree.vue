@@ -21,7 +21,7 @@ import {
 import { branchCopyText } from "../logic/log/copy.js";
 import type { BranchFilter } from "../logic/log/filter.js";
 import type { MenuViews } from "../logic/menuItems.js";
-import type { TreeNode } from "../logic/tree/tree.js";
+import { branchIds, type TreeNode } from "../logic/tree/tree.js";
 import Tree from "../tree/Tree.vue";
 import { viewState } from "../vscodeApi.js";
 import TrackingBadge from "./TrackingBadge.vue";
@@ -128,6 +128,16 @@ function onExpanded(next: ReadonlySet<string>): void {
   expanded.value = next;
   viewState.write("branches", [...next]);
 }
+
+defineExpose({
+  /** 全部展开 / 全部收起（竖按钮区）。和手动展开收起一样存进 `viewState`。 */
+  expandAll(): void {
+    onExpanded(new Set(branchIds(nodes.value)));
+  },
+  collapseAll(): void {
+    onExpanded(new Set());
+  },
+});
 </script>
 
 <template>

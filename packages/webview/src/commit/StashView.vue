@@ -161,6 +161,18 @@ async function open(node: TreeNode, mode: DiffOpenMode): Promise<void> {
         :disabled="selectedStash === undefined || busy"
         @click="act('dropStash')"
       />
+      <ToolButton
+        :icon="appIcon(AppIcon.ExpandAll)"
+        title="Expand All"
+        :disabled="list.length === 0"
+        @click="expanded = new Set(branchIds(nodes))"
+      />
+      <ToolButton
+        :icon="appIcon(AppIcon.CollapseAll)"
+        title="Collapse All"
+        :disabled="list.length === 0"
+        @click="expanded = new Set()"
+      />
     </div>
     <div class="files">
       <p v-if="!loaded" class="dim note">Loading…</p>

@@ -14,7 +14,7 @@
 
 ## 竖按钮区
 
-分支树左边一条竖的按钮区，从上到下：**New Branch from Selected**、**Update Selected**、**Delete Selected**、**Fetch**（同 IDEA 的 Log 窗口）。前三个作用于分支树里选中的节点，选中的东西不适用时置灰。Commit 面板不放同步操作。
+分支树左边一条竖的按钮区，从上到下：**New Branch from Selected**、**Update Selected**、**Delete Selected**、**Fetch**（同 IDEA 的 Log 窗口），隔开一点再是全部展开、全部收起（同 Commit 面板工具栏，2026-10-20 项目负责人提；展开状态照样存进 `setState`）。前三个作用于分支树里选中的节点，选中的东西不适用时置灰。Commit 面板不放同步操作。
 - Delete Selected 和右键的 Delete 用同一个函数判断删什么（`deleteTargetOf`：不是当前分支的本地分支，或者远程分支），确认框由扩展弹。
 - Push 不放在这里，只在右键菜单（项目负责人定）：推送会影响别人，也比 Update 用得少。
 

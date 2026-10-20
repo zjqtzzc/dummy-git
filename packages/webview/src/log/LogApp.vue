@@ -88,6 +88,7 @@ const selectedDetails = computed(() => {
 /** 右栏正在取选中提交的文件。 */
 const filesLoading = ref(false);
 const list = ref<InstanceType<typeof CommitList>>();
+const branchTree = ref<InstanceType<typeof BranchTree>>();
 
 /** 「现在」，秒。每 30 秒走一次，「5 minutes ago」才会跟着变。 */
 const now = ref(Math.floor(Date.now() / 1000));
@@ -673,9 +674,23 @@ onUnmounted(() => resizes.disconnect());
           @click="deleteSelected"
         />
         <ToolButton :icon="appIcon(AppIcon.Fetch)" title="Fetch" @click="fetchRemotes" />
+        <span class="sync-gap" />
+        <ToolButton
+          :icon="appIcon(AppIcon.ExpandAll)"
+          title="Expand All"
+          :disabled="refs.length === 0"
+          @click="branchTree?.expandAll()"
+        />
+        <ToolButton
+          :icon="appIcon(AppIcon.CollapseAll)"
+          title="Collapse All"
+          :disabled="refs.length === 0"
+          @click="branchTree?.collapseAll()"
+        />
       </div>
       <div class="pane">
         <BranchTree
+          ref="branchTree"
           :refs="refs"
           :repo="repo ?? ''"
           @select="onBranchSelect"
@@ -755,6 +770,10 @@ onUnmounted(() => resizes.disconnect());
 .branches {
   display: flex;
   height: 100%;
+}
+/* 展开 / 收起只管看，和上面那几个动分支的按钮隔开一点。 */
+.sync-gap {
+  height: 6px;
 }
 .sync-bar {
   flex: none;
