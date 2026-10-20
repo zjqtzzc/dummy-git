@@ -1,10 +1,6 @@
-import {
-  type CommitFileChange,
-  MenuContextKey,
-  MenuNodeValue,
-  type Stash,
-} from "@dummy-git/shared";
+import { type CommitFileChange, MenuContextKey, type Stash } from "@dummy-git/shared";
 import { commitFileEntry } from "../log/commitDiff.js";
+import { exactlyOne, type MenuItem, menuItem, menuItemsContext } from "../menuItems.js";
 import { buildFileTree, toTreeNodes as fileTreeNodes } from "../tree/fileTree.js";
 import type { TreeNode } from "../tree/tree.js";
 import { formatTime } from "../utils/time.js";
@@ -24,6 +20,15 @@ export interface StashFile {
   readonly parents: readonly string[];
   readonly file: CommitFileChange;
 }
+
+/** stash 的右键菜单项（选中的是 stash 的 hash）。都只能对一条做，同 IDEA 的 `GitSingleStashAction`。 */
+const STASH_MENU: readonly MenuItem<string>[] = [
+  MenuContextKey.PopStash,
+  MenuContextKey.ApplyStash,
+  MenuContextKey.DropStash,
+].map((key) =>
+  menuItem({ key, pick: (hash: string) => hash, whole: exactlyOne, value: ([hash]) => ({ hash }) }),
+);
 
 /**
  * Stash 模式的树：每条 stash 一个顶层节点，
@@ -47,9 +52,8 @@ export function stashTreeNodes(
       label: stash.message,
       description: formatTime(stash.at, now),
       menu: {
-        [MenuContextKey.Node]: MenuNodeValue.Stash,
         [MenuContextKey.Repo]: repo,
-        [MenuContextKey.Stash]: stash.hash,
+        ...menuItemsContext([stash.hash], STASH_MENU),
       },
       children: scoped(stash.hash, files),
     };

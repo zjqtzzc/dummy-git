@@ -1,5 +1,6 @@
-import { type Ref, RefKind, UpstreamState } from "@dummy-git/shared";
+import { MenuContextKey, type Ref, RefKind, UpstreamState } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
+import type { TreeNode } from "../../tree/tree.js";
 import {
   type BranchNode,
   BranchNodeKind,
@@ -14,6 +15,7 @@ import {
   restoreExpanded,
   startOf,
   TrackingKind,
+  toTreeNodes,
   trackingOf,
 } from "../branchTree.js";
 
@@ -296,5 +298,76 @@ describe("trackingOf：分支名后面的同步状态", () => {
     expect(of("local/lonely")).toBeUndefined();
     expect(of("remote/origin/main")).toBeUndefined();
     expect(of("head")).toBeUndefined();
+  });
+});
+
+describe("分支树的右键菜单项", () => {
+  /** 树压平成 id → 菜单。 */
+  function menus(refs: readonly Ref[]): ReadonlyMap<string, TreeNode["menu"]> {
+    const index = new Map<string, TreeNode["menu"]>();
+    const visit = (node: TreeNode): void => {
+      index.set(node.id, node.menu);
+      for (const child of node.children ?? []) visit(child);
+    };
+    for (const node of toTreeNodes(buildBranchTree(refs), "/r")) visit(node);
+    return index;
+  }
+  const byId = menus([head("main"), local("main"), local("feat/x"), remote("origin", "feat/x")]);
+  const keysOf = (id: string) => Object.keys(byId.get(id) ?? {}).sort();
+  const start = { start: "refs/heads/feat/x", startName: "feat/x" };
+
+  it("别的本地分支：全部，参数是它的名字或起点", () => {
+    expect(byId.get("local/feat/x")).toEqual({
+      [MenuContextKey.Repo]: "/r",
+      [MenuContextKey.Checkout]: { branch: "feat/x" },
+      [MenuContextKey.UpdateBranch]: { branch: "feat/x" },
+      [MenuContextKey.PushBranch]: { branch: "feat/x" },
+      [MenuContextKey.MergeBranch]: start,
+      [MenuContextKey.RebaseBranch]: start,
+      [MenuContextKey.NewBranch]: start,
+      [MenuContextKey.RenameBranch]: { branch: "feat/x" },
+      [MenuContextKey.DeleteBranch]: { branch: "feat/x" },
+    });
+  });
+
+  it("当前分支与 HEAD 那行：没有 Checkout、Merge、Rebase、Delete", () => {
+    const expected = [
+      MenuContextKey.Repo,
+      MenuContextKey.UpdateBranch,
+      MenuContextKey.PushBranch,
+      MenuContextKey.NewBranch,
+      MenuContextKey.RenameBranch,
+    ].sort();
+    expect(keysOf("local/main")).toEqual(expected);
+    expect(keysOf("head")).toEqual(expected);
+  });
+
+  it("远程分支：Checkout、Merge、Rebase、New Branch、Delete，带远程名", () => {
+    expect(byId.get("remote/origin/feat/x")).toMatchObject({
+      [MenuContextKey.CheckoutRemote]: { remote: "origin", branch: "feat/x" },
+      [MenuContextKey.DeleteRemoteBranch]: { remote: "origin", branch: "feat/x" },
+    });
+    expect(keysOf("remote/origin/feat/x")).toEqual(
+      [
+        MenuContextKey.Repo,
+        MenuContextKey.CheckoutRemote,
+        MenuContextKey.MergeBranch,
+        MenuContextKey.RebaseBranch,
+        MenuContextKey.NewBranch,
+        MenuContextKey.DeleteRemoteBranch,
+      ].sort(),
+    );
+  });
+
+  it("detached 的 HEAD：只有 New Branch，起点是那条提交", () => {
+    expect(menus([head()]).get("head")).toEqual({
+      [MenuContextKey.Repo]: "/r",
+      [MenuContextKey.NewBranch]: { start: T, startName: T.slice(0, 7) },
+    });
+  });
+
+  it("目录、分组：没有菜单", () => {
+    expect(byId.get("local/feat")).toBeUndefined();
+    expect(byId.get("remote")).toBeUndefined();
   });
 });

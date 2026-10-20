@@ -5,7 +5,6 @@ import {
   type FileChange,
   FileStatus,
   MenuContextKey,
-  MenuNodeValue,
   OperationKind,
 } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
@@ -96,22 +95,18 @@ describe("workingGroups", () => {
     ]);
     expect(groups.map((g) => g.uncheckable === true)).toEqual([true, false, false]);
     expect(groups[0]?.entries[0]?.description).toBe("deleted by them");
-    // 右键菜单：冲突按类型、已跟踪是 change、未跟踪是 untracked，都带仓库与路径。
+    // 右键菜单：一边删了的冲突能保留或删除，已跟踪的能 Rollback，未跟踪的能 Add 或 Delete。
     expect(groups.flatMap((g) => g.entries.map((e) => e.menu))).toEqual([
       {
-        [MenuContextKey.Node]: MenuNodeValue.ConflictDeleted,
         [MenuContextKey.Repo]: "/repo",
-        [MenuContextKey.Path]: "c.ts",
+        [MenuContextKey.KeepFile]: { path: "c.ts" },
+        [MenuContextKey.RemoveConflictFile]: { path: "c.ts" },
       },
+      { [MenuContextKey.Repo]: "/repo", [MenuContextKey.RollbackFile]: { paths: ["a.ts"] } },
       {
-        [MenuContextKey.Node]: MenuNodeValue.Change,
         [MenuContextKey.Repo]: "/repo",
-        [MenuContextKey.Path]: "a.ts",
-      },
-      {
-        [MenuContextKey.Node]: MenuNodeValue.Untracked,
-        [MenuContextKey.Repo]: "/repo",
-        [MenuContextKey.Path]: "new.txt",
+        [MenuContextKey.AddUntracked]: { path: "new.txt" },
+        [MenuContextKey.DeleteUntracked]: { path: "new.txt" },
       },
     ]);
   });

@@ -11,8 +11,6 @@
  * 容器上要写的 JSON。`row` 是被点那一行的上下文；点在空白处、或那一行没有菜单时缺席。
  * 总是带上 `preventDefaultContextMenuItems`：否则 VS Code 会在菜单里加上剪切、复制、粘贴这些浏览器默认项。
  */
-export function containerMenuContext(
-  row: Readonly<Record<string, string | boolean | readonly string[]>> | undefined,
-): string {
+export function containerMenuContext(row: Readonly<Record<string, unknown>> | undefined): string {
   return JSON.stringify({ ...row, preventDefaultContextMenuItems: true });
 }

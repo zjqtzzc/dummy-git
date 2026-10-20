@@ -91,7 +91,7 @@ function asDiffOpenMode(value: unknown): DiffOpenMode | undefined {
   }
 }
 
-export function asStringArray(value: unknown): readonly string[] | undefined {
+function asStringArray(value: unknown): readonly string[] | undefined {
   if (!Array.isArray(value)) return undefined;
   return value.every((item) => typeof item === "string") ? value : undefined;
 }

@@ -160,77 +160,67 @@
       "webview/context": [
         {
           "command": "dummyGit.checkout",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'localBranch' && !dummyGit.current",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.checkout",
           "group": "1_switch@1"
         },
         {
           "command": "dummyGit.checkoutRemote",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'remoteBranch'",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.checkoutRemote",
           "group": "1_switch@1"
         },
         {
           "command": "dummyGit.newBranch",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.start",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.newBranch",
           "group": "3_edit@1"
         },
         {
           "command": "dummyGit.renameBranch",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'localBranch'",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.renameBranch",
           "group": "3_edit@2"
         },
         {
           "command": "dummyGit.deleteBranch",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'localBranch' && !dummyGit.current",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.deleteBranch",
           "group": "4_delete@1"
         },
         {
           "command": "dummyGit.deleteRemoteBranch",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'remoteBranch'",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.deleteRemoteBranch",
           "group": "4_delete@1"
         },
         {
           "command": "dummyGit.popStash",
-          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'stash'",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.popStash",
           "group": "1_apply@1"
         },
         {
           "command": "dummyGit.applyStash",
-          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'stash'",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.applyStash",
           "group": "1_apply@2"
         },
         {
           "command": "dummyGit.dropStash",
-          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'stash'",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.dropStash",
           "group": "4_delete@1"
         },
         {
           "command": "dummyGit.updateBranch",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'localBranch'",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.updateBranch",
           "group": "2_sync@1"
         },
         {
           "command": "dummyGit.pushBranch",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'localBranch'",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.pushBranch",
           "group": "2_sync@2"
         },
         {
           "command": "dummyGit.mergeBranch",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'localBranch' && !dummyGit.current",
-          "group": "2_sync@3"
-        },
-        {
-          "command": "dummyGit.mergeBranch",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'remoteBranch'",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.mergeBranch",
           "group": "2_sync@3"
         },
         {
           "command": "dummyGit.rebaseBranch",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'localBranch' && !dummyGit.current",
-          "group": "2_sync@4"
-        },
-        {
-          "command": "dummyGit.rebaseBranch",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.node == 'remoteBranch'",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.rebaseBranch",
           "group": "2_sync@4"
         },
         {
@@ -245,7 +235,7 @@
         },
         {
           "command": "dummyGit.revertCommit",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.revert",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.revertCommit",
           "group": "2_pick@2"
         },
         {
@@ -255,42 +245,37 @@
         },
         {
           "command": "dummyGit.openMergeEditor",
-          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'conflictMerge'",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.openMergeEditor",
           "group": "1_switch@1"
         },
         {
           "command": "dummyGit.markResolved",
-          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'conflictMerge'",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.markResolved",
           "group": "3_edit@1"
         },
         {
           "command": "dummyGit.keepFile",
-          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'conflictDeleted'",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.keepFile",
           "group": "3_edit@1"
         },
         {
           "command": "dummyGit.removeConflictFile",
-          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'conflictDeleted'",
-          "group": "4_delete@1"
-        },
-        {
-          "command": "dummyGit.removeConflictFile",
-          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'conflictBothDeleted'",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.removeConflictFile",
           "group": "4_delete@1"
         },
         {
           "command": "dummyGit.rollbackFile",
-          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'change'",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.rollbackFile",
           "group": "4_delete@1"
         },
         {
           "command": "dummyGit.addUntracked",
-          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'untracked'",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.addUntracked",
           "group": "3_edit@1"
         },
         {
           "command": "dummyGit.deleteUntracked",
-          "when": "webviewId == 'dummyGit.commit' && dummyGit.node == 'untracked'",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.deleteUntracked",
           "group": "4_delete@1"
         },
         {
@@ -300,7 +285,7 @@
         },
         {
           "command": "dummyGit.rewordCommit",
-          "when": "webviewId == 'dummyGit.log' && dummyGit.reword",
+          "when": "webviewId == 'dummyGit.log' && dummyGit.rewordCommit",
           "group": "3_edit@2"
         }
       ],

@@ -7,10 +7,16 @@ import {
   type FileChange,
   FileStatus,
   MenuContextKey,
-  MenuNodeValue,
   type OngoingOperation,
   OperationKind,
 } from "@dummy-git/shared";
+import {
+  exactlyOne,
+  type MenuArgs,
+  type MenuItem,
+  menuItem,
+  menuItemsContext,
+} from "../menuItems.js";
 import type { FileEntry, FileGroup } from "../tree/fileTree.js";
 
 /**
@@ -77,32 +83,119 @@ const CONFLICT_TEXT: Readonly<Record<ConflictKind, string>> = {
   [ConflictKind.DeletedByThem]: "deleted by them",
 };
 
-/** 冲突文件的右键菜单是哪一种：合并编辑器解决的、保留或删除的、只能删除的。 */
-function conflictMenu(conflict: ConflictKind): string {
+/** 冲突文件怎么解决：合并编辑器解决的、保留或删除的、只能删除的。决定它的右键菜单里有什么。 */
+enum ConflictResolution {
+  Merge = "merge",
+  KeepOrDelete = "keepOrDelete",
+  DeleteOnly = "deleteOnly",
+}
+
+function resolutionOf(conflict: ConflictKind): ConflictResolution {
   switch (conflict) {
     case ConflictKind.BothModified:
     case ConflictKind.BothAdded:
-      return MenuNodeValue.ConflictMerge;
+      return ConflictResolution.Merge;
     case ConflictKind.BothDeleted:
-      return MenuNodeValue.ConflictBothDeleted;
+      return ConflictResolution.DeleteOnly;
     case ConflictKind.AddedByUs:
     case ConflictKind.AddedByThem:
     case ConflictKind.DeletedByUs:
     case ConflictKind.DeletedByThem:
-      return MenuNodeValue.ConflictDeleted;
+      return ConflictResolution.KeepOrDelete;
     default:
-      return assertNever(conflict, "conflictMenu");
+      return assertNever(conflict, "resolutionOf");
   }
 }
 
-/** 一个文件的右键菜单上下文：和 `package.json` 菜单项的 `when` 条件对应。 */
-function fileMenu(repo: string, path: string, node: string): Readonly<Record<string, string>> {
-  return { [MenuContextKey.Node]: node, [MenuContextKey.Repo]: repo, [MenuContextKey.Path]: path };
+enum FileMenuKind {
+  Conflict = "conflict",
+  Change = "change",
+  Untracked = "untracked",
+}
+
+/** 一个文件的右键菜单要用的：它是哪一种、路径。 */
+type FileMenuTarget =
+  | {
+      readonly kind: FileMenuKind.Conflict;
+      readonly path: string;
+      readonly resolution: ConflictResolution;
+    }
+  | { readonly kind: FileMenuKind.Change | FileMenuKind.Untracked; readonly path: string };
+
+/** 冲突文件、且解决方式是给出的几种之一时，取出路径。 */
+function conflictPath(...resolutions: readonly ConflictResolution[]) {
+  return (target: FileMenuTarget): string | undefined =>
+    target.kind === FileMenuKind.Conflict && resolutions.includes(target.resolution)
+      ? target.path
+      : undefined;
+}
+
+function pathOf(kind: FileMenuKind.Change | FileMenuKind.Untracked) {
+  return (target: FileMenuTarget): string | undefined =>
+    target.kind === kind ? target.path : undefined;
+}
+
+/** Commit 面板文件的右键菜单项，顺序无关（菜单里的顺序由 `package.json` 的 `group` 定）。 */
+const FILE_MENU: readonly MenuItem<FileMenuTarget>[] = [
+  menuItem({
+    key: MenuContextKey.OpenMergeEditor,
+    pick: conflictPath(ConflictResolution.Merge),
+    whole: exactlyOne,
+    value: ([path]) => ({ path }),
+  }),
+  menuItem({
+    key: MenuContextKey.MarkResolved,
+    pick: conflictPath(ConflictResolution.Merge),
+    whole: exactlyOne,
+    value: ([path]) => ({ path }),
+  }),
+  menuItem({
+    key: MenuContextKey.KeepFile,
+    pick: conflictPath(ConflictResolution.KeepOrDelete),
+    whole: exactlyOne,
+    value: ([path]) => ({ path }),
+  }),
+  menuItem({
+    key: MenuContextKey.RemoveConflictFile,
+    pick: conflictPath(ConflictResolution.KeepOrDelete, ConflictResolution.DeleteOnly),
+    whole: exactlyOne,
+    value: ([path]) => ({ path }),
+  }),
+  menuItem({
+    key: MenuContextKey.RollbackFile,
+    pick: pathOf(FileMenuKind.Change),
+    whole: exactlyOne,
+    value: (paths) => ({ paths }),
+  }),
+  menuItem({
+    key: MenuContextKey.AddUntracked,
+    pick: pathOf(FileMenuKind.Untracked),
+    whole: exactlyOne,
+    value: ([path]) => ({ path }),
+  }),
+  menuItem({
+    key: MenuContextKey.DeleteUntracked,
+    pick: pathOf(FileMenuKind.Untracked),
+    whole: exactlyOne,
+    value: ([path]) => ({ path }),
+  }),
+];
+
+/** 一个文件的右键菜单上下文：仓库，加上能对它做的各菜单项的键。 */
+function fileMenu(
+  repo: string,
+  target: FileMenuTarget,
+): Readonly<Record<string, string | MenuArgs>> {
+  return { [MenuContextKey.Repo]: repo, ...menuItemsContext([target], FILE_MENU) };
 }
 
 function conflictEntry(repo: string, file: ConflictFile): FileEntry {
   return {
-    menu: fileMenu(repo, file.path, conflictMenu(file.conflict)),
+    menu: fileMenu(repo, {
+      kind: FileMenuKind.Conflict,
+      path: file.path,
+      resolution: resolutionOf(file.conflict),
+    }),
     path: file.path,
     // 同资源管理器与源代码管理：冲突是 `!` 加冲突色。
     letter: "!",
@@ -209,9 +302,13 @@ const DISPLAY: Readonly<
 };
 
 function toEntry(repo: string, file: WorkingFile): FileEntry {
-  const node =
-    file.status === WorkingStatus.Untracked ? MenuNodeValue.Untracked : MenuNodeValue.Change;
-  const entry = { path: file.path, ...DISPLAY[file.status], menu: fileMenu(repo, file.path, node) };
+  const kind =
+    file.status === WorkingStatus.Untracked ? FileMenuKind.Untracked : FileMenuKind.Change;
+  const entry = {
+    path: file.path,
+    ...DISPLAY[file.status],
+    menu: fileMenu(repo, { kind, path: file.path }),
+  };
   return file.oldPath === undefined ? entry : { ...entry, oldPath: file.oldPath };
 }
 

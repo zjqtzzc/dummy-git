@@ -1,8 +1,9 @@
 import { MenuContextKey } from "@dummy-git/shared";
 import {
   exactlyOne,
+  type MenuArgs,
   type MenuItem,
-  type MenuValue,
+  menuItem,
   menuItemsContext,
   type NonEmpty,
 } from "../menuItems.js";
@@ -25,28 +26,48 @@ function replayable(items: NonEmpty<CommitMenuTarget>): boolean {
   return items.length === 1 || items.every((item) => !item.merge);
 }
 
+const hashOf = (item: CommitMenuTarget): string => item.hash;
+
 /** 提交列表的右键菜单项，顺序无关（菜单里的顺序由 `package.json` 的 `group` 定）。 */
 const COMMIT_MENU: readonly MenuItem<CommitMenuTarget>[] = [
-  { key: MenuContextKey.CopyHash, value: (items) => items.map((item) => item.hash) },
+  // 复制的文字由这里拼：完整 hash 一行一个（多选的复制都一行一个，项目负责人定）。
+  menuItem({
+    key: MenuContextKey.CopyHash,
+    pick: hashOf,
+    value: (hashes) => ({ text: hashes.join("\n") }),
+  }),
   // 选中是列表顺序（从新到旧）。cherry-pick 从旧到新摘，revert 从新到旧撤，同 IDEA。
-  {
+  menuItem({
     key: MenuContextKey.CherryPick,
+    pick: (item) => item,
     whole: replayable,
-    value: (items) => items.map((item) => item.hash).reverse(),
-  },
-  {
+    value: (items) => ({ hashes: items.map(hashOf).reverse() }),
+  }),
+  menuItem({
     key: MenuContextKey.Revert,
+    pick: (item) => item,
     whole: replayable,
-    value: (items) => items.map((item) => item.hash),
-  },
-  { key: MenuContextKey.RebaseHere, whole: exactlyOne, value: ([item]) => item.hash },
-  { key: MenuContextKey.ResetTo, whole: exactlyOne, value: ([item]) => item.hash },
-  {
-    key: MenuContextKey.Reword,
-    accepts: (item) => item.rewordable,
+    value: (items) => ({ hashes: items.map(hashOf) }),
+  }),
+  // 变基到一条提交：起点就是它，显示名用 7 位，和别处的短 hash 一样长。
+  menuItem({
+    key: MenuContextKey.RebaseHere,
+    pick: hashOf,
     whole: exactlyOne,
-    value: ([item]) => item.hash,
-  },
+    value: ([hash]) => ({ start: hash, startName: hash.slice(0, 7) }),
+  }),
+  menuItem({
+    key: MenuContextKey.ResetTo,
+    pick: hashOf,
+    whole: exactlyOne,
+    value: ([hash]) => ({ hash }),
+  }),
+  menuItem({
+    key: MenuContextKey.Reword,
+    pick: (item) => (item.rewordable ? item.hash : undefined),
+    whole: exactlyOne,
+    value: ([hash]) => ({ hash }),
+  }),
 ];
 
 /** 选中的提交（列表顺序）→ 右键菜单上下文里各菜单项的键。 */
@@ -54,7 +75,7 @@ export function commitMenuContext(
   hashes: readonly string[],
   rewordable: ReadonlySet<string>,
   merges: ReadonlySet<string>,
-): Record<string, MenuValue> {
+): Record<string, MenuArgs> {
   return menuItemsContext(
     hashes.map((hash) => ({ hash, rewordable: rewordable.has(hash), merge: merges.has(hash) })),
     COMMIT_MENU,

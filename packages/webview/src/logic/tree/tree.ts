@@ -1,4 +1,5 @@
 import type { IconRef } from "../icons.js";
+import type { MenuArgs } from "../menuItems.js";
 
 /**
  * 所有树共用的纯逻辑：节点的统一形状、按展开状态压平成行、
@@ -27,7 +28,7 @@ export interface TreeNode {
    * 原生右键菜单的上下文：右键这一行时写到树的容器上（键见 `shared/src/menu.ts`）。
    * 缺席即这一行没有菜单。
    */
-  readonly menu?: Readonly<Record<string, string | boolean>>;
+  readonly menu?: Readonly<Record<string, string | MenuArgs>>;
   /** 有就是可展开的（哪怕是空数组）。 */
   /** 给了勾选集合的树里，这个节点也不画复选框（Commit 面板的冲突组：冲突文件不能勾去提交）。 */
   readonly uncheckable?: boolean;
