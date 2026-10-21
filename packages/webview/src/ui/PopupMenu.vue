@@ -75,7 +75,7 @@ function onClick(item: PopupItem): void {
 .popup {
   position: fixed;
   z-index: 100;
-  min-width: 140px;
+  min-width: 160px;
   overflow-y: auto;
   padding: 4px 0;
   border: 1px solid var(--vscode-menu-border, transparent);

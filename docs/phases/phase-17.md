@@ -55,7 +55,7 @@
    - 通行做法（Floating UI 的 placement、flip、shift、size 四步；vscode-git-graph 的右键菜单同理，`web/contextMenu.ts:74-86`：下面放得下就往下、否则上面放得下就往上、都不行就挪到重叠，左右同样）：
      1. 首选位置：一级选单在按钮正下方、左边对齐，留 2px 空隙；二级选单在父项右边、顶部和父项对齐。
      2. 翻面：首选那边放不下、对面放得下，翻到对面。二级选单翻到父项左边；父项和选单一样宽，所以就是翻到父选单左边。
-     3. 挪动：另一个方向上超出了，往回挪到刚好不超出。
+     3. 另一个方向：一级选单左边对齐按钮，右边超出就改成**右边对齐按钮**，两边都不行才贴着边缘（同 VS Code：`src/vs/base/common/layout.ts` 的 `layout`，`contextview.ts` 的 `layout2d` 横向用 `ALIGN`）；二级选单上下超出时往回挪到刚好不超出。否决一级选单「往回挪到刚好不超出」：按钮在工具栏右边时，选单和按钮对不齐。VS Code 的二级选单上下放不下时是翻到上面、两边都放不下时盖住父选单并偏 10px（`menu.ts` 的 `calculateSubmenuMenuLayout`），我们保留往回挪、贴边：二级离父项更近，Log 面板里很少碰到两边都放不下（2026-10-21 项目负责人定）。
      4. 限高：上下都放不下时，放在空间大的那一边，高度压到放得下，选单里滚动。
    - 边界是 webview 自己（`window.innerWidth` / `innerHeight`）：浮层画不出它。底部的 Log 面板可能拉得很矮，这一条最常碰到。
    - 一个纯函数 `placePopup(贴着的矩形, 首选方向, 浮层尺寸, webview 尺寸) → 位置与限高`，一级二级共用，放 `logic/`。自己写，不引入 `@floating-ui/dom`（2026-10-21 项目负责人定）：几十行，配测试。
@@ -64,7 +64,7 @@
 5. **点了之后**（已定，2026-10-21 项目负责人定）
    - 普通项：执行，整串选单收起。
    - 勾选项：切换开关，选单不收起，可以连着勾几项。IDEA 推断如此：要点完就收起的勾选项都显式设 `KeepPopupOnPerform.Never`（`platform/vcs-impl/src/com/intellij/openapi/vcs/actions/AnnotateToggleAction.java:74`、`platform/vcs-log/impl/src/com/intellij/vcs/log/ui/filter/StructureFilterPopupComponent.java:470`），高亮的 `BooleanPropertyToggleAction` 没设。GitLens 默认收起，可设 `keepOpenOnSelect`。
-   - 二级选单项：悬停打开，点它也打开。移到同一级别的项上，原来的二级过一小会儿才关（一两百毫秒，手测时调），鼠标斜着移进二级选单时不误关。否决「安全三角」（Floating UI 的 `safePolygon`）：手感更好，代码多，先用延迟。
+   - 二级选单项：照 VS Code（`menu.ts` 的 `SubmenuMenuActionViewItem`，2026-10-21 读的 `main`）分两段计时：鼠标停在二级选单项上满 **250 ms**、那时还停着才打开；移到同一级别的项上，开着的二级选单 **750 ms** 后才关，这期间鼠标进入二级选单就不关，斜着移过去不误关。点二级选单项立刻打开。否决「安全三角」（Floating UI 的 `safePolygon`、Radix 的 pointer grace area）：手感更好，代码多；VS Code 也只靠延迟。
    - 点浮层外面、按 Esc、webview 失去焦点：整串收起。
    - 键盘只有 Esc（2026-10-21 项目负责人定）：方向键、Enter 不做，省代码。
    - 置灰的项不响应点击。
@@ -78,7 +78,7 @@
 每步一个概念，`pnpm check` 通过、手动看过、项目负责人确认后单独提交。
 
 1. **定位**（第 4 条）：`logic/` 里的 `placePopup`。测试：放得下时在首选位置；四个方向各自超出时翻面或挪动；上下都放不下时限高；二级选单翻到父选单左边。
-2. **选单项与一级浮层**（第 3、5 条）：`logic/popupMenu.ts` 的类型；`ui/PopupMenu.vue` 画一级；收起规则。测试：各种选单项点了之后收不收起（规则写成 `logic/` 里的纯函数）。手测等第 4 步接上按钮。
+2. **选单项与一级浮层**（最小宽度 160px、行高 24px，同 VS Code 的 `.monaco-menu`）（第 3、5 条）：`logic/popupMenu.ts` 的类型；`ui/PopupMenu.vue` 画一级；收起规则。测试：各种选单项点了之后收不收起（规则写成 `logic/` 里的纯函数）。手测等第 4 步接上按钮。
 3. **二级选单**（第 3、4、5 条）：`PopupMenu` 逐级画下去；悬停打开、延迟关闭。测试：开着哪一串选单（悬停、离开、移到同级）。手测等第一个真正用到二级的地方。
 4. **`MenuButton`**（第 2 条）：包着 `ToolButton`，画三角，管开关，挂浮层。和第 5 步一起手测。
 5. **View Options 换过来、删 `pickMany`**（第 6 条）。手测：三角；浮层位置（把面板拉矮、拉窄看它怎么躲）；连着勾几项；点外面、Esc、切到别的窗口都收起。

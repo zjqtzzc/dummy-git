@@ -6,7 +6,8 @@ import { assertNever } from "@dummy-git/shared";
  * 通行的四步（Floating UI 的 placement、flip、shift、size）：
  * 1. 首选位置：一级选单在按钮正下方、左边对齐；二级选单在父项右边、顶部对齐。
  * 2. 翻面：首选那边放不下、对面放得下，翻到对面。
- * 3. 挪动：另一个方向上超出了，往回挪到刚好不超出。
+ * 3. 另一个方向：一级选单左边对齐按钮，右边超出就改成右边对齐按钮（同 VS Code 的 `layout2d`），都不行才贴边；
+ *    二级选单往回挪到刚好不超出。
  * 4. 限高：上下都放不下时压低高度，选单里滚动。
  * 坐标都是相对 webview 左上角的像素（`getBoundingClientRect` 的口径）。
  */
@@ -68,9 +69,18 @@ function mainAxis(
   return after >= before ? { start: end + gap, max: after } : { start: 0, max: before };
 }
 
+/**
+ * 一级选单的左右：左边和按钮左边对齐；右边超出就改成右边和按钮右边对齐；两边都不行就贴着右边缘（不小于 0）。
+ */
+function alignAxis(start: number, end: number, length: number, viewport: number): Span {
+  if (start + length <= viewport) return { start: Math.max(0, start) };
+  if (end - length >= 0) return { start: end - length };
+  return { start: Math.max(0, viewport - length) };
+}
+
 /** 另一个方向：从 `start` 起，超出就往回挪；比整个可见范围还长时 `limit` 为真就限长。 */
-function crossAxis(start: number, length: number, viewport: number, limit: boolean): Span {
-  if (length > viewport) return limit ? { start: 0, max: viewport } : { start: 0 };
+function crossAxis(start: number, length: number, viewport: number): Span {
+  if (length > viewport) return { start: 0, max: viewport };
   return { start: Math.max(0, Math.min(start, viewport - length)) };
 }
 
@@ -86,7 +96,7 @@ export function placePopup(anchor: Rect, side: PopupSide, popup: Size, viewport:
         BELOW_GAP,
         true,
       );
-      const x = crossAxis(anchor.left, popup.width, viewport.width, false);
+      const x = alignAxis(anchor.left, anchor.left + anchor.width, popup.width, viewport.width);
       return { left: x.start, top: y.start, ...(y.max === undefined ? {} : { maxHeight: y.max }) };
     }
     case PopupSide.Right: {
@@ -98,7 +108,7 @@ export function placePopup(anchor: Rect, side: PopupSide, popup: Size, viewport:
         0,
         false,
       );
-      const y = crossAxis(anchor.top, popup.height, viewport.height, true);
+      const y = crossAxis(anchor.top, popup.height, viewport.height);
       return { left: x.start, top: y.start, ...(y.max === undefined ? {} : { maxHeight: y.max }) };
     }
     default:

@@ -21,9 +21,18 @@ describe("一级选单（按钮下方）", () => {
     });
   });
 
-  it("右边超出：往左挪到刚好不超出；左边超出：挪到 0", () => {
-    expect(placePopup(button(380, 10), PopupSide.Below, menu, viewport).left).toBe(250);
+  it("右边超出：改成右边和按钮右边对齐；按钮露出左边缘：贴到 0", () => {
+    expect(placePopup(button(380, 10), PopupSide.Below, menu, viewport).left).toBe(252);
     expect(placePopup(button(-5, 10), PopupSide.Below, menu, viewport).left).toBe(0);
+  });
+
+  it("左右都放不下（比 webview 还宽、或右对齐也越过左边）：贴着右边缘，不小于 0", () => {
+    expect(
+      placePopup(button(100, 10), PopupSide.Below, { width: 380, height: 100 }, viewport).left,
+    ).toBe(20);
+    expect(
+      placePopup(button(100, 10), PopupSide.Below, { width: 500, height: 100 }, viewport).left,
+    ).toBe(0);
   });
 
   it("上下都放不下：放在空间大的那边并限高", () => {
