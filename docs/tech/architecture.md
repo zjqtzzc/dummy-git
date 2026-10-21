@@ -87,7 +87,7 @@
 
 **选**：
 - 我们自己的界面（Log 面板、Commit 面板、提交列表）用 Vue 3 单文件组件写，脚本部分一律 TypeScript，Vite 打包。
-- 控件用 vscode-elements：按钮、输入框、复选框、分隔布局、右键菜单、进度条、图标。外观和键盘操作跟 VS Code 一致。Vue 对自定义标签是正式支持，事件直接写 `@vsc-split-layout-change`。
+- 控件用 vscode-elements：按钮、输入框、复选框、分隔布局、进度条、图标。外观和键盘操作跟 VS Code 一致。右键菜单不用它，用 VS Code 原生的（`webview/context`，`tech/decisions.md`「右键菜单：每个菜单项一个键」）。Vue 对自定义标签是正式支持，事件直接写 `@vsc-split-layout-change`。
 - 图标用 `@vscode/codicons`，vscode-elements 本来就依赖它。
 - 样式只用 VS Code 注入的 `--vscode-*` 主题变量。
 

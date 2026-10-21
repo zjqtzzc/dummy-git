@@ -46,4 +46,4 @@
 
 ## 以后可能做（`product/backlog.md`）
 
-Drop（单条，`rebase --autostash --onto <父提交> <它>`）；Squash（等提交列表多选；否决 `Squash Commits up to Here…`）；交互式 rebase（fixup、把一条并进另一条都归它）。
+Drop（单条，`rebase --autostash --onto <父提交> <它>`）；Squash（提交列表已能多选，还缺确认说明的对话框；否决 `Squash Commits up to Here…`）；交互式 rebase（fixup、把一条并进另一条都归它）。
