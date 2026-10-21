@@ -5,7 +5,7 @@
 
 ## 存
 
-Commit 面板工具栏上，Rollback 旁边的 **Stash** 按钮（codicon `archive`）。有改动就能点，不问名字，说明用 git 自动生成的（`WIP on main: 1a2b3c4 fix login`）。
+Commit 面板工具栏上，Rollback 旁边的 **Stash** 按钮（`AppIcon.Stash`：箭头落进托盘）。有改动就能点，不问名字，说明用 git 自动生成的（`WIP on main: 1a2b3c4 fix login`）。
 
 | 勾选 | 按钮提示 | 做法 |
 |---|---|---|

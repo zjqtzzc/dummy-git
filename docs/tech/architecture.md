@@ -87,14 +87,16 @@
 
 **选**：
 - 我们自己的界面（Log 面板、Commit 面板、提交列表）用 Vue 3 单文件组件写，脚本部分一律 TypeScript，Vite 打包。
-- 控件用 vscode-elements：按钮、输入框、复选框、分隔布局、进度条、图标。外观和键盘操作跟 VS Code 一致。右键菜单不用它，用 VS Code 原生的（`webview/context`，`tech/decisions.md`「右键菜单：每个菜单项一个键」）。Vue 对自定义标签是正式支持，事件直接写 `@vsc-split-layout-change`。
-- 图标用 `@vscode/codicons`，vscode-elements 本来就依赖它。
+- 控件用 vscode-elements：文字按钮、输入框、复选框、分隔布局、进度条。外观和键盘操作跟 VS Code 一致。
+- **工具栏上的图标按钮一律用 `webview/src/ui/ToolButton.vue`**，不手写 `<button>`：悬停、焦点框、置灰、提示文字只在这一处。例外两处，都不是工具栏按钮：冲突组标题行的继续、放弃（带颜色的实心操作按钮，`product/features/conflicts.md`），过滤栏里生效条件后面的 ×（文字按钮的一部分）。右键菜单不用它，用 VS Code 原生的（`webview/context`，`tech/decisions.md`「右键菜单：每个菜单项一个键」）。Vue 对自定义标签是正式支持，事件直接写 `@vsc-split-layout-change`。
+- 图标三种来源（`webview/src/logic/icons.ts`）：`@vscode/codicons`（vscode-elements 本来就依赖它）；codicon 没有的、或 IDEA 的更好认的，自己画成线条（规则见 `tech/decisions.md`「图标」）；文件图标用打包的 Seti（第 5 题）。
 - 样式只用 VS Code 注入的 `--vscode-*` 主题变量。
 
 **vscode-elements 不够的地方**（2.5.1 版实测）：
 - `vscode-table` 没有虚拟滚动，几万条提交撑不住。IDEA 的 Swing 表格天生只画可见的那几行，浏览器里每一行都是真实的 DOM 节点，这件事得自己做。提交列表自己写，见第 9 题。
 - `vscode-tree` 只给一个 22px 的图标位、不发展开事件、行的点击与焦点在它内部、没有虚拟滚动，复选框放不进去。所有树改用自己画的基础组件 `tree/Tree.vue`，外观与键盘照 VS Code 原生的树（`product/features/trees.md`）。
 - `vscode-split-layout` 一次只分两块，三栏嵌套两层。
+- `vscode-toolbar-button` 只认 codicon，也没有 `disabled`：图标按钮自己做（`ui/ToolButton.vue`），样式照它。
 
 **工具链要跟着改**，否则 `.vue` 文件会漏出类型纪律：
 - 类型检查从 `tsc` 换成 `vue-tsc`。
