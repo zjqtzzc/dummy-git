@@ -286,11 +286,12 @@ IntelliJ：取消信号来自 IDE 全局的 `ProgressIndicator`/`ProcessCanceled
 - 分组（`GitRefManager.groupForTable`）：当前分支单独一组排第一；**本地分支和它跟踪的远程分支合并成一个标签**；其余按类型分组；HEAD 并进第一组。
 - 标签顺序（`GitLabelComparator`）：HEAD → 当前分支 → master/main → origin/master|main → 本地分支 → 远程分支 → tag。
 
-### 7.8 两处高亮（不在第 8 阶段需求里）
+### 7.8 三处高亮（不在第 8 阶段需求里）
 
 - `MergeCommitsHighlighter`：合并提交的文字变灰。
 - `VcsLogCommitsHighlighter`：当前用户的提交，作者名加粗（仓库只有一个作者、或正按 Me 过滤时不加粗）。
-- `CurrentBranchHighlighter`：当前分支包含的提交加一层浅色背景（按单个别的分支过滤时才开）。
+- `CurrentBranchHighlighter`：当前分支包含的提交加一层浅色背景。不过滤时也开着；只在按当前分支或 HEAD 过滤、或 HEAD 游离时关掉。
+- 选中的行用选中的背景色，灰字和浅色背景都让给它；加粗照旧。
 - 我们的需求池里有「合并提交 / 当前分支提交高亮」。
 
 ## 9. 改写历史（第 9 阶段用）
