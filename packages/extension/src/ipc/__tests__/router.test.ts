@@ -27,6 +27,7 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     getRepositories: async (): Promise<readonly string[]> => [],
     getSkeleton: async (): Promise<CommitSkeleton[]> => [],
     getHeadBases: async (): Promise<readonly string[]> => [],
+    getIdentity: async (): Promise<null> => null,
     getCommitDetails: async (): Promise<Commit[]> => [],
     getRefs: async (): Promise<Ref[]> => [],
     openDiff: async (): Promise<null> => null,

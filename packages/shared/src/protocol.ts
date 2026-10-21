@@ -74,6 +74,14 @@ export interface Commands {
     params: { repo: string; branch?: string };
     result: readonly string[];
   };
+  /**
+   * 「我」：git 配置的 `user.name` / `user.email`，按仓库的 mailmap 换算过，和详情里的作者同一口径（My Commits 高亮）。
+   * 名字没配时为 `null`。
+   */
+  getIdentity: {
+    params: { repo: string };
+    result: { readonly name: string; readonly email: string } | null;
+  };
   /** 按 hash 取详情：作者、时间、完整消息。只取要显示的那几十条。 */
   getCommitDetails: {
     params: { repo: string; hashes: readonly string[] };

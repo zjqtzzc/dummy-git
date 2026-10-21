@@ -77,6 +77,8 @@ const inFlight = new Set<string>();
 const loaded = ref(false);
 /** 分支、tag 与 HEAD，左栏用。 */
 const refs = ref<Ref[]>([]);
+/** 「我」（mailmap 换算过，My Commits 高亮），和骨架一起取。没配名字时为 `null`。 */
+const me = ref<{ readonly name: string; readonly email: string } | null>(null);
 /** 骨架里从 HEAD 能走到的起点（`getHeadBases`），和骨架一起取。 */
 const headBases = ref<readonly string[]>([]);
 const selection = ref<Selection>(EMPTY_SELECTION);
@@ -421,9 +423,10 @@ async function load(repository: string): Promise<void> {
     }
     const params =
       filtered === undefined ? { repo: repository } : { repo: repository, branch: filtered.ref };
-    const [fetchedSkeleton, fetchedBases] = await Promise.all([
+    const [fetchedSkeleton, fetchedBases, fetchedMe] = await Promise.all([
       props.client.request("getSkeleton", params),
       props.client.request("getHeadBases", params),
+      props.client.request("getIdentity", { repo: repository }),
     ]);
     const previous = cursorRow();
     // 内容没变就沿用旧数组：refs 变了而提交没变（fetch 没拉到新东西、切到同一提交上的分支）时，
@@ -432,6 +435,9 @@ async function load(repository: string): Promise<void> {
     skeleton.value = keepIfSame(skeleton.value, fetchedSkeleton, sameCommit);
     refs.value = fetchedRefs;
     headBases.value = keepIfSame(headBases.value, fetchedBases);
+    if (fetchedMe?.name !== me.value?.name || fetchedMe?.email !== me.value?.email) {
+      me.value = fetchedMe;
+    }
     loaded.value = true;
     await nextTick();
 
@@ -726,6 +732,7 @@ onUnmounted(() => resizes.disconnect());
           :rewordable="rewordableCommits"
           :merges="merges"
           :in-head="inHead"
+          :me="me"
           :highlights="highlights"
           @copy="copyCommits"
           @visible="fetchVisible"

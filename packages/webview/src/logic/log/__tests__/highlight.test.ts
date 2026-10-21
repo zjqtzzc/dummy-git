@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { skeleton } from "../graph/__tests__/skeleton.js";
-import { Highlight, headReach, rowHighlight } from "../highlight.js";
+import { Highlight, headReach, isMine, rowHighlight } from "../highlight.js";
 
 describe("headReach", () => {
   // e 是 HEAD，合并了 side 上的 x；y 只在别的分支上。
@@ -51,5 +51,19 @@ describe("rowHighlight", () => {
     expect(rowHighlight(every, new Set([Highlight.CurrentBranch, Highlight.MergeCommits]))).toEqual(
       { tinted: true, dimmed: true, bold: false },
     );
+  });
+});
+
+describe("isMine", () => {
+  const me = { name: "Ann", email: "ann@x" };
+
+  it("名字和邮箱都相等才是", () => {
+    expect(isMine({ name: "Ann", email: "ann@x" }, me)).toBe(true);
+    expect(isMine({ name: "Ann", email: "ann@y" }, me)).toBe(false);
+    expect(isMine({ name: "ann", email: "ann@x" }, me)).toBe(false);
+  });
+
+  it("没有「我」时都不是", () => {
+    expect(isMine({ name: "Ann", email: "ann@x" }, null)).toBe(false);
   });
 });

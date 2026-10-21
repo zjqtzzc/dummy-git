@@ -378,6 +378,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         repository.location.root,
         branch === undefined ? {} : { branch },
       ),
+    getIdentity: async () => (await repository.run(getIdentity, repository.location.root)) ?? null,
     getCommitDetails: ({ hashes }) =>
       repository.run(getCommitDetails, repository.location.root, hashes),
     getRefs: async () => {

@@ -217,6 +217,10 @@ const PARAM_GUARDS = {
   getRepositories: () => ({}),
   getSkeleton: skeletonParams,
   getHeadBases: skeletonParams,
+  getIdentity: (raw: Record<string, unknown>) => {
+    const repo = raw["repo"];
+    return typeof repo === "string" ? { repo } : undefined;
+  },
   getCommitDetails: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const hashes = asStringArray(raw["hashes"]);

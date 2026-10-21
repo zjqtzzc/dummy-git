@@ -30,6 +30,17 @@ export function headReach(
   return found;
 }
 
+/**
+ * 是不是我的提交：名字和邮箱都相等。两边都是 mailmap 之后的（详情的 `%aN` / `%aE`，`getIdentity` 换算过的「我」），
+ * 和 User 过滤的 Me 是同一批人。没有「我」（没配名字）时都不是。
+ */
+export function isMine(
+  author: { readonly name: string; readonly email: string },
+  me: { readonly name: string; readonly email: string } | null,
+): boolean {
+  return me !== null && author.name === me.name && author.email === me.email;
+}
+
 /** 一行的样式：三种高亮各管一样（背景、文字颜色、字形），互不冲突，全叠上。 */
 export interface RowHighlight {
   readonly tinted: boolean;

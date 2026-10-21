@@ -52,6 +52,7 @@ const filesStub = async (): Promise<CommitFileChange[]> => [];
 const reposStub = async (): Promise<readonly string[]> => [];
 const refsStub = async (): Promise<Ref[]> => [];
 const openDiffStub = async (): Promise<null> => null;
+const identityStub = async (): Promise<{ name: string; email: string } | null> => null;
 const statusStub = async (): Promise<StatusSnapshot> => ({ changes: [] });
 
 /** 基线：三条齐全、类型正确 —— 必须编译通过，否则下面两条的对照失去意义。 */
@@ -59,6 +60,7 @@ export const _baseline = defineHandlers({
   getRepositories: reposStub,
   getSkeleton: skeletonStub,
   getHeadBases: reposStub,
+  getIdentity: identityStub,
   getCommitDetails: detailsStub,
   getRefs: refsStub,
   openDiff: openDiffStub,
@@ -135,6 +137,7 @@ const extraHandlers = {
   getRepositories: reposStub,
   getSkeleton: skeletonStub,
   getHeadBases: reposStub,
+  getIdentity: identityStub,
   getCommitDetails: detailsStub,
   getRefs: refsStub,
   openDiff: openDiffStub,

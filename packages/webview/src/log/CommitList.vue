@@ -5,7 +5,7 @@ import { codicon, type IconRef, IconSize } from "../logic/icons.js";
 import { ColumnHandle, type Columns, resizeColumns, restoreColumns } from "../logic/log/columns.js";
 import { commitMenuContext } from "../logic/log/commitMenu.js";
 import type { Graph } from "../logic/log/graph/types.js";
-import { type Highlight, rowHighlight } from "../logic/log/highlight.js";
+import { type Highlight, isMine, rowHighlight } from "../logic/log/highlight.js";
 import type { RefLabel } from "../logic/log/refLabels.js";
 import { containerMenuContext } from "../logic/menuContext.js";
 import {
@@ -53,6 +53,8 @@ const props = defineProps<{
   merges: ReadonlySet<string>;
   /** HEAD 包含的提交，开着 Current Branch 时带浅色背景。 */
   inHead: ReadonlySet<string>;
+  /** 「我」（mailmap 换算过），开着 My Commits 时我的提交作者加粗。没配名字时为 `null`。 */
+  me: { readonly name: string; readonly email: string } | null;
   /** 开着的高亮。 */
   highlights: ReadonlySet<Highlight>;
 }>();
@@ -75,14 +77,19 @@ const range = computed(() =>
 const rows = computed(() =>
   props.hashes.slice(range.value.start, range.value.end).map((hash, i) => {
     const index = range.value.start + i;
+    const commit = props.details.get(hash);
     return {
       hash,
       index,
-      commit: props.details.get(hash),
+      commit,
       graph: graphOf(index),
       labels: props.labels.get(hash) ?? [],
       highlight: rowHighlight(
-        { inHead: props.inHead.has(hash), merge: props.merges.has(hash), mine: false },
+        {
+          inHead: props.inHead.has(hash),
+          merge: props.merges.has(hash),
+          mine: commit !== undefined && isMine(commit.author, props.me),
+        },
         props.highlights,
       ),
     };
@@ -381,7 +388,9 @@ defineExpose({
             </span>
           </span>
           <template v-if="row.commit !== undefined">
-            <span class="cell dim">{{ row.commit.author.name }}</span>
+            <span :class="['cell', 'dim', { bold: row.highlight.bold }]">{{
+              row.commit.author.name
+            }}</span>
             <span class="cell dim">{{ formatTime(row.commit.author.at, now) }}</span>
           </template>
           <template v-else>
@@ -462,6 +471,10 @@ defineExpose({
  */
 .row.tinted:not(.selected) {
   background-image: linear-gradient(var(--current-branch-tint), var(--current-branch-tint));
+}
+/* 只加粗作者那一列（同 IDEA 新界面），选中时照旧加粗。 */
+.cell.bold {
+  font-weight: bold;
 }
 .row.dimmed:not(.selected),
 .row.dimmed:not(.selected) .dim {
