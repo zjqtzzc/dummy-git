@@ -1,130 +1,90 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
-import { codicon, IconSize } from "../logic/icons.js";
-import { clickPopupItem, PopupClick, type PopupItem, PopupItemKind } from "../logic/popupMenu.js";
-import { type Placement, type PopupSide, placePopup, type Rect } from "../logic/popupPlacement.js";
-import Icon from "./Icon.vue";
+import { computed, onUnmounted, ref } from "vue";
+import {
+  clickPopupItem,
+  type OpenPath,
+  openLevels,
+  PopupClick,
+  type PopupItem,
+  pathAfterClick,
+  planHover,
+} from "../logic/popupMenu.js";
+import { PopupSide, type Rect } from "../logic/popupPlacement.js";
+import PopupList from "./PopupList.vue";
 
 /**
- * 一级浮层选单：贴着 `anchor` 弹出，位置由 `placePopup` 算（上下左右都不超出 webview）。
- * 只画、只响应点击；点外面、Esc、失去焦点收起由打开它的按钮管。
- * 先按自然尺寸画在看不见的地方量出大小，再挪到算好的位置。
+ * 浮层选单：一级选单贴着 `anchor` 往下弹，开着的二级选单逐级往右弹，每一级是一个 `PopupList`，平铺画出来。
+ * 管开着哪一串（`logic/popupMenu.ts` 的 `planHover` 等）和那一个等着的计时器；
+ * 点外面、Esc、失去焦点收起由打开它的按钮管。
  */
-const props = defineProps<{ items: readonly PopupItem[]; anchor: Rect; side: PopupSide }>();
+const props = defineProps<{ items: readonly PopupItem[]; anchor: Rect }>();
 const emit = defineEmits<{ close: [] }>();
 
-const box = ref<HTMLElement>();
-const placement = ref<Placement>();
+const path = ref<OpenPath>([]);
+/** 第 k 个是打开第 k+1 级的那一行，第 k+1 级从它旁边弹出。和 `path` 一样长。 */
+const rows = ref<readonly Rect[]>([]);
 
-onMounted(() => {
-  if (box.value === undefined) return;
-  placement.value = placePopup(
-    props.anchor,
-    props.side,
-    { width: box.value.offsetWidth, height: box.value.offsetHeight },
-    { width: window.innerWidth, height: window.innerHeight },
-  );
-});
-
-const style = computed(() =>
-  placement.value === undefined
-    ? { left: "0px", top: "0px", visibility: "hidden" as const }
-    : {
-        left: `${placement.value.left}px`,
-        top: `${placement.value.top}px`,
-        ...(placement.value.maxHeight === undefined
-          ? {}
-          : { maxHeight: `${placement.value.maxHeight}px` }),
-      },
+const levels = computed(() =>
+  openLevels(props.items, path.value).map((items, level) => ({
+    items,
+    anchor: level === 0 ? props.anchor : rows.value[level - 1],
+    side: level === 0 ? PopupSide.Below : PopupSide.Right,
+    openIndex: path.value[level],
+    // 换了打开的那一项，下一级重新量尺寸、重新定位。
+    key: path.value.slice(0, level).join("/"),
+  })),
 );
 
-function onClick(item: PopupItem): void {
+let pending: ReturnType<typeof setTimeout> | undefined;
+function cancel(): void {
+  if (pending !== undefined) clearTimeout(pending);
+  pending = undefined;
+}
+onUnmounted(cancel);
+
+/**
+ * 停在或点了第 `level` 级的一行之后改成 `next`：前 `level` 级不变，
+ * `next` 比它长就是从这一行新开了一级，记下这一行。
+ */
+function open(next: OpenPath, level: number, rect: Rect): void {
+  const kept = rows.value.slice(0, level);
+  rows.value = next.length > level ? [...kept, rect] : kept;
+  path.value = next;
+}
+
+function onHover(level: number, index: number, rect: Rect): void {
+  const item = levels.value[level]?.items[index];
+  if (item === undefined) return;
+  cancel();
+  const plan = planHover(path.value, level, index, item);
+  if (plan === undefined) return;
+  pending = setTimeout(() => {
+    pending = undefined;
+    open(plan.path, level, rect);
+  }, plan.delay);
+}
+
+function onClick(level: number, index: number, rect: Rect): void {
+  const item = levels.value[level]?.items[index];
+  if (item === undefined) return;
+  cancel();
+  open(pathAfterClick(path.value, level, index, item), level, rect);
   if (clickPopupItem(item) === PopupClick.Close) emit("close");
 }
+
+
 </script>
 
 <template>
-  <div ref="box" class="popup" :style="style" @contextmenu.prevent>
-    <template v-for="(item, index) in items" :key="index">
-      <div v-if="item.kind === PopupItemKind.Separator" :class="['separator', { first: index === 0 }]">
-        <span v-if="item.label !== undefined" class="section">{{ item.label }}</span>
-      </div>
-      <div v-else :class="['item', { disabled: item.disabled === true }]" @click="onClick(item)">
-        <span class="check">
-          <Icon
-            v-if="item.kind === PopupItemKind.Toggle && item.checked"
-            :icon="codicon('check')"
-            :size="IconSize.Inline"
-          />
-        </span>
-        <span class="label">{{ item.label }}</span>
-        <span class="more">
-          <Icon
-            v-if="item.kind === PopupItemKind.Submenu"
-            :icon="codicon('chevron-right')"
-            :size="IconSize.Inline"
-          />
-        </span>
-      </div>
-    </template>
-  </div>
+  <PopupList
+    v-for="(level, index) in levels"
+    :key="level.key"
+    :items="level.items"
+    :anchor="level.anchor ?? anchor"
+    :side="level.side"
+    :open-index="level.openIndex"
+    @hover="(i, rect) => onHover(index, i, rect)"
+    @click="(i, rect) => onClick(index, i, rect)"
+    @leave="cancel"
+  />
 </template>
-
-<style scoped>
-/* 颜色、阴影照 VS Code 自己的菜单（`menu.*`、`widget.shadow`）。 */
-.popup {
-  position: fixed;
-  z-index: 100;
-  min-width: 160px;
-  overflow-y: auto;
-  padding: 4px 0;
-  border: 1px solid var(--vscode-menu-border, transparent);
-  border-radius: 5px;
-  background: var(--vscode-menu-background);
-  color: var(--vscode-menu-foreground);
-  box-shadow: 0 2px 8px var(--vscode-widget-shadow);
-  user-select: none;
-}
-.item {
-  display: flex;
-  align-items: center;
-  height: 24px;
-  margin: 0 4px;
-  padding: 0 6px 0 2px;
-  border-radius: 3px;
-  white-space: nowrap;
-  cursor: default;
-}
-.item:hover:not(.disabled) {
-  background: var(--vscode-menu-selectionBackground);
-  color: var(--vscode-menu-selectionForeground);
-}
-.item.disabled {
-  opacity: 0.4;
-}
-/* 勾的那一列每行都占着，有勾没勾的文字都对齐。 */
-.check,
-.more {
-  display: flex;
-  justify-content: center;
-  width: 20px;
-  flex: none;
-}
-.label {
-  flex: 1;
-}
-.separator {
-  margin: 4px 10px;
-  border-top: 1px solid var(--vscode-menu-separatorBackground);
-}
-.separator.first {
-  margin-top: 0;
-  border-top: none;
-}
-.section {
-  display: block;
-  padding-top: 4px;
-  color: var(--vscode-descriptionForeground);
-  font-size: 0.9em;
-}
-</style>
