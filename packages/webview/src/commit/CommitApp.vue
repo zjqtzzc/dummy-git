@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { DiffOpenMode, GitDomain, type OngoingOperation } from "@dummy-git/shared";
-import { VscodeCheckbox } from "@vscode-elements/elements/dist/vscode-checkbox/vscode-checkbox.js";
 import { VscodeTextarea } from "@vscode-elements/elements/dist/vscode-textarea/vscode-textarea.js";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { type Client, report } from "../logic/client.js";
@@ -22,7 +21,9 @@ import {
 import { AppIcon, appIcon, codicon } from "../logic/icons.js";
 import type { MenuViews } from "../logic/menuItems.js";
 import { type FileEntry, groupNodeId, keepChecked } from "../logic/tree/fileTree.js";
+import { CheckState } from "../logic/tree/tree.js";
 import FileTree from "../tree/FileTree.vue";
+import CheckBox from "../ui/CheckBox.vue";
 import Icon from "../ui/Icon.vue";
 import ToolButton from "../ui/ToolButton.vue";
 import { viewState } from "../vscodeApi.js";
@@ -144,9 +145,8 @@ function onInput(event: Event): void {
   saveLater();
 }
 
-async function onAmendChange(event: Event): Promise<void> {
-  if (!(event.target instanceof VscodeCheckbox)) return;
-  if (!event.target.checked) {
+async function onAmendToggle(): Promise<void> {
+  if (amend.value) {
     amend.value = false;
     message.value = draft.value;
     save();
@@ -489,11 +489,11 @@ onMounted(async () => {
 
     <div class="footer">
       <!-- 还没有任何提交时没有可改的，置灰。 -->
-      <vscode-checkbox
+      <CheckBox
         label="Amend"
-        :checked="amend"
+        :state="amend ? CheckState.Checked : CheckState.Unchecked"
         :disabled="head === undefined || operation !== null"
-        @change="onAmendChange"
+        @toggle="onAmendToggle"
       />
       <vscode-textarea
         ref="messageBox"

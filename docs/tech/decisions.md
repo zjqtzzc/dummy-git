@@ -228,6 +228,7 @@ IDEA 新界面的图标很多是把线条描成了填充轮廓：照形状**重�
 - 第 7、9 阶段：CherryPick、Edit（改说明）、Patch、Diff
 - 以后可能用：Settings、Refresh、Copy、Star、History（Paths 过滤或文件历史）
 codicon 的照抄版（Clear、History 等）不用搬，codicon 字体本来就有。Rollback、Delete 也不搬：codicon 的 `discard`、`trash` 够好。
+复选框里的勾和横条是控件的一部分，不算图标：画在 `ui/CheckBox.vue` 里，线宽 2（照 IDEA 新界面的 `checkBoxSelected.svg`），不进 `ICON_STROKES`。
 
 ## D.6(a) 放宽：消费者已排进当前阶段实现顺序的，可以先加
 

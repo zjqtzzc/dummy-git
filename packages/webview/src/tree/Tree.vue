@@ -27,6 +27,7 @@ import {
   treeKeyAction,
 } from "../logic/tree/tree.js";
 import { ROW_HEIGHT, renderRange, scrollIntoView } from "../logic/virtualList.js";
+import CheckBox from "../ui/CheckBox.vue";
 import Icon from "../ui/Icon.vue";
 
 /**
@@ -263,12 +264,6 @@ function onKeydown(event: KeyboardEvent): void {
   }
 }
 
-/** 复选框里画什么：勾、横杠、空。codicon 的类名，表放在用它的模块里。 */
-const CHECK_ICON: Readonly<Record<CheckState, string>> = {
-  [CheckState.Checked]: "codicon-check",
-  [CheckState.Mixed]: "codicon-dash",
-  [CheckState.Unchecked]: "",
-};
 
 /** 行首的图标：展开着且有 `openedIcon` 时换成它。 */
 function iconOf(row: TreeRow): IconRef | undefined {
@@ -312,7 +307,7 @@ function iconOf(row: TreeRow): IconRef | undefined {
             row.expanded === undefined ? '' : row.expanded ? 'codicon-chevron-down' : 'codicon-chevron-right',
           ]"
         />
-        <span v-if="check !== undefined" :class="['check', 'codicon', CHECK_ICON[check]]" />
+        <CheckBox v-if="check !== undefined" class="check" :state="check" />
         <span v-if="icon !== undefined" class="icon" :style="{ color: row.node.iconColor }">
           <Icon :icon="icon" />
         </span>
@@ -391,20 +386,9 @@ function iconOf(row: TreeRow): IconRef | undefined {
   font-size: 16px;
   color: var(--vscode-icon-foreground);
 }
+/* 点在复选框上由 `onClick` 认（`.check`），复选框本身只画。 */
 .check {
-  box-sizing: border-box;
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
   margin: 0 3px;
-  font-size: 14px;
-  border: 1px solid var(--vscode-checkbox-border);
-  border-radius: 3px;
-  background: var(--vscode-checkbox-background);
-  color: var(--vscode-checkbox-foreground);
 }
 .icon {
   flex: none;
