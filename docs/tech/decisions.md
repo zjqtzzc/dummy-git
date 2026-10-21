@@ -219,7 +219,7 @@ IDEA 新界面的图标很多是把线条描成了填充轮廓：照形状**重�
 - 第 5 阶段跳转（若做按钮）：Locate（准星）
 - 第 7 阶段冲突组标题行：Continue（»）、Abort（×）——原图是白色画在彩色底上，搬时改为绿色和红色，取主题里的语义颜色。Skip（›）不做（进需求池），不搬
 - 第 7、9 阶段：CherryPick、Edit（改说明）、Patch、Diff
-- 以后可能用：ViewOptions（眼睛）、Settings、Refresh、Copy、Star、History（Paths 过滤或文件历史）
+- 以后可能用：Settings、Refresh、Copy、Star、History（Paths 过滤或文件历史）
 codicon 的照抄版（Clear、History 等）不用搬，codicon 字体本来就有。Rollback、Delete 也不搬：codicon 的 `discard`、`trash` 够好。
 
 ## D.6(a) 放宽：消费者已排进当前阶段实现顺序的，可以先加

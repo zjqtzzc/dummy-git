@@ -74,7 +74,7 @@ committed by Bob <bob@x.com>  2026/9/21 09:00     ← 灰色
 - **一直生效**（2026-10-21 项目负责人定）：不做 IDEA 的自动关闭（只有一个作者、按 Me 过滤时不加粗；按当前分支过滤时不涂，`ui/highlighters/CurrentBranchHighlighter.java:49-57`）。按当前分支过滤时整列都涂。否决照 IDEA：同一个开关会因过滤条件不同而时灵时不灵。
 - **怎么叠**：三种各管背景、文字颜色、字形，互不冲突，全叠上。**选中的行只用选中色**，浅蓝和灰字让给它，加粗照旧（同 IDEA：选中时底子是选中色，涂背景、变灰的高亮器在选中时不给值，`ui/table/VcsLogGraphTable.java:765`、`:936-940`）。浅蓝是半透明的一层画在背景色之上，悬停时悬停色从下面透上来，还看得出浅蓝。
 - **Current Branch 怎么算**：IDEA 的底图永远是全部分支的完整图，过滤只决定显示哪些行，所以从 HEAD 往下走就行（`data/CurrentBranchConditionCache.kt:46-56`）。我们按分支 B 过滤时骨架换成 B 的历史，里面未必有 HEAD，所以起点由扩展给（`getHeadBases`，`git merge-base --all HEAD <骨架的起点>`）：不按分支过滤时就是 HEAD；按 B 过滤时是 HEAD 与 B 的合并基点，B 的祖先里 HEAD 也包含的正好是它们往下的全部，和 IDEA 涂出来的同一批；没有共同祖先（孤儿分支）时一条都不涂。页面从起点沿全部父提交在骨架里往下走，走出骨架就停。起点在取过 refs 之后和骨架并行取（`tech/decisions.md`「Log 加载：先 refs，后骨架」），HEAD 一变 refs 就过期，起点跟着重取。耗时见 `tech/performance.md` §2.2。否决按别的分支过滤时不涂：又成了自动关闭。否决把 HEAD 也拉进骨架：骨架就不再只是 B 的历史，一万条的名额也被分走。
-- **View Options**：过滤栏最右边的 `eye` 按钮，点开是原生多选 QuickPick（`pickMany`），标题 `Highlight`，`My Commits`、`Merge Commits`、`Current Branch` 三项，勾着的就是开着的，取消不变。IDEA 是工具栏右上角弹出菜单里的 Highlight 一节（`platform/vcs-log/impl/resources/intellij.platform.vcs.log.impl.xml:257-269`）。以后有别的显示选项再往里加；否决三个开关各占一个按钮：过滤栏放不下。
+- **View Options**：过滤栏最右边的眼睛按钮（`AppIcon.ViewOptions`，旧插件的 `ViewOptionsIcon` 搬过来的线条图标；IDEA 用的是 `AllIcons.Actions.GroupBy`），点开是原生多选 QuickPick（`pickMany`），标题 `Highlight`，`My Commits`、`Merge Commits`、`Current Branch` 三项，勾着的就是开着的，取消不变。IDEA 是工具栏右上角弹出菜单里的 Highlight 一节（`platform/vcs-log/impl/resources/intellij.platform.vcs.log.impl.xml:257-269`）。以后有别的显示选项再往里加；否决三个开关各占一个按钮：过滤栏放不下。
 - 开关存进 `viewState`，存的是**关掉的**那几种：以后新加的默认开（同 IDEA：没存过的高亮取 `true`，`impl/VcsLogUiPropertiesImpl.kt:30`）。落盘的字符串走映射表，认不出的当作没有。
 
 ## 复制

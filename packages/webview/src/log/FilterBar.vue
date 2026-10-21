@@ -89,7 +89,7 @@ function nameOf(kind: FilterKind): string {
     </template>
     <ToolButton
       class="options"
-      :icon="codicon('eye')"
+      :icon="appIcon(AppIcon.ViewOptions)"
       title="View Options"
       @click="emit('options')"
     />

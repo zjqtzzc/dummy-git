@@ -62,6 +62,8 @@ export enum AppIcon {
   Close = "close",
   /** ▾：下拉。 */
   Dropdown = "dropdown",
+  /** 眼睛：View Options，开关显示选项。 */
+  ViewOptions = "viewOptions",
 }
 
 /** 托盘：方框，顶边中间凹下去一块，Stash / Unstash 的箭头从这里进出。 */
@@ -91,4 +93,9 @@ export const ICON_STROKES: Readonly<Record<AppIcon, readonly string[]>> = {
   [AppIcon.Search]: ["M11.5 7A4.5 4.5 0 1 1 2.5 7A4.5 4.5 0 1 1 11.5 7Z", "M10.2 10.2L13.5 13.5"],
   [AppIcon.Close]: ["M4.5 11.5L11.5 4.5", "M11.5 11.5L4.5 4.5"],
   [AppIcon.Dropdown]: ["M4 6L8 10L12 6"],
+  // 眼眶上下两道弧，中间一个圆的瞳孔。
+  [AppIcon.ViewOptions]: [
+    "M8 4C4.5 4 2 8 2 8C2 8 4.5 12 8 12C11.5 12 14 8 14 8C14 8 11.5 4 8 4Z",
+    "M10 8A2 2 0 1 1 6 8A2 2 0 1 1 10 8Z",
+  ],
 };
