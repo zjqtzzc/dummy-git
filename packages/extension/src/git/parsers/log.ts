@@ -266,7 +266,18 @@ export function outgoingArgs(
  */
 export function matchArgs(hashes: readonly string[], condition: MatchCondition): StdinCommand {
   return {
-    args: [...LOG_PREFIX, "--format=%H", "--no-walk", "--stdin", "-F", ...conditionArgs(condition)],
+    args: [
+      // `--author` 比的是走过 mailmap 的「名字 <邮箱>」（git 2.25、2.43 实测），和列表显示的作者、
+      // User 列出来的作者是同一个人。用户可能在配置里关掉 `log.mailmap`，这里写死，三处才对得上。
+      "-c",
+      "log.mailmap=true",
+      ...LOG_PREFIX,
+      "--format=%H",
+      "--no-walk",
+      "--stdin",
+      "-F",
+      ...conditionArgs(condition),
+    ],
     input: stdinOf(hashes),
   };
 }
@@ -276,7 +287,7 @@ function conditionArgs(condition: MatchCondition): string[] {
     case MatchKind.Text:
       return ["-i", `--grep=${condition.text}`];
     case MatchKind.Author:
-      // git 拿 `--author` 去比作者那一行的「名字 <邮箱>」，邮箱为空时是 `名字 <>`。
+      // git 拿 `--author` 去比作者的「名字 <邮箱>」（走过 mailmap），邮箱为空时是 `名字 <>`。
       // `-F` 下是「包含」：`Bob <b@x>` 也会命中 `JimBob <b@x>`，名字与邮箱同时撞上的极少，接受。
       return [`--author=${condition.name} <${condition.email}>`];
     case MatchKind.Path:
@@ -289,11 +300,11 @@ function conditionArgs(condition: MatchCondition): string[] {
 
 /**
  * 给定提交的作者（User 按钮的列表）：一行一条，名字与邮箱之间 NUL。
- * 用作者那一行的原样（`%an` / `%ae`），不用 mailmap 之后的（`%aN`）：`--author` 比的是原样，列出来的才选得中。
+ * 走 mailmap（`%aN` / `%aE`），同列表显示的作者：同一个人的几个邮箱合成一项，`--author` 也按 mailmap 比，列出来的才选得中。
  */
 export function authorsArgs(hashes: readonly string[]): StdinCommand {
   return {
-    args: [...LOG_PREFIX, "--format=%an%x00%ae", "--no-walk", "--stdin"],
+    args: [...LOG_PREFIX, "--format=%aN%x00%aE", "--no-walk", "--stdin"],
     input: stdinOf(hashes),
   };
 }

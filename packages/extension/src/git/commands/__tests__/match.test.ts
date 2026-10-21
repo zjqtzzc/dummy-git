@@ -106,6 +106,57 @@ describe("按作者", () => {
   });
 });
 
+describe("按作者走 mailmap", () => {
+  /** `old <old@x>` 提交了两次，`.mailmap` 把它归到 `New <new@x>`；另有一条 `New <new@x>` 本人提交的。 */
+  const scene = () => {
+    const repo = makeTempRepo("mailmap");
+    const commitAs = (name: string, email: string) =>
+      git(repo, [
+        "-c",
+        `user.name=${name}`,
+        "-c",
+        `user.email=${email}`,
+        "commit",
+        "-q",
+        "--allow-empty",
+        "-m",
+        name,
+      ]);
+    commitAs("old", "old@x");
+    commitAs("old", "old@x");
+    commitAs("New", "new@x");
+    writeFileSync(join(repo, ".mailmap"), "New <new@x> old <old@x>\n");
+    return { repo, hashes: git(repo, ["log", "--format=%H"]).trim().split("\n") };
+  };
+  const author = (name: string, email: string): MatchCondition => ({
+    kind: MatchKind.Author,
+    name,
+    email,
+  });
+
+  it("listAuthors：同一个人的几个身份合成一项", async () => {
+    const { repo, hashes } = scene();
+    expect(await listAuthors.execute(cli, repo, hashes)).toEqual([
+      { name: "New", email: "new@x", count: 3 },
+      { name: "t", email: "t@example.com", count: 1 },
+    ]);
+  });
+
+  it("matchCommits：列出来的作者选得中它的全部提交，配置里关了 log.mailmap 也一样", async () => {
+    const { repo, hashes } = scene();
+    expect(await matchCommits.execute(cli, repo, hashes, author("New", "new@x"))).toHaveLength(3);
+    git(repo, ["config", "log.mailmap", "false"]);
+    expect(await matchCommits.execute(cli, repo, hashes, author("New", "new@x"))).toHaveLength(3);
+  });
+
+  it("getIdentity：配置里的「我」按 mailmap 换算", async () => {
+    const { repo } = scene();
+    git(repo, ["config", "user.name", "old"]);
+    git(repo, ["config", "user.email", "old@x"]);
+    expect(await getIdentity.execute(cli, repo)).toEqual({ name: "New", email: "new@x" });
+  });
+});
+
 describe("按路径", () => {
   /** src/a/x.txt 改过两次；`b*.txt` 改过一次（名字里的 `*` 若当通配符会误中 `bb.txt`）。 */
   const scene = () => {

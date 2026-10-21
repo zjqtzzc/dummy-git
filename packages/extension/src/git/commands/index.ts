@@ -61,10 +61,10 @@
  * | `getFileContent` | `cat-file --filters <提交>:<路径>` | `--filters` | 2.11 |
  * | `getStageContent` | `cat-file --filters :<1/2/3>:<路径>` | `--filters` | 2.11 |
  * | `getConflictStages` | `ls-files -u -z -- :(literal)<路径>` | — | — |
- * | `matchCommits` | `-c log.showSignature=false log --format=%H --no-walk --stdin -F` + `-i --grep=<文字>` / `--author=<名字 <邮箱>>` / `-- :(literal)<路径>` | — | — |
- * | `listAuthors` | `-c log.showSignature=false log --format=%an%x00%ae --no-walk --stdin` | — | — |
+ * | `matchCommits` | `-c log.mailmap=true -c log.showSignature=false log --format=%H --no-walk --stdin -F` + `-i --grep=<文字>` / `--author=<名字 <邮箱>>` / `-- :(literal)<路径>` | — | — |
+ * | `listAuthors` | `-c log.showSignature=false log --format=%aN%x00%aE --no-walk --stdin` | — | — |
  * | `listPaths` | `ls-files -z` | — | — |
- * | `getIdentity` | `config --get user.name` + `config --get user.email` | — | — |
+ * | `getIdentity` | `config --get user.name` + `config --get user.email`，再 `check-mailmap <名字 <邮箱>>` | — | — |
  * | `getCommitFiles` | `-c log.showSignature=false log -1 -M -m --first-parent --format= --name-status -z <hash>` | — | — |
  *
  * `-c log.showSignature=false` 在不认识这个配置的旧 git 上是无害的空设置，不构成版本要求。

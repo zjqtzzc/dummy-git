@@ -36,10 +36,10 @@ IDEA 的做法都在 `.notes/rebased-master` 里核对过，`platform/vcs-log/im
 
 3. **My Commits：作者那一列加粗**（已定，2026-10-21）
    - 只加粗作者列，同 IDEA 新界面（`VcsLogCommitsHighlighter.java:48`：作者列看得见时，别的列不加粗）。我们的作者列总是看得见。
-   - **「我」是谁，和 User 过滤的 Me 用同一条规则**：作者那一行的原样（不走 mailmap）整串匹配「名字 <邮箱>」（`--author` + `-F`）。过滤出来的和加粗的是同一批。IDEA 的高亮与 Me 过滤也共用一个函数（`data/VcsLogUserResolver.kt` 的 `resolveCurrentUser`），只是它的规则更宽：名字不分大小写、邮箱 `@` 前那段等于名字也算。否决照搬 IDEA 的宽规则：过滤和高亮会对不上。
-   - **待定**：怎么算出「我的」那一批。
-     - 推荐：直接跑一次 Me 过滤那条命令（骨架那一万条 `git log --no-walk --stdin --author=… -F`），得到 hash 集合。规则天然和过滤一模一样；一万条以上的仓库上在 100 ms 以内（`tech/performance.md`），骨架变了才重跑。
-     - 另一种：页面拿到「我」，和按需取到的详情比。但详情里的作者走了 mailmap（`%aN`），Me 过滤比的是原样（`%an`），有 `.mailmap` 的仓库上两边会对不上。
+   - **「我」是谁，和 User 过滤的 Me 用同一条规则：都走 mailmap**（2026-10-21 项目负责人定）。列表显示的作者（`%aN` / `%aE`）、User 列出来的作者、`--author` 比的、配置里的「我」（`git check-mailmap` 换算）都是 mailmap 之后的。页面拿换算过的「我」和按需取到的详情比，名字和邮箱都相等就加粗，不多跑命令。
+     - IDEA 不用 mailmap：作者取原样（`plugins/git4idea/backend/src/history/GitLogParser.java:283`，`%an`），按作者过滤时加 `-c log.mailmap=false`（`plugins/git4idea/backend/src/log/GitLogProvider.kt:489`），同一个人的几个身份靠 `data/VcsLogUserResolver.kt` 的 `resolveCurrentUser` 那套宽规则认（名字不分大小写、邮箱 `@` 前那段等于名字也算），高亮和 Me 过滤共用它。否决照 IDEA 全用原样：推翻「需求要求走 mailmap」，一个人用过几个邮箱就显示成几个人。否决照搬宽规则：过滤和高亮会对不上。
+     - 定这条时查出现有的 User 过滤在有 `.mailmap` 的仓库上选不中：列出来的是原样，`--author` 比的却是 mailmap 之后的（git 2.25、2.43 实测）。先单独修掉，不算本阶段的步骤。
+     - Me 过滤是 `-F` 的「包含」，比加粗的「相等」多中的只有名字和邮箱同时被别人包含的情况（`parsers/log.ts` 的注释），接受。
    - 没配 `user.name` 时没有「我」，不加粗。
 
 4. **Merge Commits：父提交两个及以上，文字变灰**（已定，2026-10-21）
@@ -72,6 +72,6 @@ IDEA 的做法都在 `.notes/rebased-master` 里核对过，`platform/vcs-log/im
 1. **骨架带上起点**（第 5 条）：`getSkeleton` 的结果加上「从 HEAD 能走到的起点」。测试：不过滤时是 HEAD；按另一个分支过滤时是合并基点（含有两个合并基点的情况）；按当前分支过滤时是 HEAD；空仓库没有。实测 `merge-base` 的耗时。
 2. **算出每行的高亮**（第 2、4、5 条）：`logic/log/` 里从起点往下走、认出合并提交，合成每一行的样式（背景、灰字、加粗）。测试：走的范围、骨架外停下、合并提交、三种开关。实测一万条走一遍的耗时。
 3. **提交列表画出来**：Current Branch 与 Merge Commits 两种；选中、悬停的样子（第 2 条）。调试场景 `log-highlight`：有合并、有当前分支外的提交、HEAD 游离可切。
-4. **My Commits**（第 3 条，先定「待定」那一处）。测试：有 `.mailmap` 时加粗的和 Me 过滤出来的是同一批。
+4. **My Commits**（第 3 条）：页面拿到换算过的「我」，和详情的作者比。测试：相等才算、没配名字时没有。
 5. **View Options 按钮**（第 6 条）：多选 QuickPick，开关存进 `viewState`。
 6. **验收**：「要核对的条目」逐条勾过；验收句手动走一遍；并进 `product/features/log.md`，删掉本文。

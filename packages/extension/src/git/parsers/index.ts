@@ -5,6 +5,7 @@
  * 命令层不应该拿到字节切分原语，那会诱使它自己去解析。
  */
 export { GitParseError } from "./errors.js";
+export { mailmapArgs, parseMailmapContact } from "./identity.js";
 export {
   type AuthorCount,
   authorsArgs,
