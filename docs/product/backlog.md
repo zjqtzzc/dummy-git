@@ -87,7 +87,6 @@
 
 ## 已知问题
 
-- Log 面板展开时黑一下，再一次性出现（2026-10-14 发现）：Log 没开 `retainContextWhenHidden`，每次展开都重建 webview（新 iframe → 加载脚本与字体 → 挂载 → 拉骨架与 refs）。一万条和 52 条的黑屏时长看不出差别，大头不在数据量。先在页面里打点实测慢在哪一段，再在「给 Log 开 `retainContextWhenHidden`（收起时常驻内存，要改 `tech/architecture.md` 的取舍）」和「先画出页面框架、数据后到」之间选。
 - 未跟踪文件成千上万时：树已经是虚拟滚动，但 `git status -uall` 和勾选的推算仍是全量。
 
 ## 技术债与触发条件

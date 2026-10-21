@@ -68,7 +68,7 @@
 - 三栏拆成同一容器里的三个视图。VS Code 会免费提供分隔条和栏宽记忆，但三栏之间的联动（点提交 → 右栏换文件）要绕扩展一圈，一次选中要走两趟消息，还得起三个 webview。
 - 原生 TreeView。画不出 Message / Author / Date 三列的表格。
 
-**带来的约束**：面板收起时 webview 会被销毁，展开时重建。现有握手的换代机制本来就是为这个准备的，不开 `retainContextWhenHidden`。
+**带来的约束**：webview 的页面可能重建（窗口刚打开、VS Code 回收了隐藏的页面），握手的换代机制为此准备。面板收起时保留页面（`retainContextWhenHidden`，2026-10-21 改：不保留时每次展开都黑屏几百毫秒，见 `tech/performance.md` §5.1），隐藏期间的广播攒着、重新可见时一次发出（`ipc/hiddenBuffer.ts`）。
 
 ### 2. Commit 面板用侧栏的 WebviewView
 

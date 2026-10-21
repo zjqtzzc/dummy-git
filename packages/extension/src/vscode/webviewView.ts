@@ -1,7 +1,8 @@
 import { randomBytes } from "node:crypto";
-import { assertNever } from "@dummy-git/shared";
+import { assertNever, type GitDomain } from "@dummy-git/shared";
 import * as vscode from "vscode";
 import type { Repository } from "../core/repository.js";
+import { HiddenBuffer } from "../ipc/hiddenBuffer.js";
 import type { Router, Transport } from "../ipc/router.js";
 
 /**
@@ -97,11 +98,13 @@ export type ViewSource =
  * 注册一个 webview 视图：底部面板的 Log、侧栏的 Commit。
  * 两者的装配完全相同，只有视图 id 不同。
  *
- * ## 视图收起就销毁，展开再重建
+ * ## 收起时保留页面（`retainContextWhenHidden`）
  *
- * 不开 `retainContextWhenHidden`：每次展开都会重新调 `resolveWebviewView`，
- * 也就是 ready 会来第二次——那正是握手的换代逻辑要处理的情况（`ipc/router.ts`）。
- * 所以一次展开配一个新的 Router，销毁时退订仓库的广播。
+ * 不保留的话，每次展开 VS Code 都重建 iframe，先黑屏几百毫秒再一下子出来。实测（F5 调试窗口、几条提交的小仓库）
+ * iframe 开始加载之后我们自己只用 110～160 ms（脚本 25 ms 左右，其余是取数据），黑屏在那之前、在 VS Code 里，
+ * 只有不重建才省得掉。代价：收起时页面常驻内存；隐藏期间的消息 VS Code 不送，广播要攒着（`HiddenBuffer`）。
+ * 窗口刚打开时的第一次展开、或 VS Code 回收了隐藏的页面时，仍会重建：ready 来第二次，
+ * 握手的换代逻辑照旧处理（`ipc/router.ts`），所以一次 `resolveWebviewView` 配一个新的 Router，销毁时退订仓库的广播。
  *
  * ## ⚠️ 视图销毁**不**销毁 `Repository`
  *
@@ -121,50 +124,61 @@ export function registerWebviewView(
   /** `source` 是视图 id，日志里记作来源。 */
   createRouter: (repository: Repository, transport: Transport, source: string) => Router,
 ): vscode.Disposable {
-  return vscode.window.registerWebviewViewProvider(viewType, {
-    resolveWebviewView: async (view) => {
-      const resolved = await source;
-      switch (resolved.kind) {
-        case ViewSourceKind.Unavailable:
-          view.webview.options = { enableScripts: false };
-          view.webview.html = unavailableHtml(resolved.reason);
-          return;
-        case ViewSourceKind.Repository:
-          break;
-        default:
-          assertNever(resolved, "resolveWebviewView");
-      }
+  return vscode.window.registerWebviewViewProvider(
+    viewType,
+    {
+      resolveWebviewView: async (view) => {
+        const resolved = await source;
+        switch (resolved.kind) {
+          case ViewSourceKind.Unavailable:
+            view.webview.options = { enableScripts: false };
+            view.webview.html = unavailableHtml(resolved.reason);
+            return;
+          case ViewSourceKind.Repository:
+            break;
+          default:
+            assertNever(resolved, "resolveWebviewView");
+        }
 
-      const { repository } = resolved;
-      view.webview.options = {
-        enableScripts: true,
-        // 只允许从扩展自己的 dist 目录读资源。
-        localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, "dist")],
-      };
-      view.webview.html = html(view.webview, context.extensionUri, viewType);
+        const { repository } = resolved;
+        view.webview.options = {
+          enableScripts: true,
+          // 只允许从扩展自己的 dist 目录读资源。
+          localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, "dist")],
+        };
+        view.webview.html = html(view.webview, context.extensionUri, viewType);
 
-      // 视图销毁后往它 post 会抛。Transport 在这里收口。
-      let alive = true;
-      const router = createRouter(
-        repository,
-        {
-          post: (message) => {
-            if (!alive) return;
-            void view.webview.postMessage(message);
+        // 视图销毁后往它 post 会抛。Transport 在这里收口。
+        let alive = true;
+        const router = createRouter(
+          repository,
+          {
+            post: (message) => {
+              if (!alive) return;
+              void view.webview.postMessage(message);
+            },
           },
-        },
-        viewType,
-      );
-      const receiving = view.webview.onDidReceiveMessage((raw: unknown) => router.receive(raw));
-      // 仓库变了 → 广播给这个视图。只说「哪些域过期了」，要不要重拉由前端决定。
-      const unsubscribe = repository.onDidChange((domains) =>
-        router.broadcast(repository.location.root, [...domains]),
-      );
-      view.onDidDispose(() => {
-        alive = false;
-        receiving.dispose();
-        unsubscribe();
-      });
+          viewType,
+        );
+        const receiving = view.webview.onDidReceiveMessage((raw: unknown) => router.receive(raw));
+        // 仓库变了 → 广播给这个视图。只说「哪些域过期了」，要不要重拉由前端决定。
+        // 视图隐藏时先攒着，重新可见时一次发出（`HiddenBuffer`）。
+        const hidden = new HiddenBuffer(view.visible);
+        const broadcast = (domains: readonly GitDomain[]): void => {
+          if (domains.length > 0) router.broadcast(repository.location.root, domains);
+        };
+        const unsubscribe = repository.onDidChange((domains) => broadcast(hidden.changed(domains)));
+        const visibility = view.onDidChangeVisibility(() =>
+          broadcast(hidden.setVisible(view.visible)),
+        );
+        view.onDidDispose(() => {
+          alive = false;
+          receiving.dispose();
+          visibility.dispose();
+          unsubscribe();
+        });
+      },
     },
-  });
+    { webviewOptions: { retainContextWhenHidden: true } },
+  );
 }
