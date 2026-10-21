@@ -88,7 +88,7 @@
 **选**：
 - 我们自己的界面（Log 面板、Commit 面板、提交列表）用 Vue 3 单文件组件写，脚本部分一律 TypeScript，Vite 打包。
 - 控件用 vscode-elements：文字按钮、输入框、复选框、分隔布局、进度条。外观和键盘操作跟 VS Code 一致。
-- **工具栏上的图标按钮一律用 `webview/src/ui/ToolButton.vue`**，不手写 `<button>`：悬停、焦点框、置灰、提示文字只在这一处。例外两处，都不是工具栏按钮：冲突组标题行的继续、放弃（带颜色的实心操作按钮，`product/features/conflicts.md`），过滤栏里生效条件后面的 ×（文字按钮的一部分）。右键菜单不用它，用 VS Code 原生的（`webview/context`，`tech/decisions.md`「右键菜单：每个菜单项一个键」）。Vue 对自定义标签是正式支持，事件直接写 `@vsc-split-layout-change`。
+- **工具栏上的图标按钮一律用 `webview/src/ui/ToolButton.vue`**，不手写 `<button>`：悬停、焦点框、置灰、提示文字只在这一处。点了弹出选单的用 `ui/MenuButton.vue`（包着 `ToolButton`，右下角带小三角，选单是 webview 里的浮层，`product/features/menus.md`）。例外两处，都不是工具栏按钮：冲突组标题行的继续、放弃（带颜色的实心操作按钮，`product/features/conflicts.md`），过滤栏里生效条件后面的 ×（文字按钮的一部分）。右键菜单不用它，用 VS Code 原生的（`webview/context`，`tech/decisions.md`「右键菜单：每个菜单项一个键」）。Vue 对自定义标签是正式支持，事件直接写 `@vsc-split-layout-change`。
 - 图标三种来源（`webview/src/logic/icons.ts`）：`@vscode/codicons`（vscode-elements 本来就依赖它）；codicon 没有的、或 IDEA 的更好认的，自己画成线条（规则见 `tech/decisions.md`「图标」）；文件图标用打包的 Seti（第 5 题）。
 - 样式只用 VS Code 注入的 `--vscode-*` 主题变量。
 
