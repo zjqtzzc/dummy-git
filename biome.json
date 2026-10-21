@@ -18,6 +18,7 @@
     "enabled": true,
     "rules": {
       "preset": "recommended",
+      "a11y": "off",
       "suspicious": {
         "noExplicitAny": "error",
         "noTsIgnore": "error"

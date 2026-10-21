@@ -51,7 +51,6 @@ function codiconClass(icon: IconRef): string {
     stroke-width="1"
     stroke-linecap="round"
     stroke-linejoin="round"
-    aria-hidden="true"
   >
     <path
       v-for="(d, index) in ICON_STROKES[icon.name]"
@@ -63,13 +62,11 @@ function codiconClass(icon: IconRef): string {
     v-else-if="icon.kind === IconKind.Codicon"
     :class="['glyph', 'codicon', codiconClass(icon)]"
     :style="{ ...box, fontSize: `${px}px` }"
-    aria-hidden="true"
   />
   <span
     v-else
     class="glyph seti"
     :style="{ ...box, fontSize: `${px * 1.5}px`, color: icon.color }"
-    aria-hidden="true"
     >{{ icon.char }}</span
   >
 </template>

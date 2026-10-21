@@ -136,7 +136,7 @@ function pathOf(segment: GraphSegment): string {
 </script>
 
 <template>
-  <svg class="graph" aria-hidden="true" :width="graphWidth(props.row, props.base)" :height="ROW_HEIGHT">
+  <svg class="graph" :width="graphWidth(props.row, props.base)" :height="ROW_HEIGHT">
     <defs>
       <template v-for="(segment, i) in props.row.segments" :key="i">
         <!-- userSpaceOnUse：竖线的外框宽度为 0，按外框算的渐变画不出来。 -->

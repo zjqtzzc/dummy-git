@@ -155,8 +155,7 @@ function onScroll(): void {
 }
 
 /**
- * 点击由列表统一处理（行上带 `data-hash`），焦点留在列表本身，用 `aria-activedescendant`
- * 指向光标所在行——listbox 的标准写法，行不单独挂事件、不单独获得焦点。
+ * 点击由列表统一处理（行上带 `data-hash`），焦点留在列表本身：行不单独挂事件、不单独获得焦点。
  */
 function hashAt(event: MouseEvent): string | undefined {
   if (!(event.target instanceof Element)) return undefined;
@@ -187,11 +186,6 @@ function onMousedown(event: MouseEvent): void {
   if (!(event.target instanceof Element) || event.target.closest("[data-hash]") === null) return;
   event.preventDefault();
   scroller.value?.focus();
-}
-
-/** 行的 DOM id，给 `aria-activedescendant` 用。 */
-function optionId(hash: string): string {
-  return `commit-${hash}`;
 }
 
 /**
@@ -337,11 +331,7 @@ defineExpose({
     <div
       ref="scroller"
       class="scroller"
-      role="listbox"
       tabindex="0"
-      aria-label="Commits"
-      aria-multiselectable="true"
-      :aria-activedescendant="selection.cursor === undefined ? undefined : optionId(selection.cursor)"
       @scroll="onScroll"
       @mousedown="onMousedown"
       @click="onClick"
@@ -352,11 +342,8 @@ defineExpose({
         <div
           v-for="row in rows"
           :key="row.hash"
-          :id="optionId(row.hash)"
-          role="option"
           tabindex="-1"
           :data-hash="row.hash"
-          :aria-selected="selection.ids.has(row.hash)"
           :class="[
             'columns',
             'row',

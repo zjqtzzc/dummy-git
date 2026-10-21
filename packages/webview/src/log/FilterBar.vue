@@ -57,7 +57,6 @@ function nameOf(kind: FilterKind): string {
       <input
         type="text"
         placeholder="Text or hash"
-        aria-label="Search by text or hash"
         :value="text"
         @input="onInput"
       />
@@ -80,7 +79,6 @@ function nameOf(kind: FilterKind): string {
           type="button"
           class="clear"
           :title="`Clear ${nameOf(kind)} filter`"
-          :aria-label="`Clear ${nameOf(kind)} filter`"
           @click="emit('clear', kind)"
         >
           <Icon :icon="appIcon(AppIcon.Close)" :size="IconSize.Inline" />

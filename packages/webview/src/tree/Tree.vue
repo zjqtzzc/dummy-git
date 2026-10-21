@@ -276,21 +276,13 @@ function iconOf(row: TreeRow): IconRef | undefined {
     ? row.node.openedIcon
     : row.node.icon;
 }
-
-/** 行的 DOM id，给 `aria-activedescendant` 用。 */
-function rowId(index: number): string {
-  return `tree-row-${index}`;
-}
 </script>
 
 <template>
   <div
     ref="scroller"
     class="tree"
-    role="tree"
     tabindex="0"
-    aria-multiselectable="true"
-    :aria-activedescendant="cursorIndex === -1 ? undefined : rowId(cursorIndex)"
     @scroll="onScroll"
     @mousedown="onMousedown"
     @click="onClick"
@@ -301,13 +293,8 @@ function rowId(index: number): string {
     <div :style="{ height: `${rows.length * ROW_HEIGHT}px`, position: 'relative' }">
       <div
         v-for="{ row, index, check, icon } in visible"
-        :id="rowId(index)"
         :key="row.node.id"
-        role="treeitem"
         tabindex="-1"
-        :aria-level="row.depth + 1"
-        :aria-expanded="row.expanded"
-        :aria-selected="selection.ids.has(row.node.id)"
         :data-index="index"
         :class="['row', { selected: selection.ids.has(row.node.id) }]"
         :style="{ top: `${index * ROW_HEIGHT}px`, paddingLeft: `${row.depth * INDENT}px` }"

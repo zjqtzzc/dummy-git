@@ -9,7 +9,7 @@ export interface Selection {
   readonly ids: ReadonlySet<string>;
   /** Shift 选一段时的起点：最近一次单击或 Ctrl+单击的那一行。 */
   readonly anchor?: string;
-  /** 光标所在的行：最近点过或挪到的那一行。↑↓ 从它出发，`aria-activedescendant` 指向它。 */
+  /** 光标所在的行：最近点过或挪到的那一行。↑↓ 从它出发。 */
   readonly cursor?: string;
 }
 
