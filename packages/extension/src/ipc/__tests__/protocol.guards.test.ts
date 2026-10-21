@@ -44,7 +44,7 @@ describe("amend 的参数校验", () => {
   });
 });
 
-describe("getSkeleton 的 branch", () => {
+describe("getSkeleton、getHeadBases 的 branch", () => {
   it("缺席或完整引用名都收；不是 refs/ 开头的拒收（会进 git 的命令行，`-` 开头会被当成选项）", () => {
     expect(parseParams("getSkeleton", { repo: "/r" })).toEqual({ repo: "/r" });
     expect(parseParams("getSkeleton", { repo: "/r", branch: "refs/heads/main" })).toEqual({
@@ -53,6 +53,14 @@ describe("getSkeleton 的 branch", () => {
     });
     expect(parseParams("getSkeleton", { repo: "/r", branch: "--all" })).toBeUndefined();
     expect(parseParams("getSkeleton", { repo: "/r", branch: "main" })).toBeUndefined();
+  });
+
+  it("getHeadBases 同一条规则", () => {
+    expect(parseParams("getHeadBases", { repo: "/r", branch: "refs/heads/main" })).toEqual({
+      repo: "/r",
+      branch: "refs/heads/main",
+    });
+    expect(parseParams("getHeadBases", { repo: "/r", branch: "--all" })).toBeUndefined();
   });
 });
 

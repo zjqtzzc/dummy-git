@@ -65,6 +65,15 @@ export interface Commands {
     params: { repo: string; branch?: string };
     result: CommitSkeleton[];
   };
+  /**
+   * 骨架里从 HEAD 能走到的提交中最上面的几条：从它们沿父提交往下走，就是骨架里 HEAD 包含的全部（Current Branch 高亮）。
+   * 不带 `branch` 时就是 HEAD；带 `branch` 时是 HEAD 与它的合并基点（骨架从那个分支往下走，HEAD 未必在里面）；
+   * 两边没有共同祖先时为空。和 `getSkeleton` 同时取、同样的参数。
+   */
+  getHeadBases: {
+    params: { repo: string; branch?: string };
+    result: readonly string[];
+  };
   /** 按 hash 取详情：作者、时间、完整消息。只取要显示的那几十条。 */
   getCommitDetails: {
     params: { repo: string; hashes: readonly string[] };

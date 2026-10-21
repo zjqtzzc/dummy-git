@@ -1,9 +1,10 @@
 import type { Commit, CommitFileChange, CommitSkeleton, MatchCondition } from "@dummy-git/shared";
-import { runRaw } from "../failure.js";
+import { classifyError, GitFailureError, runRaw } from "../failure.js";
 import {
   type AuthorCount,
   authorsArgs,
   detailsArgs,
+  headBasesArgs,
   matchArgs,
   outgoingArgs,
   parseAuthors,
@@ -54,6 +55,21 @@ export const getSkeleton: GitCommand<
       cwd: repository,
     });
     return parseSkeleton(result.stdout);
+  },
+};
+
+/** 骨架里从 HEAD 能走到的最上面那几条。没有共同祖先时 git 以 1 退出、什么都不输出，是合法答案。 */
+export const getHeadBases: GitCommand<[repository: string, options: SkeletonOptions], string[]> = {
+  lock: LockPolicy.None,
+
+  execute: async (cli, repository, options) => {
+    const args = headBasesArgs(options);
+    const result = await cli.execRaw(args, { cwd: repository });
+    if (result.exitCode === 1 && result.stdout.length === 0) return [];
+    if (result.exitCode !== 0) {
+      throw new GitFailureError(args, result.exitCode, result.stderr, classifyError(result.stderr));
+    }
+    return parseHashes(result.stdout);
   },
 };
 

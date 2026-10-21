@@ -54,6 +54,7 @@
  * | `rewordCommit` | `rev-list --first-parent --parents HEAD --not <hash>^@` + `config --bool --get commit.gpgSign` + `stripspace` + 逐条 `cat-file commit` 与 `commit-tree [-S] <tree> -p <父>` + `update-ref -m reword HEAD <新> <旧>` | — | — |
  * | `rollback` | `restore --source=HEAD --staged --worktree -- <路径…>` | `git restore` | **2.23** |
  * | `getSkeleton` | `-c log.showSignature=false log --format=… --max-count=10000 HEAD --branches --remotes --tags --date-order --`；按分支过滤时起点换成那个分支 | — | — |
+ * | `getHeadBases` | `merge-base --all HEAD <起点>`（不按分支过滤时起点是 HEAD） | — | — |
  * | `getCommitDetails` | `-c log.showSignature=false log --format=… --no-walk --stdin` | — | — |
  * | `getOutgoingCommits` | `-c log.showSignature=false log --format=… --max-count=<N> refs/heads/<B> --not refs/remotes/<R>/<M>`（远程上还没有时 `--remotes=<R>`）`--` | — | — |
  * | `getRefs` | `for-each-ref --format=… refs/heads refs/remotes refs/tags` | `%(upstream:remotename)` / `%(upstream:remoteref)`（git 2.16.0 发布说明） | 2.16 |
@@ -102,6 +103,7 @@ export { LockPolicy } from "./lock.js";
 export {
   getCommitDetails,
   getCommitFiles,
+  getHeadBases,
   getOutgoingCommits,
   getSkeleton,
   listAuthors,

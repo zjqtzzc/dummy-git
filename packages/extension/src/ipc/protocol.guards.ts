@@ -189,6 +189,18 @@ function asCommitTarget(raw: Record<string, unknown>): { repo: string; hash: str
   return typeof repo === "string" && hash !== undefined ? { repo, hash } : undefined;
 }
 
+/** `getSkeleton`、`getHeadBases` 同样的参数：仓库，外加可选的分支。 */
+function skeletonParams(
+  raw: Record<string, unknown>,
+): { repo: string; branch?: string } | undefined {
+  const repo = raw["repo"];
+  const branch = raw["branch"];
+  if (typeof repo !== "string") return undefined;
+  if (branch === undefined) return { repo };
+  // 会进 git 的命令行：只认完整引用名，`-` 开头的值不能被当成选项。
+  return typeof branch === "string" && branch.startsWith("refs/") ? { repo, branch } : undefined;
+}
+
 /**
  * 每条命令怎么把 `unknown` 变成它的参数类型。
  *
@@ -203,14 +215,8 @@ function asCommitTarget(raw: Record<string, unknown>): { repo: string; hash: str
 const PARAM_GUARDS = {
   // 没有参数。仍然要有一条守卫——表必须是完整的，`satisfies` 才拦得住漏写。
   getRepositories: () => ({}),
-  getSkeleton: (raw: Record<string, unknown>) => {
-    const repo = raw["repo"];
-    const branch = raw["branch"];
-    if (typeof repo !== "string") return undefined;
-    if (branch === undefined) return { repo };
-    // 会进 git 的命令行：只认完整引用名，`-` 开头的值不能被当成选项。
-    return typeof branch === "string" && branch.startsWith("refs/") ? { repo, branch } : undefined;
-  },
+  getSkeleton: skeletonParams,
+  getHeadBases: skeletonParams,
   getCommitDetails: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const hashes = asStringArray(raw["hashes"]);

@@ -44,6 +44,7 @@ import {
   getCommitFiles,
   getConflictStages,
   getHead,
+  getHeadBases,
   getIdentity,
   getOutgoingCommits,
   getRefs,
@@ -371,6 +372,12 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
     getRepositories: () => Promise.resolve([repository.location.root]),
     getSkeleton: ({ branch }) =>
       repository.run(getSkeleton, repository.location.root, branch === undefined ? {} : { branch }),
+    getHeadBases: ({ branch }) =>
+      repository.run(
+        getHeadBases,
+        repository.location.root,
+        branch === undefined ? {} : { branch },
+      ),
     getCommitDetails: ({ hashes }) =>
       repository.run(getCommitDetails, repository.location.root, hashes),
     getRefs: async () => {

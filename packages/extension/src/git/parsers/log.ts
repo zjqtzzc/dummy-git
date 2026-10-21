@@ -179,6 +179,14 @@ export function skeletonArgs(limit: number, options: SkeletonOptions = {}): stri
   ];
 }
 
+/**
+ * 骨架里从 HEAD 能走到的最上面那几条（`getHeadBases`）。骨架的起点里有 HEAD 时就是 HEAD 本身；
+ * 只走一个分支时是 HEAD 与它的全部合并基点：那个分支的祖先里 HEAD 也包含的，正好是这几条往下的全部。
+ */
+export function headBasesArgs(options: SkeletonOptions = {}): string[] {
+  return ["merge-base", "--all", "HEAD", options.branch ?? "HEAD"];
+}
+
 export function parseSkeleton(stdout: Buffer): CommitSkeleton[] {
   return splitRecords(stdout, "parseSkeleton", SK_FIELD_COUNT).map((record) => ({
     hash: at(record, SK_HASH),

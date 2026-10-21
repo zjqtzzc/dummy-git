@@ -55,6 +55,18 @@ git clone --bare https://github.com/torvalds/linux  ~/bench/linux.git     # ~130
 骨架或 refs 变了才整个重算，在可接受范围，**不改成按可见行懒算**。
 大头在 `buildGraph` 的逐行排序；车道更多的仓库会变慢，到时先看它。
 
+## 2.2 当前分支高亮的起点（第 16 阶段，2026-10-21）
+
+`git merge-base --all HEAD <起点>`，和骨架同时取。VS Code 仓库（只克隆提交，`--filter=tree:0`，19.4 万条）：
+
+| 情况 | 没有 commit-graph | 有 commit-graph |
+|---|---|---|
+| 不按分支过滤（`HEAD HEAD`） | 0.00 s | — |
+| 按一个最近的分支过滤 | 0.00 s | — |
+| 按 2016 年的老分支过滤（`standalone/0.1.1`，合并基点在九年前） | 1.08 s | 0.10 s |
+
+最坏是按一个很老的分支过滤：git 要把 HEAD 这边的历史一路走回分叉点。`git gc`（含自动触发的）默认会写 commit-graph（git 2.43 的文档：`gc.writeCommitGraph` 默认 true），跑过 gc 的仓库是右边那一列。和骨架并行，不另做缓存。
+
 ## 3. 唯一的性能悬崖：过滤（第 5 阶段）
 
 | 操作 | 耗时 |

@@ -10,6 +10,7 @@ export {
   type AuthorCount,
   authorsArgs,
   detailsArgs,
+  headBasesArgs,
   matchArgs,
   parseAuthors,
   parseHashes,

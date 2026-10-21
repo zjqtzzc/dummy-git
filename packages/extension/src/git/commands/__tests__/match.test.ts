@@ -4,7 +4,7 @@ import { type MatchCondition, MatchKind } from "@dummy-git/shared";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanupTempRepos, cli, git, makeTempRepo } from "../../../__tests__/support.js";
 import { getIdentity } from "../identity.js";
-import { getSkeleton, listAuthors, matchCommits } from "../log.js";
+import { getHeadBases, getSkeleton, listAuthors, matchCommits } from "../log.js";
 import { listPaths } from "../paths.js";
 
 afterEach(cleanupTempRepos);
@@ -223,5 +223,53 @@ describe("getSkeleton 按分支", () => {
     };
     expect((await subjects({})).sort()).toEqual(["init", "main only", "side only"]);
     expect(await subjects({ branch: "refs/heads/side" })).toEqual(["side only", "init"]);
+  });
+});
+
+describe("getHeadBases", () => {
+  const head = (repo: string) => git(repo, ["rev-parse", "HEAD"]).trim();
+  const tip = (repo: string, ref: string) => git(repo, ["rev-parse", ref]).trim();
+
+  it("不按分支过滤、按当前分支过滤：就是 HEAD", async () => {
+    const repo = makeTempRepo("bases-head");
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "two"]);
+    expect(await getHeadBases.execute(cli, repo, {})).toEqual([head(repo)]);
+    expect(await getHeadBases.execute(cli, repo, { branch: "refs/heads/main" })).toEqual([
+      head(repo),
+    ]);
+  });
+
+  it("按别的分支过滤：是两边的合并基点", async () => {
+    const repo = makeTempRepo("bases-fork");
+    const fork = head(repo);
+    git(repo, ["switch", "-q", "-c", "side"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "side only"]);
+    git(repo, ["switch", "-q", "main"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "main only"]);
+    expect(await getHeadBases.execute(cli, repo, { branch: "refs/heads/side" })).toEqual([fork]);
+  });
+
+  it("交叉合并：两个合并基点都在", async () => {
+    // a、b 各从 init 分出，再互相合并一次：main 与 side 的合并基点是 a 和 b 两条。
+    const repo = makeTempRepo("bases-criss-cross");
+    git(repo, ["switch", "-q", "-c", "side"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "b"]);
+    git(repo, ["switch", "-q", "main"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "a"]);
+    const [a, b] = [tip(repo, "main"), tip(repo, "side")];
+    git(repo, ["merge", "-q", "--no-ff", "-m", "main gets b", "side"]);
+    git(repo, ["switch", "-q", "side"]);
+    git(repo, ["merge", "-q", "--no-ff", "-m", "side gets a", a]);
+    git(repo, ["switch", "-q", "main"]);
+    const bases = await getHeadBases.execute(cli, repo, { branch: "refs/heads/side" });
+    expect([...bases].sort()).toEqual([a, b].sort());
+  });
+
+  it("没有共同祖先：空", async () => {
+    const repo = makeTempRepo("bases-unrelated");
+    git(repo, ["switch", "-q", "--orphan", "pages"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "pages"]);
+    git(repo, ["switch", "-q", "main"]);
+    expect(await getHeadBases.execute(cli, repo, { branch: "refs/heads/pages" })).toEqual([]);
   });
 });

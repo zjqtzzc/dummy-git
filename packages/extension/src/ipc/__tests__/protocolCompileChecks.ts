@@ -58,6 +58,7 @@ const statusStub = async (): Promise<StatusSnapshot> => ({ changes: [] });
 export const _baseline = defineHandlers({
   getRepositories: reposStub,
   getSkeleton: skeletonStub,
+  getHeadBases: reposStub,
   getCommitDetails: detailsStub,
   getRefs: refsStub,
   openDiff: openDiffStub,
@@ -133,6 +134,7 @@ export const _missing = defineHandlers(
 const extraHandlers = {
   getRepositories: reposStub,
   getSkeleton: skeletonStub,
+  getHeadBases: reposStub,
   getCommitDetails: detailsStub,
   getRefs: refsStub,
   openDiff: openDiffStub,

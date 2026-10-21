@@ -1,6 +1,6 @@
 # 第 16 阶段细节：Log 高亮
 
-状态：定细节中（2026-10-21）。
+状态：实现中（2026-10-21）。
 <!-- 之后依次改成：实现中 → 实现完，待手动验收（`pnpm check` 通过，N 个测试）→ 完成。完成后并进 product/features/ 并删掉本文（process/workflow.md §2）。 -->
 验收句：提交列表里，我的提交作者加粗，合并提交文字变灰，当前分支上的提交带一层浅色背景；过滤栏右边的按钮能分别开关这三种。
 
@@ -50,10 +50,11 @@ IDEA 的做法都在 `.notes/rebased-master` 里核对过，`platform/vcs-log/im
    - 回答的问题：这条提交是不是已经在我现在检出的东西里。
    - IDEA 怎么做：底图永远是全部分支的完整提交图，过滤只决定显示哪些行；取当前分支（HEAD 游离时取 `HEAD`，`plugins/git4idea/backend/src/log/GitLogProvider.kt:338-339`；HEAD 算作分支类型的 ref，`plugins/git4idea/backend/src/log/GitRefManager.kt:272`），在完整底图上从它往下走，走到的收进一个集合（`data/CurrentBranchConditionCache.kt:46-56`，`platform/vcs-log/graph/src/com/intellij/vcs/log/graph/impl/facade/PermanentGraphImpl.kt:141`），在后台线程算，算完之前一条都不涂。
    - 我们的不同：分支过滤换的是骨架本身（`product/features/graph.md`），按别的分支 B 过滤时骨架里可能没有 HEAD，从 HEAD 走不通。
-   - **做法：起点由扩展随骨架一起给，页面从起点往下走。**
+   - **做法：起点由扩展算、和骨架一起取，页面从起点往下走。**
      - 起点是 `git merge-base --all HEAD <骨架的起点>`；不按分支过滤时骨架的起点就写 HEAD，结果就是 HEAD 本身。
      - 按 B 过滤时：B 的祖先里从 HEAD 能走到的，恰好是 HEAD 与 B 的共同祖先；这几个合并基点往下走正好覆盖它们，和 IDEA 涂出来的是同一批。B 就是当前分支时，起点就是 HEAD，整列都涂（第 1 条）。
-     - HEAD 游离时照样从 HEAD 走（同 IDEA）。仓库还没有提交时没有起点，一条都不涂。
+     - HEAD 游离时照样从 HEAD 走（同 IDEA）。B 与 HEAD 没有共同祖先（比如 `gh-pages` 这种孤儿分支）时没有起点，一条都不涂。
+     - 起点用单独的请求 `getHeadBases`，和骨架在同一次加载里一起取。
      - 页面在 `logic/log/` 里用纯函数从起点沿父提交往下走，只在骨架里走；一万条以外的不在骨架里，走到就停，那些本来也不显示。不照 IDEA 放后台：骨架最多一万条，预计走一遍很快（实现时实测，写进 `tech/performance.md`）。
      - 刷新不另管：HEAD 一变（提交、切换、reset），refs 过期，骨架重拉，起点跟着骨架来。骨架没变时沿用旧数组，走出来的也沿用。
      - 作者、说明、日期、路径过滤只是在骨架上取交集，不影响走出来的结果。
@@ -69,7 +70,7 @@ IDEA 的做法都在 `.notes/rebased-master` 里核对过，`platform/vcs-log/im
 
 每步一个概念，`pnpm check` 通过、手动看过、项目负责人确认后单独提交。
 
-1. **骨架带上起点**（第 5 条）：`getSkeleton` 的结果加上「从 HEAD 能走到的起点」。测试：不过滤时是 HEAD；按另一个分支过滤时是合并基点（含有两个合并基点的情况）；按当前分支过滤时是 HEAD；空仓库没有。实测 `merge-base` 的耗时。
+1. **起点**（第 5 条）：新请求 `getHeadBases`，参数同 `getSkeleton`，页面和骨架同时取。不改 `getSkeleton` 的结果：骨架是最重的一条命令，起点另走一条，各自的测试与桩不互相牵连。测试：不过滤时是 HEAD；按另一个分支过滤时是合并基点（含交叉合并的两个）；按当前分支过滤时是 HEAD；没有共同祖先时为空（空仓库连骨架都取不到，不另管）。耗时见 `tech/performance.md` §2.2。
 2. **算出每行的高亮**（第 2、4、5 条）：`logic/log/` 里从起点往下走、认出合并提交，合成每一行的样式（背景、灰字、加粗）。测试：走的范围、骨架外停下、合并提交、三种开关。实测一万条走一遍的耗时。
 3. **提交列表画出来**：Current Branch 与 Merge Commits 两种；选中、悬停的样子（第 2 条）。调试场景 `log-highlight`：有合并、有当前分支外的提交、HEAD 游离可切。
 4. **My Commits**（第 3 条）：页面拿到换算过的「我」，和详情的作者比。测试：相等才算、没配名字时没有。
