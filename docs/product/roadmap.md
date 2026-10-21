@@ -162,7 +162,7 @@
 
 ### 第 15 阶段 · 树的多选
 
-（2026-10-19 从池子移入；细节见 `phases/phase-15.md`，第 14 阶段做完再细定）
-- 所有树都能多选。
-- 分支树：批量删除、更新；目录、分组的右键菜单作用于它下面的全部分支。
-- Commit 面板：Rollback 作用于选中的项，什么都没选时作用于全部改动；Add to Git、Delete 批量。
+（2026-10-19 从池子移入；细节见 `product/features/trees.md`、`branches.md`、`sync.md`「Update」、`commit.md`、`conflicts.md`）
+- 所有树都能多选；Ctrl+C 复制选中各行显示的文字（分支复制全名）。分支树、Stash 加了全部展开、全部收起。
+- 分支树：批量删除、更新；目录、分组的右键菜单作用于它下面的全部分支（全部严格：有一个做不了就不出现）。
+- Commit 面板：Rollback 作用于选中的项，什么都没选时作用于全部改动；Add to Git、Delete 与冲突文件的 Mark as Resolved、Keep、Delete File 批量。

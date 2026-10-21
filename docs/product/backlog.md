@@ -41,6 +41,7 @@
 - 推送对话框里显示 force push 会覆盖掉的远程提交（远程有、本地没有的）。
 - 自动 Fetch：定时，或打开面板时。现在只有手动。
 - Update、Checkout 带 autostash：工作区有改动挡住时，先存起来、做完再取回；取回冲突按冲突处理。
+- 远程名（分支树里的 `origin`）右键 Fetch：只取这一个远程（第 15 阶段定不做：竖按钮的 Fetch 已经取全部远程）。
 
 ## Commit 面板（`product/features/commit.md`、`product/features/trees.md`）
 

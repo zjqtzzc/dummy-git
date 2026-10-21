@@ -20,9 +20,9 @@
 
 ## 右键菜单
 
-用 VS Code 原生的右键菜单：`package.json` 的 `webview/context`，节点上用 `data-vscode-context` 标出类型。外观和键盘操作（菜单键、Shift+F10、Esc）都是原生的，省去自己画菜单要踩的坑（超出视口、滚动、失焦）。菜单命令和 webview 的请求共用同一张参数校验表、同一个 handler、同一个错误出口。
+用 VS Code 原生的右键菜单：`package.json` 的 `webview/context`，右键时按选中算好每个菜单项、写在树的容器上（`tech/decisions.md`「右键菜单：每个菜单项一个键」；菜单项定义在 `logic/log/branchTree.ts`）。外观和键盘操作（菜单键、Shift+F10、Esc）都是原生的，省去自己画菜单要踩的坑（超出视口、滚动、失焦）。菜单命令和 webview 的请求共用同一张参数校验表、同一个 handler、同一个错误出口。
 
-不可用的项**不出现**（`when` 条件），不置灰。按「由轻到重」分组，组之间有分隔线：
+不可用的项**不出现**（`when` 条件），不置灰。多选或右键目录、分组时只有 Update（`product/features/sync.md`）和 Delete（见下），其余几项都只能对一个分支做。按「由轻到重」分组，组之间有分隔线：
 
 | 节点 | Checkout | Update、Push…、Merge into Current、Rebase onto This | New Branch from Here…、Rename… | Delete |
 |---|---|---|---|---|
