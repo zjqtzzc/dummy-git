@@ -401,27 +401,28 @@ watch(selected, async (hash) => {
  */
 async function load(repository: string): Promise<void> {
   try {
-    const branch = filter.value.branch?.ref;
-    const [fetchedSkeleton, fetchedRefs] = await Promise.all([
-      props.client.request(
-        "getSkeleton",
-        branch === undefined ? { repo: repository } : { repo: repository, branch },
-      ),
-      props.client.request("getRefs", { repo: repository }),
-    ]);
-    const previous = cursorRow();
-    // 内容没变就沿用旧数组：refs 变了而提交没变（fetch 没拉到新东西、切到同一提交上的分支）时，
-    // 图结构不重算、筛选不重查。
-    skeleton.value = keepIfSame(skeleton.value, fetchedSkeleton, sameCommit);
-    refs.value = fetchedRefs;
-    loaded.value = true;
-    // 正在过滤的分支被删了：过滤落空，按全部分支重取。
+    // 先 refs 后骨架：按分支过滤时骨架从那个分支往下走，分支在不在只有 refs 回答。
+    // 同时发的话，分支已被删掉（在这里删、在外面删、fetch 时 prune、存下的过滤在重开窗口时已不在）
+    // 骨架那条必然失败，连带 refs 也用不上。
+    const fetchedRefs = await props.client.request("getRefs", { repo: repository });
+    // 正在过滤的分支没了：过滤落空，清掉它。改过滤会触发按全部分支重取，这里不再往下走。
     const filtered = filter.value.branch;
     if (filtered !== undefined && !branchFilters(fetchedRefs).some((b) => b.ref === filtered.ref)) {
       const { branch: _, ...rest } = filter.value;
       setFilter(rest);
       return;
     }
+    const fetchedSkeleton = await props.client.request(
+      "getSkeleton",
+      filtered === undefined ? { repo: repository } : { repo: repository, branch: filtered.ref },
+    );
+    const previous = cursorRow();
+    // 内容没变就沿用旧数组：refs 变了而提交没变（fetch 没拉到新东西、切到同一提交上的分支）时，
+    // 图结构不重算、筛选不重查。
+    // 骨架、refs 取齐了一起换：图的结构与颜色两者任一变了都要重算，分开换就算两遍。
+    skeleton.value = keepIfSame(skeleton.value, fetchedSkeleton, sameCommit);
+    refs.value = fetchedRefs;
+    loaded.value = true;
     await nextTick();
 
     selection.value = retain(selection.value, hashes.value);

@@ -54,7 +54,7 @@ IDEA 的做法都在 `.notes/rebased-master` 里核对过，`platform/vcs-log/im
      - 起点是 `git merge-base --all HEAD <骨架的起点>`；不按分支过滤时骨架的起点就写 HEAD，结果就是 HEAD 本身。
      - 按 B 过滤时：B 的祖先里从 HEAD 能走到的，恰好是 HEAD 与 B 的共同祖先；这几个合并基点往下走正好覆盖它们，和 IDEA 涂出来的是同一批。B 就是当前分支时，起点就是 HEAD，整列都涂（第 1 条）。
      - HEAD 游离时照样从 HEAD 走（同 IDEA）。B 与 HEAD 没有共同祖先（比如 `gh-pages` 这种孤儿分支）时没有起点，一条都不涂。
-     - 起点用单独的请求 `getHeadBases`，和骨架在同一次加载里一起取。
+     - 起点用单独的请求 `getHeadBases`，在取过 refs、确认过滤的分支还在之后，和骨架并行取（`tech/decisions.md`「Log 加载：先 refs，后骨架」）。
      - 页面在 `logic/log/` 里用纯函数从起点沿父提交往下走，只在骨架里走；一万条以外的不在骨架里，走到就停，那些本来也不显示。不照 IDEA 放后台：骨架最多一万条，预计走一遍很快（实现时实测，写进 `tech/performance.md`）。
      - 刷新不另管：HEAD 一变（提交、切换、reset），refs 过期，骨架重拉，起点跟着骨架来。骨架没变时沿用旧数组，走出来的也沿用。
      - 作者、说明、日期、路径过滤只是在骨架上取交集，不影响走出来的结果。
