@@ -74,5 +74,5 @@ IDEA 的做法都在 `.notes/rebased-master` 里核对过，`platform/vcs-log/im
 2. **算出每行的高亮**（第 2、4、5 条）：`logic/log/` 里从起点往下走、认出合并提交，合成每一行的样式（背景、灰字、加粗）。测试：走的范围、骨架外停下、合并提交、三种开关。实测一万条走一遍的耗时。
 3. **提交列表画出来**：Current Branch 与 Merge Commits 两种；选中、悬停的样子（第 2 条）。调试场景 `log-highlight`：有合并、有当前分支外的提交、HEAD 游离可切。
 4. **My Commits**（第 3 条）：新请求 `getIdentity`（扩展已有的同名命令，mailmap 换算过），和骨架一起取；页面拿它和详情的作者比（`isMine`）。测试：相等才算、没配名字时没有。调试场景 `log-highlight` 加上别人的提交和被 mailmap 归并过的「我」。
-5. **View Options 按钮**（第 6 条）：多选 QuickPick，开关存进 `viewState`。
+5. **View Options 按钮**（第 6 条）：新请求 `pickMany`（原生多选 QuickPick，带一开始勾着的项）；开关存进 `viewState`，存的是关掉的那几种（以后新加的默认开，同 IDEA 没存过取 `true`），落盘字符串走映射表。测试：存了读回原样、认不出的当作没有、`pickMany` 的参数校验、日志里记下勾了什么。
 6. **验收**：「要核对的条目」逐条勾过；验收句手动走一遍；并进 `product/features/log.md`，删掉本文。

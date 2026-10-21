@@ -3,9 +3,10 @@ import { assertNever } from "@dummy-git/shared";
 import { AppIcon, appIcon, codicon, IconSize } from "../logic/icons.js";
 import { FilterKind } from "../logic/log/filter.js";
 import Icon from "../ui/Icon.vue";
+import ToolButton from "../ui/ToolButton.vue";
 
 /**
- * 提交列表上方的过滤栏：左边搜索框，右边四个按钮。
+ * 提交列表上方的过滤栏：左边搜索框，右边四个按钮，最右边是 View Options。
  * 按钮没生效时只写名字加 ▾；生效后写当前值，后面一个 × 清除。值怎么选、怎么写由使用方定，这里只摆。
  */
 defineProps<{
@@ -23,6 +24,8 @@ const emit = defineEmits<{
   open: [kind: FilterKind];
   /** 点了 ×：清除这一种条件。 */
   clear: [kind: FilterKind];
+  /** 点了 View Options：开关高亮。 */
+  options: [];
 }>();
 
 function onInput(event: Event): void {
@@ -84,6 +87,12 @@ function nameOf(kind: FilterKind): string {
         </button>
       </span>
     </template>
+    <ToolButton
+      class="options"
+      :icon="codicon('eye')"
+      title="View Options"
+      @click="emit('options')"
+    />
   </div>
 </template>
 
@@ -129,6 +138,9 @@ function nameOf(kind: FilterKind): string {
   to {
     transform: rotate(360deg);
   }
+}
+.options {
+  flex-shrink: 0;
 }
 .filter {
   flex-shrink: 0;

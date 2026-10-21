@@ -13,3 +13,19 @@ export async function pick(title: string, items: readonly PickItem[]): Promise<n
   );
   return picked?.index;
 }
+
+/**
+ * 从几项里勾几项：原生多选 QuickPick，`picked` 是一开始勾着的。返回确认时勾着的序号（按列表顺序），取消是 `undefined`。
+ * Log 的 View Options 在用。
+ */
+export async function pickMany(
+  title: string,
+  items: readonly PickItem[],
+  picked: readonly number[],
+): Promise<readonly number[] | undefined> {
+  const chosen = await vscode.window.showQuickPick(
+    items.map((item, index) => ({ ...item, index, picked: picked.includes(index) })),
+    { title, placeHolder: title, canPickMany: true },
+  );
+  return chosen?.map((item) => item.index).sort((a, b) => a - b);
+}

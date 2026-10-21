@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { skeleton } from "../graph/__tests__/skeleton.js";
-import { Highlight, headReach, isMine, rowHighlight } from "../highlight.js";
+import {
+  Highlight,
+  headReach,
+  isMine,
+  restoreHighlights,
+  rowHighlight,
+  saveHighlights,
+} from "../highlight.js";
 
 describe("headReach", () => {
   // e 是 HEAD，合并了 side 上的 x；y 只在别的分支上。
@@ -65,5 +72,29 @@ describe("isMine", () => {
 
   it("没有「我」时都不是", () => {
     expect(isMine({ name: "Ann", email: "ann@x" }, null)).toBe(false);
+  });
+});
+
+describe("存、读回开关", () => {
+  const all = Object.values(Highlight);
+
+  it("存了再读回，原样", () => {
+    for (const enabled of [new Set(all), new Set([Highlight.MyCommits]), new Set<Highlight>()]) {
+      expect(restoreHighlights(saveHighlights(enabled))).toEqual(enabled);
+    }
+  });
+
+  it("什么都没存、存的认不出：全开；认不出的那项当作没有", () => {
+    expect(restoreHighlights(undefined)).toEqual(new Set(all));
+    expect(restoreHighlights("garbage")).toEqual(new Set(all));
+    expect(restoreHighlights({ off: ["merge-commits", "renamed-later", 3] })).toEqual(
+      new Set([Highlight.MyCommits, Highlight.CurrentBranch]),
+    );
+  });
+
+  it("落盘的是映射表里的字符串，不是 enum 的值", () => {
+    expect(saveHighlights(new Set())).toEqual({
+      off: ["my-commits", "merge-commits", "current-branch"],
+    });
   });
 });

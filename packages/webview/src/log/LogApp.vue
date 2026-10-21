@@ -40,7 +40,13 @@ import { buildLayout } from "../logic/log/graph/layout.js";
 import { buildGraph } from "../logic/log/graph/rows.js";
 import { buildStructure, sameCommit } from "../logic/log/graph/structure.js";
 import { visibleLines, visibleRows } from "../logic/log/graph/visible.js";
-import { Highlight, headReach } from "../logic/log/highlight.js";
+import {
+  HIGHLIGHT_MENU,
+  type Highlight,
+  headReach,
+  restoreHighlights,
+  saveHighlights,
+} from "../logic/log/highlight.js";
 import { type Layout, restoreLayout, splitPercent, splitPosition } from "../logic/log/layout.js";
 import { hashesToFetch } from "../logic/log/prefetch.js";
 import { refLabels } from "../logic/log/refLabels.js";
@@ -199,8 +205,28 @@ const merges = computed(
 );
 /** HEAD 包含的提交（Current Branch 高亮）。 */
 const inHead = computed(() => headReach(skeleton.value, headBases.value));
-/** 开着的高亮：三种都开（同 IDEA 的默认）。 */
-const highlights: ReadonlySet<Highlight> = new Set(Object.values(Highlight));
+/** 开着的高亮，存进 `viewState`；没存过时全开。 */
+const highlights = ref<ReadonlySet<Highlight>>(restoreHighlights(viewState.read("highlights")));
+
+/** View Options：原生多选框里勾开着的高亮。取消就不变。 */
+async function openViewOptions(): Promise<void> {
+  try {
+    const chosen = await props.client.request("pickMany", {
+      title: "Highlight",
+      items: HIGHLIGHT_MENU.map((entry) => entry.label),
+      picked: HIGHLIGHT_MENU.flatMap((entry, index) =>
+        highlights.value.has(entry.highlight) ? [index] : [],
+      ),
+    });
+    if (chosen === null) return;
+    highlights.value = new Set(
+      HIGHLIGHT_MENU.filter((_, index) => chosen.includes(index)).map((entry) => entry.highlight),
+    );
+    viewState.write("highlights", saveHighlights(highlights.value));
+  } catch (cause) {
+    report(cause);
+  }
+}
 const rewordableCommits = computed(() =>
   rewordable(skeleton.value, refs.value.find((ref) => ref.kind === RefKind.Head)?.target),
 );
@@ -714,6 +740,7 @@ onUnmounted(() => resizes.disconnect());
           @search="onSearch"
           @open="openFilter"
           @clear="clearFilter"
+          @options="openViewOptions"
         />
         <p v-if="!loaded" class="dim loading">Loading…</p>
         <p v-else-if="isFiltering(filter) && hashes.length === 0" class="dim loading">

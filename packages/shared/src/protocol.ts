@@ -375,6 +375,13 @@ export interface Commands {
     params: { title: string; items: readonly string[] };
     result: number | null;
   };
+  /**
+   * 从 `items` 里勾几项（原生多选 QuickPick），`picked` 是一开始勾着的序号。返回确认时勾着的序号；取消是 `null`。
+   */
+  pickMany: {
+    params: { title: string; items: readonly string[]; picked: readonly number[] };
+    result: readonly number[] | null;
+  };
   /** 把 `hash` 那条 stash 取回工作区，stash 保留。 */
   applyStash: {
     params: { repo: string; hash: string };

@@ -10,6 +10,41 @@ export enum Highlight {
   CurrentBranch = "currentBranch",
 }
 
+/** View Options 里的顺序与文字（同 IDEA 的 Highlight 一节）。 */
+export const HIGHLIGHT_MENU: readonly { readonly highlight: Highlight; readonly label: string }[] =
+  [
+    { highlight: Highlight.MyCommits, label: "My Commits" },
+    { highlight: Highlight.MergeCommits, label: "Merge Commits" },
+    { highlight: Highlight.CurrentBranch, label: "Current Branch" },
+  ];
+
+/**
+ * 存进 `viewState` 的写法。存下来的值会离开这次构建（下个版本读它），所以 enum 的值不直接落盘，由这张表给出对外的字符串。
+ */
+const SAVED_HIGHLIGHT: Readonly<Record<Highlight, string>> = {
+  [Highlight.MyCommits]: "my-commits",
+  [Highlight.MergeCommits]: "merge-commits",
+  [Highlight.CurrentBranch]: "current-branch",
+};
+
+/** 存关掉的那几种：没存过的（以后新加的）默认开着（同 IDEA：没存过的高亮取 `true`）。 */
+export function saveHighlights(enabled: ReadonlySet<Highlight>): unknown {
+  return {
+    off: Object.values(Highlight)
+      .filter((highlight) => !enabled.has(highlight))
+      .map((highlight) => SAVED_HIGHLIGHT[highlight]),
+  };
+}
+
+/** 读回存下的开关。认不出的当作没有，不报错（旧版本存的、被改坏的）；什么都没存时全开。 */
+export function restoreHighlights(saved: unknown): ReadonlySet<Highlight> {
+  const off = typeof saved === "object" && saved !== null ? Reflect.get(saved, "off") : undefined;
+  const offs = Array.isArray(off) ? off : [];
+  return new Set(
+    Object.values(Highlight).filter((highlight) => !offs.includes(SAVED_HIGHLIGHT[highlight])),
+  );
+}
+
 /**
  * 骨架里 HEAD 包含的提交：从起点（`getHeadBases`）沿全部父提交往下走，走到的都算，起点自己也算。
  * 只在骨架里走：父提交不在骨架里（超过一万条）就停在那儿，那些本来也不显示。

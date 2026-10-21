@@ -148,3 +148,14 @@ describe("Commit 面板批量命令的参数", () => {
     }
   });
 });
+
+describe("pickMany", () => {
+  it("一开始勾着的是非负整数序号；有一项不是就整条拒收", () => {
+    const ok = { title: "Highlight", items: ["A", "B"], picked: [0, 1] };
+    expect(parseParams("pickMany", ok)).toEqual(ok);
+    expect(parseParams("pickMany", { ...ok, picked: [] })).toEqual({ ...ok, picked: [] });
+    expect(parseParams("pickMany", { ...ok, picked: [-1] })).toBeUndefined();
+    expect(parseParams("pickMany", { ...ok, picked: [0.5] })).toBeUndefined();
+    expect(parseParams("pickMany", { ...ok, picked: ["0"] })).toBeUndefined();
+  });
+});
