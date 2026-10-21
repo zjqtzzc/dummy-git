@@ -5,6 +5,7 @@ import { codicon, type IconRef, IconSize } from "../logic/icons.js";
 import { ColumnHandle, type Columns, resizeColumns, restoreColumns } from "../logic/log/columns.js";
 import { commitMenuContext } from "../logic/log/commitMenu.js";
 import type { Graph } from "../logic/log/graph/types.js";
+import { type Highlight, rowHighlight } from "../logic/log/highlight.js";
 import type { RefLabel } from "../logic/log/refLabels.js";
 import { containerMenuContext } from "../logic/menuContext.js";
 import {
@@ -48,8 +49,12 @@ const props = defineProps<{
   labels: ReadonlyMap<string, readonly RefLabel[]>;
   /** 能改说明的提交，右键菜单才有 `Edit Commit Message…`。 */
   rewordable: ReadonlySet<string>;
-  /** 合并提交。多选里有它时没有 Cherry-Pick、Revert。 */
+  /** 合并提交。多选里有它时没有 Cherry-Pick、Revert；开着 Merge Commits 时文字变灰。 */
   merges: ReadonlySet<string>;
+  /** HEAD 包含的提交，开着 Current Branch 时带浅色背景。 */
+  inHead: ReadonlySet<string>;
+  /** 开着的高亮。 */
+  highlights: ReadonlySet<Highlight>;
 }>();
 
 const emit = defineEmits<{
@@ -76,6 +81,10 @@ const rows = computed(() =>
       commit: props.details.get(hash),
       graph: graphOf(index),
       labels: props.labels.get(hash) ?? [],
+      highlight: rowHighlight(
+        { inHead: props.inHead.has(hash), merge: props.merges.has(hash), mine: false },
+        props.highlights,
+      ),
     };
   }),
 );
@@ -341,7 +350,15 @@ defineExpose({
           tabindex="-1"
           :data-hash="row.hash"
           :aria-selected="selection.ids.has(row.hash)"
-          :class="['columns', 'row', { selected: selection.ids.has(row.hash) }]"
+          :class="[
+            'columns',
+            'row',
+            {
+              selected: selection.ids.has(row.hash),
+              tinted: row.highlight.tinted,
+              dimmed: row.highlight.dimmed,
+            },
+          ]"
           :style="{ top: `${row.index * ROW_HEIGHT}px`, height: `${ROW_HEIGHT}px` }"
         >
           <GraphCell v-if="row.graph !== undefined" :row="row.graph.row" :base="row.graph.base" />
@@ -419,6 +436,8 @@ defineExpose({
   border-left: 1px solid var(--vscode-panel-border);
 }
 .scroller {
+  /* Current Branch 的浅色：主题的蓝按 12% 混进透明，亮、暗主题都看得出。 */
+  --current-branch-tint: color-mix(in srgb, var(--vscode-charts-blue) 12%, transparent);
   flex: 1;
   overflow-y: auto;
   outline: none;
@@ -436,6 +455,17 @@ defineExpose({
 .row.selected {
   background: var(--vscode-list-activeSelectionBackground);
   color: var(--vscode-list-activeSelectionForeground);
+}
+/*
+ * 高亮让给选中：选中的行只用选中色。
+ * 浅色背景是半透明的一层，画在背景色（悬停色）之上：悬停时悬停色从下面透上来，还看得出这一行带着浅色。
+ */
+.row.tinted:not(.selected) {
+  background-image: linear-gradient(var(--current-branch-tint), var(--current-branch-tint));
+}
+.row.dimmed:not(.selected),
+.row.dimmed:not(.selected) .dim {
+  color: var(--vscode-disabledForeground);
 }
 .cell {
   overflow: hidden;

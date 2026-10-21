@@ -40,6 +40,7 @@ import { buildLayout } from "../logic/log/graph/layout.js";
 import { buildGraph } from "../logic/log/graph/rows.js";
 import { buildStructure, sameCommit } from "../logic/log/graph/structure.js";
 import { visibleLines, visibleRows } from "../logic/log/graph/visible.js";
+import { Highlight, headReach } from "../logic/log/highlight.js";
 import { type Layout, restoreLayout, splitPercent, splitPosition } from "../logic/log/layout.js";
 import { hashesToFetch } from "../logic/log/prefetch.js";
 import { refLabels } from "../logic/log/refLabels.js";
@@ -76,6 +77,8 @@ const inFlight = new Set<string>();
 const loaded = ref(false);
 /** 分支、tag 与 HEAD，左栏用。 */
 const refs = ref<Ref[]>([]);
+/** 骨架里从 HEAD 能走到的起点（`getHeadBases`），和骨架一起取。 */
+const headBases = ref<readonly string[]>([]);
 const selection = ref<Selection>(EMPTY_SELECTION);
 /** 恰好选中一条时是它：右栏只在这时显示文件与详情。 */
 const selected = computed(() => singleOf(selection.value));
@@ -192,6 +195,10 @@ const labels = computed(() => refLabels(refs.value));
 const merges = computed(
   () => new Set(skeleton.value.flatMap((c) => (c.parents.length > 1 ? [c.hash] : []))),
 );
+/** HEAD 包含的提交（Current Branch 高亮）。 */
+const inHead = computed(() => headReach(skeleton.value, headBases.value));
+/** 开着的高亮：三种都开（同 IDEA 的默认）。 */
+const highlights: ReadonlySet<Highlight> = new Set(Object.values(Highlight));
 const rewordableCommits = computed(() =>
   rewordable(skeleton.value, refs.value.find((ref) => ref.kind === RefKind.Head)?.target),
 );
@@ -412,16 +419,19 @@ async function load(repository: string): Promise<void> {
       setFilter(rest);
       return;
     }
-    const fetchedSkeleton = await props.client.request(
-      "getSkeleton",
-      filtered === undefined ? { repo: repository } : { repo: repository, branch: filtered.ref },
-    );
+    const params =
+      filtered === undefined ? { repo: repository } : { repo: repository, branch: filtered.ref };
+    const [fetchedSkeleton, fetchedBases] = await Promise.all([
+      props.client.request("getSkeleton", params),
+      props.client.request("getHeadBases", params),
+    ]);
     const previous = cursorRow();
     // 内容没变就沿用旧数组：refs 变了而提交没变（fetch 没拉到新东西、切到同一提交上的分支）时，
     // 图结构不重算、筛选不重查。
     // 骨架、refs 取齐了一起换：图的结构与颜色两者任一变了都要重算，分开换就算两遍。
     skeleton.value = keepIfSame(skeleton.value, fetchedSkeleton, sameCommit);
     refs.value = fetchedRefs;
+    headBases.value = keepIfSame(headBases.value, fetchedBases);
     loaded.value = true;
     await nextTick();
 
@@ -715,6 +725,8 @@ onUnmounted(() => resizes.disconnect());
           :labels="labels"
           :rewordable="rewordableCommits"
           :merges="merges"
+          :in-head="inHead"
+          :highlights="highlights"
           @copy="copyCommits"
           @visible="fetchVisible"
         />
