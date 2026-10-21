@@ -1,4 +1,4 @@
-import { DiffOpenMode, DiffSideKind } from "@dummy-git/shared";
+import { type CommandName, DiffOpenMode, DiffSideKind } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
 import { parseParams } from "../protocol.guards.js";
 
@@ -119,5 +119,24 @@ describe("update 的参数", () => {
     });
     expect(parseParams("update", { repo: "/r", branches: [] })).toBeUndefined();
     expect(parseParams("update", { repo: "/r", branch: "main" })).toBeUndefined();
+  });
+});
+
+describe("Commit 面板批量命令的参数", () => {
+  it("路径的列表，至少一个", () => {
+    const commands: readonly CommandName[] = [
+      "markResolved",
+      "removeConflictFile",
+      "addUntracked",
+      "deleteUntracked",
+    ];
+    for (const command of commands) {
+      expect(parseParams(command, { repo: "/r", paths: ["a", "b/c"] })).toEqual({
+        repo: "/r",
+        paths: ["a", "b/c"],
+      });
+      expect(parseParams(command, { repo: "/r", paths: [] })).toBeUndefined();
+      expect(parseParams(command, { repo: "/r", path: "a" })).toBeUndefined();
+    }
   });
 });

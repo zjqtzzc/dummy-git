@@ -119,17 +119,17 @@ describe("workingMenuContext：Commit 面板的右键菜单项", () => {
   it("各种文件：各自的菜单项，参数是路径", () => {
     expect(menuOf("c.ts")).toEqual({
       [MenuContextKey.Repo]: "/repo",
-      [MenuContextKey.KeepFile]: { path: "c.ts" },
-      [MenuContextKey.RemoveConflictFile]: { path: "c.ts" },
+      [MenuContextKey.KeepFile]: { paths: ["c.ts"] },
+      [MenuContextKey.RemoveConflictFile]: { paths: ["c.ts"] },
     });
     expect(menuOf("m.ts")).toEqual({
       [MenuContextKey.Repo]: "/repo",
       [MenuContextKey.OpenMergeEditor]: { path: "m.ts" },
-      [MenuContextKey.MarkResolved]: { path: "m.ts" },
+      [MenuContextKey.MarkResolved]: { paths: ["m.ts"] },
     });
     expect(menuOf("d.ts")).toEqual({
       [MenuContextKey.Repo]: "/repo",
-      [MenuContextKey.RemoveConflictFile]: { path: "d.ts" },
+      [MenuContextKey.RemoveConflictFile]: { paths: ["d.ts"] },
     });
     expect(menuOf("a.ts")).toEqual({
       [MenuContextKey.Repo]: "/repo",
@@ -137,8 +137,37 @@ describe("workingMenuContext：Commit 面板的右键菜单项", () => {
     });
     expect(menuOf("new.txt")).toEqual({
       [MenuContextKey.Repo]: "/repo",
-      [MenuContextKey.AddUntracked]: { path: "new.txt" },
-      [MenuContextKey.DeleteUntracked]: { path: "new.txt" },
+      [MenuContextKey.AddUntracked]: { paths: ["new.txt"] },
+      [MenuContextKey.DeleteUntracked]: { paths: ["new.txt"] },
+    });
+  });
+
+  it("选中 Unversioned Files 组：Add to Git、Delete 作用于下面全部未跟踪文件", () => {
+    const group = { exact: [null], expanded: [{ path: "new.txt" }, { path: "other.txt" }] };
+    const more = [...files, { path: "other.txt", status: WorkingStatus.Untracked }];
+    expect(workingMenuContext("/repo", conflicts, more, group)).toEqual({
+      [MenuContextKey.Repo]: "/repo",
+      [MenuContextKey.AddUntracked]: { paths: ["new.txt", "other.txt"] },
+      [MenuContextKey.DeleteUntracked]: { paths: ["new.txt", "other.txt"] },
+    });
+  });
+
+  it("选中 Conflicts 组、种类混着：没有批量项（全部严格）", () => {
+    const group = {
+      exact: [null],
+      expanded: [{ path: "c.ts" }, { path: "m.ts" }, { path: "d.ts" }],
+    };
+    expect(workingMenuContext("/repo", conflicts, files, group)).toEqual({
+      [MenuContextKey.Repo]: "/repo",
+    });
+  });
+
+  it("两个两边都改的冲突：Mark as Resolved 一起做；合并编辑器只能单选", () => {
+    const more = [...conflicts, { path: "n.ts", conflict: ConflictKind.BothAdded }];
+    const both = [{ path: "m.ts" }, { path: "n.ts" }];
+    expect(workingMenuContext("/repo", more, files, { exact: both, expanded: both })).toEqual({
+      [MenuContextKey.Repo]: "/repo",
+      [MenuContextKey.MarkResolved]: { paths: ["m.ts", "n.ts"] },
     });
   });
 

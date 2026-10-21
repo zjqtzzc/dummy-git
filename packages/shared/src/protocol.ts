@@ -151,15 +151,16 @@ export interface Commands {
     result: null;
   };
   /**
-   * 冲突文件标记已解决（右键 Mark as Resolved、Keep）：`git add`。文件里还有冲突标记时扩展先问。
+   * 冲突文件标记已解决（右键 Mark as Resolved、Keep，至少一个）：一条 `git add`。
+   * 文件里还有冲突标记的，扩展收在一起先问一次；取消就只是它们不标记。
    */
   markResolved: {
-    params: { repo: string; path: string };
+    params: { repo: string; paths: readonly string[] };
     result: null;
   };
-  /** 冲突文件删掉（右键 Delete File）：`git rm`，同时标记已解决。 */
+  /** 冲突文件删掉（右键 Delete File，至少一个）：一条 `git rm`，同时标记已解决。不确认。 */
   removeConflictFile: {
-    params: { repo: string; path: string };
+    params: { repo: string; paths: readonly string[] };
     result: null;
   };
   /** 双击一边删了的冲突文件：扩展弹框选 Keep / Delete File（两边都删了的只有 Delete File）。 */
@@ -167,14 +168,14 @@ export interface Commands {
     params: { repo: string; path: string };
     result: null;
   };
-  /** 未跟踪文件放进暂存区（右键 Add to Git）：`git add`。不确认。 */
+  /** 未跟踪文件放进暂存区（右键 Add to Git，至少一个）：一条 `git add`。不确认。 */
   addUntracked: {
-    params: { repo: string; path: string };
+    params: { repo: string; paths: readonly string[] };
     result: null;
   };
-  /** 从磁盘删掉一个未跟踪文件（右键 Delete），扩展先确认。 */
+  /** 从磁盘删掉未跟踪文件（右键 Delete，至少一个），扩展先问一次。 */
   deleteUntracked: {
-    params: { repo: string; path: string };
+    params: { repo: string; paths: readonly string[] };
     result: null;
   };
   /** 取全部远程，清掉远程已删除的分支。 */

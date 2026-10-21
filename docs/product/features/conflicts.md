@@ -62,6 +62,7 @@ Commit 面板只问两件事：有没有停下的操作（读状态文件，不�
   - 栏的标题：左边 `Current` 加当前分支名；右边 `Incoming` 加 merge 对方的分支名、cherry-pick 与 revert 的短 hash，stash 冲突写 `Stashed Changes`。rebase 时也不对调左右，一律左 Current、右 Incoming，标题里写清楚。
   - **不主动关合并编辑器，也不替用户保存**：合并编辑器一打开，结果栏就是「未保存」的草稿（没处理的冲突用基准占位，两边都新增的为空）。如果替用户关掉它，而用户曾在 VS Code 的关闭提示里勾过「不再询问」，就会直接保存，冲突标记被基准内容覆盖，git 却仍然认为有冲突。
 - **Mark as Resolved**：文件里还有冲突标记（行首的 `<<<<<<<`、`=======`、`>>>>>>>`）时，先确认 `<文件> still contains conflict markers. Mark as resolved anyway?`；然后 `git add`，文件移出冲突组。Keep 就是标记已解决，留下工作区里的那份。
+- **多选、选冲突组**（2026-10-20 项目负责人定）：Mark as Resolved、Keep、Delete File 作用于选中的全部（一条 `git add` / `git rm`），全部严格，种类混着就没有这一项；Open in Merge Editor 只能单选（同 IDEA 的 `GitConflictActions.kt` 能多选，但 IDEA 有列出多个文件的合并窗口，VS Code 的合并编辑器一次开一个）。一批 Mark as Resolved 里还有冲突标记的收在一起问一次（`2 files still contain conflict markers. Mark them as resolved anyway?`，列出名字），取消就只是它们不标记，其余照旧标记。Keep、Delete File 不问。
 - 冲突解决后、继续之前，git 允许 stash push 和 Rollback，解决好的内容会被存走或丢掉，而 `MERGE_HEAD` 还在。git 不拦，我们也不拦。
 
 ## 以后可能做（`product/backlog.md`）

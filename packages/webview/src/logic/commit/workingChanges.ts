@@ -148,7 +148,11 @@ const ROLLBACK = menuItem({
   value: (paths) => ({ paths }),
 });
 
-/** Commit 面板文件的右键菜单项，顺序无关（菜单里的顺序由 `package.json` 的 `group` 定）。 */
+/**
+ * Commit 面板文件的右键菜单项，顺序无关（菜单里的顺序由 `package.json` 的 `group` 定）。
+ * 除了 Open in Merge Editor（合并编辑器一次开一个文件），都是展开看、全部严格：
+ * 目录、组等于它下面列出的全部文件，只动列出来的，不碰目录里没列出的（被忽略的文件等）；混着别的种类就不出现。
+ */
 const FILE_MENU: readonly MenuItem<FileMenuTarget | null>[] = [
   menuItem({
     view: MenuView.Exact,
@@ -158,40 +162,35 @@ const FILE_MENU: readonly MenuItem<FileMenuTarget | null>[] = [
     value: ([path]) => ({ path }),
   }),
   menuItem({
-    view: MenuView.Exact,
+    view: MenuView.Expanded,
     key: MenuContextKey.MarkResolved,
     pick: conflictPath(ConflictResolution.Merge),
-    whole: exactlyOne,
-    value: ([path]) => ({ path }),
+    value: (paths) => ({ paths }),
   }),
   menuItem({
-    view: MenuView.Exact,
+    view: MenuView.Expanded,
     key: MenuContextKey.KeepFile,
     pick: conflictPath(ConflictResolution.KeepOrDelete),
-    whole: exactlyOne,
-    value: ([path]) => ({ path }),
+    value: (paths) => ({ paths }),
   }),
   menuItem({
-    view: MenuView.Exact,
+    view: MenuView.Expanded,
     key: MenuContextKey.RemoveConflictFile,
     pick: conflictPath(ConflictResolution.KeepOrDelete, ConflictResolution.DeleteOnly),
-    whole: exactlyOne,
-    value: ([path]) => ({ path }),
+    value: (paths) => ({ paths }),
   }),
   ROLLBACK,
   menuItem({
-    view: MenuView.Exact,
+    view: MenuView.Expanded,
     key: MenuContextKey.AddUntracked,
     pick: pathOf(FileMenuKind.Untracked),
-    whole: exactlyOne,
-    value: ([path]) => ({ path }),
+    value: (paths) => ({ paths }),
   }),
   menuItem({
-    view: MenuView.Exact,
+    view: MenuView.Expanded,
     key: MenuContextKey.DeleteUntracked,
     pick: pathOf(FileMenuKind.Untracked),
-    whole: exactlyOne,
-    value: ([path]) => ({ path }),
+    value: (paths) => ({ paths }),
   }),
 ];
 

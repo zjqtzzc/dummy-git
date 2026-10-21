@@ -63,6 +63,9 @@
 | 未跟踪文件 | Add to Git（`git add`，不确认）、Delete（原生模态确认 `Delete <文件名>? This cannot be undone.`，直接删磁盘上的文件） |
 | 冲突文件 | 见 `product/features/conflicts.md` |
 
+- **多选、目录、组**（2026-10-20 项目负责人定）：除了 Open in Merge Editor（合并编辑器一次开一个文件），都作用于选中的全部；目录、组等于它下面列出的全部文件，只动列出来的，不碰目录里没列出的（被忽略的文件等）。全部严格：混着别的种类（比如未跟踪文件里夹着已跟踪的改动）就没有这一项。
+- 规则和单个文件一样，同一类的合成一次问：Delete 一批未跟踪文件问一次 `Delete 3 files? This cannot be undone.`，说明里列出前 5 个文件名；Add to Git 一条 `git add`，不问。
+
 ## 以后可能做（`product/backlog.md`）
 
 带文件树、可以改勾选的 Rollback 确认页；键盘空格勾选；未跟踪文件成千上万时的退化方案。

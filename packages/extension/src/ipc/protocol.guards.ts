@@ -96,6 +96,17 @@ function asStringArray(value: unknown): readonly string[] | undefined {
   return value.every((item) => typeof item === "string") ? value : undefined;
 }
 
+/** 一批文件：仓库和相对仓库根的路径，至少一个。 */
+function asPathsTarget(
+  raw: Record<string, unknown>,
+): { repo: string; paths: readonly string[] } | undefined {
+  const repo = raw["repo"];
+  const paths = asStringArray(raw["paths"]);
+  return typeof repo === "string" && paths !== undefined && paths.length > 0
+    ? { repo, paths }
+    : undefined;
+}
+
 /** 远程分支的列表：每项是 `{ remote, branch }`，都是字符串。有一项不对就整条拒收。 */
 function asRemoteBranches(
   value: unknown,
@@ -267,31 +278,15 @@ const PARAM_GUARDS = {
     const hash = raw["hash"];
     return typeof repo === "string" && typeof hash === "string" ? { repo, hash } : undefined;
   },
-  markResolved: (raw: Record<string, unknown>) => {
-    const repo = raw["repo"];
-    const path = raw["path"];
-    return typeof repo === "string" && typeof path === "string" ? { repo, path } : undefined;
-  },
-  removeConflictFile: (raw: Record<string, unknown>) => {
-    const repo = raw["repo"];
-    const path = raw["path"];
-    return typeof repo === "string" && typeof path === "string" ? { repo, path } : undefined;
-  },
+  markResolved: asPathsTarget,
+  removeConflictFile: asPathsTarget,
   resolveDeletion: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const path = raw["path"];
     return typeof repo === "string" && typeof path === "string" ? { repo, path } : undefined;
   },
-  addUntracked: (raw: Record<string, unknown>) => {
-    const repo = raw["repo"];
-    const path = raw["path"];
-    return typeof repo === "string" && typeof path === "string" ? { repo, path } : undefined;
-  },
-  deleteUntracked: (raw: Record<string, unknown>) => {
-    const repo = raw["repo"];
-    const path = raw["path"];
-    return typeof repo === "string" && typeof path === "string" ? { repo, path } : undefined;
-  },
+  addUntracked: asPathsTarget,
+  deleteUntracked: asPathsTarget,
   openMergeEditor: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const path = raw["path"];

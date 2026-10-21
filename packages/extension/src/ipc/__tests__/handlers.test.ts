@@ -1123,14 +1123,14 @@ describe("解决冲突：markResolved / removeConflictFile / resolveDeletion / d
 
   it("还有冲突标记：先问，取消就不标记", async () => {
     const repo = stashConflict("resolve-markers");
-    expect(await act(repo, (h) => h.markResolved({ repo, path: "both.txt" }))).toBe(1);
+    expect(await act(repo, (h) => h.markResolved({ repo, paths: ["both.txt"] }))).toBe(1);
     expect(status(repo, "both.txt")).toBe("UU both.txt");
   });
 
   it("没有冲突标记了：直接标记，移出冲突", async () => {
     const repo = stashConflict("resolve-clean");
     writeFileSync(join(repo, "both.txt"), "merged\n");
-    expect(await act(repo, (h) => h.markResolved({ repo, path: "both.txt" }))).toBe(0);
+    expect(await act(repo, (h) => h.markResolved({ repo, paths: ["both.txt"] }))).toBe(0);
     expect(status(repo, "both.txt")).toBe("M  both.txt");
   });
 
@@ -1145,14 +1145,14 @@ describe("解决冲突：markResolved / removeConflictFile / resolveDeletion / d
 
   it("右键 Delete File：删掉并移出冲突", async () => {
     const repo = stashConflict("resolve-remove");
-    await act(repo, (h) => h.removeConflictFile({ repo, path: "gone.txt" }));
+    await act(repo, (h) => h.removeConflictFile({ repo, paths: ["gone.txt"] }));
     expect(status(repo, "gone.txt")).toBe("D  gone.txt");
   });
 
   it("未跟踪文件 Add to Git：放进暂存区，不确认，磁盘上的内容还在", async () => {
     const repo = makeTempRepo("add-untracked");
     writeFileSync(join(repo, "junk.txt"), "x\n");
-    expect(await act(repo, (h) => h.addUntracked({ repo, path: "junk.txt" }))).toBe(0);
+    expect(await act(repo, (h) => h.addUntracked({ repo, paths: ["junk.txt"] }))).toBe(0);
     expect(status(repo, "junk.txt")).toBe("A  junk.txt");
     expect(readFileSync(join(repo, "junk.txt"), "utf8")).toBe("x\n");
   });
@@ -1160,10 +1160,112 @@ describe("解决冲突：markResolved / removeConflictFile / resolveDeletion / d
   it("删未跟踪文件：确认后从磁盘删掉，取消就留着", async () => {
     const repo = makeTempRepo("delete-untracked");
     writeFileSync(join(repo, "junk.txt"), "x");
-    await act(repo, (h) => h.deleteUntracked({ repo, path: "junk.txt" }));
+    await act(repo, (h) => h.deleteUntracked({ repo, paths: ["junk.txt"] }));
     expect(status(repo, "junk.txt")).toBe("?? junk.txt");
-    await act(repo, (h) => h.deleteUntracked({ repo, path: "junk.txt" }), { sure: true });
+    await act(repo, (h) => h.deleteUntracked({ repo, paths: ["junk.txt"] }), { sure: true });
     expect(status(repo, "junk.txt")).toBe("");
+  });
+});
+
+describe("Commit 面板的批量：Mark as Resolved、Delete File、Add to Git、Delete", () => {
+  afterAll(cleanupTempRepos);
+  /** 跑一次，确认框都回答 `sure`；返回问过的话（带名单的写在后面）。 */
+  const act = async (
+    path: string,
+    run: (h: ReturnType<typeof createHandlers>) => Promise<unknown>,
+    sure: boolean,
+  ) => {
+    const repository = new Repository(plainLocation(path), cli);
+    const asked: string[] = [];
+    try {
+      await run(
+        createHandlers(repository, {
+          ...NO_UI,
+          confirm: async (message, _action, names) => {
+            asked.push(names === undefined ? message : `${message} [${names.join(", ")}]`);
+            return sure;
+          },
+        }),
+      );
+      return asked;
+    } finally {
+      repository.dispose();
+    }
+  };
+  const status = (repo: string) => git(repo, ["status", "--porcelain"]).trimEnd().split("\n");
+
+  /** 停在 merge 冲突：m1、m2、m3 两边都改，gone1、gone2 被 feature 删了、main 改了。 */
+  const conflicted = (name: string): string => {
+    const repo = makeTempRepo(name);
+    const files = ["m1", "m2", "m3", "gone1", "gone2"];
+    for (const file of files) writeFileSync(join(repo, file), "base\n");
+    git(repo, ["add", "-A"]);
+    git(repo, ["commit", "-qm", "base"]);
+    git(repo, ["switch", "-q", "-c", "feature"]);
+    for (const file of ["m1", "m2", "m3"]) writeFileSync(join(repo, file), "feature\n");
+    git(repo, ["rm", "-q", "gone1", "gone2"]);
+    git(repo, ["commit", "-qam", "feature"]);
+    git(repo, ["switch", "-q", "main"]);
+    for (const file of files) writeFileSync(join(repo, file), "main\n");
+    git(repo, ["commit", "-qam", "main"]);
+    expect(() => git(repo, ["merge", "--no-edit", "feature"])).toThrow();
+    return repo;
+  };
+
+  it("Mark as Resolved 一批：没有冲突标记的直接标记，有的收在一起问一次；取消就只是它们不标记", async () => {
+    const repo = conflicted("mark-batch");
+    writeFileSync(join(repo, "m3"), "merged\n");
+    const asked = await act(
+      repo,
+      (h) => h.markResolved({ repo, paths: ["m1", "m2", "m3"] }),
+      false,
+    );
+    expect(asked).toEqual([
+      "2 files still contain conflict markers. Mark them as resolved anyway? [m1, m2]",
+    ]);
+    expect(status(repo)).toEqual(expect.arrayContaining(["UU m1", "UU m2", "M  m3"]));
+  });
+
+  it("Mark as Resolved 一批、确认：全都标记", async () => {
+    const repo = conflicted("mark-batch-sure");
+    await act(repo, (h) => h.markResolved({ repo, paths: ["m1", "m2"] }), true);
+    expect(status(repo)).toEqual(expect.arrayContaining(["M  m1", "M  m2"]));
+  });
+
+  it("Delete File 一批：一条 git rm，不问", async () => {
+    const repo = conflicted("remove-batch");
+    const asked = await act(
+      repo,
+      (h) => h.removeConflictFile({ repo, paths: ["gone1", "gone2"] }),
+      false,
+    );
+    expect(asked).toEqual([]);
+    expect(status(repo)).toEqual(expect.arrayContaining(["D  gone1", "D  gone2"]));
+  });
+
+  it("Add to Git 一批：不问", async () => {
+    const repo = makeTempRepo("add-batch");
+    writeFileSync(join(repo, "a.txt"), "a\n");
+    mkdirSync(join(repo, "dir"));
+    writeFileSync(join(repo, "dir", "b.txt"), "b\n");
+    expect(
+      await act(repo, (h) => h.addUntracked({ repo, paths: ["a.txt", "dir/b.txt"] }), false),
+    ).toEqual([]);
+    expect(status(repo)).toEqual(["A  a.txt", "A  dir/b.txt"]);
+  });
+
+  it("Delete 一批未跟踪文件：问一次、列出名字，确认后都删", async () => {
+    const repo = makeTempRepo("delete-untracked-batch");
+    writeFileSync(join(repo, "a.txt"), "a\n");
+    mkdirSync(join(repo, "dir"));
+    writeFileSync(join(repo, "dir", "b.txt"), "b\n");
+    const asked = await act(
+      repo,
+      (h) => h.deleteUntracked({ repo, paths: ["a.txt", "dir/b.txt"] }),
+      true,
+    );
+    expect(asked).toEqual(["Delete 2 files? This cannot be undone. [a.txt, b.txt]"]);
+    expect(git(repo, ["status", "--porcelain"]).trim()).toBe("");
   });
 });
 

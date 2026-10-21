@@ -19,6 +19,7 @@ import { defaultPushTarget } from "../core/pushTarget.js";
 import type { Repository } from "../core/repository.js";
 import {
   abortInProgress,
+  addPaths,
   addRemote,
   amendCommit,
   applyStash,
@@ -54,7 +55,6 @@ import {
   listPaths,
   listRemotes,
   MergeOutcome,
-  markResolvedPath,
   matchCommits,
   mergeRef,
   PushKind,
@@ -67,7 +67,7 @@ import {
   ResetMode,
   RewordOutcome,
   rebaseOnto,
-  removeConflictPath,
+  removeConflictPaths,
   renameBranch,
   replayCommits,
   resetTo,
@@ -291,19 +291,34 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
   }
 
   /**
-   * 标记已解决（Mark as Resolved、Keep 都走这里）：文件里还有冲突标记就先问；没有这个文件（删了）不查。
+   * 标记已解决（Mark as Resolved、Keep 都走这里），一条 `git add`。
+   * 文件里还有冲突标记的收在一起先问一次（一个时照旧写名字）；取消就只是它们不标记，其余照旧标记
+   * （项目负责人定，同批量删分支时没合并的那几个）。没有这个文件（删了）的不查。
    */
-  async function markResolved(path: string): Promise<void> {
+  async function markResolved(paths: readonly string[]): Promise<void> {
     const root = repository.location.root;
-    const text = await readFile(join(root, ...path.split("/")), "utf8").catch(() => "");
-    if (hasConflictMarkers(text)) {
-      const sure = await ui.confirm(
-        `${basename(path)} still contains conflict markers. Mark as resolved anyway?`,
-        "Mark as Resolved",
-      );
-      if (!sure) return;
+    const marked: string[] = [];
+    const clean: string[] = [];
+    for (const path of paths) {
+      const text = await readFile(join(root, ...path.split("/")), "utf8").catch(() => "");
+      (hasConflictMarkers(text) ? marked : clean).push(path);
     }
-    await repository.run(markResolvedPath, root, path);
+    const [only] = marked;
+    if (only !== undefined) {
+      const sure =
+        marked.length === 1
+          ? await ui.confirm(
+              `${basename(only)} still contains conflict markers. Mark as resolved anyway?`,
+              "Mark as Resolved",
+            )
+          : await ui.confirm(
+              `${marked.length} files still contain conflict markers. Mark them as resolved anyway?`,
+              "Mark as Resolved",
+              marked.map(basename),
+            );
+      if (sure) clean.push(...marked);
+    }
+    if (clean.length > 0) await repository.run(addPaths, root, clean);
   }
 
   /** 这条 stash 的说明（确认框与完成消息用）。已经不在时直接说出来。 */
@@ -885,12 +900,12 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       ui.notify(await repository.run(dropStash, repository.location.root, hash));
       return null;
     },
-    markResolved: async ({ path }) => {
-      await markResolved(path);
+    markResolved: async ({ paths }) => {
+      await markResolved(paths);
       return null;
     },
-    removeConflictFile: async ({ path }) => {
-      await repository.run(removeConflictPath, repository.location.root, path);
+    removeConflictFile: async ({ paths }) => {
+      await repository.run(removeConflictPaths, repository.location.root, paths);
       return null;
     },
     resolveDeletion: async ({ path }) => {
@@ -902,26 +917,37 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       const name = basename(path);
       if (change.conflict === ConflictKind.BothDeleted) {
         const index = await ui.choose(`Both sides deleted ${name}.`, ["Delete File"]);
-        if (index === 0) await repository.run(removeConflictPath, root, path);
+        if (index === 0) await repository.run(removeConflictPaths, root, [path]);
         return null;
       }
       const index = await ui.choose(deletionQuestion(name, change.conflict), [
         "Keep",
         "Delete File",
       ]);
-      if (index === 0) await markResolved(path);
-      if (index === 1) await repository.run(removeConflictPath, root, path);
+      if (index === 0) await markResolved([path]);
+      if (index === 1) await repository.run(removeConflictPaths, root, [path]);
       return null;
     },
-    addUntracked: async ({ path }) => {
-      // 和标记已解决是同一条 git add：把工作区里的这一份写进暂存区。不确认。
-      await repository.run(markResolvedPath, repository.location.root, path);
+    addUntracked: async ({ paths }) => {
+      // 和标记已解决是同一条 git add：把工作区里的这几份写进暂存区。不确认。
+      await repository.run(addPaths, repository.location.root, paths);
       return null;
     },
-    deleteUntracked: async ({ path }) => {
-      const sure = await ui.confirm(`Delete ${basename(path)}? This cannot be undone.`, "Delete");
+    deleteUntracked: async ({ paths }) => {
+      const [only] = paths;
+      if (only === undefined) return null;
+      const sure =
+        paths.length === 1
+          ? await ui.confirm(`Delete ${basename(only)}? This cannot be undone.`, "Delete")
+          : await ui.confirm(
+              `Delete ${paths.length} files? This cannot be undone.`,
+              "Delete",
+              paths.map(basename),
+            );
+      if (!sure) return null;
       // 未跟踪的文件 git 不管，直接删磁盘上的；watcher 看到变化就刷新。
-      if (sure) await rm(join(repository.location.root, ...path.split("/")));
+      const root = repository.location.root;
+      for (const path of paths) await rm(join(root, ...path.split("/")));
       return null;
     },
     rollback: async ({ paths }) => {

@@ -43,8 +43,8 @@
  * | `popStash` | `stash list …` 找序号 + `stash pop stash@{n}` | — | — |
  * | `dropStash` | `stash list …` 找序号 + `stash drop stash@{n}` | — | — |
  * | `unstage` | `restore --staged -- <路径…>` | `git restore` | 2.23 |
- * | `markResolvedPath` | `add -- :(literal)<路径>` | — | — |
- * | `removeConflictPath` | `rm -q -- :(literal)<路径>` | — | — |
+ * | `addPaths` | `add -- :(literal)<路径>…` | — | — |
+ * | `removeConflictPaths` | `rm -q -- :(literal)<路径>…` | — | — |
  * | `continueInProgress` | `merge` / `rebase` / `cherry-pick` / `revert --continue`，环境 `GIT_EDITOR=true` | — | — |
  * | `abortInProgress` | 同上四种的 `--abort` | — | — |
  * | `mergeRef` | `merge -m <说明> <引用>` | — | — |
@@ -119,7 +119,7 @@ export { PushKind, type PushResult, push } from "./push.js";
 export { getHead, getRefs } from "./refs.js";
 export { addRemote, fetchAll, listRemotes } from "./remote.js";
 export { ResetMode, resetTo } from "./reset.js";
-export { markResolvedPath, removeConflictPath } from "./resolve.js";
+export { addPaths, removeConflictPaths } from "./resolve.js";
 export { RewordOutcome, rewordCommit } from "./reword.js";
 export { rollback } from "./rollback.js";
 export {
