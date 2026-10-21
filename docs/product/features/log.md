@@ -1,6 +1,6 @@
 # Log 面板
 
-> 底部的 Log 面板：三栏布局、提交列表、提交详情、过滤与搜索、复制、提交的右键菜单，以及为什么这样做。改 `webview/src/log/`、`logic/log/` 与相关的 git 命令前先读本文；行为变了就改本文。
+> 底部的 Log 面板：三栏布局、提交列表、提交详情、过滤与搜索、高亮、复制、提交的右键菜单，以及为什么这样做。改 `webview/src/log/`、`logic/log/` 与相关的 git 命令前先读本文；行为变了就改本文。
 > 左栏分支树见 `product/features/branches.md`；提交图与 ref 标签见 `product/features/graph.md`；右栏的文件树与打开 diff 见 `product/features/trees.md`。
 
 ## 面板与三栏
@@ -47,7 +47,7 @@ committed by Bob <bob@x.com>  2026/9/21 09:00     ← 灰色
 
 ## 过滤与搜索
 
-提交列表正上方一行，只占中间那栏（同 IDEA）：左边搜索框占满剩余宽度，右边 `Branch`、`User`、`Date`、`Paths` 四个按钮。未生效时按钮只写名字，生效后写当前的值（`User: Me`），后面带 × 用来清除。中间栏变窄时，先缩搜索框，按钮文字不截断。
+提交列表正上方一行，只占中间那栏（同 IDEA）：左边搜索框占满剩余宽度，右边 `Branch`、`User`、`Date`、`Paths` 四个按钮，最右边是 View Options（见下面「高亮」）。未生效时按钮只写名字，生效后写当前的值（`User: Me`），后面带 × 用来清除。中间栏变窄时，先缩搜索框，按钮文字不截断。
 
 - **选值用 VS Code 原生的 QuickPick**（由扩展弹出，可搜索，键盘和主题都是原生的），选中的值交回页面，过滤状态由页面持有。以后换成按钮正下方的下拉菜单（`product/backlog.md`），到时只换弹框这一层。
 - **分支**：单选。Branch 按钮弹出本地与远程分支；左栏双击分支效果一样（HEAD 那行是当前分支）。分支过滤是换骨架的起点、重取一万条。正在过滤的分支没了（在这里删、在外面删、fetch 时被 prune、存下的过滤在重开窗口时已不在），过滤自动清除，按全部分支重取，不报错（先取 refs 再取骨架，`tech/decisions.md`「Log 加载：先 refs，后骨架」）。
@@ -62,6 +62,20 @@ committed by Bob <bob@x.com>  2026/9/21 09:00     ← 灰色
 - **组合**：几种过滤取交集（同 IDEA）。过滤只在骨架那一万条里做：`git log --no-walk --stdin` 加上条件，一次一个条件，页面取交集。一万条以上的仓库上几种过滤都在 100 ms 以内（`tech/performance.md`）。
 - 过滤后，原来选中的提交还在列表里的留着，一条都不剩就清空选中；分支过滤照骨架刷新的规则。没有结果时正中一行灰字 `No commits match the filters`。仓库变化时自动重查。过滤条件存进 `viewState`。
 - 筛选时提交图怎么画，见 `product/features/graph.md`。
+
+## 高亮
+
+全部提交都留着，只改样式，让几类提交一眼认得出来（同 IDEA 的 Highlight，2026-10-21 项目负责人提）。IDEA 的做法在 `.notes/rebased-master` 里核对过，`platform/vcs-log/impl/src/com/intellij/vcs/log/` 下的文件省略这个前缀。
+
+- **三种，各管一样**（规则在 `logic/log/highlight.ts`）：
+  - **My Commits**：我的提交，作者那一列加粗（同 IDEA 新界面，`ui/highlighters/VcsLogCommitsHighlighter.java:48`）。「我」和 User 过滤的 Me 同一口径、都走 mailmap（见上面「作者」）：`getIdentity` 换算过的「我」与详情的作者，名字和邮箱都相等才算。没配 `user.name` 时没有「我」。否决照搬 IDEA 的宽规则（名字不分大小写、邮箱 `@` 前那段等于名字也算，`data/VcsLogUserResolver.kt`）：过滤和高亮会对不上。
+  - **Merge Commits**：父提交两个及以上，三列文字变灰（`--vscode-disabledForeground`）。
+  - **Current Branch**：HEAD 包含的提交带一层浅蓝（`--vscode-charts-blue` 按 12% 混进透明）。HEAD 游离也照样涂（同 IDEA：游离时当前分支取 `HEAD`）。
+- **一直生效**（2026-10-21 项目负责人定）：不做 IDEA 的自动关闭（只有一个作者、按 Me 过滤时不加粗；按当前分支过滤时不涂，`ui/highlighters/CurrentBranchHighlighter.java:49-57`）。按当前分支过滤时整列都涂。否决照 IDEA：同一个开关会因过滤条件不同而时灵时不灵。
+- **怎么叠**：三种各管背景、文字颜色、字形，互不冲突，全叠上。**选中的行只用选中色**，浅蓝和灰字让给它，加粗照旧（同 IDEA：选中时底子是选中色，涂背景、变灰的高亮器在选中时不给值，`ui/table/VcsLogGraphTable.java:765`、`:936-940`）。浅蓝是半透明的一层画在背景色之上，悬停时悬停色从下面透上来，还看得出浅蓝。
+- **Current Branch 怎么算**：IDEA 的底图永远是全部分支的完整图，过滤只决定显示哪些行，所以从 HEAD 往下走就行（`data/CurrentBranchConditionCache.kt:46-56`）。我们按分支 B 过滤时骨架换成 B 的历史，里面未必有 HEAD，所以起点由扩展给（`getHeadBases`，`git merge-base --all HEAD <骨架的起点>`）：不按分支过滤时就是 HEAD；按 B 过滤时是 HEAD 与 B 的合并基点，B 的祖先里 HEAD 也包含的正好是它们往下的全部，和 IDEA 涂出来的同一批；没有共同祖先（孤儿分支）时一条都不涂。页面从起点沿全部父提交在骨架里往下走，走出骨架就停。起点在取过 refs 之后和骨架并行取（`tech/decisions.md`「Log 加载：先 refs，后骨架」），HEAD 一变 refs 就过期，起点跟着重取。耗时见 `tech/performance.md` §2.2。否决按别的分支过滤时不涂：又成了自动关闭。否决把 HEAD 也拉进骨架：骨架就不再只是 B 的历史，一万条的名额也被分走。
+- **View Options**：过滤栏最右边的 `eye` 按钮，点开是原生多选 QuickPick（`pickMany`），标题 `Highlight`，`My Commits`、`Merge Commits`、`Current Branch` 三项，勾着的就是开着的，取消不变。IDEA 是工具栏右上角弹出菜单里的 Highlight 一节（`platform/vcs-log/impl/resources/intellij.platform.vcs.log.impl.xml:257-269`）。以后有别的显示选项再往里加；否决三个开关各占一个按钮：过滤栏放不下。
+- 开关存进 `viewState`，存的是**关掉的**那几种：以后新加的默认开（同 IDEA：没存过的高亮取 `true`，`impl/VcsLogUiPropertiesImpl.kt:30`）。落盘的字符串走映射表，认不出的当作没有。
 
 ## 复制
 
@@ -83,4 +97,4 @@ committed by Bob <bob@x.com>  2026/9/21 09:00     ← 灰色
 
 ## 以后可能做（`product/backlog.md`）
 
-过滤用按钮下方的下拉菜单代替 QuickPick；跳到 hash 或 ref；多选时右栏合并显示几条的改动；Squash、批量 Drop。
+过滤用按钮下方的下拉菜单代替 QuickPick；没摘到当前分支的提交高亮（IDEA 的 Not Cherry-Picked Commits）；跳到 hash 或 ref；多选时右栏合并显示几条的改动；Squash、批量 Drop。
