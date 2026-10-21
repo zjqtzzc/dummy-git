@@ -37,12 +37,6 @@ export function loggedUi(ui: HandlerUi, log: Log): HandlerUi {
       note(`选择${quote(title)} → ${answer(labels, index, "取消")}`);
       return index;
     },
-    pickMany: async (title, items, picked) => {
-      const chosen = await ui.pickMany(title, items, picked);
-      const labels = chosen?.map((index) => items[index]?.label ?? String(index));
-      note(`勾选${quote(title)} → ${labels === undefined ? "取消" : `[${labels.join("、")}]`}`);
-      return chosen;
-    },
     notifyChoice: async (message, actions) => {
       const index = await ui.notifyChoice(message, actions);
       note(`通知${quote(message)} → ${answer(actions, index, "关掉")}`);

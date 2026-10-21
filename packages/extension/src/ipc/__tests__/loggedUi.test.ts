@@ -15,7 +15,6 @@ const ANSWERING: HandlerUi = {
   confirmRollback: async () => false,
   choose: async () => 1,
   pick: async () => undefined,
-  pickMany: async () => [0, 2],
   notifyChoice: async () => undefined,
   askBranchName: async () => undefined,
   notify: () => undefined,
@@ -41,7 +40,6 @@ describe("loggedUi：问答与完成消息进日志，带操作编号", () => {
       await ui.confirmRollback(["a", "b"]);
       await ui.choose("Update how?", ["Merge", "Rebase"]);
       await ui.askBranchName("New Branch", "", async () => undefined);
-      await ui.pickMany("Highlight", [{ label: "A" }, { label: "B" }, { label: "C" }], []);
       return null;
     });
     expect(lines.slice(1, -1)).toEqual([
@@ -49,7 +47,6 @@ describe("loggedUi：问答与完成消息进日志，带操作编号", () => {
       "#1 确认 Rollback 2 个文件 → 取消",
       "#1 选择「Update how?」 → Rebase",
       "#1 输入「New Branch」 → 取消",
-      "#1 勾选「Highlight」 → [A、C]",
     ]);
   });
 

@@ -52,6 +52,7 @@ import { hashesToFetch } from "../logic/log/prefetch.js";
 import { refLabels } from "../logic/log/refLabels.js";
 import { rewordable } from "../logic/log/rewordable.js";
 import type { MenuViews } from "../logic/menuItems.js";
+import { type PopupItem, PopupItemKind } from "../logic/popupMenu.js";
 import {
   EMPTY_SELECTION,
   retain,
@@ -208,24 +209,25 @@ const inHead = computed(() => headReach(skeleton.value, headBases.value));
 /** 开着的高亮，存进 `viewState`；没存过时全开。 */
 const highlights = ref<ReadonlySet<Highlight>>(restoreHighlights(viewState.read("highlights")));
 
-/** View Options：原生多选框里勾开着的高亮。取消就不变。 */
-async function openViewOptions(): Promise<void> {
-  try {
-    const chosen = await props.client.request("pickMany", {
-      title: "Highlight",
-      items: HIGHLIGHT_MENU.map((entry) => entry.label),
-      picked: HIGHLIGHT_MENU.flatMap((entry, index) =>
-        highlights.value.has(entry.highlight) ? [index] : [],
-      ),
-    });
-    if (chosen === null) return;
-    highlights.value = new Set(
-      HIGHLIGHT_MENU.filter((_, index) => chosen.includes(index)).map((entry) => entry.highlight),
-    );
-    viewState.write("highlights", saveHighlights(highlights.value));
-  } catch (cause) {
-    report(cause);
-  }
+/** View Options：一节标题加三个勾选项，勾一下马上生效、存起来，选单不收起。 */
+const viewOptions = computed((): PopupItem[] => [
+  { kind: PopupItemKind.Separator, label: "Highlight" },
+  ...HIGHLIGHT_MENU.map(
+    (entry): PopupItem => ({
+      kind: PopupItemKind.Toggle,
+      label: entry.label,
+      checked: highlights.value.has(entry.highlight),
+      toggle: (on) => setHighlight(entry.highlight, on),
+    }),
+  ),
+]);
+
+function setHighlight(highlight: Highlight, on: boolean): void {
+  const next = new Set(highlights.value);
+  if (on) next.add(highlight);
+  else next.delete(highlight);
+  highlights.value = next;
+  viewState.write("highlights", saveHighlights(next));
 }
 const rewordableCommits = computed(() =>
   rewordable(skeleton.value, refs.value.find((ref) => ref.kind === RefKind.Head)?.target),
@@ -737,10 +739,10 @@ onUnmounted(() => resizes.disconnect());
           :values="filterValues"
           :text="searchText"
           :busy="searching"
+          :view-options="viewOptions"
           @search="onSearch"
           @open="openFilter"
           @clear="clearFilter"
-          @options="openViewOptions"
         />
         <p v-if="!loaded" class="dim loading">Loading…</p>
         <p v-else-if="isFiltering(filter) && hashes.length === 0" class="dim loading">

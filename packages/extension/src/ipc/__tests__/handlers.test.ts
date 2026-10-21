@@ -37,7 +37,6 @@ const NO_UI: HandlerUi = {
   choose: () => Promise.reject(new Error("测试里不该弹选择")),
   notify: () => undefined,
   pick: () => Promise.reject(new Error("测试里不该弹选择框")),
-  pickMany: () => Promise.reject(new Error("测试里不该弹选择框")),
   openDialog: () => {
     throw new Error("测试里不该开对话框");
   },

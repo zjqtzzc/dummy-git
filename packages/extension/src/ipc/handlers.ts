@@ -134,12 +134,6 @@ export interface HandlerUi {
   ) => Promise<number | undefined>;
   /** 从几项里选一项（`vscode/pick.ts`）：返回选中的序号，取消是 `undefined`。 */
   readonly pick: (title: string, items: readonly PickItem[]) => Promise<number | undefined>;
-  /** 从几项里勾几项（`vscode/pick.ts`）：返回确认时勾着的序号，取消是 `undefined`。 */
-  readonly pickMany: (
-    title: string,
-    items: readonly PickItem[],
-    picked: readonly number[],
-  ) => Promise<readonly number[] | undefined>;
   /** 打开合并编辑器（`vscode/mergeEditor.ts`）。 */
   readonly openMergeEditor: (root: string, sides: MergeSides) => Promise<void>;
   /** webview 的异常写进日志（error 级别）。 */
@@ -473,12 +467,6 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       (await ui.pick(
         title,
         items.map((label) => ({ label })),
-      )) ?? null,
-    pickMany: async ({ title, items, picked }) =>
-      (await ui.pickMany(
-        title,
-        items.map((label) => ({ label })),
-        picked,
       )) ?? null,
     getStatus: () => repository.run(getStatus, repository.location.root),
     getOperation: () => readOperation(repository.location.gitDir),

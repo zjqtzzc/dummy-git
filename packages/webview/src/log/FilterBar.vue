@@ -2,8 +2,9 @@
 import { assertNever } from "@dummy-git/shared";
 import { AppIcon, appIcon, codicon, IconSize } from "../logic/icons.js";
 import { FilterKind } from "../logic/log/filter.js";
+import type { PopupItem } from "../logic/popupMenu.js";
 import Icon from "../ui/Icon.vue";
-import ToolButton from "../ui/ToolButton.vue";
+import MenuButton from "../ui/MenuButton.vue";
 
 /**
  * 提交列表上方的过滤栏：左边搜索框，右边四个按钮，最右边是 View Options。
@@ -16,6 +17,8 @@ defineProps<{
   text: string;
   /** 查询进行中：搜索框右侧转圈（查询可能要一两秒，静默会被当成卡死）。 */
   busy: boolean;
+  /** View Options 的选单项。 */
+  viewOptions: readonly PopupItem[];
 }>();
 const emit = defineEmits<{
   /** 搜索框每改一个字发一次；防抖由使用方做。 */
@@ -24,8 +27,6 @@ const emit = defineEmits<{
   open: [kind: FilterKind];
   /** 点了 ×：清除这一种条件。 */
   clear: [kind: FilterKind];
-  /** 点了 View Options：开关高亮。 */
-  options: [];
 }>();
 
 function onInput(event: Event): void {
@@ -85,12 +86,7 @@ function nameOf(kind: FilterKind): string {
         </button>
       </span>
     </template>
-    <ToolButton
-      class="options"
-      :icon="appIcon(AppIcon.ViewOptions)"
-      title="View Options"
-      @click="emit('options')"
-    />
+    <MenuButton :icon="appIcon(AppIcon.ViewOptions)" title="View Options" :items="viewOptions" />
   </div>
 </template>
 
@@ -136,9 +132,6 @@ function nameOf(kind: FilterKind): string {
   to {
     transform: rotate(360deg);
   }
-}
-.options {
-  flex-shrink: 0;
 }
 .filter {
   flex-shrink: 0;

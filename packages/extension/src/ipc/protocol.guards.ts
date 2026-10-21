@@ -91,12 +91,6 @@ function asDiffOpenMode(value: unknown): DiffOpenMode | undefined {
   }
 }
 
-/** 序号的列表：每项是非负整数。 */
-function asIndexArray(value: unknown): readonly number[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  return value.every((item) => Number.isInteger(item) && item >= 0) ? value : undefined;
-}
-
 function asStringArray(value: unknown): readonly string[] | undefined {
   if (!Array.isArray(value)) return undefined;
   return value.every((item) => typeof item === "string") ? value : undefined;
@@ -338,14 +332,6 @@ const PARAM_GUARDS = {
     const title = raw["title"];
     const items = asStringArray(raw["items"]);
     return typeof title === "string" && items !== undefined ? { title, items } : undefined;
-  },
-  pickMany: (raw: Record<string, unknown>) => {
-    const title = raw["title"];
-    const items = asStringArray(raw["items"]);
-    const picked = asIndexArray(raw["picked"]);
-    return typeof title === "string" && items !== undefined && picked !== undefined
-      ? { title, items, picked }
-      : undefined;
   },
   getStatus: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];

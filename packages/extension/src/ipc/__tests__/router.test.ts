@@ -60,7 +60,6 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     popStash: async (): Promise<null> => null,
     dropStash: async (): Promise<null> => null,
     pick: async () => null,
-    pickMany: async () => null,
     matchCommits: async () => [],
     pickAuthor: async () => null,
     pickPath: async () => null,
