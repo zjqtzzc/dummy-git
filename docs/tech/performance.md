@@ -67,6 +67,8 @@ git clone --bare https://github.com/torvalds/linux  ~/bench/linux.git     # ~130
 
 最坏是按一个很老的分支过滤：git 要把 HEAD 这边的历史一路走回分叉点。`git gc`（含自动触发的）默认会写 commit-graph（git 2.43 的文档：`gc.writeCommitGraph` 默认 true），跑过 gc 的仓库是右边那一列。和骨架并行，不另做缓存。
 
+页面从起点往下走（`logic/log/highlight.ts` 的 `headReach`）：一万二千条（主线每 5 条合进一条旁支），Node 里首次 2.9 ms、之后中位 1.9 ms。不放后台，骨架或起点变了才重算。
+
 ## 3. 唯一的性能悬崖：过滤（第 5 阶段）
 
 | 操作 | 耗时 |
