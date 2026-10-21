@@ -61,7 +61,14 @@ function rowRect(event: MouseEvent): Rect {
 </script>
 
 <template>
-  <div ref="box" class="popup" :style="style" @contextmenu.prevent @mouseleave="emit('leave')">
+  <div
+    ref="box"
+    class="popup"
+    data-popup
+    :style="style"
+    @contextmenu.prevent
+    @mouseleave="emit('leave')"
+  >
     <template v-for="(item, index) in items" :key="index">
       <div v-if="item.kind === PopupItemKind.Separator" :class="['separator', { first: index === 0 }]">
         <span v-if="item.label !== undefined" class="section">{{ item.label }}</span>
