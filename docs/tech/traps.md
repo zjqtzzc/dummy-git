@@ -8,7 +8,7 @@
 | 坑 | 结论 |
 |---|---|
 | 在 VS Code 的终端里跑 `pnpm check`，环境里带着 VS Code 自己的 `GIT_ASKPASS`（及 `VSCODE_GIT_IPC_HANDLE` 等）：`cli.test.ts` 的「没给脚本：直接失败」会去问 VS Code 的 askpass，十几秒后成功返回而失败，还可能在 VS Code 里弹一次输入框（2026-10-15 发现） | 暂不处理（用户定）。临时绕开：`env -u GIT_ASKPASS -u VSCODE_GIT_IPC_HANDLE … pnpm check`。待想：扩展不传脚本时也会继承宿主环境的 `GIT_ASKPASS`，测试与 `GitCli` 是否该清掉它 |
-| git 2.31 之前（如 Ubuntu 20.04 的 2.25），`log --first-parent --name-status` 对 merge 提交**输出为空、退出码 0**；2.31 起 `--first-parent` 才顺带给 merge 出 diff。stash 也是 merge，于是容器里的 Stash 页展开是空的，用户以为没存上把它删了（2026-10-16） | `-m --first-parent` 一起用，两个版本输出一致（`parsers/nameStatus.ts`）。测试只在 2.43 上跑，测不出这种版本差异；最低版本定的是 2.23，老版本上的行为要另外验证 |
+| git 2.31 之前（如 Ubuntu 20.04 的 2.25），`log --first-parent --name-status` 对 merge 提交**输出为空、退出码 0**；2.31 起 `--first-parent` 才顺带给 merge 出 diff。stash 也是 merge，于是容器里的 Stash 页展开是空的，用户以为没存上把它删了（2026-10-16） | `-m --first-parent` 一起用，两个版本输出一致（`parsers/nameStatus.ts`）。这种版本差异只有在老版本上真跑才测得出：`pnpm test:old-git`（最低版本 2.25，`tech/architecture.md` 第 6 题） |
 | git 2.25 的 `check-ignore`（不带 `--verbose`）把被 `!` 否定规则重新纳入的文件也报成「忽略」（2.43 不报），于是监听把这些文件的改动当成忽略、面板不刷新（2026-10-16 在 2.25 上跑测试发现） | 带 `--verbose`，命中的规则以 `!` 开头的不算忽略（`commands/checkIgnore.ts`，两个版本实测；现有测试在 2.25 上会红）|
 | 给 git 设 `LC_ALL=en_US.UTF-8` 时，没装这个 locale 的系统（如只有 `C.UTF-8` 的 Ubuntu 容器）上，git 调起的 shell（钩子、`/bin/sh` 是 bash 时）在 stderr 第一行打 `setlocale: LC_ALL: cannot change locale`，我们取「git 说的第一句」时取到的是它 | Linux 改用 `C.UTF-8`（C locale 下 git 不翻译，照样英文），macOS、Windows 照旧（`cli.ts` 的 `LOCALE`；`pnpm test:old-git` 的容器里有判别力的测试）|
 | 撤销某个提交里一个文件的改动 | 按文件在该提交里的状态分三种：新增 → 删除文件；删除 → 从父提交恢复；修改 / 改名 → 改回父提交内容。一律 `checkout <hash>~1 -- <path>` 在新增文件上会报 `pathspec did not match` |

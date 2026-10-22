@@ -34,11 +34,11 @@ git clone --bare https://github.com/torvalds/linux  ~/bench/linux.git     # ~130
 | `getStatus` | 19 ms |
 
 全量骨架现在截断在 1 万条（`SKELETON_LIMIT`），约 20 MB。不截断时 Linux kernel 量级会到约 2.5 GB，**失败形态是扩展宿主 OOM，不是慢**。
-第 8 阶段画图若要更多，压缩表示的方向：提交用整数标识、每行用 `Uint32Array` 等原始类型数组、hash 平铺成二进制、「单父单子」的提交用位图标记。
+以后要放宽一万条时，压缩表示的方向：提交用整数标识、每行用 `Uint32Array` 等原始类型数组、hash 平铺成二进制、「单父单子」的提交用位图标记。
 
 **瓶颈不在 git，在我们自己的渲染**：提交列表、分支树、文件树都要虚拟滚动。
 
-## 2.1 提交图布局（第 8 阶段）
+## 2.1 提交图布局
 
 调试场景 `graph-large`（10,500 个提交，同时最多 6 个分支反复分出合回），骨架一万条，webview 的纯函数在 Node 里跑（同为 V8）：
 
@@ -55,7 +55,7 @@ git clone --bare https://github.com/torvalds/linux  ~/bench/linux.git     # ~130
 骨架或 refs 变了才整个重算，在可接受范围，**不改成按可见行懒算**。
 大头在 `buildGraph` 的逐行排序；车道更多的仓库会变慢，到时先看它。
 
-## 2.2 当前分支高亮的起点（第 16 阶段，2026-10-21）
+## 2.2 当前分支高亮的起点（2026-10-21）
 
 `git merge-base --all HEAD <起点>`，和骨架同时取。VS Code 仓库（只克隆提交，`--filter=tree:0`，19.4 万条）：
 
@@ -69,7 +69,7 @@ git clone --bare https://github.com/torvalds/linux  ~/bench/linux.git     # ~130
 
 页面从起点往下走（`logic/log/highlight.ts` 的 `headReach`）：一万二千条（主线每 5 条合进一条旁支），Node 里首次 2.9 ms、之后中位 1.9 ms。不放后台，骨架或起点变了才重算。
 
-## 3. 唯一的性能悬崖：过滤（第 5 阶段）
+## 3. 唯一的性能悬崖：过滤
 
 | 操作 | 耗时 |
 |---|---|

@@ -15,11 +15,7 @@ Commit 面板工具栏上，Rollback 旁边的 **Stash** 按钮（`AppIcon.Stash
 - 永远带 `-u`：勾了的未跟踪文件一起存，取回时还原；没勾的（不管跟不跟踪）原样留下。不分情况，逻辑最简单。
 - 走本地道与进度出口；完成消息用 git 自己的那句（`Saved working directory and index state …`）。
 
-**Stash Selected**：`git stash push -- <路径>` 只按路径清理工作区，存进去的却是**整个暂存区**。没勾的已暂存改动（新增、改名、删除）会一起进 stash，同时还留在工作区，Apply 时再来一遍（git 2.25、2.43 实测）。所以在同一条本地道命令里分四步：
-1. `git write-tree` 记下整个暂存区；
-2. 列出没勾、但已暂存的路径（`diff --cached --name-only --no-renames`，改名拆成新旧两个路径）；
-3. 把它们退回成未暂存（`restore --staged`）；
-4. `stash push -u -- <勾的>`；之后（stash 失败也一样）用 `restore --source=<第 1 步的树> --staged` 原样还原它们，部分暂存的文件也还原成暂存的那一版。
+**Stash Selected**：`git stash push -- <路径>` 只按路径清理工作区，存进去的却是**整个暂存区**。没勾的已暂存改动（新增、改名、删除）会一起进 stash，同时还留在工作区，Apply 时再来一遍（git 2.25、2.43 实测）。所以在同一条本地道命令里分几步：记下整个暂存区；把没勾、但已暂存的路径（改名拆成新旧两个路径）退回成未暂存；只存勾的；之后（stash 失败也一样）从记下的暂存区原样还原它们，部分暂存的文件也还原成暂存的那一版。命令行见 `git/commands/stash.ts` 的 `stashPaths`。
 
 另外两条：
 - 改名的文件带上旧路径（同提交）。

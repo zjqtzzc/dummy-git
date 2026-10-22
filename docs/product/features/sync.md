@@ -5,17 +5,16 @@
 
 ## 共同的
 
-- **两条道**：每个仓库有一条本地道（会改本地状态的写命令）和一条远程道（所有网络命令），各自串行，互不等待。网络操作之间因此不会撞引用锁，正确性不靠按钮置灰来保证。
-- **按钮不转圈、不置灰**（选中的不适用时除外）：连点只是在远程道里排队。进度在状态栏：进行中转圈加文字，结束后显示几秒完成消息（`Fetched all remotes`、`Pushed feat → origin/feat`、`feat is up to date`）；失败走错误出口。
-- **要账号密码或 SSH 口令时直接报错，不等**：`GIT_ASKPASS`、`SSH_ASKPASS` 指向一个只回空字符串的脚本，`SSH_ASKPASS_REQUIRE=force`，再加上 `GIT_TERMINAL_PROMPT=0`。git 停下来等人输入是最坏的故障：没有报错、没有退出码，没法诊断。实测 HTTPS 认证 1.5 秒失败，SSH 主机指纹确认 0.9 秒失败。弹框让人输入在第 6 阶段做（`product/roadmap.md`）。
+- **按钮不转圈、不置灰**（选中的不适用时除外）：网络命令在同一条道里依次执行、和本地写命令互不等待（`tech/architecture.md` 第 12 题），连点只是排队，不会撞引用锁。进度在状态栏：进行中转圈加文字，结束后显示几秒完成消息（`Fetched all remotes`、`Pushed feat → origin/feat`、`feat is up to date`）；失败走错误出口。
+- **要账号密码或 SSH 口令时直接报错，不等**（为什么、怎么做见 `tech/architecture.md` 第 16 题）。实测 HTTPS 认证 1.5 秒失败，SSH 主机指纹确认 0.9 秒失败。弹框让人输入在第 6 阶段做（`product/roadmap.md`）。
 - 提示文字先用 git 原文。只有 git 第一行说不清楚的才自己写一句，比如推送被拒：第一行是 `To github.com:…`，原因在后面几行。
 
 ## Fetch
 
-竖按钮区的 **Fetch**：`git fetch --all --prune`，取全部远程，顺带清掉远程上已经删除的分支。
+竖按钮区的 **Fetch**：取全部远程（`--all`），带 `--prune`，顺带清掉远程上已经删除的分支。
 
 **自动 Fetch**（2026-10-22 项目负责人定：远程状态要自己跟上）：仓库打开后先跑一次，之后每次跑完隔一段固定时间再跑（`core/autoFetch.ts` 的 `AUTO_FETCH_INTERVAL_MS`，取 IDEA 的默认间隔）。同 IDEA 勾上「Fetch remote changes automatically」时（`GitBranchIncomingOutgoingManager.java:249-255`，启用时先跑一次，再 `scheduleWithFixedDelay`；间隔是注册表 `git.update.incoming.info.time`，默认 20 分钟）；IDEA 默认不勾，我们默认开。
-- `git fetch --all`，**不带 `--prune`**：远程上删掉的分支，本地的记录留到手动 Fetch 时再清，后台不替用户删东西（项目负责人定）。和手动的是同一条命令（`fetchAll` 的 `prune` 参数），走远程道排队，不和手动 Fetch、推送撞。
+- **不带 `--prune`**：远程上删掉的分支，本地的记录留到手动 Fetch 时再清，后台不替用户删东西（项目负责人定）。和手动的是同一条命令（`fetchAll` 的 `prune` 参数），走远程道排队，不和手动 Fetch、推送撞。
 - 不转圈、不进状态栏；失败只记日志（`ErrorGate.logOnly`），不弹通知。要密码的远程本来就直接失败（`tech/architecture.md` 第 16 题），后台不会弹密码框；IDEA 是同样的效果：远程还没认证成功过时用不认证的模式跑（`getAuthenticationMode`）。
 - 日志里是一个操作，入口写「自动」。跑完远程分支的记录变了，refs 过期，ahead / behind 与 Log 的远程标签自己刷新。
 - 开关和间隔先写死：项目还没有设置项，以后一起放进设置（`product/backlog.md`）。不做 IDEA 的 `ls-remote` 模式（只看远程分支指向哪、不取提交），也不做手动 Fetch 后推荐开启自动的提示。
@@ -23,8 +22,8 @@
 ## Update
 
 **Update Selected**（竖按钮）和分支右键的 **Update** 是同一条命令，作用于选中的本地分支 `B`（HEAD 那行就是当前分支），它的上游是 `origin/M`。只动 `B` 和 `origin/M`，不碰别的分支。
-- `B` 不是当前分支：一条 `git fetch origin refs/heads/M:refs/heads/B`，不带 `+`，只允许快进；不碰工作区和暂存区，不占本地道。
-- `B` 是当前分支：git 不允许 fetch 直接更新检出的分支，所以拆成远程道的 `git fetch origin refs/heads/M`，加本地道的 `git merge --ff-only origin/M`。
+- `B` 不是当前分支：一条 fetch 把 `origin/M` 直接取进 `B`（`M:B` 的写法，不带 `+`），只允许快进；不碰工作区和暂存区，不占本地道。
+- `B` 是当前分支：git 不允许 fetch 直接更新检出的分支，所以拆成远程道的 fetch，加本地道的 `merge --ff-only`。命令行见 `git/commands/index.ts`（`fetchInto`、`fetchBranch`、`fastForward`）。
 - 完成消息：动了就是 `Updated feat from origin/feat`，没动就是 `feat is up to date`。
 - `B` 没有上游、或上游在远程已被删掉（`gone`）：菜单里没有 Update，竖按钮置灰（2026-10-20 项目负责人定）。不去猜上游：猜错了会把一个无关的同名分支快进进来，不容易察觉。万一按时上游刚被去掉，提示 `feat has no upstream branch. Push it first.`。
 - **分叉时**：远程分支的记录已经取回来了，弹一条原生通知 `feat and origin/feat have diverged.`，两个按钮：
@@ -51,7 +50,7 @@
 - **没有远程时**：远程下拉换成 `Name`（预填 `origin`）和 `URL` 两个输入框，点 Push 先 `git remote add -- <名字> <地址>`，再推送。否决 IDEA 另弹一个小对话框、OK 之前校验名字并用 `ls-remote` 试连：弹窗里再弹窗不好做；地址错了，推送时 git 自然会报；名字不合法、重名也交给 git 去报。
 
 **推送**
-- 有上游：`git push <远程> <分支>:<远程分支>`，写明推哪个到哪个，和是不是当前分支、`push.default` 都无关。改了远程分支名，不会动原来的上游。
+- 写明推哪个到哪个（`<分支>:<远程分支>`），和是不是当前分支、`push.default` 都无关。改了远程分支名，不会动原来的上游。
 - 没有上游：带 `-u`，第一次推送顺带设好上游；不给勾选框。
 - 上游在远程已被删除（`gone`）：照样推，在远程重建。
 - 只推分支，不推 tag。

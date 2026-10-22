@@ -35,7 +35,7 @@
 - **勾选项**：切换，选单**不收起**，可以连着勾几项（2026-10-21 项目负责人定）。IDEA 推断如此：要点完就收起的勾选项都显式设 `KeepPopupOnPerform.Never`（`platform/vcs-impl/src/com/intellij/openapi/vcs/actions/AnnotateToggleAction.java:74`），高亮的 `BooleanPropertyToggleAction` 没设。
 - **单选项**：选中它，选单不收起；点已经选中的那一项什么都不做。
 - **置灰的项、分隔线**：什么都不做。
-- **二级选单**（照 VS Code 的 `SubmenuMenuActionViewItem`）：鼠标停在二级选单项上满 **250 ms**、那时还停着才打开；移到同一级别的项上，开着的二级选单 **750 ms** 后才关；点二级选单项立刻打开。鼠标离开某一级时等着的那次作废：斜着移进二级选单时擦过了同级别的项，不误关；停满之前就移走了，不再打开。开着哪一串、停下之后要怎样改、等多久，都是 `logic/popupMenu.ts` 里的纯函数（`planHover`、`pathAfterClick`、`openLevels`）；`PopupMenu` 只管那一个计时器，每一级是一个 `PopupList`，平铺画出来。否决「安全三角」（Floating UI 的 `safePolygon`、Radix 的 pointer grace area）：手感更好，代码多；VS Code 也只靠延迟。
+- **二级选单**（照 VS Code 的 `SubmenuMenuActionViewItem`）：鼠标停在二级选单项上满一段时间（`SUBMENU_OPEN_DELAY`）、那时还停着才打开；移到同一级别的项上，开着的二级选单再过一段时间（`SUBMENU_CLOSE_DELAY`）才关，两个取值同 VS Code，在 `logic/popupMenu.ts`；点二级选单项立刻打开。鼠标离开某一级时等着的那次作废：斜着移进二级选单时擦过了同级别的项，不误关；停满之前就移走了，不再打开。开着哪一串、停下之后要怎样改、等多久，都是 `logic/popupMenu.ts` 里的纯函数（`planHover`、`pathAfterClick`、`openLevels`）；`PopupMenu` 只管那一个计时器，每一级是一个 `PopupList`，平铺画出来。否决「安全三角」（Floating UI 的 `safePolygon`、Radix 的 pointer grace area）：手感更好，代码多；VS Code 也只靠延迟。
 - **整串收起**：点选单外面（按在按钮上不算，交给按钮自己的点击去关，否则先关又打开）、按 Esc、webview 失去焦点。
 - 键盘只有 Esc（2026-10-21 项目负责人定）：方向键、Enter 不做。
 - 二级选单还没有地方用到，手测等第一个真正用到的地方（2026-10-21 项目负责人定）。

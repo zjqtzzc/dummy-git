@@ -5,13 +5,15 @@
 
 ## 操作
 
-| 入口 | 命令 |
+| 入口 | 做法 |
 |---|---|
-| 分支右键 Merge into Current | `git merge -m "Merge branch '<分支>'" <分支>` |
-| 分支右键 Rebase onto This | `git rebase --autostash <分支>` |
-| 提交右键 Cherry-Pick（可多选） | `git cherry-pick --no-edit --stdin`，hash 从 stdin 按从旧到新喂 |
-| 提交右键 Revert（可多选） | `git revert --no-edit --stdin`，hash 按从新到旧喂 |
-| 提交右键 Rebase onto Here | `git rebase --autostash <hash>` |
+| 分支右键 Merge into Current | 把它合进当前分支，说明由我们给（`-m`），不打开编辑器 |
+| 分支右键 Rebase onto This | 把当前分支变基到它，带 `--autostash` |
+| 提交右键 Cherry-Pick（可多选） | 一串 hash 从 stdin 按从旧到新交给 git，不改说明（`--no-edit`） |
+| 提交右键 Revert（可多选） | 同上，按从新到旧 |
+| 提交右键 Rebase onto Here | 把当前分支变基到这条提交，带 `--autostash` |
+
+命令行见 `git/commands/index.ts`（`mergeRef`、`rebaseOnto`、`replayCommits`）。
 
 - **不弹确认**（同 IDEA）：出事了可以放弃。
 - 工作区有改动时：merge、cherry-pick、revert 交给 git 处理，不冲突时带着改动做，冲突时 git 拒绝、显示原文。rebase 加 `--autostash`：git 先把改动存起来，结束后再取回。
@@ -34,7 +36,7 @@ Commit 面板只问两件事：有没有停下的操作（读状态文件，不�
 
 - **冲突组**在最上面，叫 `Conflicts`，文件没有复选框，文件后面用灰字写冲突类型。
 - **标题行**：③ `Merging feature · 2 conflicts  [»] [×]`，» 不可点，悬停提示先解决冲突；④ 组里没有文件了，标题行照常显示；② `Conflicts · 2`，没有按钮。» 用绿色，× 用红色，都取主题里的语义颜色。
-- **继续（»）**：把说明框的内容写进 git 准备说明的那个文件（merge、cherry-pick、revert 是 `MERGE_MSG`；rebase 是 `rebase-merge/message`，apply 后端是 `rebase-apply/final-commit`），再以 `GIT_EDITOR=true` 执行 `--continue`。否则 `--continue` 可能打开编辑器等用户写说明，从扩展里调用就会一直卡住。
+- **继续（»）**：把说明框的内容写进 git 准备说明的那个文件（各种操作、rebase 的两个后端各不相同，见 `git/commands/operation.ts` 的 `messageFile`），再以 `GIT_EDITOR=true` 执行 `--continue`。否则 `--continue` 可能打开编辑器等用户写说明，从扩展里调用就会一直卡住。
 - **不自动继续**：最后一个冲突解决之后，只把 » 高亮，由用户自己点。
 - **放弃（×）**：先弹确认（`Abort the merge?` 等），确认后执行对应操作的 `--abort`。
 - **Commit 与 Amend 锁住**：情况③④下两者都不可用，用同一个条件。merge、cherry-pick、revert 进行中时，`commit --only -- <路径>` 和 `--amend` 本来就会被 git 拒绝；rebase 停下时 git 虽然允许 amend，改到的却是上一条已经重放好的提交。情况②不受影响：stash 冲突时用 `commit --only` 提交其它文件能成功（实测）。
