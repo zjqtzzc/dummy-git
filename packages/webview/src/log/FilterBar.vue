@@ -17,6 +17,8 @@ defineProps<{
   text: string;
   /** 查询进行中：搜索框右侧转圈（查询可能要一两秒，静默会被当成卡死）。 */
   busy: boolean;
+  /** Graph Options 的选单项。 */
+  graphOptions: readonly PopupItem[];
   /** View Options 的选单项。 */
   viewOptions: readonly PopupItem[];
 }>();
@@ -86,6 +88,11 @@ function nameOf(kind: FilterKind): string {
         </button>
       </span>
     </template>
+    <MenuButton
+      :icon="appIcon(AppIcon.GraphOptions)"
+      title="Graph Options"
+      :items="graphOptions"
+    />
     <MenuButton :icon="appIcon(AppIcon.ViewOptions)" title="View Options" :items="viewOptions" />
   </div>
 </template>

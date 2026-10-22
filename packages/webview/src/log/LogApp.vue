@@ -3,7 +3,6 @@ import {
   assertNever,
   type Commit,
   type CommitFileChange,
-  CommitOrder,
   type CommitSkeleton,
   type DiffOpenMode,
   GitDomain,
@@ -41,6 +40,7 @@ import { buildLayout } from "../logic/log/graph/layout.js";
 import { buildGraph } from "../logic/log/graph/rows.js";
 import { buildStructure, sameCommit } from "../logic/log/graph/structure.js";
 import { visibleLines, visibleRows } from "../logic/log/graph/visible.js";
+import { graphOptionsMenu, restoreOrder, saveOrder } from "../logic/log/graphOptions.js";
 import {
   HIGHLIGHT_MENU,
   type Highlight,
@@ -209,6 +209,18 @@ const merges = computed(
 const inHead = computed(() => headReach(skeleton.value, headBases.value));
 /** 开着的高亮，存进 `viewState`；没存过时全开。 */
 const highlights = ref<ReadonlySet<Highlight>>(restoreHighlights(viewState.read("highlights")));
+
+/** 骨架的排序（Graph Options），存进 `viewState`；换了就重取骨架（同换分支过滤，选中留着、视图不跳）。 */
+const order = ref(restoreOrder(viewState.read("graphOrder")));
+const graphOptions = computed(() =>
+  graphOptionsMenu(order.value, (next) => {
+    order.value = next;
+    viewState.write("graphOrder", saveOrder(next));
+  }),
+);
+watch(order, () => {
+  if (repo.value !== undefined) void load(repo.value);
+});
 
 /** View Options：一节标题加三个勾选项，勾一下马上生效、存起来，选单不收起。 */
 const viewOptions = computed((): PopupItem[] => [
@@ -453,7 +465,7 @@ async function load(repository: string): Promise<void> {
     const params =
       filtered === undefined ? { repo: repository } : { repo: repository, branch: filtered.ref };
     const [fetchedSkeleton, fetchedBases, fetchedMe] = await Promise.all([
-      props.client.request("getSkeleton", { ...params, order: CommitOrder.Date }),
+      props.client.request("getSkeleton", { ...params, order: order.value }),
       props.client.request("getHeadBases", params),
       props.client.request("getIdentity", { repo: repository }),
     ]);
@@ -740,6 +752,7 @@ onUnmounted(() => resizes.disconnect());
           :values="filterValues"
           :text="searchText"
           :busy="searching"
+          :graph-options="graphOptions"
           :view-options="viewOptions"
           @search="onSearch"
           @open="openFilter"

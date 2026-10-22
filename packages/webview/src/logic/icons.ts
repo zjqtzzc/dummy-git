@@ -64,6 +64,8 @@ export enum AppIcon {
   Dropdown = "dropdown",
   /** 眼睛：View Options，开关显示选项。 */
   ViewOptions = "viewOptions",
+  /** 左边向下的箭头、右边一条线串着两个提交：Graph Options（照 IDEA 新界面的 `intelliSort.svg`）。 */
+  GraphOptions = "graphOptions",
 }
 
 /** 托盘：方框，顶边中间凹下去一块，Stash / Unstash 的箭头从这里进出。 */
@@ -97,5 +99,14 @@ export const ICON_STROKES: Readonly<Record<AppIcon, readonly string[]>> = {
   [AppIcon.ViewOptions]: [
     "M8 4C4.5 4 2 8 2 8C2 8 4.5 12 8 12C11.5 12 14 8 14 8C14 8 11.5 4 8 4Z",
     "M10 8A2 2 0 1 1 6 8A2 2 0 1 1 10 8Z",
+  ],
+  [AppIcon.GraphOptions]: [
+    "M4.5 2.5V13.5",
+    "M1.5 10.5L4.5 13.5L7.5 10.5",
+    "M11.5 2.5V4",
+    "M13 5.5A1.5 1.5 0 1 1 10 5.5A1.5 1.5 0 1 1 13 5.5Z",
+    "M11.5 7V9",
+    "M13 10.5A1.5 1.5 0 1 1 10 10.5A1.5 1.5 0 1 1 13 10.5Z",
+    "M11.5 12V13.5",
   ],
 };
