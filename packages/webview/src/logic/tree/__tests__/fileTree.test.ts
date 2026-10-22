@@ -13,7 +13,7 @@ const m = (path: string): FileEntry => ({ path, letter: "M", color: "red" });
 
 /** 没有标题的一组，直接铺开。 */
 const flat = (entries: readonly FileEntry[]): readonly FileNode[] =>
-  buildFileTree([{ id: "all", entries }]);
+  buildFileTree([{ id: "all", entries }], true);
 
 /** 树 → 缩进文本。目录写 `名字/ (N)`，改名写 `← 旧名`。 */
 function outline(nodes: readonly FileNode[], depth = 0): string[] {
@@ -81,19 +81,23 @@ describe("buildFileTree", () => {
   it("keepEmpty：没有文件也留着组", () => {
     expect(
       outline(
-        buildFileTree([
-          { id: "conflicts", label: "Merging feature", entries: [], keepEmpty: true, detail: "" },
-        ]),
+        buildFileTree(
+          [{ id: "conflicts", label: "Merging feature", entries: [], keepEmpty: true, detail: "" }],
+          true,
+        ),
       ),
     ).toEqual(["[Merging feature] (0)"]);
   });
 
   it("有标题的组画成顶层一行，带文件数，下面各自一棵目录树；空组不画", () => {
-    const tree = buildFileTree([
-      { id: "changes", label: "Changes", entries: [m("src/a.ts"), m("b.ts")] },
-      { id: "conflicts", label: "Conflicts", entries: [] },
-      { id: "unversioned", label: "Unversioned Files", entries: [m("src/c.ts")] },
-    ]);
+    const tree = buildFileTree(
+      [
+        { id: "changes", label: "Changes", entries: [m("src/a.ts"), m("b.ts")] },
+        { id: "conflicts", label: "Conflicts", entries: [] },
+        { id: "unversioned", label: "Unversioned Files", entries: [m("src/c.ts")] },
+      ],
+      true,
+    );
     expect(outline(tree)).toEqual([
       "[Changes] (2)",
       "  src/ (1)",
@@ -109,10 +113,13 @@ describe("buildFileTree", () => {
 describe("不可勾选的组", () => {
   it("组与它下面每一层都标不可勾选；其他组不标", () => {
     const nodes = toTreeNodes(
-      buildFileTree([
-        { id: "conflicts", label: "Conflicts", entries: [m("src/a.ts")], uncheckable: true },
-        { id: "changes", label: "Changes", entries: [m("b.ts")] },
-      ]),
+      buildFileTree(
+        [
+          { id: "conflicts", label: "Conflicts", entries: [m("src/a.ts")], uncheckable: true },
+          { id: "changes", label: "Changes", entries: [m("b.ts")] },
+        ],
+        true,
+      ),
       false,
     );
     const flags = (list: readonly TreeNode[]): (boolean | undefined)[] =>
@@ -135,5 +142,53 @@ describe("keepChecked", () => {
       { id: "changes", entries: [m("a.ts"), m("new.ts")] },
     ]);
     expect([...kept]).toEqual(["a.ts"]);
+  });
+});
+
+describe("平铺（不按目录分组）", () => {
+  const descriptions = (nodes: readonly TreeNode[]): (string | undefined)[] =>
+    nodes.flatMap((node) => [node.description, ...descriptions(node.children ?? [])]);
+
+  it("文件直接列在组下面，没有目录这一层，按路径排", () => {
+    const tree = buildFileTree(
+      [
+        {
+          id: "changes",
+          label: "Changes",
+          entries: [m("z.ts"), m("src/b.ts"), m("a/c.ts"), m("src/a.ts")],
+        },
+      ],
+      false,
+    );
+    expect(outline(tree)).toEqual(["[Changes] (4)", "  c.ts", "  a.ts", "  b.ts", "  z.ts"]);
+  });
+
+  it("灰字只写一种：原来的（冲突类型、改名）优先，没有写所在目录，仓库根下的不写", () => {
+    const nodes = toTreeNodes(
+      buildFileTree(
+        [
+          {
+            id: "all",
+            entries: [
+              { ...m("src/a.ts"), description: "both modified" },
+              { ...m("src/b.ts"), oldPath: "src/old.ts" },
+              m("src/c.ts"),
+              m("d.ts"),
+            ],
+          },
+        ],
+        false,
+      ),
+      false,
+    );
+    expect(descriptions(nodes)).toEqual([undefined, "both modified", "renamed from old.ts", "src"]);
+  });
+
+  it("按目录分组时文件后面不写目录", () => {
+    const nodes = toTreeNodes(
+      buildFileTree([{ id: "all", entries: [m("src/c.ts")] }], true),
+      false,
+    );
+    expect(descriptions(nodes)).toEqual(["1 file", undefined]);
   });
 });

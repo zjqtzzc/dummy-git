@@ -18,6 +18,8 @@ import Tree from "./Tree.vue";
 const props = defineProps<{
   groups: readonly FileGroup[];
   checked?: ReadonlySet<string> | undefined;
+  /** 按目录分组（默认）；为假时文件平铺在组下面（View Options 的 `Group By` → `Directory`）。 */
+  byDirectory?: boolean;
   menu?:
     | ((views: MenuViews<FileEntry | null>) => Readonly<Record<string, string | MenuArgs>>)
     | undefined;
@@ -39,7 +41,7 @@ const slots = defineSlots<{
 }>();
 
 const light = useLightTheme();
-const nodes = computed(() => toTreeNodes(buildFileTree(props.groups), light.value));
+const nodes = computed(() => toTreeNodes(buildFileTree(props.groups, props.byDirectory !== false), light.value));
 
 /**
  * 展开状态。新出现的目录（第一次见到的 id）默认展开；用户收起过的、刷新后还在的保持收起。

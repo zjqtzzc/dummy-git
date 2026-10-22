@@ -32,7 +32,7 @@ const light = useLightTheme();
 /** 时间按载入那一刻写；stash 列表一变就重新载入。 */
 const now = ref(Date.now() / 1000);
 
-const nodes = computed(() => stashTreeNodes(list.value, light.value, now.value));
+const nodes = computed(() => stashTreeNodes(list.value, light.value, now.value, true));
 const filesById = computed(() => stashFilesById(list.value));
 const owners = computed(() => stashByNodeId(nodes.value));
 

@@ -29,7 +29,7 @@ describe("stashTreeNodes", () => {
   ];
 
   it("每条 stash 一个顶层节点，标题是说明；同一文件在两条里 id 不撞", () => {
-    const nodes = stashTreeNodes(list, false, 0);
+    const nodes = stashTreeNodes(list, false, 0, true);
     expect(nodes.map((n) => n.label)).toEqual(["WIP on main: s1", "WIP on main: s2"]);
     const all = ids(nodes);
     expect(all).toContain("s1/src/a.ts");
@@ -43,6 +43,7 @@ describe("stashTreeNodes", () => {
       [{ stash: stash("s2", { at: 1000 }), tracked: [], untracked: [] }],
       false,
       1030,
+      true,
     );
     expect(first?.description).toBe("just now");
   });
@@ -58,6 +59,7 @@ describe("stashByNodeId", () => {
         ],
         false,
         0,
+        true,
       ),
     );
     expect(owners.get("s1")).toBe("s1");

@@ -88,6 +88,8 @@ export type FileNode =
       readonly label: string;
       /** 改名 / 复制时：同一目录写旧文件名，换了目录写旧的完整路径；其余缺席。 */
       readonly renamedFrom?: string;
+      /** 平铺（不按目录分组）时所在的目录；仓库根下的、按目录分组时缺席。 */
+      readonly folder?: string;
       readonly entry: FileEntry;
     };
 
@@ -96,10 +98,17 @@ interface Draft {
   readonly files: FileEntry[];
 }
 
-export function buildFileTree(groups: readonly FileGroup[]): readonly FileNode[] {
+/**
+ * `byDirectory` 为假时不按目录分组：文件直接列在组下面，按路径排（同一目录的挨在一起），
+ * 记下所在目录，转成树节点时当灰字（同 IDEA 平铺时的 `appendParentPath`）。
+ */
+export function buildFileTree(
+  groups: readonly FileGroup[],
+  byDirectory: boolean,
+): readonly FileNode[] {
   return groups.flatMap((group): FileNode[] => {
     if (group.entries.length === 0 && group.keepEmpty !== true) return [];
-    const children = buildEntries(group.entries);
+    const children = byDirectory ? buildEntries(group.entries) : flatEntries(group.entries);
     if (group.label === undefined) return children;
     return [
       {
@@ -134,13 +143,19 @@ function buildEntries(entries: readonly FileEntry[]): FileNode[] {
   return toNodes(root, "");
 }
 
+function flatEntries(entries: readonly FileEntry[]): FileNode[] {
+  return [...entries]
+    .sort((a, b) => a.path.localeCompare(b.path))
+    .map((entry) => toFile(entry, dirname(entry.path)));
+}
+
 function toNodes(draft: Draft, prefix: string): FileNode[] {
   const folders = [...draft.folders.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([name, child]) => toFolder(name, child, prefix));
   const files = [...draft.files]
     .sort((a, b) => basename(a.path).localeCompare(basename(b.path)))
-    .map(toFile);
+    .map((entry) => toFile(entry, ""));
   return [...folders, ...files];
 }
 
@@ -169,9 +184,16 @@ function countFiles(draft: Draft): number {
   return count;
 }
 
-function toFile(entry: FileEntry): FileNode {
+/** `folder` 是平铺时要写的所在目录，空串就不写。 */
+function toFile(entry: FileEntry, folder: string): FileNode {
   const label = basename(entry.path);
-  const base = { kind: FileNodeKind.File, id: entry.path, label, entry } as const;
+  const base = {
+    kind: FileNodeKind.File,
+    id: entry.path,
+    label,
+    entry,
+    ...(folder === "" ? {} : { folder }),
+  } as const;
   if (entry.oldPath === undefined) return base;
   const sameFolder = dirname(entry.oldPath) === dirname(entry.path);
   return { ...base, renamedFrom: sameFolder ? basename(entry.oldPath) : entry.oldPath };
@@ -238,9 +260,10 @@ export function toTreeNodes(
           decoration: node.entry.letter,
           ...flag,
         } as const;
+        // 灰字只写一种：原来的（改名、冲突类型）优先，没有才写平铺时的所在目录。地方不够两样都写。
         const description =
           node.renamedFrom === undefined
-            ? node.entry.description
+            ? (node.entry.description ?? node.folder)
             : `renamed from ${node.renamedFrom}`;
         return description === undefined ? base : { ...base, description };
       }
