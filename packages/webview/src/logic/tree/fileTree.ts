@@ -100,7 +100,7 @@ interface Draft {
 
 /**
  * `byDirectory` 为假时不按目录分组：文件直接列在组下面，按路径排（同一目录的挨在一起），
- * 记下所在目录，转成树节点时当灰字（同 IDEA 平铺时的 `appendParentPath`）。
+ * 记下所在目录，转成树节点时当灰字：平铺了也看得出文件在哪个目录。
  */
 export function buildFileTree(
   groups: readonly FileGroup[],

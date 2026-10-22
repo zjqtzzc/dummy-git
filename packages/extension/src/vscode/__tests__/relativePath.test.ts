@@ -2,12 +2,11 @@ import { describe, expect, it } from "vitest";
 import { relativeTo, workspaceRelative } from "../relativePath.js";
 
 /**
- * 这一段此前**零覆盖**——现有测试验的是 `notifyGitPath` 之后的链路，
- * 「VSCode 事件 → 相对路径」这一入口从未被测过，于是 Windows 的 bug 潜伏至今。
+ * 「VSCode 事件 → 相对路径」这一入口。`notifyGitPath` 之后的链路另有测试，这里只验转换本身。
  */
 describe("relativeTo", () => {
   describe("Windows 风格路径（用字面量构造，不依赖运行平台）", () => {
-    // 这一组就是原 bug 的复现：原实现把 `/` 拼进 prefix，与 `\` 的 fsPath 永不匹配。
+    // 比较前不归一 `\` 的话这一组全挂：`/` 结尾的 prefix 与 `\` 分隔的 fsPath 永不匹配。
     it("`.git` 下的文件能转成相对路径", () => {
       expect(relativeTo("C:\\repo\\.git", "C:\\repo\\.git\\HEAD")).toBe("HEAD");
     });

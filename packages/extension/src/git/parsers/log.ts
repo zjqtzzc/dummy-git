@@ -1,8 +1,5 @@
 /**
- * `git log` 的命令与解析。**两个查询**，对应取数模型 B：
- *
- *   骨架  git log HEAD --branches --remotes --tags --date-order --format=<3 字段>
- *   详情  git log --no-walk --stdin --format=<9 字段>    按 hash 取，显示用
+ * `git log` 的命令与解析。**两个查询**：骨架整份取来画图（`skeletonArgs`），详情按 hash 按需取，显示用。
  *
  * 命令行与解析代码**必须放在同一个文件里**：`--format` 声明有几个字段、
  * 解析按几个字段切，这是一份契约的两半。分开放两个文件，改一边忘了另一边就静默错位，
@@ -105,20 +102,13 @@ function parseTimestamp(record: LogRecord, raw: string, label: string): number {
 }
 
 /**
- * 每条 `git log` 命令都要带的前缀。
- *
- * `log.showSignature` 被用户打开时，git 会往每条提交插入 GPG 签名验证信息，
- * `--format` 的输出直接被破坏（实测：记录开头变成 `Good "git" signature for …`，
- * hash 字段整个错位）。这种 bug 只在特定用户机器上出现，本地永远复现不了。
- */
-/**
  * 所有 `git log` 查询共用的前缀。
  *
  * `-c log.showSignature=false`：用户在 `~/.gitconfig` 里设了
  * `log.showSignature = true`（用 GPG/SSH 签名的人常设），git 会在**每条**提交前
  * 插入一行签名验证结果，把 `--format` 的输出整个顶歪。实测（空 format 也照样污染）：
  * `Good "git" signature for a@b.c with ED25519 key SHA256:…`
- * 这种 bug 只在特定用户机器上出现，本地永远复现不了。两个参照实现都没有这条防护。
+ * 这种 bug 只在特定用户机器上出现，本地永远复现不了。
  *
  * 由 `nameStatus.ts` 一并引用——它也是一条 `git log` 查询，同样会被污染。
  */
@@ -133,31 +123,6 @@ const SK_PARENTS = 1;
 const SK_TIME = 2;
 const SK_FIELD_COUNT = 3;
 
-/**
- * 全量骨架：跑遍整个历史，只取画图必需的三个字段。
- *
- * ## 为什么不是 `--all`（2026-09-21 修，这是个已发布的缺陷）
- *
- * `--all` 会把 **stash 及其内部实现提交**一并列进来。实测（两条提交 + 一次 stash）：
- *
- * ```
- * $ git log --all --oneline
- * a311794 正常提交2
- * af844da WIP on master: a311794 正常提交2      ← stash 提交
- * bc1cc64 正常提交1
- * a3baced index on master: a311794 正常提交2    ← stash 的**内部 index 提交**
- * ```
- *
- * 用户只要 stash 过一次，提交列表就凭空多两条，其中 `index on master`
- * 是 git stash 的内部实现细节，完全不该出现在界面上。
- *
- * 显式三件套 `--branches --remotes --tags` 等价于 `--all`，但不带 index 与 stash 那些提交。
- *
- * `--date-order`：按提交时间排，与 `CommitSkeleton.at` 一致。
- *
- * 实测代价（18.8 万条提交的大仓库）：1.6 秒 / 18 MB 输出。
- * 带上作者与消息的话是 46 MB，而画图用不到那 28 MB。
- */
 /**
  * 骨架从哪里往下走、怎么排。以后 `--first-parent` 这类遍历选项也加在这里。
  */
@@ -174,6 +139,30 @@ const ORDER_FLAG: Readonly<Record<CommitOrder, string>> = {
   [CommitOrder.Topo]: "--topo-order",
 };
 
+/**
+ * 骨架：最多 `limit` 条，只取画图必需的三个字段。
+ *
+ * ## 为什么不是 `--all`
+ *
+ * `--all` 会把 **stash 及其内部实现提交**一并列进来。实测（两条提交 + 一次 stash）：
+ *
+ * ```
+ * $ git log --all --oneline
+ * a311794 正常提交2
+ * af844da WIP on master: a311794 正常提交2      ← stash 提交
+ * bc1cc64 正常提交1
+ * a3baced index on master: a311794 正常提交2    ← stash 的**内部 index 提交**
+ * ```
+ *
+ * 用户只要 stash 过一次，提交列表就凭空多两条，其中 `index on master`
+ * 是 git stash 的内部实现细节，完全不该出现在界面上。
+ *
+ * `HEAD` 加显式三件套 `--branches --remotes --tags` 等价于 `--all`，但不带 index 与 stash 那些提交。
+ *
+ * 默认 `--date-order`：按提交时间排，与 `CommitSkeleton.at` 一致。
+ *
+ * 只取画图要的三个字段：带上作者与消息，输出要大一倍多，画图却用不到。
+ */
 export function skeletonArgs(limit: number, options: SkeletonOptions = {}): string[] {
   const starts =
     options.branch === undefined ? ["HEAD", "--branches", "--remotes", "--tags"] : [options.branch];
@@ -251,7 +240,7 @@ export function detailsArgs(hashes: readonly string[]): StdinCommand {
  * 推到 `remote/remoteBranch` 会带上的提交，最新的在前，最多 `limit` 条（推送对话框）。
  *
  * 远程分支已有本地记录：本地分支有、它没有的（`<分支> --not <远程分支>`）。
- * 还没有：本地分支有、那个远程的所有分支都没有的（`--remotes=<远程>`，同 IDEA）。
+ * 还没有：本地分支有、那个远程的所有分支都没有的（`--remotes=<远程>`）。
  * 都写成完整引用名，免得和同名 tag 混淆；`--` 收尾，引用名不会被当成路径。
  */
 export function outgoingArgs(

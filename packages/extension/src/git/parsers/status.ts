@@ -1,7 +1,7 @@
 /**
  * `git status` 的命令与解析。
  *
- * 用 **porcelain v2**，不用 v1（两家参考实现都用 v1，这里刻意分歧）。
+ * 用 **porcelain v2**，不用 v1。
  * v2 每条记录的第一个字段就是记录类型，而 `FileChange` 正是「用 `kind` 区分形态」
  * 的结构——**git 直接把 `kind` 给了我们**，不必从 `XY` 的值里猜。
  */
@@ -51,9 +51,6 @@ const XY_FIELD = 1;
 /**
  * 单个位置上的改动。**v2 用 `.` 表示「没变」**，不是 v1 的空格——
  * 少一个「前导空格容易被 trim 掉」的坑。
- *
- * 这张表放在这里而不是 `shared/`：它是 git 输出格式到我们类型的映射，
- * 属于边界，别处用不上。
  */
 const STATUS_BY_CHAR: Readonly<Record<string, FileStatus>> = {
   ".": FileStatus.Unchanged,

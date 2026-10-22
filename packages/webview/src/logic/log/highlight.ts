@@ -10,7 +10,7 @@ export enum Highlight {
   CurrentBranch = "currentBranch",
 }
 
-/** View Options 里的顺序与文字（同 IDEA 的 Highlight 一节）。 */
+/** View Options 里的顺序与文字。 */
 export const HIGHLIGHT_MENU: readonly { readonly highlight: Highlight; readonly label: string }[] =
   [
     { highlight: Highlight.MyCommits, label: "My Commits" },
@@ -18,16 +18,14 @@ export const HIGHLIGHT_MENU: readonly { readonly highlight: Highlight; readonly 
     { highlight: Highlight.CurrentBranch, label: "Current Branch" },
   ];
 
-/**
- * 存进 `viewState` 的写法。存下来的值会离开这次构建（下个版本读它），所以 enum 的值不直接落盘，由这张表给出对外的字符串。
- */
+/** 存进 `viewState` 的写法。 */
 const SAVED_HIGHLIGHT: Readonly<Record<Highlight, string>> = {
   [Highlight.MyCommits]: "my-commits",
   [Highlight.MergeCommits]: "merge-commits",
   [Highlight.CurrentBranch]: "current-branch",
 };
 
-/** 存关掉的那几种：没存过的（以后新加的）默认开着（同 IDEA：没存过的高亮取 `true`）。 */
+/** 存关掉的那几种：没存过的（以后新加的）默认开着。 */
 export function saveHighlights(enabled: ReadonlySet<Highlight>): unknown {
   return {
     off: Object.values(Highlight)

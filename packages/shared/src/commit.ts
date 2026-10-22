@@ -38,11 +38,9 @@ export interface Commit {
   readonly parents: readonly string[];
   readonly author: Signature;
   /**
-   * 虽然界面目前只显示 author，committer 也一并提供。
-   *
-   * 理由是「数据层都提供，应用层决定怎么渲染」：
+   * 虽然界面目前只显示 author，committer 也一并提供：
    * git 默认按**提交日期**倒序排，而列表显示的是**作者**——rebase 之后两者脱节，
-   * Date 列会看起来乱序。到时候换哪个、怎么显示，是应用层的决定，数据层不替它做。
+   * Date 列会看起来乱序。到时候换哪个、怎么显示，由界面决定。
    */
   readonly committer: Signature;
   /**
@@ -81,8 +79,8 @@ export interface CommitSkeleton {
 
 /** 骨架的排序（Log 的 Graph Options → `Sort`）。两种都保证父提交排在子提交之后。 */
 export enum CommitOrder {
-  /** 按提交时间（IDEA 的 `By Commit Date`），默认。 */
+  /** 按提交时间（`By Commit Date`），默认。 */
   Date = "date",
-  /** 拓扑：同一支历史连在一起，不和别的支穿插（IDEA 的 `Topologically`，但不是它的 IntelliSort）。 */
+  /** 拓扑（`Topologically`）：同一支历史连在一起，不和别的支穿插。 */
   Topo = "topo",
 }

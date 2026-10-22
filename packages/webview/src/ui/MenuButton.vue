@@ -7,7 +7,7 @@ import PopupMenu from "./PopupMenu.vue";
 import ToolButton from "./ToolButton.vue";
 
 /**
- * 有选单的图标按钮：基础按钮 `ToolButton` 之上多三件事——右下角画小三角（同 IDEA：点了弹一组选项的工具栏按钮都有），
+ * 有选单的图标按钮：基础按钮 `ToolButton` 之上多三件事——右下角画小三角（看得出点了是弹选单，不是直接执行），
  * 点了打开贴着按钮的浮层选单（再点一次关上），点外面、按 Esc、webview 失去焦点时收起。
  * 选单是什么由用的地方交 `items`，这里不认识具体选单（`logic/popupMenu.ts`）。
  */

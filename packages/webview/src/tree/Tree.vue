@@ -31,7 +31,7 @@ import CheckBox from "../ui/CheckBox.vue";
 import Icon from "../ui/Icon.vue";
 
 /**
- * 所有树共用的基础组件，外观与交互照 VS Code 原生的树。
+ * 所有树共用的基础组件。
  *
  * 一行从左到右：缩进、箭头（没有下级时隐藏但占位）、复选框（可选）、图标（可选）、文字、说明（可选）、使用方插槽 `after`（可选）、
  * 右侧字母（可选）。
@@ -156,8 +156,8 @@ function rowAt(event: MouseEvent): number | undefined {
 /**
  * 单击：点在复选框上只切换勾选（全勾时全不勾，否则全勾），不选中、不展开；
  * 点在插槽上什么都不做（按钮自己处理，不能顺带选中或展开这一行）；
- * 点在别处选中这一行，可展开的节点同时展开 / 收起（VS Code 默认的单击展开）；
- * 按着 Ctrl（Mac 上 Cmd）或 Shift 时只改选中、不展开收起（同 VS Code）。
+ * 点在别处选中这一行，可展开的节点同时展开 / 收起（单击就能展开，不用对准箭头）；
+ * 按着 Ctrl（Mac 上 Cmd）或 Shift 时只改选中、不展开收起：多选时树不跟着变形。
  */
 function hit(event: MouseEvent, selector: string): boolean {
   return event.target instanceof Element && event.target.closest(selector) !== null;
@@ -190,7 +190,7 @@ function onDblclick(event: MouseEvent): void {
 }
 
 /**
- * 右键：点在已选中的行上选中不变，点在别的行上先改成只选它（同 VS Code 原生的树）；
+ * 右键：点在已选中的行上选中不变，点在别的行上先改成只选它；
  * 再按选中算出菜单上下文写到树的容器上（为什么写在容器上见 `containerMenuContext`）。点在空白处不出菜单项。
  */
 function onContextmenu(event: MouseEvent): void {
@@ -221,7 +221,7 @@ function onMousedown(event: MouseEvent): void {
 }
 
 /**
- * 上下左右、回车照 VS Code 的树（`treeKeyAction`）；Shift+↑↓ 选一段；Ctrl+A（Mac 上 Cmd+A）全选看得见的行；
+ * 上下左右、回车见 `treeKeyAction`；Shift+↑↓ 选一段；Ctrl+A（Mac 上 Cmd+A）全选看得见的行；
  * Ctrl+C 复制选中的行，一行一个。
  */
 function onKeydown(event: KeyboardEvent): void {
@@ -330,7 +330,7 @@ function iconOf(row: TreeRow): IconRef | undefined {
 
 <style scoped>
 /*
- * 尺寸与配色照 VS Code 原生的树（资源管理器），缩进按我们自己的：行高 22px、每层缩进 11px、箭头格与复选框格都是 3 + 16 + 3、
+ * 尺寸：行高 22px、每层缩进 11px、箭头格与复选框格都是 3 + 16 + 3、
  * 图标 16px 右留 6px；选中、悬停、焦点框、缩进线都用主题的 list / tree 变量。
  */
 .tree {
@@ -365,7 +365,7 @@ function iconOf(row: TreeRow): IconRef | undefined {
   outline: 1px solid var(--vscode-list-focusOutline);
   outline-offset: -1px;
 }
-/* 缩进线：鼠标在树上时才显示（VS Code 默认的 onHover）。 */
+/* 缩进线：鼠标在树上时才显示，平时不添杂线。 */
 .guide {
   position: absolute;
   top: 0;

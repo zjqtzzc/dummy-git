@@ -135,11 +135,10 @@ export class GitCli {
     if (signal !== undefined) {
       const onAbort = (): void => {
         // 只杀 git 自己是不够的：它可能起了子进程（pre-commit 钩子、
-        // 将来的 askpass 凭据助手），且那些子进程继承了 stdout/stderr 管道。
+        // askpass 脚本），且那些子进程继承了 stdout/stderr 管道。
         // 我们监听的是 `close`（见下方注释），而 `close` 要等**所有持有管道的
         // 进程**都退出才触发——单杀 git 本身，孤儿子进程会继续跑到自然结束，
-        // 取消形同虚设（实测：pre-commit 钩子 sleep 3 秒，单杀 git 时 `close`
-        // 仍然要等满 3 秒；杀整个进程组后降到 ~300ms）。
+        // 取消形同虚设：钩子还要跑多久，`close` 就要等多久。
         //
         // 用负 pid 给整个进程组发信号是 POSIX 语义，Windows 没有对应物，
         // 那边退回单杀 git——已知的不完整取消。

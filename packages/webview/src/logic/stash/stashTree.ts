@@ -31,7 +31,7 @@ export interface StashFile {
 
 /**
  * stash 的右键菜单项。选中的是 stash 那一行时是它的 hash，是它下面的文件、目录时是 `null`。
- * 都只能对一条做，同 IDEA 的 `GitSingleStashAction`；多选后能做什么还没定。
+ * 都只能对一条做；多选后能做什么还没定。
  */
 const STASH_MENU: readonly MenuItem<string | null>[] = [
   MenuContextKey.PopStash,

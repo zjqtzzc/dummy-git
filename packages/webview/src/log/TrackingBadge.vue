@@ -4,7 +4,7 @@ import { type Tracking, TrackingKind } from "../logic/log/branchTree.js";
 import Icon from "../ui/Icon.vue";
 
 /**
- * 分支名后面的同步状态，同 IDEA：蓝色 ↙ 落后（远程有、本地没有），绿色 ↗ 领先（本地有、还没推），
+ * 分支名后面的同步状态：蓝色 ↙ 落后（远程有、本地没有），绿色 ↗ 领先（本地有、还没推），
  * 图标与数字同色，只显示不为 0 的一边；上游已删显示灰色 gone。没有状态（`undefined`）就什么都不画。
  */
 defineProps<{ state: Tracking | undefined }>();

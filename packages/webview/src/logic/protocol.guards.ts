@@ -137,8 +137,7 @@ export function parseIncoming(raw: unknown): Incoming | undefined {
 /**
  * 把未经校验的 `value` 按「发起请求时声明的返回类型」交回去。
  *
- * **这是全项目 webview 侧唯一的类型断言**，集中在这里而不是散在 `client.ts`，
- * 因为把 `unknown` 变成类型是守卫的活，断言只许在这里。
+ * **这是全项目 webview 侧唯一的类型断言**，集中在这里而不是散在 `client.ts`。
  *
  * 它是一次**明示的信任**，不是检查——理由见文件头「验我们据以分支的，
  * 不验原样转交的」。取个名字、写清楚，比在业务代码里写一个裸 `as` 强：

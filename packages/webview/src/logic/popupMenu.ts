@@ -10,7 +10,7 @@ export enum PopupItemKind {
   Action = "action",
   /** 点了切换开关，选单不收起，可以连着勾几项。 */
   Toggle = "toggle",
-  /** 单选项：一组里选一个（比如排序方式）。点了选中它，选单不收起；选中的画 ✓（同 IDEA、VS Code）。 */
+  /** 单选项：一组里选一个（比如排序方式）。点了选中它，选单不收起；选中的画 ✓。 */
   Radio = "radio",
   /** 二级选单：里面再装一组选单项。 */
   Submenu = "submenu",
@@ -85,7 +85,7 @@ export function clickPopupItem(item: PopupItem): PopupClick {
  */
 export type OpenPath = readonly number[];
 
-/** 鼠标停在二级选单项上多久才打开（同 VS Code 的 `SubmenuMenuActionViewItem`）。 */
+/** 鼠标停在二级选单项上多久才打开：只是从上面划过去的不弹出来，停下来才算想看。 */
 export const SUBMENU_OPEN_DELAY = 250;
 /** 移到同一级别的项上，开着的二级选单多久才关：这期间鼠标进了二级选单就不关，斜着移过去不误关。 */
 export const SUBMENU_CLOSE_DELAY = 750;

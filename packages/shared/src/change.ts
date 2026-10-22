@@ -13,11 +13,7 @@ export enum ChangeKind {
 /**
  * 单个位置（暂存区或工作区）上的改动类型。
  *
- * **值是 `"modified"` 而不是 `"M"`。** 写成 `Modified = "M"` 就等于把 git 的输出格式
- * 焊进了我们的类型定义：git 的 porcelain v1 与 v2 状态字符不同，换格式时前者要改
- * 类型定义和所有用到它的地方，后者只改一张映射表。
- *
- * 用 git 的字符做值还会撞车：若写 `Untracked = "U"`，它与 git 自己的 `U`（unmerged，即冲突）
+ * 值不用 git 的状态字符，否则会撞车：若写 `Untracked = "U"`，它与 git 自己的 `U`（unmerged，即冲突）
  * 同形，冲突文件会被静默归类成「未跟踪」。
  */
 export enum FileStatus {
@@ -60,8 +56,7 @@ export enum ConflictKind {
  *   「一个未跟踪文件同时有已暂存的修改」这种不可能的状态在类型上就写不出来。
  *
  * 注意 `index` 与 `worktree` 两个状态都保留，尽管 Commit 面板
- * 不显示暂存区概念、一个文件只出现一条。**合并显示是界面的决定，不是数据的决定**——
- * 数据丢了找不回来，界面合并随时可以改。
+ * 不显示暂存区概念、一个文件只出现一条：合并成一条是界面做的。
  */
 export type FileChange =
   | {

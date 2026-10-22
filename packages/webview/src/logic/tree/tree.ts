@@ -3,7 +3,7 @@ import type { MenuViews } from "../menuItems.js";
 
 /**
  * 所有树共用的纯逻辑：节点的统一形状、按展开状态压平成行、
- * 展开 / 收起、键盘。外观与交互照 VS Code 原生的树。
+ * 展开 / 收起、键盘。
  */
 
 /** 树的一个节点。各使用方把自己的数据转成它；「类型 → 图标 / 颜色 / 字母」表各自持有。 */
@@ -162,7 +162,7 @@ export type TreeKeyAction =
   | { readonly kind: TreeKeyActionKind.Activate };
 
 /**
- * 按键在第 `index` 行上该做什么，照 VS Code 原生的树：
+ * 按键在第 `index` 行上该做什么：
  * - 上 / 下：上一行 / 下一行（`index` 为 -1 表示还没有选中，下键选第一行）。
  * - 左：展开着就收起，否则跳到父节点。
  * - 右：收起着就展开，展开着就跳到第一个子节点。

@@ -23,7 +23,7 @@ const emit = defineEmits<{
   click: [index: number, rect: Rect];
   /**
    * 鼠标离开这一级（进了下一级、或出了选单）：等着的那次作废。
-   * 斜着移进二级选单时擦过了同级别的项，要关它的那次不再关；停满之前就移走了，要开的那次不再开（同 VS Code）。
+   * 斜着移进二级选单时擦过了同级别的项，要关它的那次不再关；停满之前就移走了，要开的那次不再开。
    */
   leave: [];
 }>();
@@ -103,7 +103,7 @@ function rowRect(event: MouseEvent): Rect {
 </template>
 
 <style scoped>
-/* 颜色、阴影照 VS Code 自己的菜单（`menu.*`、`widget.shadow`）。 */
+/* 颜色、阴影用主题给菜单的那几样（`menu.*`、`widget.shadow`）。 */
 .popup {
   position: fixed;
   z-index: 100;

@@ -244,7 +244,7 @@ export function workingMenuContext(
 
 /**
  * 工具栏 Rollback 撤哪些：和右键的 Rollback 同一份规则（`ROLLBACK`）；
- * 什么都没选时撤 `Changes` 组的全部（同 IDEA：`RollbackAction` 里 `changes.isEmpty()` 时取全部）。
+ * 什么都没选时撤 `Changes` 组的全部。
  * 撤不了（选中的不全是已跟踪的改动，或没选且没有已跟踪的改动）时缺席，按钮置灰。不看勾选：勾选只管提交与 Stash。
  */
 export function rollbackArgs(

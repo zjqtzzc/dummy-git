@@ -1,5 +1,5 @@
 /**
- * 列表与树共用的多选规则，照 VS Code 原生列表与 IDEA。
+ * 列表与树共用的多选规则。
  *
  * 只认 id 和行的显示顺序（`order`，看得见的行从上到下），不认识提交、分支还是文件。
  * 每种点击、按键都是一个纯函数：旧的选中加这次的动作，得出新的选中。
@@ -55,7 +55,6 @@ export function selectAll(selection: Selection, order: readonly string[]): Selec
 
 /**
  * 右键：点在已选中的行上，选中不变，菜单作用于全部；点在没选中的行上，先改成只选这一行。
- * 同 VS Code 原生列表、IDEA。
  */
 export function contextMenuOn(selection: Selection, id: string): Selection {
   return selection.ids.has(id) ? selection : selectOnly(id);

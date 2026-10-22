@@ -61,7 +61,7 @@ export const getRepositoryLocation: GitCommand<[pathInsideRepository: string], R
       );
 
       // 只按换行切，**不 trim 行尾空格**——目录名可以以空格结尾，
-      // 当成噪声剪掉会得到一个不存在的路径。vscode 在同一处也这么做。
+      // 当成噪声剪掉会得到一个不存在的路径。
       const [root, gitDir, commonDir] = result.stdout.replace(/[\r\n]+$/, "").split(/\r?\n/);
       if (root === undefined || gitDir === undefined || commonDir === undefined) {
         throw new Error(`rev-parse 应输出三行，实际：${JSON.stringify(result.stdout)}`);

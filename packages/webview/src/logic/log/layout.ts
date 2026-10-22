@@ -2,7 +2,7 @@
  * 三栏的宽度，与右栏里文件和详情的上下比例。
  *
  * 左栏、右栏固定像素宽度（默认 240 / 320），中间占剩下的全部：多出来的空间都给提交列表。
- * 右栏上面是文件、下面是详情，按比例分（默认文件占 70%，同 IDEA），面板变高变矮时一起伸缩。
+ * 右栏上面是文件、下面是详情，按比例分（默认文件占 70%），面板变高变矮时一起伸缩。
  * 拖动后的值记在 webview 的 `setState` 里，收起再展开、重新加载窗口后都恢复。
  */
 export interface Layout {
@@ -25,7 +25,7 @@ function isPercent(value: unknown): value is number {
 }
 
 /**
- * 从 `viewState` 里取回的值。类型在运行时已擦除——格式不对（第一次打开是 `undefined`、
+ * 从 `viewState` 里取回的值。格式不对（第一次打开是 `undefined`、
  * 以后改了存储格式）就用默认值，不抛。
  */
 export function restoreLayout(saved: unknown): Layout {

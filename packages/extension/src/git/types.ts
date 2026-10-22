@@ -9,8 +9,7 @@ export interface GitCommandRecord {
 }
 
 /**
- * git 命令日志的出口。注入式——`git/` 层不许 import `vscode`，
- * 所以这里只定义形状，由 `vscode/` 层接到日志频道上。
+ * git 命令日志的出口。这里只定义形状，由 `vscode/` 层注入、接到日志频道上。
  */
 export interface GitLogger {
   readonly command: (record: GitCommandRecord) => void;

@@ -32,14 +32,14 @@ const hashOf = (item: CommitMenuTarget): string => item.hash;
 
 /** 提交列表的右键菜单项，顺序无关（菜单里的顺序由 `package.json` 的 `group` 定）。提交列表没有目录，看法都写原样看。 */
 const COMMIT_MENU: readonly MenuItem<CommitMenuTarget>[] = [
-  // 复制的文字由这里拼：完整 hash 一行一个（多选的复制都一行一个，项目负责人定）。
+  // 复制的文字由这里拼：完整 hash 一行一个（多选的复制都一行一个）。
   menuItem({
     view: MenuView.Exact,
     key: MenuContextKey.CopyHash,
     pick: hashOf,
     value: (hashes) => ({ text: hashes.join("\n") }),
   }),
-  // 选中是列表顺序（从新到旧）。cherry-pick 从旧到新摘，revert 从新到旧撤，同 IDEA。
+  // 选中是列表顺序（从新到旧）。cherry-pick 从旧到新摘，照原来的先后叠上去；revert 从新到旧撤，先撤后来的，前面的才撤得干净。
   menuItem({
     view: MenuView.Exact,
     key: MenuContextKey.CherryPick,

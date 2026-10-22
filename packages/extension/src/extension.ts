@@ -36,7 +36,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const channel = createLogChannel();
   context.subscriptions.push(channel);
 
-  // git/ 层不 import vscode（lint 强制），所以 git 路径、askpass 脚本路径与日志出口都从这里注入。
+  // git 路径、askpass 脚本路径与日志出口都从这里注入给 `GitCli`。
   const askpass = vscode.Uri.joinPath(context.extensionUri, "resources", "askpass-empty.sh").fsPath;
   // 操作（`ipc/operation.ts`）：webview 请求与右键菜单共用一个，编号不重。
   const operations = new Operations(channel);
@@ -123,8 +123,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // 哪怕此刻面板收着（下次展开时状态才是对的）。
   context.subscriptions.push(watchRepository(repository));
 
-  // 自动 Fetch：后台的第三个入口，和手动的 Fetch 一样记成一个操作。不带 `--prune`：
-  // 远程上删掉的分支，本地的记录留到用户手动 Fetch 时再清，后台不替用户删东西（2026-10-22 项目负责人定）。
+  // 自动 Fetch：和手动的 Fetch 一样记成一个操作。不带 `--prune`：
+  // 远程上删掉的分支，本地的记录留到用户手动 Fetch 时再清，后台不替用户删东西。
   // 失败只记日志、不弹通知：用户没有点什么，不打扰。
   const autoFetch = startAutoFetch(
     () =>

@@ -85,10 +85,8 @@ describe("Client：请求与回复配对", () => {
     // 摘掉不是为了「防止 Promise 被 resolve 两次」——那在 JS 里本来就是空操作。
     // **是为了不让 pending 无限增长**：不摘的话每条完成的请求都永远留在表里。
     //
-    // 这条测试是变异确认逼出来的：上一版写成「第二次回复不生效」，
-    // 把 `pending.delete()` 删掉之后**测试照样全绿**——
-    // 它通过的理由是 Promise 的语义，不是它声称的那个机制。
-    // 现在改用日志做可观察出口：只有真的摘掉了，第二条才会走到「没人在等」那一支。
+    // 所以不能断言「第二次回复不生效」：Promise 本来就只认第一次，删掉 `pending.delete()` 也照样通过。
+    // 看日志：只有真的摘掉了，第二条才会走到「没人在等」那一支。
     const t = recorder();
     const lines: string[] = [];
     const client = new Client(t, GEN, { log: (line) => void lines.push(line) });

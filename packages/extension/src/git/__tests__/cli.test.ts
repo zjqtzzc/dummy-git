@@ -58,8 +58,8 @@ describe("stdin", () => {
 
   it("git 没读完 stdin 就退出：得到它的退出码，不冒出未捕获的 EPIPE", async () => {
     // 不是仓库 → git 一启动就失败退出，根本不读 stdin。1 MB 远大于管道缓冲（64 KB），
-    // 它退出时我们一定还在写，写端必然 EPIPE。以前 stdin 上没挂 error 监听，
-    // 这个 EPIPE 成了未捕获异常（偶发于 checkIgnore 的「不是仓库」测试，靠时序）。
+    // 它退出时我们一定还在写，写端必然 EPIPE。stdin 上不挂 error 监听的话，
+    // 这个 EPIPE 就是未捕获异常（小输入时靠时序，偶发）。
     const dir = mkdtempSync(join(tmpdir(), "dummygit-epipe-"));
     try {
       const r = await cli.exec(["check-ignore", "-z", "--stdin"], {

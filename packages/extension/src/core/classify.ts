@@ -23,8 +23,7 @@ import { GitDomain } from "@dummy-git/shared";
  *
  * 分隔符这条不是小事：Windows 上 `uri.fsPath` 给的是反斜杠，
  * 直接传进来所有前缀判断都会失效，而且**不报错**——只是所有事件都被当成认不出的丢掉，
- * 表现为「Windows 上界面永远不刷新」。归一化是调用方的责任（校验只在边界做一次，
- * 这里是边界之内）。
+ * 表现为「Windows 上界面永远不刷新」。归一化是调用方的责任。
  *
  * ## 返回空数组 = 这个事件该丢弃
  *
@@ -53,8 +52,7 @@ const OP_REFS_WORKTREE: readonly GitDomain[] = Object.freeze([
 /**
  * 先挡噪声。
  *
- * 顺序不能反：噪声的量级远大于有效事件。实测一次 `commit` 产生 27 个事件，
- * **17 个是噪声**。
+ * 顺序不能反：噪声的量级远大于有效事件，一次 `commit` 产生的事件**大半是噪声**。
  *
  * - `objects/` —— `fetch` 时能刷出成千上万个。注意这个 watcher 是绕开
  *   `files.watcherExclude` 建的，默认那条 `**​/.git/objects/**` 排除保护不到它。
@@ -94,7 +92,7 @@ export function classifyGitPath(relPath: string): readonly GitDomain[] {
   }
 
   // stash 及其 reflog。**必须排在下面的 `refs/` 与 `logs/` 前缀判断之前**，
-  // 否则会被它们抢走、错判成 Refs（那是 1.9 秒的重拉，而 stash 只要几毫秒）。
+  // 否则会被它们抢走、错判成 Refs（那是全量重拉，比 stash 的重拉重得多）。
   if (relPath === "refs/stash" || relPath === "logs/refs/stash") {
     return STASH_WORKTREE;
   }

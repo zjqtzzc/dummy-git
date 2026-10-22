@@ -5,8 +5,7 @@ import * as vscode from "vscode";
  *
  * ## 为什么这件事在 `vscode/` 层
  *
- * `gitPath` 由外部注入（`new GitCli(gitPath)`），因为探测它要读 VSCode 配置，
- * 而 `git/` 层不许 import `vscode`。这里就是那个「外部」。
+ * 探测它要读 VSCode 配置，所以在这里探测，再注入给 `new GitCli(gitPath)`。
  *
  * ## 目前只做最简的一档
  *

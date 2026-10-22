@@ -6,8 +6,6 @@ import { relativeTo } from "./relativePath.js";
  * 「diff 的一边」↔ URI。**这个格式的唯一定义处。**
  *
  * URI 是对外格式：VS Code 会把它存进标签页，重新加载窗口后拿回来找我们要内容。
- * 所以这里显式写出「内部值 → 外部字符串」，`DiffSideKind` 的枚举值
- * 不顺带成为 URI 的一部分——改枚举值不会让用户已经开着的标签失效。
  *
  * 本文件不 import vscode，只处理字符串，能在纯 node 下测。
  * 拼 `vscode.Uri` 的那一句在 `revisionFileSystem.ts`。
@@ -36,7 +34,7 @@ const REV_KEY = "rev";
 const EMPTY_QUERY = "empty";
 const STAGE_KEY = "stage";
 
-/** 暂存区那一栏在 URI 里的写法（对外字符串，不用 `IndexStage` 的值）。 */
+/** 暂存区那一栏在 URI 里的写法。改它同样让用户已开着的标签失效。 */
 const STAGE_NAME: Readonly<Record<IndexStage, string>> = {
   [IndexStage.Base]: "base",
   [IndexStage.Ours]: "ours",

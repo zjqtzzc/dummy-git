@@ -422,7 +422,7 @@ defineExpose({
   cursor: col-resize;
   touch-action: none;
 }
-/* 表头里一直显示的分界线（同 IDEA），颜色同表头底边。 */
+/* 表头里一直显示的分界线：看得出列在哪里分、能拖。颜色同表头底边。 */
 .resize-handle::before {
   content: "";
   position: absolute;
@@ -459,7 +459,7 @@ defineExpose({
 .row.tinted:not(.selected) {
   background-image: linear-gradient(var(--current-branch-tint), var(--current-branch-tint));
 }
-/* 只加粗作者那一列（同 IDEA 新界面），选中时照旧加粗。 */
+/* 只加粗作者那一列，选中时照旧加粗。 */
 .cell.bold {
   font-weight: bold;
 }

@@ -11,7 +11,6 @@ import { type Operations, tagged } from "../ipc/operation.js";
 /**
  * 「输出」里的 Dummy Git。带级别的频道：每行自带时间戳与级别，
  * 同时写进窗口的日志目录（`Developer: Open Extension Logs Folder`），重新加载窗口后还找得回。
- * 默认级别 info，低于它的不显示也不落盘。
  */
 export function createLogChannel(): vscode.LogOutputChannel {
   return vscode.window.createOutputChannel("Dummy Git", { log: true });
@@ -20,9 +19,7 @@ export function createLogChannel(): vscode.LogOutputChannel {
 /**
  * 把 `git/` 的日志接到频道上。
  *
- * `GitLogger` 只交出一条命令的记录（`GitCommandRecord`），写成什么样由这一层定：
- * `git/` 层不 import `vscode`（lint 强制），所以它只能声明形状，
- * 由这一层接到真正的出口上。换个宿主（CLI、测试脚本）换一个实现即可。
+ * `GitLogger` 只交出一条命令的记录（`GitCommandRecord`），写成什么样、写到哪由这一层定。
  */
 export function createOutputLogger(channel: vscode.LogOutputChannel): GitLogger {
   return {
@@ -75,7 +72,7 @@ export function logRepository(
   channel.info(`Repository: ${location.root} (git dir ${location.gitDir}${shared})`);
 }
 
-/** 域在日志里的叫法（enum 值不拼进文字，经这张表）。 */
+/** 域在日志里的叫法。 */
 const DOMAIN_NAMES: Readonly<Record<GitDomain, string>> = {
   [GitDomain.Refs]: "分支与提交",
   [GitDomain.Worktree]: "工作区",

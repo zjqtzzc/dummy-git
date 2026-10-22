@@ -15,7 +15,7 @@ defineProps<{
   values: Readonly<Partial<Record<FilterKind, string>>>;
   /** 搜索框里的字。 */
   text: string;
-  /** 查询进行中：搜索框右侧转圈（查询可能要一两秒，静默会被当成卡死）。 */
+  /** 查询进行中：搜索框右侧转圈。 */
   busy: boolean;
   /** Graph Options 的选单项。 */
   graphOptions: readonly PopupItem[];

@@ -114,11 +114,6 @@ describe("STATUS_ENV", () => {
 });
 
 describe("C.3：git 的原始格式不得渗入我们的类型", () => {
-  /**
-   * `enum FileStatus { Added = 'A' }` 是被禁止的——那等于把 git 的
-   * porcelain 输出格式焊进类型定义。v1 与 v2 的状态字符不同，
-   * 换格式时前者要改类型和所有消费方，后者只改一张映射表。
-   */
   const allValues = [
     ...Object.values(ChangeKind),
     ...Object.values(ConflictKind),

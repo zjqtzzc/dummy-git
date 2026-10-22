@@ -5,7 +5,7 @@ import { CheckState } from "../logic/tree/tree.js";
  * 复选框，所有地方都用它（树里每一行的、Commit 面板的 Amend……）：不用 vscode-elements 的 `vscode-checkbox`，也不各自画。
  * vscode-checkbox 在暗色主题里和背景几乎一样，勾太细，样式也改不进它里面。
  *
- * 外观照 IDEA 新界面（`platform-resources/src/themes/expUI/icons/dark/checkBox*.svg`，换算到 16×16）：
+ * 外观（16×16）：
  * 没勾是一个描边的圆角方框，边框比背景明显（暗色主题里浅、亮色主题里深）；勾上、半勾填满蓝色，里面是白色的勾或横条，线宽 2。
  * 勾和横条是控件的一部分，不算图标，不走 `logic/icons.ts` 的线宽 1。
  *

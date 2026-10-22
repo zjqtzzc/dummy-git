@@ -11,7 +11,7 @@ import type { ErrorGate } from "./errorGate.js";
  * 菜单项被点时，VS Code 直接调这里注册的命令，参数是页面元素上 `data-vscode-context` 的整份 JSON，
  * 不经过 Router。页面已经按选中算好了每一项的参数，放在以命令 id 为键的那一格里（`shared/src/menu.ts`），
  * 所以每个菜单命令只做薄薄一层，而且都一样：
- * 1. 取出自己那一格、补上 `repo`，用 Router 入口**同一张**参数校验表校验（webview 来的数据，是边界）；
+ * 1. 取出自己那一格、补上 `repo`，用 Router 入口**同一张**参数校验表校验；
  * 2. 调**同一个** handler；
  * 3. 出错交给**同一个**错误关口。
  * 能不能做、对谁做，这里不再判断一遍。执行逻辑、校验、错误出口都只有一份。结果不回给页面：界面靠 watcher 刷新。

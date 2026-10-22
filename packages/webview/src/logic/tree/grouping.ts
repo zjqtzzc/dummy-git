@@ -1,14 +1,14 @@
 import { type PopupItem, PopupItemKind } from "../popupMenu.js";
 
 /**
- * 文件树的分组依据（View Options 的 `Group By`，同 IDEA 的 `ChangesView.GroupBy`）。
- * 现在只有按目录；IDEA 还有按模块、按仓库，我们没有模块，仓库现阶段只有一个。
+ * 文件树的分组依据（View Options 的 `Group By`）。
+ * 现在只有按目录：没有模块这个概念，仓库现阶段也只有一个，按模块、按仓库分都分不出东西。
  */
 export enum Grouping {
   Directory = "directory",
 }
 
-/** 存进 `viewState` 的写法：存下来的值会离开这次构建，enum 的值不直接落盘。 */
+/** 存进 `viewState` 的写法。 */
 const SAVED_GROUPING: Readonly<Record<Grouping, string>> = {
   [Grouping.Directory]: "directory",
 };
@@ -23,7 +23,7 @@ export function saveGrouping(on: ReadonlySet<Grouping>): unknown {
   return { on: [...on].map((grouping) => SAVED_GROUPING[grouping]) };
 }
 
-/** 读回存下的分组。什么都没存、存的认不出时按目录分组（同 IDEA 的默认）；认不出的那项当作没有。 */
+/** 读回存下的分组。什么都没存、存的认不出时按目录分组；认不出的那项当作没有。 */
 export function restoreGrouping(saved: unknown): ReadonlySet<Grouping> {
   const on = typeof saved === "object" && saved !== null ? Reflect.get(saved, "on") : undefined;
   if (!Array.isArray(on)) return new Set([Grouping.Directory]);

@@ -100,8 +100,8 @@ export type ViewSource =
  *
  * ## 收起时保留页面（`retainContextWhenHidden`）
  *
- * 不保留的话，每次展开 VS Code 都重建 iframe，先黑屏几百毫秒再一下子出来。实测（F5 调试窗口、几条提交的小仓库）
- * iframe 开始加载之后我们自己只用 110～160 ms（脚本 25 ms 左右，其余是取数据），黑屏在那之前、在 VS Code 里，
+ * 不保留的话，每次展开 VS Code 都重建 iframe，先黑屏几百毫秒再一下子出来。
+ * iframe 开始加载之后我们自己用的时间不多（大头是取数据），黑屏在那之前、在 VS Code 里，
  * 只有不重建才省得掉。代价：收起时页面常驻内存；隐藏期间的消息 VS Code 不送，广播要攒着（`HiddenBuffer`）。
  * 窗口刚打开时的第一次展开、或 VS Code 回收了隐藏的页面时，仍会重建：ready 来第二次，
  * 握手的换代逻辑照旧处理（`ipc/router.ts`），所以一次 `resolveWebviewView` 配一个新的 Router，销毁时退订仓库的广播。
@@ -120,8 +120,10 @@ export function registerWebviewView(
   /** 与 package.json 的 contributes.views 里的 id 一致。 */
   viewType: string,
   source: Promise<ViewSource>,
-  /** 拿着这个视图的 `Transport` 换一个 `Router`。理由同 Router 需要 Transport 才能造。 */
-  /** `source` 是视图 id，日志里记作来源。 */
+  /**
+   * 每次展开拿这个视图的 `Transport` 造一个 `Router`：Transport 要到展开时才有，所以给工厂不给现成的 Router。
+   * 回调的 `source` 是视图 id，日志里记作来源。
+   */
   createRouter: (repository: Repository, transport: Transport, source: string) => Router,
 ): vscode.Disposable {
   return vscode.window.registerWebviewViewProvider(

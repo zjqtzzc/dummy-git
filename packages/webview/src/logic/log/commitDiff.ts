@@ -42,8 +42,6 @@ export function commitFileEntry(file: CommitFileChange): FileEntry {
 /**
  * 提交详情里点开一个文件：左边是父提交里的它，右边是这条提交里的它。
  *
- * 纯函数，不依赖界面框架，能在 node 下测。
- *
  * - 新增：左边不存在。删除：右边不存在。
  * - 改名 / 复制：左边用父提交里的**旧路径**。
  * - 根提交没有父提交：左边不存在。

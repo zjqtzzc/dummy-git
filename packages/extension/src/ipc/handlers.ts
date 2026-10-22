@@ -108,16 +108,17 @@ import { UserFacingError } from "./userFacingError.js";
  * 用它去选仓库等于凭外部输入决定操作哪个仓库，而现在根本没有「选」这回事。
  * 多仓库时这里换成「按 `params.repo` 查表」，改动只在这一个文件。
  */
-/**
- * 要用到 VS Code 界面的动作，由 `extension.ts` 注入。handler 自己不 import vscode，
- * 这样 handler 的测试能在纯 node 下跑。
- */
+
 /** 选择框的一项：`description` 是同一行后面的灰字。 */
 export interface PickItem {
   readonly label: string;
   readonly description?: string;
 }
 
+/**
+ * 要用到 VS Code 界面的动作，由 `extension.ts` 注入。handler 自己不 import vscode，
+ * 这样 handler 的测试能在纯 node 下跑。
+ */
 export interface HandlerUi {
   /** 删除前的确认（原生模态框）：`action` 是确认按钮，`true` 是确认。给了 `names` 就在说明里列出（前 5 个）。 */
   readonly confirm: (
@@ -253,8 +254,8 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
 
   /**
    * 一次更新好几个：按顺序逐个更新，算一次操作，每个分支状态栏各说一句。
-   * 分叉的不问变基还是合并（问了就得等人答，后面的都卡着），跳过它接着做，最后报错列出来，让人单个更新
-   * （项目负责人定）。某一个被 git 拒绝时，已经更新的不撤回，剩下的不再做，显示 git 的报错。
+   * 分叉的不问变基还是合并（问了就得等人答，后面的都卡着），跳过它接着做，最后报错列出来，让人单个更新。
+   * 某一个被 git 拒绝时，已经更新的不撤回，剩下的不再做，显示 git 的报错。
    */
   async function updateMany(branches: readonly string[]): Promise<void> {
     const diverged: string[] = [];
@@ -294,7 +295,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
   /**
    * 标记已解决（Mark as Resolved、Keep 都走这里），一条 `git add`。
    * 文件里还有冲突标记的收在一起先问一次（一个时照旧写名字）；取消就只是它们不标记，其余照旧标记
-   * （项目负责人定，同批量删分支时没合并的那几个）。没有这个文件（删了）的不查。
+   * （同批量删分支时没合并的那几个）。没有这个文件（删了）的不查。
    */
   async function markResolved(paths: readonly string[]): Promise<void> {
     const root = repository.location.root;
@@ -521,7 +522,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
     fetch: async () => {
       await ui.withProgress(
         "Fetching all remotes…",
-        // 手动 Fetch 顺带清掉远程上已删除的分支（自动的不清，见 `core/autoFetch.ts`）。
+        // 手动 Fetch 顺带清掉远程上已删除的分支；自动的不清：后台不替用户删东西。
         () => repository.run(fetchAll, repository.location.root, { prune: true }),
         () => "Fetched all remotes",
       );
@@ -1028,7 +1029,7 @@ function updateSummary(results: readonly UpdateResult[]): string {
   return [head, ...parts].join(", ");
 }
 
-/** 摘、撤一串提交时状态栏上的说法。表放在用它的地方。 */
+/** 摘、撤一串提交时状态栏上的说法。 */
 const REPLAY_WORDS: Readonly<
   Record<ReplayKind, { readonly doing: string; readonly done: string; readonly skipped: string }>
 > = {
@@ -1173,7 +1174,7 @@ function resetLabel(mode: ResetMode): string {
   }
 }
 
-/** 每种做法对文件的影响，照 IDEA 的写法。 */
+/** 每种做法对文件的影响，写在 reset 对话框的说明里，让人选之前知道会不会丢改动。 */
 function resetEffect(mode: ResetMode): string {
   switch (mode) {
     case ResetMode.Soft:

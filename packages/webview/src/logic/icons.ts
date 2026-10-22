@@ -3,7 +3,7 @@
  *
  * - 是什么：`IconRef`。来源有三种——我们自己画的 SVG（`AppIcon`）、codicon 字体、Seti 文件图标字体。
  *   画法各不相同（SVG 用宽高，字体用字号，Seti 还要放大），对外一样。
- *   纯数据、不依赖 Vue，所以放在 `logic/`：构造树节点的纯逻辑也要用它。
+ *   放在 `logic/`：构造树节点的纯逻辑也要用它。
  * - 多大：`IconSize`，按用途命名，「用途 → 像素」的表在 `Icon.vue`。新用途加一档。
  */
 
@@ -39,7 +39,7 @@ export function codicon(name: string): IconRef {
  * 我们自己画的图标（codicon 里没有的）。全部集中在这一张表里，加图标就加一行。
  *
  * 每个图标是 16×16 坐标系里的几条线，线宽 1、颜色 `currentColor`（跟着主题的图标色或外面给的颜色）。
- * 形状照 IDEA：↙ 是「从远程进来」，↗ 是「推到远程去」。
+ * ↙ 是「从远程进来」，↗ 是「推到远程去」。
  */
 export enum AppIcon {
   /** 整个虚线的 ↙：取回远程的记录，不动本地分支。 */
@@ -64,7 +64,7 @@ export enum AppIcon {
   Dropdown = "dropdown",
   /** 眼睛：View Options，开关显示选项。 */
   ViewOptions = "viewOptions",
-  /** 左边向下的箭头、右边一条线串着两个提交：Graph Options（照 IDEA 新界面的 `intelliSort.svg`）。 */
+  /** 左边向下的箭头、右边一条线串着两个提交：Graph Options。 */
   GraphOptions = "graphOptions",
 }
 
@@ -74,7 +74,7 @@ const TRAY = "M1.5 8.5H4.2L5.2 10.5H10.8L11.8 8.5H14.5V13.5H1.5Z";
 /**
  * 每个图标是几条线，每条是 SVG path 的 `d`。
  *
- * Fetch、Pull、Push 的箭头头部一样大（直角两边各 7）。Fetch 的虚线逐段排（照 IDEA）：
+ * Fetch、Pull、Push 的箭头头部一样大（直角两边各 7）。Fetch 的虚线逐段排：
  * 拐角是实的，线头是整段。不用 `stroke-dasharray`——它从哪里断由线长决定，拐角可能落在空白里。
  */
 export const ICON_STROKES: Readonly<Record<AppIcon, readonly string[]>> = {

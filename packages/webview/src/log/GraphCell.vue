@@ -16,7 +16,7 @@ const GAP = 2;
 
 /**
  * 调色板：主题的提交图颜色，加上终端的六种色相各两档（不用黑白，它们贴近背景与文字）。
- * 都是主题变量，各个主题自己保证在背景上看得清。变量缺失时用后备色（同 VS Code 深色主题的默认值）。
+ * 都是主题变量，各个主题自己保证在背景上看得清。变量缺失时用后备色。
  */
 const PALETTE = [
   "var(--vscode-scmGraph-foreground1, #ffb000)",
@@ -179,7 +179,7 @@ function pathOf(segment: GraphSegment): string {
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
-  /* 主题色与终端色都偏艳，图上统一压低饱和度（IDEA 的提交图饱和度是 0.4）。 */
+  /* 主题色与终端色都偏艳，图上统一压低饱和度。 */
   filter: saturate(0.7);
 }
 .graph path {

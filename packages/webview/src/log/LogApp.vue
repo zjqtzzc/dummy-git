@@ -811,7 +811,7 @@ onUnmounted(() => resizes.disconnect());
 </template>
 
 <style scoped>
-/* 分支树左边的竖按钮区（同 IDEA 的 Log 窗口）。 */
+/* 分支树左边的竖按钮区。 */
 .branches {
   display: flex;
   height: 100%;

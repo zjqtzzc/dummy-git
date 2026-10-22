@@ -3,7 +3,7 @@ import { formatDateTime } from "../utils/time.js";
 import { type BranchNode, BranchNodeKind } from "./branchTree.js";
 
 /**
- * 提交列表上 Ctrl+C 复制的文字，同 IDEA：一条一行，说明的第一行、作者名字、日期，用空格隔开；
+ * 提交列表上 Ctrl+C 复制的文字：一条一行，说明的第一行、作者名字、日期，用空格隔开；
  * 多条按列表顺序一行一条。日期写绝对时间：贴出去的文字不该写「5 minutes ago」。
  */
 export function commitCopyText(commits: readonly Commit[]): string {

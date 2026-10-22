@@ -104,9 +104,7 @@ describe("闭环：仓库变了 → 广播到面板", () => {
         kind: MessageKind.Event,
         generation: "g1",
         event: "domainsChanged",
-        // HEAD 变了给**两个**域：切分支同时改 ref 与工作区文件（`core/classify.ts`）。
-        // 写这条时我先按 [Refs] 断言，是断言错了不是实现错了——
-        // 失败时先去读实现的理由，别顺手把测试改成「实现现在输出什么」。
+        // HEAD 变了给**两个**域，不只是 Refs：切分支同时改 ref 与工作区文件（`core/classify.ts`）。
         payload: { repo: repository.location.root, domains: [GitDomain.Refs, GitDomain.Worktree] },
       },
     ]);

@@ -62,10 +62,6 @@ export function commitFilesArgs(hash: string): string[] {
 /**
  * git 的状态字母 → 我们的类型。
  *
- * 表放在这里而不是 `shared/`：它是 git 输出格式到我们类型的映射，属于边界。
- * `shared/change.ts` 里的 `FileStatus` 值是
- * `"modified"` 这样的词，不是 `"M"`——git 的 wire format 不进我们的类型定义。
- *
  * 不含 `.`（`Unchanged`）：`git status` 用它表示「这一侧没变」，
  * 而一条提交里的每个文件按定义都变了，出现它说明解析错位。
  */

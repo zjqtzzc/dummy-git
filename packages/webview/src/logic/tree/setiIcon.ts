@@ -4,7 +4,7 @@ import setiMap from "../../seti/setiMap.json";
  * 按文件名查 Seti 图标。映射表由 `scripts/generate-seti.mjs`
  * 从 VS Code 自带的 Seti 主题生成。
  *
- * 优先级照 VS Code 自己的规则：精确文件名 > 扩展名（从长到短：`a.d.ts` 先试 `d.ts`
+ * 优先级（同一个文件和资源管理器里的图标一样）：精确文件名 > 扩展名（从长到短：`a.d.ts` 先试 `d.ts`
  * 再试 `ts`）> 默认图标。按语言的规则生成时已经展开成扩展名与文件名。
  * 匹配不区分大小写。
  */

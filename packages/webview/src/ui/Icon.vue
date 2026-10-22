@@ -88,7 +88,7 @@ function codiconClass(icon: IconRef): string {
  * Seti 图标：
  * - 方框里 flex 居中，行高 1；字形上下位置不靠行高去撑；
  * - 字号 150%：Seti 主题文件的规定，字形四周留了空白，放大后才和资源管理器里一样大；
- * - 灰度抗锯齿：macOS 默认的次像素抗锯齿会让图标字体发粗，VS Code 同样关掉了它。
+ * - 灰度抗锯齿：macOS 默认的次像素抗锯齿会让图标字体发粗。
  */
 .seti {
   font-family: "seti", sans-serif;

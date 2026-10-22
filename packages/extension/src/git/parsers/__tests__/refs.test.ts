@@ -91,7 +91,7 @@ describe("parseRefs：上游状态", () => {
   it("跟踪**本地**分支也算有上游", () => {
     // `git branch --set-upstream-to=main feature` 是合法配置，
     // 此时 `%(upstream)` 是 `refs/heads/main` 而不是 `refs/remotes/…`。
-    // 原实现按 `refs/remotes/` 前缀判断，不匹配就当「无上游」——
+    // 按 `refs/remotes/` 前缀判断的话，不匹配就当「无上游」——
     // 连 ahead 一起丢掉，且不报任何错。
     const b = localBranch(refs, "local-upstream");
     if (b?.kind !== RefKind.LocalBranch) throw new Error("unreachable");

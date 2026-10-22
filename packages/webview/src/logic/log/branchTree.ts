@@ -500,7 +500,7 @@ function startArgs(point: StartPoint): { readonly start: string; readonly startN
   return { start: point.start, startName: point.name };
 }
 
-/** 点中的是远程名或 `Remote` 组：删掉一个远程上的全部分支等于替所有人清空它，不给 Delete（项目负责人定）。 */
+/** 点中的是远程名或 `Remote` 组：删掉一个远程上的全部分支等于替所有人清空它，不给 Delete。 */
 function isRemoteContainer(node: BranchNode): boolean {
   return (
     node.kind === BranchNodeKind.Remote ||

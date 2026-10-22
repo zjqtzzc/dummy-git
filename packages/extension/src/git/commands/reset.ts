@@ -14,7 +14,7 @@ export enum ResetMode {
   Hard = "hard",
 }
 
-/** 模式 → git 的选项（不拿枚举值拼命令行）。 */
+/** 模式 → git 的选项。 */
 const FLAG: Readonly<Record<ResetMode, string>> = {
   [ResetMode.Soft]: "--soft",
   [ResetMode.Mixed]: "--mixed",

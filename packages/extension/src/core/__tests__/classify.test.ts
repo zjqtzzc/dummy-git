@@ -3,8 +3,7 @@ import { describe, expect, it } from "vitest";
 import { classifyGitPath } from "../classify.js";
 
 describe("classifyGitPath：实测抓到的真实路径", () => {
-  // 这份路径清单来自 scripts/demo-watch-timing.mjs 对一次真实 `commit` 的抓取：
-  // 27 个原始事件，滤噪后剩 10 个，5 个有效路径。
+  // 这份路径清单来自 scripts/demo-watch-timing.mjs 对一次真实 `commit` 的抓取。
   it("噪声全部丢弃", () => {
     for (const p of [
       "index.lock",
@@ -36,7 +35,7 @@ describe("classifyGitPath：实测抓到的真实路径", () => {
 describe("classifyGitPath：顺序敏感的边界", () => {
   it("refs/stash 不被 refs/ 前缀抢走", () => {
     // 顺序错了不报错，表现是「性能莫名其妙地差」——
-    // stash 变更被当成 refs 处理，触发 1.9 秒的全量重拉而不是几毫秒的 stash 重拉。
+    // stash 变更被当成 refs 处理，触发全量重拉，而不是轻得多的 stash 重拉。
     expect(classifyGitPath("refs/stash")).toEqual([GitDomain.Stash, GitDomain.Worktree]);
     expect(classifyGitPath("logs/refs/stash")).toEqual([GitDomain.Stash, GitDomain.Worktree]);
   });
