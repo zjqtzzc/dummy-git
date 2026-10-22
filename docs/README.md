@@ -54,6 +54,7 @@
 | `core/operation.ts`、`git/commands/lock.ts`（排队与锁） | `tech/architecture.md` 第 12 题、`tech/locking.md` |
 | `ipc/`（协议、Router、参数校验）、`webview/src/logic/menuItems.ts`、`vscode/menu.ts`（右键菜单） | `tech/decisions.md`「右键菜单：每个菜单项一个键」、`tech/architecture.md` 第 4 题 |
 | `logic/icons.ts` | `tech/decisions.md`「图标」 |
+| `git/cli.ts`、`git/failure.ts`、`git/parsers/`（起进程、退出码、解析、错误分类） | `tech/architecture.md` 第 7、15 题 |
 | 任何 git 命令行 | `tech/traps.md` §1 |
 
 参照项目的源码是本地副本（`../.notes/`，不进版本库），需要时自己下载。

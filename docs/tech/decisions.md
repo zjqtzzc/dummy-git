@@ -3,24 +3,6 @@
 > 写代码、写文档、做事的约定，以及为什么、否决过什么。强制规则在 `CLAUDE.md`，技术选型在 `tech/architecture.md`，功能的为什么在 `product/features/`（分工见 `process/writing.md`「写在哪」）。
 > 只留对当下仍起指导作用的条目；过时的直接删，不留历史。
 
-## 总则：前端初始化时主动向后端要数据
-
-扩展侧**永远不主动推数据**。它只做两件事：回答请求、广播「什么过期了」。
-
-| 情形 | 做法 |
-|---|---|
-| 面板首次打开 | 前端 `ready` → `getRepositories` → 按需拉 |
-| 面板隐藏再显示 | 页面保留着（`retainContextWhenHidden`）；隐藏期间过期的域由扩展攒着，重新可见时一次广播（`ipc/hiddenBuffer.ts`），前端照常按域重拉 |
-| 页面被重建（窗口刚打开、VS Code 回收了隐藏的页面） | 就是一次新的初始化，前端自己再要一遍，不需要特殊处理 |
-| 仓库变了 | 广播只说「哪些域过期了」，**不带新数据**；前端自己决定要不要再要 |
-| 前端要知道 `repo` | 问 `getRepositories`，不靠 HTML 注入、不靠推送 |
-
-算新值要秒级、几百 MB，而此刻可能根本没人在看那个面板——**只有前端知道自己要不要**。
-
-`getRepositories` 是唯一不带 `repo` 的命令：它就是用来回答「有哪些 repo」的。
-否决过把仓库路径写进 HTML（`data-repo`）：那是把「有哪些仓库」的答案烤进页面、由扩展替用户选好；
-多仓库时面板要列出来让人选，返回值从一条变多条，面板与协议都不用动。
-
 ## 工作方式
 
 - 流程见 `process/workflow.md`。为什么这么细地拆步：项目负责人的目标是理解每一行代码，理解优先于速度。
@@ -52,35 +34,6 @@ TS 5.0 起全字面量 enum 为 union enum（前提是禁计算成员）。`eras
 `GitLogger` 不对 remote URL 里的凭据做脱敏。已知风险：`https://user:token@host/…` 会原样进输出面板，
 用户把日志贴出去即泄漏 token。用户明确决定不做。
 
-## 进程层
-
-- **非零退出码返回而不抛**（`cli.exec`）。退出码是数据：`diff --quiet` 的 1 是「有差异」，`rev-parse --verify` 的 128 是「引用不存在」。
-  「失败即抛」由 `run()` 包一层提供，是命令层的默认入口；`run()` 不提供「某些退出码视为成功」的开关——
-  那种逃生口会让调用方写出永不可达的分支。
-- **不设 `GIT_CONFIG_NOSYSTEM=1`**：企业环境的代理、credential helper、`http.sslCAInfo` 常配在系统级，
-  忽略它们 = 扩展行为与用户命令行 git 不一致，比「不可复现」更糟。
-- **只有 `execRaw` 一条路，没有流式 `stream()`**：两条路会让每个调用方做一次选择，而且会选得不一致。
-  出现真正需要提前终止的消费者（实时回显、边读边判断何时停）时再加。
-- `run()` 放在 `failure.ts` 而不是 `cli.ts`：它需要 `classifyError`，放进程层会让进程层反向依赖分类层。
-
-## 解析与错误分类
-
-- **parser 遇未知值抛 `GitParseError`**，带足诊断（哪个 parser、第几条记录、原始字节）。
-  否决「加 `Unknown` 变体优雅降级」：每个调用方永远要处理这个分支，且把解析事故变成数据结构里的合法状态。
-- **错误分类遇认不出的 stderr 返回 `undefined`**，与 parser 刻意不对称：git 的错误文案本来就是开放集，认不出是常态。
-  同理不设 `Unknown` 成员。
-- **错误码只有两个**：`NotAGitRepository`（`Repository` 据此置 Disposed，唯一带来行为差异的码）、
-  `RepositoryIsLocked`（原始 stderr 第一行会误导，有用的解释在第三行）。
-  判据：**加一个码的前提是下游会据此做不同的事**，「把 stderr 显示出来」不算。
-  留着没有消费者的码比缺一个更糟——它会让人误以为「这里已经处理过了」。
-- 需要命令上下文才能判定的错误（cherry-pick 冲突与 stash 冲突的 stderr 可能一样）归命令层，不在分类函数里猜 `args[0]`。
-- **锁冲突只分类、不重试**。实测持有 `index.lock` 时只有 `add` / `commit` / `checkout` / `stash` 这类写命令失败，
-  而我们自己的写命令已排队，撞锁只可能是用户在别处同时写——该告诉用户，不该掩盖，重试也是对一个正在变化的仓库重试。
-- **不解析 stderr 里的进度行**：git 在管道里默认不输出进度，要显式 `--progress`；进度用 `\r` 不是 `\n`；
-  真做确定进度时成本是把流式读取加回来。「正在做 / 做完了」只需要一个布尔值。
-
-对着参照实现做设计，默认动作是「先不要」，而不是「先照抄」：多次查下去发现它服务的需求我们没有。
-
 ## 数据结构：数据层都提供，应用层决定怎么渲染
 
 **数据层丢掉的信息应用层拿不回来，应用层不想显示的字段随时可以不显示**，所以默认给全。
@@ -91,29 +44,6 @@ TS 5.0 起全字面量 enum 为 union enum（前提是禁计算成员）。`eras
 `CommitFileChange` 不复用 `FileChange`：一条已存在的提交没有「暂存区 / 工作区」两个维度，复用就得编造值，编造的值会被下游当真。
 
 `shared/` 按概念分文件（`commit.ts` / `ref.ts` / `change.ts`），不按语言构造分（不设 `enums.ts`）。
-
-## `git status` 用 `--porcelain=v2`
-
-v2 每行第一个字段就是记录类型（普通 / 重命名 / 冲突 / 未跟踪），正对应 `FileChange` 的 `kind`；
-v1 要从 `XY` 的值里猜身份，且「先判冲突码、再拆两列」的顺序写反就会让 `AA` 出两条记录，编译器管不了。
-代价：行更长，要求 git ≥ 2.11。
-
-## 最低 git 版本：**2.25**（Ubuntu 20.04 自带的 2.25.1）
-
-2026-10-16 用户定：要支持的最老系统是 Ubuntu 20.04。功能上的下限是 2.23（下面几条），但只有 2.25 是真跑过测试的，所以定 2.25；
-2.25 以上才有的东西不能用（`--pathspec-from-file` 2.26、`init -b` 2.28、SSH 签名 2.34、`stash push --staged` 2.35）。
-`pnpm test:old-git` 在 Ubuntu 20.04 容器里跑全量测试（`scripts/old-git/`）；否决借用户自己干活的容器跑（会动别人的环境）。
-2.25 上实测与 2.43 不同的：`--first-parent` 不给 merge 出 diff（2.31 起才给）、rebase 默认走 apply 后端（2.26 起改 merge）、`check-ignore` 把 `!` 否定规则匹配的也报成忽略，见 `tech/traps.md`。
-
-几个约束同时生效，取最高的：
-- ≥ 2.11：`status --porcelain=v2`
-- ≥ 2.15：`GIT_OPTIONAL_LOCKS`（锁策略两态的前提）
-- ≥ 2.16：`for-each-ref` 的 `%(upstream:remotename)` / `%(upstream:remoteref)`
-- ≥ 2.23：`git restore`（Rollback）。一条 `restore --source=HEAD --staged --worktree` 覆盖修改、删除、新增、改名（实测）。
-  否决过留在 2.16、按类型拼 `checkout` / `rm`：逻辑绕一截，换来的只是 Ubuntu 18.04（2.17）、Debian 10（2.20）两个已停止维护的系统。
-
-逐条命令的版本要求在 `packages/extension/src/git/commands/index.ts` 的表里，新加命令时在那里加一行；
-某行超过这里的下限时，先改这一节。不做运行时版本检测。
 
 ## 代码组织
 
