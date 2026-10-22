@@ -406,6 +406,40 @@ describe("handlers.getPushTarget / push", () => {
     expect(git(repo, ["rev-parse", "--abbrev-ref", "feat@{upstream}"]).trim()).toBe("origin/feat");
   });
 
+  /** `feat` 跟踪 `origin/old`，远程删掉 `old` 后 fetch --prune：上游成了 gone。 */
+  const goneUpstream = (repo: string, remote: string) => {
+    git(repo, ["push", "-q", "origin", "main:old"]);
+    git(repo, ["branch", "-q", "--track", "feat", "origin/old"]);
+    git(remote, ["branch", "-q", "-D", "old"]);
+    git(repo, ["fetch", "-q", "--prune"]);
+  };
+
+  it("上游已 gone：当作没有上游，默认推到同名分支，并改设为上游", async () => {
+    const { remote, repo } = repos();
+    goneUpstream(repo, remote);
+    await withHandlers(repo, async (handlers) => {
+      const { remotes, ...target } = await handlers.getPushTarget({ repo, branch: "feat" });
+      expect({ remotes, ...target }).toEqual({
+        remotes: ["origin"],
+        remote: "origin",
+        remoteBranch: "feat",
+      });
+      await handlers.push({ repo, branch: "feat", ...target, force: false });
+    });
+    expect(git(remote, ["rev-parse", "feat"])).toBe(git(repo, ["rev-parse", "feat"]));
+    expect(git(repo, ["rev-parse", "--abbrev-ref", "feat@{upstream}"]).trim()).toBe("origin/feat");
+  });
+
+  it("上游已 gone、远程已有同名分支：推过去照样设为上游", async () => {
+    const { remote, repo } = repos();
+    goneUpstream(repo, remote);
+    git(repo, ["push", "-q", "origin", "main:feat"]);
+    await withHandlers(repo, (handlers) =>
+      handlers.push({ repo, branch: "feat", remote: "origin", remoteBranch: "feat", force: false }),
+    );
+    expect(git(repo, ["rev-parse", "--abbrev-ref", "feat@{upstream}"]).trim()).toBe("origin/feat");
+  });
+
   it("有上游时推到另一个名字：上游不变", async () => {
     const { remote, repo } = repos();
     await withHandlers(repo, (handlers) =>

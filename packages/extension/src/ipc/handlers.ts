@@ -15,7 +15,7 @@ import {
   RefKind,
 } from "@dummy-git/shared";
 import { hasConflictMarkers } from "../core/conflictMarkers.js";
-import { defaultPushTarget } from "../core/pushTarget.js";
+import { defaultPushTarget, pushUpstream } from "../core/pushTarget.js";
 import type { Repository } from "../core/repository.js";
 import {
   abortInProgress,
@@ -651,14 +651,14 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         `Pushing ${branch}…`,
         async () => {
           if (remoteUrl !== undefined) await repository.run(addRemote, root, remote, remoteUrl);
-          // 没有上游时带 `-u`：第一次推送顺带设好上游。
+          // 没有上游（或上游已 gone）时带 `-u`：推完上游就是刚推到的那个分支，远程上原来就有它也一样。
           const result = await repository.run(
             push,
             root,
             remote,
             branch,
             remoteBranch,
-            local.upstream === undefined,
+            pushUpstream(local.upstream) === undefined,
             force,
           );
           if (result.kind === PushKind.Rejected) {

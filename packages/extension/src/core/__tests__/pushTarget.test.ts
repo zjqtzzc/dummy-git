@@ -1,12 +1,13 @@
 import { UpstreamState } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
-import { defaultPushTarget } from "../pushTarget.js";
+import { defaultPushTarget, pushUpstream } from "../pushTarget.js";
 
 const upstream = {
   remote: "upstream",
   name: "dev",
   state: { kind: UpstreamState.Tracking, ahead: 1, behind: 0 },
 } as const;
+const gone = { ...upstream, state: { kind: UpstreamState.Gone } } as const;
 
 describe("defaultPushTarget：上游 → origin → 第一个远程", () => {
   it("有上游：推到上游，不管有几个远程", () => {
@@ -16,11 +17,17 @@ describe("defaultPushTarget：上游 → origin → 第一个远程", () => {
     });
   });
 
-  it("上游已删（gone）：照样推到原来的上游", () => {
-    const gone = { ...upstream, state: { kind: UpstreamState.Gone } } as const;
-    expect(defaultPushTarget("feat", gone, [])).toEqual({
-      remote: "upstream",
-      remoteBranch: "dev",
+  it("上游已删（gone）：当作没有上游，用 origin，推到同名", () => {
+    expect(defaultPushTarget("feat", gone, ["upstream", "origin"])).toEqual({
+      remote: "origin",
+      remoteBranch: "feat",
+    });
+  });
+
+  it("上游已删（gone）、没有 origin：用第一个远程，推到同名", () => {
+    expect(defaultPushTarget("feat", gone, ["b", "upstream"])).toEqual({
+      remote: "b",
+      remoteBranch: "feat",
     });
   });
 
@@ -43,5 +50,19 @@ describe("defaultPushTarget：上游 → origin → 第一个远程", () => {
       remote: "origin",
       remoteBranch: "feat",
     });
+  });
+});
+
+describe("pushUpstream：推送时有没有上游（没有就带 -u）", () => {
+  it("上游正常：有", () => {
+    expect(pushUpstream(upstream)).toBe(upstream);
+  });
+
+  it("上游已删（gone）：没有", () => {
+    expect(pushUpstream(gone)).toBeUndefined();
+  });
+
+  it("没有上游：没有", () => {
+    expect(pushUpstream(undefined)).toBeUndefined();
   });
 });
