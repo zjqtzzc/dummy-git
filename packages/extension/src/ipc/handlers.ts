@@ -521,7 +521,8 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
     fetch: async () => {
       await ui.withProgress(
         "Fetching all remotes…",
-        () => repository.run(fetchAll, repository.location.root),
+        // 手动 Fetch 顺带清掉远程上已删除的分支（自动的不清，见 `core/autoFetch.ts`）。
+        () => repository.run(fetchAll, repository.location.root, { prune: true }),
         () => "Fetched all remotes",
       );
       return null;

@@ -21,7 +21,7 @@
  * | `checkIgnore` | `check-ignore -z --stdin --verbose` | — | — |
  * | `commit` | `add -- <未跟踪…>`（有才跑）+ `commit --only -F - -- <路径…>` | — | — |
  * | `amendCommit` | 同上，`commit --amend --only …`；路径可为空（只改说明） | — | — |
- * | `fetchAll` | `fetch --all --prune` | — | — |
+ * | `fetchAll` | `fetch --all`，手动时再加 `--prune` | — | — |
  * | `listRemotes` | `remote` | — | — |
  * | `addRemote` | `remote add -- <名字> <地址>` | — | — |
  * | `push` | `push [-u] [--force-with-lease] <远程> refs/heads/<B>:refs/heads/<M>` | — | — |

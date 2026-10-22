@@ -28,14 +28,22 @@ export class ErrorGate {
   constructor(private readonly sink: ErrorSink) {}
 
   report(error: unknown): void {
-    const { summary, detail } = describeError(error);
-    // 日志每次都写：事后排查要看到每一次，去重只针对打扰人的通知。
-    // git 拒绝不写：那条命令连同 stderr 已经记过（`cli.ts`），操作结尾也记了，不写第三遍。
-    if (error instanceof UserFacingError) this.sink.warn(detail);
-    else if (!(error instanceof GitFailureError)) this.sink.error(detail);
+    this.logOnly(error);
+    const { summary } = describeError(error);
     if (this.open.has(summary)) return;
     this.open.add(summary);
     void this.sink.show(summary).finally(() => this.open.delete(summary));
+  }
+
+  /**
+   * 只写日志、不弹通知：用户没有点什么的后台任务（自动 Fetch）失败时用，不打扰人。
+   * 日志每次都写：事后排查要看到每一次。git 拒绝不写：那条命令连同 stderr 已经记过（`cli.ts`），
+   * 操作结尾也记了，不写第三遍。
+   */
+  logOnly(error: unknown): void {
+    const { detail } = describeError(error);
+    if (error instanceof UserFacingError) this.sink.warn(detail);
+    else if (!(error instanceof GitFailureError)) this.sink.error(detail);
   }
 }
 

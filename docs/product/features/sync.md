@@ -12,7 +12,13 @@
 
 ## Fetch
 
-竖按钮区的 **Fetch**：`git fetch --all --prune`，取全部远程，顺带清掉远程上已经删除的分支。只手动，不定时、打开面板时也不自动跑（VS Code、IDEA 默认都不自动）。
+竖按钮区的 **Fetch**：`git fetch --all --prune`，取全部远程，顺带清掉远程上已经删除的分支。
+
+**自动 Fetch**（2026-10-22 项目负责人定，翻掉了以前的「只手动，不定时」：前提变了，项目负责人要远程状态自己跟上）：仓库打开后先跑一次，之后每次跑完再隔 20 分钟（`core/autoFetch.ts`）。同 IDEA 勾上「Fetch remote changes automatically」时（`GitBranchIncomingOutgoingManager.java:249-255`，间隔是注册表 `git.update.incoming.info.time`，默认 20 分钟）；IDEA 默认不勾，我们默认开。
+- `git fetch --all`，**不带 `--prune`**：远程上删掉的分支，本地的记录留到手动 Fetch 时再清，后台不替用户删东西（项目负责人定）。和手动的是同一条命令（`fetchAll` 的 `prune` 参数），走远程道排队，不和手动 Fetch、推送撞。
+- 不转圈、不进状态栏；失败只记日志（`ErrorGate.logOnly`），不弹通知。要密码的远程本来就直接失败（`tech/architecture.md` 第 16 题），后台不会弹密码框；IDEA 是同样的效果：远程还没认证成功过时用不认证的模式跑（`getAuthenticationMode`）。
+- 日志里是一个操作，入口写「自动」。跑完远程分支的记录变了，refs 过期，ahead / behind 与 Log 的远程标签自己刷新。
+- 开关和间隔先写死：项目还没有设置项，以后一起放进设置（`product/backlog.md`）。不做 IDEA 的 `ls-remote` 模式（只看远程分支指向哪、不取提交），也不做手动 Fetch 后推荐开启自动的提示。
 
 ## Update
 
@@ -59,4 +65,4 @@
 
 ## 以后可能做（`product/backlog.md`）
 
-推送被拒后给 Rebase & Push / Merge & Push；提交右键 `Push All up to Here…`；在对话框里显示 force push 会覆盖掉的远程提交；自动 Fetch。
+推送被拒后给 Rebase & Push / Merge & Push；提交右键 `Push All up to Here…`；在对话框里显示 force push 会覆盖掉的远程提交；自动 Fetch 的开关与间隔进设置。

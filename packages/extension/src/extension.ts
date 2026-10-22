@@ -1,6 +1,8 @@
 import * as vscode from "vscode";
+import { startAutoFetch } from "./core/autoFetch.js";
 import { Repository } from "./core/repository.js";
 import { GitCli } from "./git/cli.js";
+import { fetchAll } from "./git/commands/index.js";
 import { withAttached } from "./ipc/brief.js";
 import { createHandlers, type HandlerUi } from "./ipc/handlers.js";
 import { loggedUi } from "./ipc/loggedUi.js";
@@ -120,6 +122,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // 文件监听跟着**仓库**走，不跟视图走：外部改动要一直被感知到，
   // 哪怕此刻面板收着（下次展开时状态才是对的）。
   context.subscriptions.push(watchRepository(repository));
+
+  // 自动 Fetch：后台的第三个入口，和手动的 Fetch 一样记成一个操作。不带 `--prune`：
+  // 远程上删掉的分支，本地的记录留到用户手动 Fetch 时再清，后台不替用户删东西（2026-10-22 项目负责人定）。
+  // 失败只记日志、不弹通知：用户没有点什么，不打扰。
+  const autoFetch = startAutoFetch(
+    () =>
+      operations.run("自动", "fetchAll", { prune: false }, () =>
+        repository.run(fetchAll, repository.location.root, { prune: false }),
+      ),
+    (cause) => errors.logOnly(cause),
+  );
+  context.subscriptions.push(autoFetch);
 
   // 原生右键菜单：协议的第二个入口，用同一套 handler（`vscode/menu.ts`）。
   context.subscriptions.push(

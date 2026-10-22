@@ -37,6 +37,16 @@ describe("ErrorGate：未知错误的统一出口", () => {
     expect(f.logged[1]).toMatch(/^error Error: boom/);
   });
 
+  it("logOnly：日志规则同上，不弹通知（后台任务用）", () => {
+    const f = fakeSink();
+    const gate = new ErrorGate(f.sink);
+    gate.logOnly(new GitFailureError(["fetch"], 128, "Could not resolve host"));
+    gate.logOnly(new Error("boom"));
+    expect(f.logged).toHaveLength(1);
+    expect(f.logged[0]).toMatch(/^error Error: boom/);
+    expect(f.shown).toEqual([]);
+  });
+
   it("同一条通知还开着时不再弹，但日志每次都写", () => {
     const f = fakeSink();
     const gate = new ErrorGate(f.sink);

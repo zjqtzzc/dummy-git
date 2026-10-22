@@ -11,11 +11,23 @@ describe("fetchAll", () => {
     git(repo, ["remote", "add", "origin", remote]);
     git(remote, ["branch", "feature"]);
 
-    await fetchAll.execute(cli, repo);
+    await fetchAll.execute(cli, repo, { prune: true });
     expect(git(repo, ["branch", "-r"])).toContain("origin/feature");
 
     git(remote, ["branch", "-D", "feature"]);
-    await fetchAll.execute(cli, repo);
+    await fetchAll.execute(cli, repo, { prune: true });
     expect(git(repo, ["branch", "-r"])).not.toContain("origin/feature");
+  });
+
+  it("不 prune：远程删掉的分支，本地的记录留着", async () => {
+    const remote = makeTempRepo("remote");
+    const repo = makeTempRepo("local");
+    git(repo, ["remote", "add", "origin", remote]);
+    git(remote, ["branch", "feature"]);
+    await fetchAll.execute(cli, repo, { prune: false });
+
+    git(remote, ["branch", "-D", "feature"]);
+    await fetchAll.execute(cli, repo, { prune: false });
+    expect(git(repo, ["branch", "-r"])).toContain("origin/feature");
   });
 });

@@ -40,7 +40,7 @@
 - 推送被拒时给 Rebase & Push / Merge & Push：fetch → rebase 或 merge → 没冲突就推送；中途冲突停下，就不再自动推送。现在推送被拒只报错。
 - 提交右键 `Push All up to Here…`：推到某条历史提交，而不是 HEAD，接到推送对话框。
 - 推送对话框里显示 force push 会覆盖掉的远程提交（远程有、本地没有的）。
-- 自动 Fetch：定时，或打开面板时。现在只有手动。
+- 自动 Fetch 的开关与间隔进设置（`dummyGit.autoFetch`、`dummyGit.autoFetchPeriod`，同 VS Code 的 `git.autofetch`）：现在写死为开、20 分钟（`core/autoFetch.ts`），项目还没有设置项，以后和别的设置一起做。
 - Update、Checkout 带 autostash：工作区有改动挡住时，先存起来、做完再取回；取回冲突按冲突处理。
 - 远程名（分支树里的 `origin`）右键 Fetch：只取这一个远程（第 15 阶段定不做：竖按钮的 Fetch 已经取全部远程）。
 
