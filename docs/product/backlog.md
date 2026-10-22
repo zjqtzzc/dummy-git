@@ -40,7 +40,7 @@
 - 推送被拒时给 Rebase & Push / Merge & Push：fetch → rebase 或 merge → 没冲突就推送；中途冲突停下，就不再自动推送。现在推送被拒只报错。
 - 提交右键 `Push All up to Here…`：推到某条历史提交，而不是 HEAD，接到推送对话框。
 - 推送对话框里显示 force push 会覆盖掉的远程提交（远程有、本地没有的）。
-- 自动 Fetch 的开关与间隔进设置（`dummyGit.autoFetch`、`dummyGit.autoFetchPeriod`，同 VS Code 的 `git.autofetch`）：现在写死为开、20 分钟（`core/autoFetch.ts`），项目还没有设置项，以后和别的设置一起做。
+- 自动 Fetch 的开关与间隔进设置（`dummyGit.autoFetch`、`dummyGit.autoFetchPeriod`，同 VS Code 的 `git.autofetch`）：现在写死在 `core/autoFetch.ts`（默认开，间隔是 `AUTO_FETCH_INTERVAL_MS`），项目还没有设置项，以后和别的设置一起做。
 - Update、Checkout 带 autostash：工作区有改动挡住时，先存起来、做完再取回；取回冲突按冲突处理。
 - 远程名（分支树里的 `origin`）右键 Fetch：只取这一个远程（第 15 阶段定不做：竖按钮的 Fetch 已经取全部远程）。
 
@@ -97,7 +97,7 @@
 
 ## 发布
 
-- 上架 VS Code 商店（2026-10-16 暂缓：商店返回 429，账号可能被封）。已定：商店页面与描述只用中文；先不放仓库链接（不公开源码，打包带 `--allow-missing-repository`）。还缺：商店 README、128×128 图标、CHANGELOG、版本号改 0.1.0、`keywords` 与 `galleryBanner`、把打包脚本从本地 `.notes/` 搬进 `scripts/`（输出放 `.tmp/`），并写发布步骤。
+- 上架 VS Code 商店（2026-10-16 暂缓：商店返回 429，账号可能被封）。已定：商店页面与描述只用中文。还缺：商店 README、128×128 图标、CHANGELOG、版本号改 0.1.0、`keywords` 与 `galleryBanner`、进版本库的打包脚本（放 `scripts/`，输出放 `.tmp/`），并写发布步骤。
 
 ## 暂缓
 
