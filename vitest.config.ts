@@ -2,7 +2,7 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    include: ["packages/*/src/**/*.test.{ts,tsx}"],
+    include: ["packages/*/src/**/*.test.{ts,tsx}", "scripts/**/*.test.mjs"],
     environment: "node",
     // 整轮建一次 fixture 仓库，见该文件里的说明
     globalSetup: ["./vitest.globalSetup.ts"],

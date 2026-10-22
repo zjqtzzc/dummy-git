@@ -5,7 +5,8 @@ out/
 .vscode-test/
 coverage/
 *.tsbuildinfo
-.claude/
+.claude/*
+!.claude/settings.json
 
 # 参照源码的本地副本（许可证各异、体积大），不进版本库
 /.notes/
