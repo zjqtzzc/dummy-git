@@ -3,6 +3,14 @@
 > 提交列表里的图怎么画、ref 标签怎么摆，以及为什么这样做。改 `logic/log/graph/`、`refLabels.ts`、`GraphCell.vue` 前先读本文；行为变了就改本文。
 > 照 IDEA 的 Log（`refs/git4idea.md` §7，下文写作「IDEA §7.x」）。
 
+## 排序
+
+过滤栏的 Graph Options（`MenuButton`，图标照 IDEA 新界面的 `intelliSort.svg` 重画成线条，`AppIcon.GraphOptions`）：一节 `Sort`，两个单选项 `By Commit Date`（默认）、`Topologically`，存进 `viewState`（`logic/log/graphOptions.ts`）。同 IDEA 的 Graph Options 里 `Sort` 一节（`VcsLogGraphOptionsChooserGroup.java`，名字见 `VcsLogBundle.properties:326-329`，默认 `PermanentGraph.kt:77` 的 `Options.Default`）。
+
+- 两种排序就是骨架命令的 `--date-order` 和 `--topo-order`（`getSkeleton` 的 `order`），切换就是换参数重取骨架，走现有的刷新（选中留着、视图不跳）。两种都保证父提交排在子提交之后，行号图照常算。
+- **和 IDEA 不一样**（2026-10-22 项目负责人定：先按 git 来）：IDEA 的 `Topologically` 是它自己的 IntelliSort，合并进来的那一支紧挨着排在合并提交下面；`--topo-order` 只保证同一支历史不和别的支穿插。IDEA 能这样做，是因为它把全部提交读进内存建成图，排序、过滤都在内存里算，切换不重跑 git。以后可能也迁到内存（`product/backlog.md`）。
+- 不做 IDEA 不是默认值时按钮上的小圆点（项目负责人定）。`Options` 一节（First Parent、隐藏合并提交）在需求池。
+
 ## 宽度
 
 - 没有单独的 Graph 列：图画在 Message 单元格的最左边，文字往右推出本行图的宽度。表头仍是 Message / Author / Date，Author、Date 的宽度不受影响。

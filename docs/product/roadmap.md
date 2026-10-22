@@ -186,7 +186,7 @@
 
 ### 第 18 阶段 · 视图选项
 
-（2026-10-22 项目负责人提；排序方式从池子移入；细节见 `phases/phase-18.md`）
+（2026-10-22 项目负责人提；排序方式从池子移入；细节见 `product/features/trees.md`「分组依据」、`graph.md`「排序」、`menus.md`）
 - Commit 面板、Stash 的 View Options：`Group By` → `Directory`，关掉后文件平铺。
 - Log 的 Graph Options：`Sort` → `By Commit Date` / `Topologically`（git 的 `--date-order` / `--topo-order`）。
 - 浮层选单加上单选项。

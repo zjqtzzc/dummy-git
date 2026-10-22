@@ -18,6 +18,12 @@
 
 图标、颜色这些都是数据，「类型 → 图标 / 颜色 / 字母」的表放在各个使用方那里。只有分支树的 ahead / behind 用了一个具名插槽，画在说明后面。
 
+## 分组依据（Commit 面板、Stash）
+
+- 工具栏的 View Options（`MenuButton`，`product/features/menus.md`）里一节 `Group By`，一个勾选项 `Directory`，默认勾着（同 IDEA：`ChangesTree.java:170` 的 `DEFAULT_GROUPING_KEYS`，选单是 `intellij.platform.vcs.impl.shared.xml:99-105` 的 `ChangesView.GroupBy`）。Commit 面板和 Stash 各存各的（`viewState`，`logic/tree/grouping.ts`），Log 右栏的文件树不加。只做 `Directory`：我们没有模块，仓库现阶段只有一个（2026-10-22 项目负责人定）。
+- 关掉后文件直接列在组下面（每条 stash 下面），没有目录这一层，按路径排（`buildFileTree` 的 `byDirectory`）。文件后面的灰字只写一种：有原来的灰字（冲突类型、`renamed from …`）写原来的，没有写所在目录，仓库根下的不写；地方不够两样都写（2026-10-22 项目负责人定）。IDEA 平铺时在文件名后面写所在目录（`ChangesBrowserNode.java:348-352` 的 `appendParentPath`）。
+- 选中、勾选、右键菜单照旧：目录节点没了，选中里的目录随之落空；勾选按文件记。
+
 ## 操作
 
 - **展开**：展开状态由使用方持有（`v-model:expanded`）。分支树按自己的默认值，存进 `viewState`；文件树里新出现的目录默认展开。

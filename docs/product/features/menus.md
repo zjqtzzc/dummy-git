@@ -1,7 +1,7 @@
 # 图标按钮与浮层选单
 
 > 工具栏上的图标按钮分两种：直接执行的，和点了弹出选单的。改 `ui/ToolButton.vue`、`ui/MenuButton.vue`、`ui/PopupMenu.vue`、`ui/PopupList.vue`、`logic/popupMenu.ts`、`logic/popupPlacement.ts` 前先读本文；行为变了就改本文。
-> 用到选单的有：Log 过滤栏的 View Options（`product/features/log.md`「高亮」）。过滤栏的文字按钮（Branch、User、Date、Paths）仍用原生 QuickPick，推送对话框里 Force Push 的浮层是它自己的（`product/features/sync.md`），都不归本文。
+> 用到选单的有：Log 过滤栏的 Graph Options（`product/features/graph.md`「排序」）、View Options（`product/features/log.md`「高亮」）；Commit 面板、Stash 的 View Options（`product/features/trees.md`「分组依据」）。过滤栏的文字按钮（Branch、User、Date、Paths）仍用原生 QuickPick，推送对话框里 Force Push 的浮层是它自己的（`product/features/sync.md`），都不归本文。
 
 参照：IDEA 在 `.notes/rebased-master`（画三角的 `ActionButton` 不在这份裁剪里，只能从关掉三角的地方反推）；VS Code 的菜单读的是 GitHub 上 `main`（2026-10-21）：`src/vs/base/browser/ui/menu/menu.ts`、`src/vs/base/browser/ui/contextview/contextview.ts`、`src/vs/base/common/layout.ts`；GitLens 在 `.notes/vscode-gitlens-main`。
 
@@ -14,9 +14,9 @@
 
 ## 选单用数据描述
 
-- 选单项是 tagged union（`logic/popupMenu.ts` 的 `PopupItem`）：普通项（`run`）、勾选项（`checked` + `toggle`）、二级选单（`items`，几级都行）、分隔线（带 `label` 就是一节的小标题）；前三种都能 `disabled`。用的地方只交一个数组：`<MenuButton :icon :title :items />`。
+- 选单项是 tagged union（`logic/popupMenu.ts` 的 `PopupItem`）：普通项（`run`）、勾选项（`checked` + `toggle`）、单选项（`selected` + `select`，一组里选一个，比如排序方式）、二级选单（`items`，几级都行）、分隔线（带 `label` 就是一节的小标题）；前四种都能 `disabled`。用的地方只交一个数组：`<MenuButton :icon :title :items />`。
 - 同 IDEA 与 VS Code：IDEA 是一组动作（`ActionGroup.getChildren()`，勾选是 `ToggleAction`，分隔线可带标题，组里再放弹出的组就是二级）；VS Code 是一组 `IAction`，二级是 `SubmenuAction`。GitLens 的 `gl-menu-popover` 也是 `items` 数组进、组件管弹出收起，但只有一级。
-- 勾选项前面画 ✓，每行都留出这一列，有勾没勾的文字对齐；二级选单项右边画 ›。外观照 VS Code 的菜单：主题的 `menu.*` 颜色、`widget.shadow` 阴影，最小宽度 160px，行高 24px。
+- 勾选项、单选项选中的前面都画 ✓（同 IDEA、VS Code：它们的单选、多选都画 ✓），每行都留出这一列，有勾没勾的文字对齐；二级选单项右边画 ›。外观照 VS Code 的菜单：主题的 `menu.*` 颜色、`widget.shadow` 阴影，最小宽度 160px，行高 24px。
 - 和右键菜单（`logic/menuItems.ts`，VS Code 原生的 `webview/context`）是两回事。
 
 ## 位置：上下左右都不超出 webview
@@ -32,6 +32,7 @@
 
 - **普通项**：执行，整串选单收起。
 - **勾选项**：切换，选单**不收起**，可以连着勾几项（2026-10-21 项目负责人定）。IDEA 推断如此：要点完就收起的勾选项都显式设 `KeepPopupOnPerform.Never`（`platform/vcs-impl/src/com/intellij/openapi/vcs/actions/AnnotateToggleAction.java:74`），高亮的 `BooleanPropertyToggleAction` 没设。
+- **单选项**：选中它，选单不收起；点已经选中的那一项什么都不做。
 - **置灰的项、分隔线**：什么都不做。
 - **二级选单**（照 VS Code 的 `SubmenuMenuActionViewItem`）：鼠标停在二级选单项上满 **250 ms**、那时还停着才打开；移到同一级别的项上，开着的二级选单 **750 ms** 后才关；点二级选单项立刻打开。鼠标离开某一级时等着的那次作废：斜着移进二级选单时擦过了同级别的项，不误关；停满之前就移走了，不再打开。开着哪一串、停下之后要怎样改、等多久，都是 `logic/popupMenu.ts` 里的纯函数（`planHover`、`pathAfterClick`、`openLevels`）；`PopupMenu` 只管那一个计时器，每一级是一个 `PopupList`，平铺画出来。否决「安全三角」（Floating UI 的 `safePolygon`、Radix 的 pointer grace area）：手感更好，代码多；VS Code 也只靠延迟。
 - **整串收起**：点选单外面（按在按钮上不算，交给按钮自己的点击去关，否则先关又打开）、按 Esc、webview 失去焦点。

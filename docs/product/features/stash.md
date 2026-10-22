@@ -33,7 +33,7 @@ Commit 面板工具栏上，Rollback 旁边的 **Stash** 按钮（`AppIcon.Stash
 ## 看：Commit 面板的 Stash 模式
 
 - 面板顶部的切换栏选 Stash。下面一行是 Stash 模式的工具栏；底部（Amend、说明、Commit）隐藏。没有 stash 时，正中一行灰字 `No stashes`。
-- 一棵树：每条 stash 一个顶层节点，最新的在最上，默认收起。标题是 git 生成的说明，右边灰字是时间，写法和 Log 相同（共用 `logic/utils/time.ts`）。展开是它改了的文件，按目录整理，没有复选框；目录默认展开。
+- 一棵树：每条 stash 一个顶层节点，最新的在最上，默认收起。标题是 git 生成的说明，右边灰字是时间，写法和 Log 相同（共用 `logic/utils/time.ts`）。展开是它改了的文件，按目录整理（View Options 关掉 `Directory` 就平铺，和 Commit 面板的各记各的，`product/features/trees.md`「分组依据」），没有复选框；目录默认展开。
 - 存了未跟踪文件的 stash，那部分在附属提交（`stash@{n}^3`，`git stash show` 看不到）里，和已跟踪的合在一棵树里，显示为新增 `A`。
 - 同一个文件可能出现在好几条 stash 里，所以节点 id 前面都加上 stash 的 hash。
 - 文件列表用 Log 的 `getCommitFiles`：已跟踪的部分问 stash 本身（它是合并提交，对第一个父提交求差），未跟踪的部分问附属提交。要用 `-m --first-parent`：git 2.31 之前单用 `--first-parent` 时，合并提交的输出是空的，退出码却是 0。曾经因此 stash 展开后是空的，用户以为没存上，就把它删了。
@@ -42,7 +42,7 @@ Commit 面板工具栏上，Rollback 旁边的 **Stash** 按钮（`AppIcon.Stash
 
 ## 取回与删除
 
-- 工具栏：**Apply**（`AppIcon.Unstash`，取回、保留这条）、**Delete**（codicon `trash`），以及全部展开、全部收起（同 Commit 模式的工具栏，2026-10-20 项目负责人提）。
+- 工具栏：**Apply**（`AppIcon.Unstash`，取回、保留这条）、**Delete**（codicon `trash`）、View Options，以及全部展开、全部收起（同 Commit 模式的工具栏，2026-10-20 项目负责人提）。
 - stash 那一行的右键菜单：Pop、Apply ｜ Delete。Pop 是取回成功后删掉，最常用，排在最前。
 - 列表能多选（同所有树），但菜单项和工具栏按钮都只认恰好选中一个 stash（同 IDEA 的 `GitSingleStashAction`）；多选后能做什么还没定（`product/backlog.md`）。
 - 选中 stash 那一行，或者它下面的任何一个文件，都算选中了这条 stash。

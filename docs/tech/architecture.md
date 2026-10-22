@@ -166,7 +166,7 @@
 - 过滤（第 5 阶段）只在这一万条里做：把骨架的一万个 hash 从 stdin 喂给 `git log --no-walk --stdin`，再加 `--author` / `--grep` / `-- <路径>`。`--no-walk` 让 git 只看喂进去的提交、不顺着父提交走，所以仓库再大也最多检查一万条。git 只返回命中的 hash，webview 按骨架顺序挑出来。
 - 分支过滤不走这条路：把骨架命令里的 `HEAD --branches --remotes --tags` 换成那个分支，重新取它自己最近的一万条。骨架命令因此写成可带参数的（起点，以后还有 `--first-parent` 这类遍历选项），不为换起点写特例。
 
-骨架命令：`git log -z --format=<hash、父提交、时间> HEAD --branches --remotes --tags --date-order --max-count=10000`。
+骨架命令：`git log -z --format=<hash、父提交、时间> HEAD --branches --remotes --tags --date-order --max-count=10000`。排序是参数（第 18 阶段）：按提交时间 `--date-order`，拓扑 `--topo-order`，两种都保证父提交排在子提交之后。
 
 **为什么要整份骨架**：滚动条要代表全部行；第 8 阶段的车道布局要每条的父子关系；第 5 阶段跳到某个 hash 要先知道它在第几行。
 
