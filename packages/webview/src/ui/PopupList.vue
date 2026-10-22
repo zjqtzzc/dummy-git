@@ -81,7 +81,10 @@ function rowRect(event: MouseEvent): Rect {
       >
         <span class="check">
           <Icon
-            v-if="item.kind === PopupItemKind.Toggle && item.checked"
+            v-if="
+              (item.kind === PopupItemKind.Toggle && item.checked) ||
+              (item.kind === PopupItemKind.Radio && item.selected)
+            "
             :icon="codicon('check')"
             :size="IconSize.Inline"
           />

@@ -43,6 +43,24 @@ describe("clickPopupItem", () => {
     expect(toggled).toEqual([false, true]);
   });
 
+  it("单选项：点没选中的选中它，点已选中的、置灰的什么都不做；选单都留着", () => {
+    let selects = 0;
+    const item = (selected: boolean, disabled = false): PopupItem => ({
+      kind: PopupItemKind.Radio,
+      label: "Topologically",
+      selected,
+      disabled,
+      select: () => {
+        selects += 1;
+      },
+    });
+    expect(clickPopupItem(item(false))).toBe(PopupClick.Stay);
+    expect(selects).toBe(1);
+    expect(clickPopupItem(item(true))).toBe(PopupClick.Stay);
+    expect(clickPopupItem(item(false, true))).toBe(PopupClick.Stay);
+    expect(selects).toBe(1);
+  });
+
   it("二级选单项、分隔线：什么都不做，选单留着", () => {
     expect(clickPopupItem({ kind: PopupItemKind.Submenu, label: "More", items: [] })).toBe(
       PopupClick.Stay,

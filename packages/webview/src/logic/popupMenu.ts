@@ -10,6 +10,8 @@ export enum PopupItemKind {
   Action = "action",
   /** 点了切换开关，选单不收起，可以连着勾几项。 */
   Toggle = "toggle",
+  /** 单选项：一组里选一个（比如排序方式）。点了选中它，选单不收起；选中的画 ✓（同 IDEA、VS Code）。 */
+  Radio = "radio",
   /** 二级选单：里面再装一组选单项。 */
   Submenu = "submenu",
   /** 分隔线；带 `label` 就是一节的小标题。 */
@@ -29,6 +31,13 @@ export type PopupItem =
       readonly checked: boolean;
       readonly disabled?: boolean;
       readonly toggle: (on: boolean) => void;
+    }
+  | {
+      readonly kind: PopupItemKind.Radio;
+      readonly label: string;
+      readonly selected: boolean;
+      readonly disabled?: boolean;
+      readonly select: () => void;
     }
   | {
       readonly kind: PopupItemKind.Submenu;
@@ -58,6 +67,9 @@ export function clickPopupItem(item: PopupItem): PopupClick {
       return PopupClick.Close;
     case PopupItemKind.Toggle:
       if (item.disabled !== true) item.toggle(!item.checked);
+      return PopupClick.Stay;
+    case PopupItemKind.Radio:
+      if (item.disabled !== true && !item.selected) item.select();
       return PopupClick.Stay;
     case PopupItemKind.Submenu:
     case PopupItemKind.Separator:
