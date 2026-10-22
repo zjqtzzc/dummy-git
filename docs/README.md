@@ -63,6 +63,7 @@
 
 ```bash
 pnpm check                       # 提交前必过：typecheck + lint + test + build
+pnpm docs:remind                 # 提交前看线索：哪些文档可能要跟着改，见 process/workflow.md §3
 pnpm test:old-git                # 在 Ubuntu 20.04（git 2.25）的容器里跑测试，动了 git 命令行时跑
 pnpm debug:setup <场景>          # 换 F5 调试窗口里的仓库，见 process/manual-testing.md
 ```
