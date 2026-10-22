@@ -21,10 +21,12 @@ import {
 import { AppIcon, appIcon, codicon } from "../logic/icons.js";
 import type { MenuViews } from "../logic/menuItems.js";
 import { type FileEntry, groupNodeId, keepChecked } from "../logic/tree/fileTree.js";
+import { Grouping, groupingMenu, restoreGrouping, saveGrouping } from "../logic/tree/grouping.js";
 import { CheckState } from "../logic/tree/tree.js";
 import FileTree from "../tree/FileTree.vue";
 import CheckBox from "../ui/CheckBox.vue";
 import Icon from "../ui/Icon.vue";
+import MenuButton from "../ui/MenuButton.vue";
 import ToolButton from "../ui/ToolButton.vue";
 import { viewState } from "../vscodeApi.js";
 import StashView from "./StashView.vue";
@@ -80,6 +82,18 @@ const conflictRow = groupNodeId(CONFLICTS_GROUP);
  * 勾选的路径。默认都不勾。存进 `viewState`：面板收起再展开、重新加载窗口都还在。
  */
 const checked = ref<ReadonlySet<string>>(new Set(restoreChecked(viewState.read("checked"))));
+
+/** 分组依据（View Options），存进 `viewState`，和 Stash 的各记各的。 */
+const grouping = ref(restoreGrouping(viewState.read("commitGrouping")));
+const viewOptions = computed(() =>
+  groupingMenu(grouping.value, (kind, on) => {
+    const next = new Set(grouping.value);
+    if (on) next.add(kind);
+    else next.delete(kind);
+    grouping.value = next;
+    viewState.write("commitGrouping", saveGrouping(next));
+  }),
+);
 function restoreChecked(saved: unknown): string[] {
   return Array.isArray(saved) ? saved.filter((path) => typeof path === "string") : [];
 }
@@ -433,6 +447,11 @@ onMounted(async () => {
         :disabled="!canStash"
         @click="stashChecked"
       />
+      <MenuButton
+        :icon="appIcon(AppIcon.ViewOptions)"
+        title="View Options"
+        :items="viewOptions"
+      />
       <!-- 没有改动时置灰。 -->
       <ToolButton
         :icon="appIcon(AppIcon.ExpandAll)"
@@ -455,6 +474,7 @@ onMounted(async () => {
         v-else
         ref="tree"
         :groups="groups"
+        :by-directory="grouping.has(Grouping.Directory)"
         :checked="checked"
         :menu="menuOf"
         @check="onCheck"

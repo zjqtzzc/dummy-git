@@ -12,10 +12,13 @@ import {
   stashMenuContext,
   stashTreeNodes,
 } from "../logic/stash/stashTree.js";
+import { Grouping, groupingMenu, restoreGrouping, saveGrouping } from "../logic/tree/grouping.js";
 import { branchIds, type TreeNode } from "../logic/tree/tree.js";
 import Tree from "../tree/Tree.vue";
 import { useLightTheme } from "../ui/lightTheme.js";
+import MenuButton from "../ui/MenuButton.vue";
 import ToolButton from "../ui/ToolButton.vue";
+import { viewState } from "../vscodeApi.js";
 
 /**
  * Commit 面板的 Stash 模式：全部 stash，最新的在最上，
@@ -29,10 +32,22 @@ const props = defineProps<{ client: Client; repo: string | undefined }>();
 const list = ref<StashFiles[]>([]);
 const loaded = ref(false);
 const light = useLightTheme();
+
+/** 分组依据（View Options），存进 `viewState`，和 Commit 面板的各记各的。 */
+const grouping = ref(restoreGrouping(viewState.read("stashGrouping")));
+const viewOptions = computed(() =>
+  groupingMenu(grouping.value, (kind, on) => {
+    const next = new Set(grouping.value);
+    if (on) next.add(kind);
+    else next.delete(kind);
+    grouping.value = next;
+    viewState.write("stashGrouping", saveGrouping(next));
+  }),
+);
 /** 时间按载入那一刻写；stash 列表一变就重新载入。 */
 const now = ref(Date.now() / 1000);
 
-const nodes = computed(() => stashTreeNodes(list.value, light.value, now.value, true));
+const nodes = computed(() => stashTreeNodes(list.value, light.value, now.value, grouping.value.has(Grouping.Directory)));
 const filesById = computed(() => stashFilesById(list.value));
 const owners = computed(() => stashByNodeId(nodes.value));
 
@@ -169,6 +184,11 @@ async function open(node: TreeNode, mode: DiffOpenMode): Promise<void> {
         title="Delete"
         :disabled="selectedStash === undefined || busy"
         @click="act('dropStash')"
+      />
+      <MenuButton
+        :icon="appIcon(AppIcon.ViewOptions)"
+        title="View Options"
+        :items="viewOptions"
       />
       <ToolButton
         :icon="appIcon(AppIcon.ExpandAll)"
