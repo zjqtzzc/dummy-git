@@ -1,7 +1,7 @@
 import type { Stash } from "@dummy-git/shared";
 import type { GitCli } from "../cli.js";
 import { run, runRaw } from "../failure.js";
-import { parseStashList, stashListArgs } from "../parsers/index.js";
+import { parseStashList, stashListArgs } from "../parsers/stash.js";
 import type { GitCommand } from "./command.js";
 import { LockPolicy } from "./lock.js";
 

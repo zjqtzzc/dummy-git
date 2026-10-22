@@ -1,13 +1,5 @@
 <script lang="ts">
-import { assertNever } from "@dummy-git/shared";
-import {
-  Direction,
-  type GraphRow,
-  type GraphSegment,
-  LineEnd,
-  LineStyle,
-} from "../logic/log/graph/types.js";
-import { ROW_HEIGHT } from "../logic/virtualList.js";
+import type { GraphRow } from "../logic/log/graph/types.js";
 
 /** 一条车道的宽度，像素。 */
 const LANE = 16;
@@ -51,7 +43,10 @@ export function graphWidth(row: GraphRow, base: number): number {
 </script>
 
 <script setup lang="ts">
+import { assertNever } from "@dummy-git/shared";
 import { useId } from "vue";
+import { Direction, type GraphSegment, LineEnd, LineStyle } from "../logic/log/graph/types.js";
+import { ROW_HEIGHT } from "../logic/virtualList.js";
 
 /**
  * 一行的提交图：每段线从本行节点中心画到相邻行目标位置的中心，超出本行的部分由 SVG 裁掉；

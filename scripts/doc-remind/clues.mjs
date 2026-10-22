@@ -37,7 +37,7 @@ const FLAG = /(?<![\w-])--[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?![\w-])/g;
  * 一段文字里的名字与 git 参数，去重。
  * diff 的删除行和文档的每一行用同一个函数切词，「文档提到这个名字」就是切出来的词相等，两边的边界规则天然一致。
  */
-export function namesIn(text) {
+function namesIn(text) {
   return [...new Set([...text.matchAll(NAME), ...text.matchAll(FLAG)].map((m) => m[0]))];
 }
 

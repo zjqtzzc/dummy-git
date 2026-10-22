@@ -18,9 +18,7 @@ import { InboundKind, parseInbound } from "./protocol.guards.js";
  * 它**不认识 `vscode`，也不认识信封**——只是「给我参数，还你结果」。
  * 收消息、校验、配 id、发响应是 `Router` 的事。
  */
-export type Handler<K extends CommandName> = (
-  params: CommandParams<K>,
-) => Promise<CommandResult<K>>;
+type Handler<K extends CommandName> = (params: CommandParams<K>) => Promise<CommandResult<K>>;
 
 /** 协议表里每一条命令都必须有一个处理函数。 */
 export type HandlerMap = { [K in CommandName]: Handler<K> };

@@ -486,7 +486,7 @@ const PARAM_GUARDS = {
 } satisfies { [K in CommandName]: (raw: Record<string, unknown>) => CommandParams<K> | undefined };
 
 /** 命令名是不是协议表里的。**这是「不存在游离命令」在运行时的那一半。** */
-export function isCommandName(value: unknown): value is CommandName {
+function isCommandName(value: unknown): value is CommandName {
   return typeof value === "string" && Object.hasOwn(PARAM_GUARDS, value);
 }
 

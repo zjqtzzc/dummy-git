@@ -75,7 +75,6 @@ export {
   createBranch,
   createTrackingBranch,
   DeleteBranchKind,
-  type DeleteBranchResult,
   deleteBranch,
   deleteRemoteBranches,
   forceDeleteBranch,
@@ -87,7 +86,7 @@ export { checkIgnore } from "./checkIgnore.js";
 export type { GitCommand } from "./command.js";
 export { amendCommit, commit } from "./commit.js";
 export { getConflictStages, getFileContent, getStageContent } from "./content.js";
-export { getIdentity, type Identity } from "./identity.js";
+export { getIdentity } from "./identity.js";
 export {
   MergeOutcome,
   mergeRef,
@@ -108,7 +107,6 @@ export {
   getSkeleton,
   listAuthors,
   matchCommits,
-  SKELETON_LIMIT,
 } from "./log.js";
 export {
   abortInProgress,
@@ -116,8 +114,8 @@ export {
   type ContinueResult,
   continueInProgress,
 } from "./operation.js";
-export { listPaths, type TrackedPath } from "./paths.js";
-export { PushKind, type PushResult, push } from "./push.js";
+export { listPaths } from "./paths.js";
+export { PushKind, push } from "./push.js";
 export { getHead, getRefs } from "./refs.js";
 export { addRemote, fetchAll, listRemotes } from "./remote.js";
 export { ResetMode, resetTo } from "./reset.js";

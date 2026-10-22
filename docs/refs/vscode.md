@@ -209,7 +209,6 @@ packages/
         refs.ts        Ref / Upstream
         status.ts      FileChange（porcelain v2）
         errors.ts      **解析失败**的诊断（不是 git 错误）
-        index.ts       出口
       failure.ts     classifyError / run / GitFailureError ← M4 ✅
                      （**命令失败**分类，区别于 parsers/errors.ts 的解析失败）
       commands/      按域切，每条命令带锁策略与 env    ← M5 ✅

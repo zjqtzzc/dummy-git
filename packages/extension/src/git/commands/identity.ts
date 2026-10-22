@@ -1,5 +1,5 @@
 import { runRaw } from "../failure.js";
-import { mailmapArgs, parseMailmapContact } from "../parsers/index.js";
+import { mailmapArgs, parseMailmapContact } from "../parsers/identity.js";
 import type { GitCommand } from "./command.js";
 import { LockPolicy } from "./lock.js";
 

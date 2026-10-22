@@ -11,7 +11,7 @@ import {
 } from "../menuItems.js";
 
 /** 提交列表的一行，菜单项要用的那几样。 */
-export interface CommitMenuTarget {
+interface CommitMenuTarget {
   readonly hash: string;
   /** 能改说明（`rewordable`）。 */
   readonly rewordable: boolean;

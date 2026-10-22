@@ -27,7 +27,7 @@ export interface OperationFiles {
   readonly rebaseApply?: RebaseFiles;
 }
 
-export interface RebaseFiles {
+interface RebaseFiles {
   readonly headName?: string;
   readonly onto?: string;
   readonly message?: string;

@@ -7,7 +7,7 @@
   },
   "scripts": {
     "typecheck": "pnpm -r --workspace-concurrency=1 run typecheck",
-    "lint": "biome check . && node scripts/check-assertions.mjs",
+    "lint": "biome check . && node scripts/check-assertions.mjs && knip",
     "lint:fix": "biome check --write .",
     "test": "node scripts/test.mjs",
     "test:old-git": "node scripts/old-git/test.mjs",
@@ -22,6 +22,7 @@
     "@types/node": "^22.10.0",
     "@vue/compiler-sfc": "3.5.43",
     "esbuild": "^0.27.2",
+    "knip": "^6.40.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
   }

@@ -50,7 +50,7 @@ export interface Matches {
  * 搜索框那一项的结果。说明文字要问 git（`matchCommits`），回来之前列表按上一次的结果显示，
  * 所以结果连同它对应的那个搜索词一起存，hash 前缀也按那个词算，两半永远对得上。
  */
-export interface TextMatch {
+interface TextMatch {
   readonly text: string;
   /** git 找到的：说明里含有 `text` 的提交。 */
   readonly byMessage: ReadonlySet<string>;

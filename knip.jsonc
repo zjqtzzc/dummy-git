@@ -1,0 +1,17 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
+  // 扩展、webview、vitest 的入口由插件从 esbuild.mjs、index.html、vitest.config.ts 认出来，不手写。
+  // 系统命令（fixture.mjs 造签名提交用），不是 npm 包。
+  "ignoreBinaries": ["gpg", "gpgconf"],
+  "workspaces": {
+    ".": {
+      // demo、fixture、generate-seti 是手动或按路径字符串 `node` 跑的，没人 import；
+      // 调试场景由 debug/setup.mjs 按文件名动态加载。
+      "entry": ["scripts/*.mjs", "scripts/debug/scenarios/*.mjs"]
+    },
+    "packages/extension": {
+      // @ts-expect-error 反向测试：没人 import，由 tsc 检查。
+      "entry": ["src/**/__tests__/*CompileChecks.ts"]
+    }
+  }
+}

@@ -16,7 +16,7 @@ import { parseRevisionUri, REVISION_SCHEME } from "./revisionUri.js";
  * 不经过 Router，所以读取失败要在这里交给错误关口：
  * 输出面板写全、弹通知；同时抛 `FileSystemError`，让编辑器里显示「无法读取」。
  */
-export class RevisionFileSystem implements vscode.FileSystemProvider {
+class RevisionFileSystem implements vscode.FileSystemProvider {
   private readonly changes = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
   readonly onDidChangeFile = this.changes.event;
 

@@ -32,7 +32,7 @@ export function parseChain(stdout: Buffer): ChainCommit[] {
 }
 
 /** 作者：原样搬到新提交上（`GIT_AUTHOR_*`）。 */
-export interface Author {
+interface Author {
   readonly name: string;
   readonly email: string;
   /** git 的原始格式 `<unix 秒> <时区>`，如 `1700000000 +0800`，时区原样保留。 */
