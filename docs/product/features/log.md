@@ -50,7 +50,7 @@ committed by Bob <bob@x.com>  2026/9/21 09:00     ← 灰色
 提交列表正上方一行，只占中间那栏（同 IDEA）：左边搜索框占满剩余宽度，右边 `Branch`、`User`、`Date`、`Paths` 四个按钮，最右边是 Graph Options（排序，`product/features/graph.md`「排序」）和 View Options（见下面「高亮」）。未生效时按钮只写名字，生效后写当前的值（`User: Me`），后面带 × 用来清除。中间栏变窄时，先缩搜索框，按钮文字不截断。
 
 - **选值用 VS Code 原生的 QuickPick**（由扩展弹出，可搜索，键盘和主题都是原生的），选中的值交回页面，过滤状态由页面持有。以后换成按钮正下方的下拉菜单（`product/backlog.md`），到时只换弹框这一层。
-- **分支**：单选。Branch 按钮弹出本地与远程分支；左栏双击分支效果一样（HEAD 那行是当前分支）。分支过滤是换骨架的起点、重取一万条。正在过滤的分支没了（在这里删、在外面删、fetch 时被 prune、存下的过滤在重开窗口时已不在），过滤自动清除，按全部分支重取，不报错（先取 refs 再取骨架，`tech/decisions.md`「Log 加载：先 refs，后骨架」）。
+- **分支**：单选。Branch 按钮弹出本地与远程分支；左栏双击分支效果一样（HEAD 那行是当前分支）。分支过滤是换骨架的起点、重取一万条。正在过滤的分支没了（在这里删、在外面删、fetch 时被 prune、存下的过滤在重开窗口时已不在），过滤自动清除，按全部分支重取，不报错（先取 refs 再取骨架，`tech/architecture.md` 第 8 题「加载顺序」）。
 - **作者**：单选。第一项是 **Me**（git 配置里的 `user.name` 与 `user.email`），下面是这一万条里出现过的作者，按提交数从多到少排。按「名字 <邮箱>」整串、当作普通文字匹配（`--author` + `-F`），不用正则。
   - **全部走 mailmap**（2026-10-21 项目负责人定）：列表显示的作者、这里列出来的作者、`--author` 比的、Me（用 `git check-mailmap` 换算）都是 mailmap 之后的，同一个人用过的几个邮箱合成一项。`--author` 本来就按 mailmap 比（git 2.25、2.43 实测），命令里写死 `-c log.mailmap=true`，用户配置关掉了也不变。否决照 IDEA 全用原样：一个人会被拆成好几个。
 - **日期**：`Last 24 Hours`、`Last 7 Days`、`Last Month` 三个预设，不做自定义。在页面里按骨架的时间筛，不问 git。
@@ -73,7 +73,7 @@ committed by Bob <bob@x.com>  2026/9/21 09:00     ← 灰色
   - **Current Branch**：HEAD 包含的提交带一层浅蓝（`--vscode-charts-blue` 按 12% 混进透明）。HEAD 游离也照样涂（同 IDEA：游离时当前分支取 `HEAD`）。
 - **一直生效**（2026-10-21 项目负责人定）：不做 IDEA 的自动关闭（只有一个作者、按 Me 过滤时不加粗；按当前分支过滤时不涂，`ui/highlighters/CurrentBranchHighlighter.java:49-57`）。按当前分支过滤时整列都涂。否决照 IDEA：同一个开关会因过滤条件不同而时灵时不灵。
 - **怎么叠**：三种各管背景、文字颜色、字形，互不冲突，全叠上。**选中的行只用选中色**，浅蓝和灰字让给它，加粗照旧（同 IDEA：选中时底子是选中色，涂背景、变灰的高亮器在选中时不给值，`ui/table/VcsLogGraphTable.java:765`、`:936-940`）。浅蓝是半透明的一层画在背景色之上，悬停时悬停色从下面透上来，还看得出浅蓝。
-- **Current Branch 怎么算**：IDEA 的底图永远是全部分支的完整图，过滤只决定显示哪些行，所以从 HEAD 往下走就行（`data/CurrentBranchConditionCache.kt:46-56`）。我们按分支 B 过滤时骨架换成 B 的历史，里面未必有 HEAD，所以起点由扩展给（`getHeadBases`，`git merge-base --all HEAD <骨架的起点>`）：不按分支过滤时就是 HEAD；按 B 过滤时是 HEAD 与 B 的合并基点，B 的祖先里 HEAD 也包含的正好是它们往下的全部，和 IDEA 涂出来的同一批；没有共同祖先（孤儿分支）时一条都不涂。页面从起点沿全部父提交在骨架里往下走，走出骨架就停。起点在取过 refs 之后和骨架并行取（`tech/decisions.md`「Log 加载：先 refs，后骨架」），HEAD 一变 refs 就过期，起点跟着重取。耗时见 `tech/performance.md` §2.2。否决按别的分支过滤时不涂：又成了自动关闭。否决把 HEAD 也拉进骨架：骨架就不再只是 B 的历史，一万条的名额也被分走。
+- **Current Branch 怎么算**：IDEA 的底图永远是全部分支的完整图，过滤只决定显示哪些行，所以从 HEAD 往下走就行（`data/CurrentBranchConditionCache.kt:46-56`）。我们按分支 B 过滤时骨架换成 B 的历史，里面未必有 HEAD，所以起点由扩展给（`getHeadBases`，`git merge-base --all HEAD <骨架的起点>`）：不按分支过滤时就是 HEAD；按 B 过滤时是 HEAD 与 B 的合并基点，B 的祖先里 HEAD 也包含的正好是它们往下的全部，和 IDEA 涂出来的同一批；没有共同祖先（孤儿分支）时一条都不涂。页面从起点沿全部父提交在骨架里往下走，走出骨架就停。起点在取过 refs 之后和骨架并行取（`tech/architecture.md` 第 8 题「加载顺序」），HEAD 一变 refs 就过期，起点跟着重取。耗时见 `tech/performance.md` §2.2。否决按别的分支过滤时不涂：又成了自动关闭。否决把 HEAD 也拉进骨架：骨架就不再只是 B 的历史，一万条的名额也被分走。
 - **View Options**：过滤栏最右边的眼睛按钮（`AppIcon.ViewOptions`，旧插件的 `ViewOptionsIcon` 搬过来的线条图标；IDEA 用的是 `AllIcons.Actions.GroupBy`），是有选单的图标按钮（`ui/MenuButton.vue`，`product/features/menus.md`）：点开是贴着按钮的浮层选单，一节标题 `Highlight`，下面 `My Commits`、`Merge Commits`、`Current Branch` 三个勾选项，勾一下马上生效，选单不收起。IDEA 是工具栏右上角弹出菜单里的 Highlight 一节（`platform/vcs-log/impl/resources/intellij.platform.vcs.log.impl.xml:257-269`）。以后有别的显示选项再往里加；否决三个开关各占一个按钮：过滤栏放不下。
 - 开关存进 `viewState`，存的是**关掉的**那几种：以后新加的默认开（同 IDEA：没存过的高亮取 `true`，`impl/VcsLogUiPropertiesImpl.kt:30`）。落盘的字符串走映射表，认不出的当作没有。
 
@@ -94,7 +94,3 @@ committed by Bob <bob@x.com>  2026/9/21 09:00     ← 灰色
 `Edit Commit Message…` 只在能改的提交上出现，见 `product/features/history.md`。
 
 **多选时**（菜单项怎么算见 `tech/decisions.md`「右键菜单：每个菜单项一个键」，提交列表的定义在 `logic/log/commitMenu.ts`）：Copy Hash、Cherry-Pick、Revert 作用于全部，其余只能对一条做的不出现。Cherry-Pick 从旧到新、Revert 从新到旧（同 IDEA），按列表顺序算，不按点选的先后。选中里有合并提交时没有 Cherry-Pick、Revert（只选一条时照旧交给 git 拒绝），原因见 `product/features/conflicts.md`。菜单文字不随条数变。
-
-## 以后可能做（`product/backlog.md`）
-
-过滤用按钮下方的下拉菜单代替 QuickPick；没摘到当前分支的提交高亮（IDEA 的 Not Cherry-Picked Commits）；跳到 hash 或 ref；多选时右栏合并显示几条的改动；Squash、批量 Drop。

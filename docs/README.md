@@ -32,6 +32,30 @@
 | 参照项目（IDEA、VS Code git、GitLens）是怎么做的 | `refs/` |
 | 新阶段的设计稿怎么起头 | `templates/phase.md` |
 
+## 改这里的代码，先读哪份
+
+从代码找文档用这张表；每份文档开头也写了它管哪些代码。下面的路径都在 `packages/` 下。
+
+| 改的是 | 先读 |
+|---|---|
+| `webview/src/log/`、`webview/src/logic/log/`（提交列表、过滤、高亮、详情、复制、提交右键菜单） | `product/features/log.md` |
+| `webview/src/logic/log/graph/`、`refLabels.ts`、`graphOptions.ts`、`log/GraphCell.vue` | `product/features/graph.md` |
+| `webview/src/log/BranchTree.vue`、`logic/log/branchTree.ts`、`git/commands/branch.ts` | `product/features/branches.md` |
+| `webview/src/commit/CommitApp.vue`、`logic/commit/`、`git/commands/commit.ts`、`rollback.ts`、`status.ts` | `product/features/commit.md` |
+| `webview/src/commit/StashView.vue`、`logic/stash/`、`git/commands/stash.ts` | `product/features/stash.md` |
+| `webview/src/tree/`、`logic/tree/`、`ui/CheckBox.vue`、`vscode/diff.ts` | `product/features/trees.md` |
+| `ui/ToolButton.vue`、`ui/MenuButton.vue`、`ui/PopupMenu.vue`、`ui/PopupList.vue`、`logic/popupMenu.ts`、`logic/popupPlacement.ts` | `product/features/menus.md` |
+| `git/commands/remote.ts`、`update.ts`、`push.ts`、`core/autoFetch.ts`、`webview/src/push/`、`logic/push/` | `product/features/sync.md` |
+| `git/commands/integrate.ts`、`resolve.ts`、`operation.ts`、`vscode/mergeEditor.ts` | `product/features/conflicts.md` |
+| `git/commands/reset.ts`、`reword.ts` | `product/features/history.md` |
+| `vscode/dialogPanel.ts`、`ui/DialogShell.vue` | `product/features/dialogs.md` |
+| `ipc/operation.ts`、`ipc/loggedUi.ts`、`ipc/brief.ts`、`git/cli.ts` 的日志 | `product/features/logging.md` |
+| `core/repository.ts`、`core/debounce.ts`、`vscode/watcher.ts`（刷新） | `tech/architecture.md` 第 11 题 |
+| `core/operation.ts`、`git/commands/lock.ts`（排队与锁） | `tech/architecture.md` 第 12 题、`tech/locking.md` |
+| `ipc/`（协议、Router、参数校验）、`webview/src/logic/menuItems.ts`、`vscode/menu.ts`（右键菜单） | `tech/decisions.md`「右键菜单：每个菜单项一个键」、`tech/architecture.md` 第 4 题 |
+| `logic/icons.ts` | `tech/decisions.md`「图标」 |
+| 任何 git 命令行 | `tech/traps.md` §1 |
+
 参照项目的源码是本地副本（`../.notes/`，不进版本库），需要时自己下载。
 
 ## 常用命令

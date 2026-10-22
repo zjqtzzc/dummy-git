@@ -14,20 +14,25 @@
 
 ## 写在哪
 
-| 内容 | 放哪 |
+每一类事实只有一个家，按下表定；别处要提，写「见 ……」，不再写一遍。写之前先在 `docs/` 里搜一下，已经有了就引用。
+
+| 这件事是…… | 只写在 |
 |---|---|
 | 违反了就打回的规则 | `CLAUDE.md` |
 | 做事的方法 | `process/` |
-| 有哪些阶段、各做什么 | `product/roadmap.md` |
-| 以后可能做的 | `product/backlog.md` |
-| 定了永远不做的 | `product/never.md` |
-| 一个功能现在是什么样、为什么 | `product/features/<功能>.md` |
-| 技术选型 | `tech/architecture.md` |
-| 跨功能的决定 | `tech/decisions.md` |
+| 用户看得到的行为，以及为什么这样表现（否决的交互方案、IDEA 出处） | `product/features/<功能>.md` |
+| 实现上的技术选择（进程、取数、刷新、并发、渲染……），以及否决的技术方案 | `tech/architecture.md` 对应的题 |
+| 写代码、写文档、做事的约定（类型、注释、日志、图标画法、菜单写法……） | `tech/decisions.md` |
+| 整条命令行、格式串、常量与阈值的取值等代码里有的细节 | **只在代码里**（命令表、常量旁的注释）；文档写「见 `<代码位置>`」。体现决定的那个关键参数（比如用 `--only`、带不带 `--prune`）照常写，它就是决定本身 |
 | git 的坑、组件的坑、做事的教训 | `tech/traps.md` |
 | 实测的数字（写明在什么上测的、怎么再测一次） | `tech/performance.md` |
-| 正在做的阶段的设计稿 | `phases/phase-NN.md`，阶段结束时并进 `features/`（`workflow.md` §2） |
+| 以后可能做的 | `product/backlog.md`（features 里不另写「以后可能做」） |
+| 定了永远不做的 | `product/never.md` |
+| 做到哪了 | `product/roadmap.md` 的阶段表；做完的阶段只留表里一行 |
+| 正在做的阶段的设计稿 | `phases/phase-NN.md`，阶段结束时并进上面各处（`workflow.md` §2） |
 | 参照项目的笔记 | `refs/` |
+
+拿不准时：只关乎一个功能的，跟着那个功能走（features）；几个功能共用的技术做法进 architecture，共用的写法约定进 decisions。
 
 ## 代码注释
 

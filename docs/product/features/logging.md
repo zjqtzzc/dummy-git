@@ -43,7 +43,7 @@
 
 - **只有一个新概念「操作」**，其余都挂在现成的出口上：三个入口共用 `Operations.run`，问答走 `HandlerUi` 的记录外壳，git 命令走 `GitLogger`。几十个 handler 一个都没改。
 - **级别按出没出问题分，不按读写**：`LogOutputChannel` 默认级别是 info，低于它的行不显示，也不写进日志文件。stash 展开为空的那次，问题就出在一个读请求上，放在 debug 就丢了。否决按读写或按频率分级：要维护一张表、要做判断，而量本来就不大（一次刷新十来行）。
-- **入口只记到页面或菜单命令，不记是哪个按钮**：同一个页面里，同一条命令几乎只有一个按钮会发。先呼出界面、再执行的（右键 `Push…` → 对话框里点 Push）就是两次操作，按时间相邻。否决记父子关系、请求带 `trigger` 字段、把刷新精确追到是哪个写操作引起的：要改几十个调用点，或者只能靠猜。
+- **入口只记到页面、菜单命令或「自动」，不记是哪个按钮**：同一个页面里，同一条命令几乎只有一个按钮会发。先呼出界面、再执行的（右键 `Push…` → 对话框里点 Push）就是两次操作，按时间相邻。否决记父子关系、请求带 `trigger` 字段、把刷新精确追到是哪个写操作引起的：要改几十个调用点，或者只能靠猜。
 - **不脱敏，但精简**（项目负责人定）：日志里出现的数据都过 `brief()`，按统一的上限截断多行、长行、长列表、长 stderr、长命令行。单个标识（hash、路径、分支名）不缩短：误删的 stash 就是靠日志里的完整 hash 找回来的。
 - **慢的标出来**：操作或 git 命令超过阈值，行尾标 `(slow)` 并记 warn。参照：GitLens 是 500ms（偏敏感），IDEA 是 10 秒（太宽）。
 - **参照**（源码核对过）：VS Code git 用 `LogOutputChannel`，启动时记 `Using git "版本" from "路径"`，每条命令 `> git … [ms]`，stderr 每次都记；GitLens 每次调用一个范围编号、带父编号；IDEA 有一键打包日志。
@@ -58,7 +58,3 @@
 | 问答与完成消息 | `ipc/loggedUi.ts` |
 | git 层交出的一条命令的记录（参数、用时、结局、stderr） | `git/cli.ts`、`git/types.ts` |
 | webview 的异常 | `webview/src/logic/client.ts` 的 `report`、`webview/src/main.ts` |
-
-## 以后可能做（`product/backlog.md`）
-
-记 git 的 stdout（同 VS Code 的 `git.commandsToLog`）；一键导出日志（同 IDEA 的 Collect Logs）；记纯界面上的点击；请求带上是哪个按钮发起的。

@@ -64,7 +64,3 @@ Commit 面板只问两件事：有没有停下的操作（读状态文件，不�
 - **Mark as Resolved**：文件里还有冲突标记（行首的 `<<<<<<<`、`=======`、`>>>>>>>`）时，先确认 `<文件> still contains conflict markers. Mark as resolved anyway?`；然后 `git add`，文件移出冲突组。Keep 就是标记已解决，留下工作区里的那份。
 - **多选、选冲突组**（2026-10-20 项目负责人定）：Mark as Resolved、Keep、Delete File 作用于选中的全部（一条 `git add` / `git rm`），全部严格，种类混着就没有这一项；Open in Merge Editor 只能单选（同 IDEA 的 `GitConflictActions.kt` 能多选，但 IDEA 有列出多个文件的合并窗口，VS Code 的合并编辑器一次开一个）。一批 Mark as Resolved 里还有冲突标记的收在一起问一次（`2 files still contain conflict markers. Mark them as resolved anyway?`，列出名字），取消就只是它们不标记，其余照旧标记。Keep、Delete File 不问。
 - 冲突解决后、继续之前，git 允许 stash push 和 Rollback，解决好的内容会被存走或丢掉，而 `MERGE_HEAD` 还在。git 不拦，我们也不拦。
-
-## 以后可能做（`product/backlog.md`）
-
-冲突文件右键 Accept Ours / Accept Theirs；停在半路时的 Skip（`--skip`）；所有会产生冲突的操作都转进同一个自建的合并界面；停在半路时把 Commit 面板切到前台。

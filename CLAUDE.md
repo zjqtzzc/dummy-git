@@ -1,7 +1,8 @@
 # 项目纪律
 
 > 本文是 **dummy-git 的强制约定**，人和 AI 会话都以此为准。
-> 「为什么」在 `docs/tech/decisions.md`，「做什么/什么时候做」在 `docs/product/roadmap.md`（以后可能做的在 `backlog.md`，永远不做的在 `never.md`），本文只写 **规则**。
+> 本文只写 **规则**。「为什么」按归属分开写：功能的在 `docs/product/features/`，技术选型在 `docs/tech/architecture.md`，写法与做事的约定在 `docs/tech/decisions.md`；「做什么/什么时候做」在 `docs/product/roadmap.md`（以后可能做的在 `backlog.md`，永远不做的在 `never.md`）。
+> **写文档前先看 `docs/process/writing.md`「写在哪」**：一个事实只有一个家，别处写「见 ……」；代码里有的细节（命令行、参数、常量）不抄进文档。
 > 文档的导读与各文档的更新规则见 `docs/README.md`（新会话先读它）。
 > 修改本文 = 修改项目纪律，必须同时更新 `docs/tech/decisions.md`。
 

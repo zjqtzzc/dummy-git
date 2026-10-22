@@ -43,7 +43,3 @@
 - 新说明按 `git commit -F` 的默认规则整理（`git stripspace`：去掉行尾空白、合并连续空行、结尾补换行）。
 - 配了 `commit.gpgSign` 时，给 `commit-tree` 加 `-S`：它不读这个配置。不触发 commit-msg 钩子。
 - 否决 `rebase -i --autostash` 加两个脚本：要写脚本（Windows 也得能跑），会检出、会 autostash，还要走停下 / 继续 / 放弃，reword 一样都用不上。drop、交互式 rebase 会真的冲突，以后仍走 `rebase -i`（`tech/architecture.md` 第 21 题）。
-
-## 以后可能做（`product/backlog.md`）
-
-Drop（单条，`rebase --autostash --onto <父提交> <它>`）；Squash（提交列表已能多选，还缺确认说明的对话框；否决 `Squash Commits up to Here…`）；交互式 rebase（fixup、把一条并进另一条都归它）。

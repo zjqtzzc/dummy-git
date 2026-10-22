@@ -52,7 +52,3 @@ Commit 面板工具栏上，Rollback 旁边的 **Stash** 按钮（`AppIcon.Stash
 - 完成消息：Apply / Pop 是自己写的（`Applied …`、`Applied and dropped …`），因为 git 的输出是一整段 status。
 - Apply、Pop 走进度出口；Delete 只改一个引用，立刻就能看到，不走。
 - 取回时冲突：git 不删 stash（Pop 也一样），冲突文件显示在 Commit 面板的冲突组里（`product/features/conflicts.md`）；解决之后，stash 要自己删。
-
-## 以后可能做（`product/backlog.md`）
-
-单文件 Stash；只存已暂存或未暂存的那部分；Stash 重命名；取回时可选还原暂存状态（`--index`，同 IDEA 的 Reinstate index）。

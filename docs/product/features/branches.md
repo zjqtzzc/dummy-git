@@ -74,7 +74,3 @@
 ## Merge、Rebase
 
 本地分支（非当前）和远程分支的右键菜单里有 **Merge into Current**（`git merge <分支>`）和 **Rebase onto This**（把当前分支变基到它，`git rebase --autostash <分支>`）。不弹确认。停在冲突时怎么继续、怎么放弃，见 `product/features/conflicts.md`。
-
-## 以后可能做（`product/backlog.md`）
-
-检出远程分支时，如果同名本地分支和它分叉了，照 IDEA 让用户选「把本地 rebase 到远程上」还是「丢弃本地、用远程的」。

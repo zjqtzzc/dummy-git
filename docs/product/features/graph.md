@@ -89,7 +89,3 @@ refs ─► ④ 标签分组（按提交 hash）──► CommitList.vue  Messag
 - 全部行一次算完，不按可见行懒算：推荐宽度本来就要用到所有行的宽度。一万条的耗时见 `tech/performance.md`。
 - 渲染：每行最左边一个 `<svg>`；每段线一条 `<line>`，节点一个 `<circle>` 最后画、盖在线上。虚线用 `stroke-dasharray`；渐隐用一个全局共用的 `<mask>`。颜色用内联 `style`（SVG 属性里的 `var()` 不保证生效）。线不做像素对齐。
 - **骨架没变就沿用旧数组**（同 vscode-git-graph）：refs 过期时照样重拉骨架，逐条比较 hash、父提交和提交时间，全都相同就沿用旧数组，图不重算、筛选也不重查。省的是 webview 这边，不省 `git log` 和传输。否决「ref 指向的 hash 集合没变就不拉」：`shallow`、`refs/replace` 不动 ref 也会改图。否决 IDEA 的增量拼接：拼接与回退的逻辑远超收益。
-
-## 以后可能做（`product/backlog.md`）
-
-HEAD 所在提交的节点画成「外圈 + 实心」；「显示长线」开关；沿着图在父子提交之间跳的键盘导航。

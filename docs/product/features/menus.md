@@ -18,6 +18,7 @@
 - 同 IDEA 与 VS Code：IDEA 是一组动作（`ActionGroup.getChildren()`，勾选是 `ToggleAction`，分隔线可带标题，组里再放弹出的组就是二级）；VS Code 是一组 `IAction`，二级是 `SubmenuAction`。GitLens 的 `gl-menu-popover` 也是 `items` 数组进、组件管弹出收起，但只有一级。
 - 勾选项、单选项选中的前面都画 ✓（同 IDEA、VS Code：它们的单选、多选都画 ✓），每行都留出这一列，有勾没勾的文字对齐；二级选单项右边画 ›。外观照 VS Code 的菜单：主题的 `menu.*` 颜色、`widget.shadow` 阴影，最小宽度 160px，行高 24px。
 - 和右键菜单（`logic/menuItems.ts`，VS Code 原生的 `webview/context`）是两回事。
+- 否决原生 QuickPick：从窗口顶部正中弹出，离按钮太远，也做不了勾选项连着勾。否决每个按钮自己写一套弹出、定位、收起：难保一致，二级选单写一次就够费事。
 
 ## 位置：上下左右都不超出 webview
 
