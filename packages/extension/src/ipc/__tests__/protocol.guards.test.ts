@@ -46,21 +46,25 @@ describe("amend 的参数校验", () => {
 
 describe("getSkeleton、getHeadBases 的 branch", () => {
   it("缺席或完整引用名都收；不是 refs/ 开头的拒收（会进 git 的命令行，`-` 开头会被当成选项）", () => {
-    expect(parseParams("getSkeleton", { repo: "/r" })).toEqual({ repo: "/r" });
-    expect(parseParams("getSkeleton", { repo: "/r", branch: "refs/heads/main" })).toEqual({
-      repo: "/r",
-      branch: "refs/heads/main",
-    });
-    expect(parseParams("getSkeleton", { repo: "/r", branch: "--all" })).toBeUndefined();
-    expect(parseParams("getSkeleton", { repo: "/r", branch: "main" })).toBeUndefined();
+    for (const command of ["getSkeleton", "getHeadBases"] as const) {
+      const base = command === "getSkeleton" ? { repo: "/r", order: "date" } : { repo: "/r" };
+      expect(parseParams(command, base)).toEqual(base);
+      expect(parseParams(command, { ...base, branch: "refs/heads/main" })).toEqual({
+        ...base,
+        branch: "refs/heads/main",
+      });
+      expect(parseParams(command, { ...base, branch: "--all" })).toBeUndefined();
+      expect(parseParams(command, { ...base, branch: "main" })).toBeUndefined();
+    }
   });
 
-  it("getHeadBases 同一条规则", () => {
-    expect(parseParams("getHeadBases", { repo: "/r", branch: "refs/heads/main" })).toEqual({
+  it("getSkeleton 的排序：只认两种，缺席或别的值都拒收", () => {
+    expect(parseParams("getSkeleton", { repo: "/r", order: "topo" })).toEqual({
       repo: "/r",
-      branch: "refs/heads/main",
+      order: "topo",
     });
-    expect(parseParams("getHeadBases", { repo: "/r", branch: "--all" })).toBeUndefined();
+    expect(parseParams("getSkeleton", { repo: "/r" })).toBeUndefined();
+    expect(parseParams("getSkeleton", { repo: "/r", order: "--all" })).toBeUndefined();
   });
 });
 

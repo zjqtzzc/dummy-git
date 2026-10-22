@@ -3,6 +3,7 @@ import {
   assertNever,
   type Commit,
   type CommitFileChange,
+  CommitOrder,
   type CommitSkeleton,
   type DiffOpenMode,
   GitDomain,
@@ -452,7 +453,7 @@ async function load(repository: string): Promise<void> {
     const params =
       filtered === undefined ? { repo: repository } : { repo: repository, branch: filtered.ref };
     const [fetchedSkeleton, fetchedBases, fetchedMe] = await Promise.all([
-      props.client.request("getSkeleton", params),
+      props.client.request("getSkeleton", { ...params, order: CommitOrder.Date }),
       props.client.request("getHeadBases", params),
       props.client.request("getIdentity", { repo: repository }),
     ]);

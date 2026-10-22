@@ -78,3 +78,11 @@ export interface CommitSkeleton {
    */
   readonly at: number;
 }
+
+/** 骨架的排序（Log 的 Graph Options → `Sort`）。两种都保证父提交排在子提交之后。 */
+export enum CommitOrder {
+  /** 按提交时间（IDEA 的 `By Commit Date`），默认。 */
+  Date = "date",
+  /** 拓扑：同一支历史连在一起，不和别的支穿插（IDEA 的 `Topologically`，但不是它的 IntelliSort）。 */
+  Topo = "topo",
+}

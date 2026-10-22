@@ -54,7 +54,7 @@ describe("Client：请求与回复配对", () => {
     const t = recorder();
     const client = new Client(t, GEN);
 
-    const first = client.request("getSkeleton", { repo: "/r" });
+    const first = client.request("getHeadBases", { repo: "/r" });
     const second = client.request("getCommitFiles", { repo: "/r", hash: "abc" });
 
     client.receive(ok(2, [{ status: "added", path: "b.txt" }]));
@@ -67,7 +67,7 @@ describe("Client：请求与回复配对", () => {
   it("错误响应 reject 成 CommandFailedError，带 code", async () => {
     const t = recorder();
     const client = new Client(t, GEN);
-    const pending = client.request("getSkeleton", { repo: "/r" });
+    const pending = client.request("getHeadBases", { repo: "/r" });
 
     client.receive({
       kind: MessageKind.Response,
@@ -92,7 +92,7 @@ describe("Client：请求与回复配对", () => {
     const t = recorder();
     const lines: string[] = [];
     const client = new Client(t, GEN, { log: (line) => void lines.push(line) });
-    const pending = client.request("getSkeleton", { repo: "/r" });
+    const pending = client.request("getHeadBases", { repo: "/r" });
 
     client.receive(ok(1, ["first"]));
     await expect(pending).resolves.toEqual(["first"]);
@@ -108,7 +108,7 @@ describe("Client：代号与校验", () => {
     // 会被当成本代 id=1 的答案——串台，而且内容看起来完全合法。
     const t = recorder();
     const client = new Client(t, "gen-new");
-    const pending = client.request("getSkeleton", { repo: "/r" });
+    const pending = client.request("getHeadBases", { repo: "/r" });
 
     client.receive(ok(1, ["来自上一代"], "gen-old"));
     expect(await stillPending(pending)).toBe(true);
@@ -172,7 +172,7 @@ describe("Client：代号与校验", () => {
     client.onDomainsChanged(() => {
       events += 1;
     });
-    const pending = client.request("getSkeleton", { repo: "/r" });
+    const pending = client.request("getHeadBases", { repo: "/r" });
 
     expect(() => client.receive(raw)).not.toThrow();
 

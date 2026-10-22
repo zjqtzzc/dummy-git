@@ -40,8 +40,18 @@ export const fixtures = {
 export const cli = new GitCli("git");
 
 /** 直接跑一条 git（**绕开被测代码**，用于搭场景与核对结果，不要用它来验被测行为）。 */
-export function git(repo: string, args: readonly string[]): string {
-  return execFileSync("git", [...args], { cwd: repo, encoding: "utf8", stdio: "pipe" });
+/** `env` 补在当前环境变量上（比如定死提交时间的 `GIT_COMMITTER_DATE`）。 */
+export function git(
+  repo: string,
+  args: readonly string[],
+  env: Readonly<Record<string, string>> = {},
+): string {
+  return execFileSync("git", [...args], {
+    cwd: repo,
+    encoding: "utf8",
+    stdio: "pipe",
+    env: { ...process.env, ...env },
+  });
 }
 
 const temps: string[] = [];

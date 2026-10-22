@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type MatchCondition, MatchKind } from "@dummy-git/shared";
+import { CommitOrder, type MatchCondition, MatchKind } from "@dummy-git/shared";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanupTempRepos, cli, git, makeTempRepo } from "../../../__tests__/support.js";
 import { getIdentity } from "../identity.js";
@@ -223,6 +223,42 @@ describe("getSkeleton 按分支", () => {
     };
     expect((await subjects({})).sort()).toEqual(["init", "main only", "side only"]);
     expect(await subjects({ branch: "refs/heads/side" })).toEqual(["side only", "init"]);
+  });
+});
+
+describe("getSkeleton 的排序", () => {
+  it("按提交时间两支穿插；拓扑时同一支连在一起", async () => {
+    // base 之后两支交替提交：a1、b1、a2、b2（时间依次递增），再把 b 合进 a。
+    const repo = makeTempRepo("skeleton-order");
+    const at = (n: number) => ({ GIT_COMMITTER_DATE: `${1_700_000_000 + n} +0000` });
+    git(repo, ["switch", "-q", "-c", "b"]);
+    git(repo, ["switch", "-q", "-c", "a"]);
+    let n = 1;
+    for (const [branch, subject] of [
+      ["a", "a1"],
+      ["b", "b1"],
+      ["a", "a2"],
+      ["b", "b2"],
+    ] as const) {
+      git(repo, ["switch", "-q", branch]);
+      git(repo, ["commit", "-q", "--allow-empty", "-m", subject], at(n++));
+    }
+    git(repo, ["switch", "-q", "a"]);
+    git(repo, ["merge", "-q", "--no-ff", "-m", "merge", "b"], at(n++));
+    const subjects = async (order: CommitOrder) => {
+      const hashes = (await getSkeleton.execute(cli, repo, { branch: "refs/heads/a", order })).map(
+        (c) => c.hash,
+      );
+      const bySha = new Map(
+        git(repo, ["log", "--all", "--format=%H %s"])
+          .trim()
+          .split("\n")
+          .map((line) => [line.slice(0, 40), line.slice(41)]),
+      );
+      return hashes.map((hash) => bySha.get(hash));
+    };
+    expect(await subjects(CommitOrder.Date)).toEqual(["merge", "b2", "a2", "b1", "a1", "init"]);
+    expect(await subjects(CommitOrder.Topo)).toEqual(["merge", "b2", "b1", "a2", "a1", "init"]);
   });
 });
 

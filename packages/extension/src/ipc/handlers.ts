@@ -370,8 +370,12 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
   return defineHandlers({
     // 第一版只有一个仓库。多仓库时这里返回多条，面板与协议都不用改。
     getRepositories: () => Promise.resolve([repository.location.root]),
-    getSkeleton: ({ branch }) =>
-      repository.run(getSkeleton, repository.location.root, branch === undefined ? {} : { branch }),
+    getSkeleton: ({ branch, order }) =>
+      repository.run(
+        getSkeleton,
+        repository.location.root,
+        branch === undefined ? { order } : { branch, order },
+      ),
     getHeadBases: ({ branch }) =>
       repository.run(
         getHeadBases,

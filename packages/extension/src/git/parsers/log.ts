@@ -14,6 +14,7 @@
 import {
   assertNever,
   type Commit,
+  CommitOrder,
   type CommitSkeleton,
   type MatchCondition,
   MatchKind,
@@ -158,12 +159,20 @@ const SK_FIELD_COUNT = 3;
  * 带上作者与消息的话是 46 MB，而画图用不到那 28 MB。
  */
 /**
- * 骨架从哪里往下走。可带参数：现在只有起点，以后 `--first-parent` 这类遍历选项也加在这里。
+ * 骨架从哪里往下走、怎么排。以后 `--first-parent` 这类遍历选项也加在这里。
  */
 export interface SkeletonOptions {
   /** 只走这一个分支（完整引用名，`refs/heads/x` 或 `refs/remotes/origin/x`）。缺席时走 HEAD 与全部分支、远程、标签。 */
   readonly branch?: string;
+  /** 排序；缺席按提交时间。 */
+  readonly order?: CommitOrder;
 }
+
+/** 排序 → git 的参数。两种都保证父提交排在子提交之后，图的行号才对得上。 */
+const ORDER_FLAG: Readonly<Record<CommitOrder, string>> = {
+  [CommitOrder.Date]: "--date-order",
+  [CommitOrder.Topo]: "--topo-order",
+};
 
 export function skeletonArgs(limit: number, options: SkeletonOptions = {}): string[] {
   const starts =
@@ -173,7 +182,7 @@ export function skeletonArgs(limit: number, options: SkeletonOptions = {}): stri
     `--format=${SKELETON_FORMAT}`,
     `--max-count=${limit}`,
     ...starts,
-    "--date-order",
+    ORDER_FLAG[options.order ?? CommitOrder.Date],
     // 起点之后明确结束「版本」部分：分支名永远不会被当成路径。
     "--",
   ];

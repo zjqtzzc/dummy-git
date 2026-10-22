@@ -25,6 +25,7 @@
 import {
   type CommandName,
   type CommandParams,
+  CommitOrder,
   DialogKind,
   DiffOpenMode,
   type DiffSide,
@@ -189,10 +190,28 @@ function asCommitTarget(raw: Record<string, unknown>): { repo: string; hash: str
   return typeof repo === "string" && hash !== undefined ? { repo, hash } : undefined;
 }
 
-/** `getSkeleton`、`getHeadBases` 同样的参数：仓库，外加可选的分支。 */
+function asCommitOrder(value: unknown): CommitOrder | undefined {
+  switch (value) {
+    case CommitOrder.Date:
+      return CommitOrder.Date;
+    case CommitOrder.Topo:
+      return CommitOrder.Topo;
+    default:
+      return undefined;
+  }
+}
+
+/** `getSkeleton`：仓库、排序，外加可选的分支（同 `branchParams`）。 */
 function skeletonParams(
   raw: Record<string, unknown>,
-): { repo: string; branch?: string } | undefined {
+): { repo: string; order: CommitOrder; branch?: string } | undefined {
+  const order = asCommitOrder(raw["order"]);
+  const rest = branchParams(raw);
+  return order === undefined || rest === undefined ? undefined : { ...rest, order };
+}
+
+/** `getHeadBases`（`getSkeleton` 也用）：仓库，外加可选的分支。 */
+function branchParams(raw: Record<string, unknown>): { repo: string; branch?: string } | undefined {
   const repo = raw["repo"];
   const branch = raw["branch"];
   if (typeof repo !== "string") return undefined;
@@ -216,7 +235,7 @@ const PARAM_GUARDS = {
   // 没有参数。仍然要有一条守卫——表必须是完整的，`satisfies` 才拦得住漏写。
   getRepositories: () => ({}),
   getSkeleton: skeletonParams,
-  getHeadBases: skeletonParams,
+  getHeadBases: branchParams,
   getIdentity: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     return typeof repo === "string" ? { repo } : undefined;

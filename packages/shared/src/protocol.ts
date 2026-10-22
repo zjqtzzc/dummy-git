@@ -1,5 +1,5 @@
 import type { CommitFileChange, StatusSnapshot } from "./change.js";
-import type { Commit, CommitSkeleton } from "./commit.js";
+import type { Commit, CommitOrder, CommitSkeleton } from "./commit.js";
 import type { DialogKind } from "./dialog.js";
 import type { DiffOpenMode, DiffSide } from "./diff.js";
 import type { GitDomain } from "./domain.js";
@@ -61,8 +61,8 @@ export interface Commands {
   };
   /** 全量骨架：每条只有 hash / parents / at，用来排图和定位。 */
   getSkeleton: {
-    /** `branch`：按分支过滤时只走这一个分支（完整引用名，`refs/` 开头）。 */
-    params: { repo: string; branch?: string };
+    /** `branch`：按分支过滤时只走这一个分支（完整引用名，`refs/` 开头）。`order`：排序。 */
+    params: { repo: string; order: CommitOrder; branch?: string };
     result: CommitSkeleton[];
   };
   /**
