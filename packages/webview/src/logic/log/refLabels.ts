@@ -66,6 +66,8 @@ export function refLabels(refs: readonly Ref[]): Map<string, RefLabel[]> {
         break;
       }
       case RefKind.RemoteBranch: {
+        // `origin/HEAD` 只是指向远程默认分支的指针，不是一个分支（同分支树）。
+        if (ref.name === "HEAD") break;
         const full = remoteKey(ref.remote, ref.name);
         if (merged.has(full)) break;
         const rank = ref.remote === "origin" && MAIN_NAMES.has(ref.name) ? 3 : 5;

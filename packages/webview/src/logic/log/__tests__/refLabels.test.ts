@@ -54,6 +54,10 @@ describe("refLabels", () => {
     expect(names([local("main"), head("c", "main")])).toEqual(["main"]);
   });
 
+  it("不出 origin/HEAD 的标签——它只是指针，不是分支", () => {
+    expect(names([remote("main"), remote("HEAD")])).toEqual(["origin/main"]);
+  });
+
   it("当前分支标出来", () => {
     const labels = refLabels([local("main"), local("dev"), head("c", "dev")]).get("c");
     expect(labels?.map((label) => label.current)).toEqual([true, false]);

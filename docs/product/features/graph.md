@@ -48,6 +48,7 @@
 - 靠右，画在 Message 单元格的最右边：起点 = max(本行图宽, 单元格宽 − 标签总宽)。说明文字至少留 80px；标签可用的宽度，取「文字区的一半」和「文字区 − 80px」中较大的那个。否决紧跟在图后面：说明文字的起点会随标签多少左右跳。
 - 本地分支和它跟踪的远程分支合成一个标签，条件是上游指向的远程分支在同一个提交上，显示成 `origin & develop`。
 - 顺序：当前分支 → `main|master` → `origin/main|master` → 本地分支 → 远程分支 → tag。
+- 不出 `origin/HEAD` 的标签（2026-10-22 项目负责人定，同分支树）：它只是指向远程默认分支的指针，不是分支；`git clone` 出来的仓库才有，`init` 加 `remote add` 的没有。
 - 标签名超过 22 个字时，把第一个 `/` 前面换成 `..`，剩下的交给 CSS 省略号。不量文字宽度：代价是窄屏时可能比必要的截得多一点。放不下时从后往前收缩，每个标签最窄只剩图标。否决只显示前几个、其余写 `+N`：多了一个悬停交互。
 - 外观：无边框，字号小一档；用 codicon 区分类型，图标按主题色着色：当前分支 `charts.yellow`，本地 `charts.green`，远程 `charts.purple`，tag `descriptionForeground`，detached HEAD 用 `warning` 图标加 `editorWarning.foreground`。
 
