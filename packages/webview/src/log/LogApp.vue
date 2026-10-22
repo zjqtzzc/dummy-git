@@ -121,7 +121,6 @@ const filter = ref<LogFilter>(restoreFilter(viewState.read("logFilter")));
  */
 function useMatch(condition: () => MatchCondition | undefined) {
   const result = ref<{ readonly condition: MatchCondition; readonly hashes: ReadonlySet<string> }>();
-  const busy = ref(false);
   let seq = 0;
   // 按内容比：过滤条件整个换了新对象（比如只改了日期）时，这一项没变就不重查。
   watch([() => JSON.stringify(condition() ?? null), skeleton], async () => {
@@ -129,11 +128,9 @@ function useMatch(condition: () => MatchCondition | undefined) {
     const current = condition();
     if (current === undefined) {
       result.value = undefined;
-      busy.value = false;
       return;
     }
     if (repo.value === undefined || skeleton.value.length === 0) return;
-    busy.value = true;
     try {
       const found = await props.client.request("matchCommits", {
         repo: repo.value,
@@ -143,11 +140,9 @@ function useMatch(condition: () => MatchCondition | undefined) {
       if (mine === seq) result.value = { condition: current, hashes: new Set(found) };
     } catch (cause) {
       report(cause);
-    } finally {
-      if (mine === seq) busy.value = false;
     }
   });
-  return { result, busy };
+  return { result };
 }
 
 const byText = useMatch(() =>
@@ -162,8 +157,6 @@ const byAuthor = useMatch(() => {
 const byPath = useMatch(() =>
   filter.value.path === undefined ? undefined : { kind: MatchKind.Path, path: filter.value.path },
 );
-/** 正在问 git：过滤栏转圈。 */
-const searching = computed(() => byText.busy.value || byAuthor.busy.value || byPath.busy.value);
 
 /** 生效中的那几项的结果：条件清掉了就没有。搜索框那一项带着它的搜索词，hash 前缀按那个词算。 */
 const matches = computed((): Matches => {
@@ -751,7 +744,6 @@ onUnmounted(() => resizes.disconnect());
         <FilterBar
           :values="filterValues"
           :text="searchText"
-          :busy="searching"
           :graph-options="graphOptions"
           :view-options="viewOptions"
           @search="onSearch"

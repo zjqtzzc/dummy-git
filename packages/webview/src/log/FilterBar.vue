@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { assertNever } from "@dummy-git/shared";
-import { AppIcon, appIcon, codicon, IconSize } from "../logic/icons.js";
+import { AppIcon, appIcon, IconSize } from "../logic/icons.js";
 import { FilterKind } from "../logic/log/filter.js";
 import type { PopupItem } from "../logic/popupMenu.js";
 import Icon from "../ui/Icon.vue";
@@ -15,8 +15,6 @@ defineProps<{
   values: Readonly<Partial<Record<FilterKind, string>>>;
   /** 搜索框里的字。 */
   text: string;
-  /** 查询进行中：搜索框右侧转圈。 */
-  busy: boolean;
   /** Graph Options 的选单项。 */
   graphOptions: readonly PopupItem[];
   /** View Options 的选单项。 */
@@ -63,9 +61,6 @@ function nameOf(kind: FilterKind): string {
         :value="text"
         @input="onInput"
       />
-      <span v-if="busy" class="spin" title="Searching…">
-        <Icon :icon="codicon('loading')" :size="IconSize.Inline" />
-      </span>
     </label>
     <template v-for="kind in KINDS" :key="kind">
       <span v-if="values[kind] === undefined" class="filter">
@@ -130,15 +125,6 @@ function nameOf(kind: FilterKind): string {
   background: none;
   color: var(--vscode-input-foreground);
   font: inherit;
-}
-.spin {
-  display: flex;
-  animation: spin 1s linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 .filter {
   flex-shrink: 0;
