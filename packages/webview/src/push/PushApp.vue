@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { type Commit, DialogKind, type Ref } from "@dummy-git/shared";
+import { type Commit, DialogKind, PushTagMode, type Ref } from "@dummy-git/shared";
 import { VscodeSingleSelect } from "@vscode-elements/elements/dist/vscode-single-select/vscode-single-select.js";
 import { VscodeTextfield } from "@vscode-elements/elements/dist/vscode-textfield/vscode-textfield.js";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { type Client, report } from "../logic/client.js";
 import { isNewRemoteBranch } from "../logic/push/target.js";
+import { CheckState } from "../logic/tree/tree.js";
 import { formatTime } from "../logic/utils/time.js";
+import CheckBox from "../ui/CheckBox.vue";
 import DialogShell from "../ui/DialogShell.vue";
 
 /** 推送对话框。`subject` 是要推的本地分支。 */
@@ -22,6 +24,18 @@ const remoteBranch = ref("");
 /** 仓库一个远程都没有：远程下拉换成名字与地址两个输入框，推送前先加这个远程。 */
 const defining = computed(() => remote.value !== "" && remotes.value.length === 0);
 const remoteUrl = ref("");
+/**
+ * 这次打开要不要一起推 tag。默认不推，关掉重开也不保留：
+ * 推 tag 比推分支少，记住的话下一次会把本地 tag 一起推上去。
+ */
+const pushTags = ref(false);
+/** 勾上时推哪些。没勾时下拉置灰，选中项留着。 */
+const tagMode = ref(PushTagMode.All);
+/** 下拉两项的文案，书写顺序就是显示顺序。 */
+const TAG_LABEL: Record<PushTagMode, string> = {
+  [PushTagMode.All]: "All",
+  [PushTagMode.Follow]: "Current Branch",
+};
 /** 打开时的分支与 tag，只用来判断目标是不是新分支。 */
 const refs = ref<readonly Ref[]>([]);
 const isNew = computed(() => isNewRemoteBranch(refs.value, remote.value, remoteBranch.value));
@@ -86,6 +100,19 @@ function onRemoteBranch(event: Event): void {
 function onRemoteUrl(event: Event): void {
   remoteUrl.value = textOf(event) ?? remoteUrl.value;
 }
+/** 下拉的值来自控件，只认我们放进去的两项。 */
+function onTagMode(event: Event): void {
+  if (!(event.currentTarget instanceof VscodeSingleSelect)) return;
+  const value = event.currentTarget.value;
+  switch (value) {
+    case PushTagMode.All:
+    case PushTagMode.Follow:
+      tagMode.value = value;
+      return;
+    default:
+      return;
+  }
+}
 
 function close(): void {
   props.client.request("closeDialog", { dialog: DialogKind.Push }).catch(report);
@@ -104,6 +131,8 @@ function push(force: boolean): void {
     remote: remote.value,
     remoteBranch: remoteBranch.value,
     force,
+    // 没勾就不带：不推 tag，和「带了但模式不对」是两回事。
+    ...(pushTags.value ? { tags: tagMode.value } : {}),
   };
   props.client
     .request("push", defining.value ? { ...target, remoteUrl: remoteUrl.value } : target)
@@ -195,6 +224,27 @@ onUnmounted(() => {
         <div v-if="outgoing.commits.length === 0" class="commit dim">No commits to push</div>
       </div>
     </div>
+    <div v-if="remote !== ''" class="field">
+      <span class="label dim">Tags</span>
+      <div class="control">
+        <CheckBox
+          label="Push tags"
+          :state="pushTags ? CheckState.Checked : CheckState.Unchecked"
+          @toggle="pushTags = !pushTags"
+        />
+        <vscode-single-select
+          class="tag-mode"
+          :value="tagMode"
+          :disabled="!pushTags"
+          @change="onTagMode"
+        >
+          <vscode-option v-for="(label, mode) in TAG_LABEL" :key="mode" :value="mode">
+            {{ label }}
+          </vscode-option>
+        </vscode-single-select>
+        <span v-if="tagMode === PushTagMode.Follow" class="dim">Annotated tags only</span>
+      </div>
+    </div>
     <template #buttons>
       <vscode-button secondary @click="close">Cancel</vscode-button>
       <div ref="split" class="split">
@@ -236,6 +286,9 @@ onUnmounted(() => {
 }
 .remote {
   width: 120px;
+}
+.tag-mode {
+  width: 150px;
 }
 .grow {
   flex: 1;

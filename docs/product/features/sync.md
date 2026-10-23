@@ -52,7 +52,12 @@
 **推送**
 - 写明推哪个到哪个（`<分支>:<远程分支>`），和是不是当前分支、`push.default` 都无关。改了远程分支名，不会动原来的上游。
 - 没有上游、或上游已 `gone`：带 `-u`，推完上游就是刚推到的那个远程分支；不给勾选框。远程上已经有这个分支也设。和 IDEA 不同：IDEA 只在远程新建分支、且没有有效跟踪时带 `-u`（`GitPushTarget.java:84-90`），远程已有同名分支时不设上游；我们照设，推完就能 Update。
-- 只推分支，不推 tag。
+- **一起推 tag**（2026-10-23 项目负责人定：默认不推，不记住上次的选择）：提交列表下面一行，标签 `Tags`。勾选框 `Push tags`，后面一个下拉，没勾时置灰，选中项留着。
+  - `All`（默认）：推本地全部 tag（`--tags`）。
+  - `Current Branch`：只推这次推送够得着、远程还没有的附注 tag（`--follow-tags`）。旁边灰字 `Annotated tags only`。轻量 tag 留在本地，git 不提示（`tech/traps.md`）。
+  - Push 和 Force Push 都看这一行。没勾就不带 tag。
+- tag 被拒时分支已经推上去了（或本来就是最新），通知是这句结果再接 `, but tags were rejected: `，每个 tag 带上名字和 git 给的原因，例如 `Pushed main → origin/main, but tags were rejected: v1 [rejected] (already exists)`。Force Push 用 `--force-with-lease`，不覆盖远程已有的同名 tag（`tech/traps.md`）。
+- 同 IDEA 推送对话框底部的选项（`GitPushOptionsPanel.java:32-75`，下拉是 `GitPushTagMode` 的 `All` / `Current Branch`，`GitPushTagMode.kt:22-25`）。和 IDEA 不同：IDEA 推完把这次的选择记下来，下次打开照着勾（`GitPusher.kt:50` 写 `GitVcsSettings.pushTagMode`）；我们每次打开都不勾。
 - **点 Push 就关掉标签页**，推送在后台跑（同 IDEA），成功与失败都走现有的进度出口与错误出口。对话框没有「推送中」「失败后恢复」这些状态。
 - 被拒：`Push rejected: origin/feat has commits that feat doesn't have. Update it first.`，git 原文写进日志。
 

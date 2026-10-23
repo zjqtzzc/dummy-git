@@ -12,7 +12,7 @@
 | git 2.25 的 `check-ignore`（不带 `--verbose`）把被 `!` 否定规则重新纳入的文件也报成「忽略」（2.43 不报），于是监听把这些文件的改动当成忽略、面板不刷新（2026-10-16 在 2.25 上跑测试发现） | 带 `--verbose`，命中的规则以 `!` 开头的不算忽略（`commands/checkIgnore.ts`，两个版本实测；现有测试在 2.25 上会红）|
 | 给 git 设 `LC_ALL=en_US.UTF-8` 时，没装这个 locale 的系统（如只有 `C.UTF-8` 的 Ubuntu 容器）上，git 调起的 shell（钩子、`/bin/sh` 是 bash 时）在 stderr 第一行打 `setlocale: LC_ALL: cannot change locale`，我们取「git 说的第一句」时取到的是它 | Linux 改用 `C.UTF-8`（C locale 下 git 不翻译，照样英文），macOS、Windows 照旧（`cli.ts` 的 `LOCALE`；`pnpm test:old-git` 的容器里有判别力的测试）|
 | 撤销某个提交里一个文件的改动 | 按文件在该提交里的状态分三种：新增 → 删除文件；删除 → 从父提交恢复；修改 / 改名 → 改回父提交内容。一律 `checkout <hash>~1 -- <path>` 在新增文件上会报 `pathspec did not match` |
-| `push --follow-tags` 只推附注 tag（`git tag -a`），轻量 tag（`git tag`）留在本地，git 不提示、退出码 0 | 推送对话框的 `Current Branch` 旁写明「只推附注 tag」；发版用附注 tag（`process/workflow.md` §6）；`push.test.ts` 有测试 |
+| `push --follow-tags` 只推附注 tag（`git tag -a`），轻量 tag（`git tag`）留在本地，git 不提示、退出码 0 | 推送对话框选 `Current Branch` 时旁边写 `Annotated tags only`（`product/features/sync.md`）；发版用附注 tag（`process/workflow.md` §6）；`push.test.ts` 有测试 |
 | 一次推送里某个 tag 被拒（远程已有同名 tag 指向别处；`--force-with-lease` 碰到远程已有的 tag 也拒，`(stale info)`），分支照样推上去了，退出码却是 1；给人看的输出里 tag 那行也是 `! [rejected]`，按它判断会误报成分支被拒 | 用 `--porcelain`，只按分支那一行（完整引用名）判断成败，`refs/tags/` 的 `!` 行记成被拒的 tag（`push.ts`）；porcelain 下这些行在 stdout，push 打开 `logStdout` 才进日志 |
 
 同一个形状出现过多次：**把一个动作当成单一操作，而正确做法取决于文件的状态。**
