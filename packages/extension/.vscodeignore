@@ -6,6 +6,8 @@
 !dist/**
 !resources/**
 !package.json
+!README.md
+!CHANGELOG.md
 # 软链到仓库根的 LICENSE，vsce 读的是它指向的内容。
 !LICENSE
 

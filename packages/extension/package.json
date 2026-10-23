@@ -3,11 +3,35 @@
   "displayName": "Dummy Git",
   "description": "不用记命令的 Git：JetBrains 式图形化操作，点两下就完事。",
   "version": "0.1.0",
-  "publisher": "zjqtzzc",
+  "publisher": "zhouzice",
   "license": "MIT",
+  "preview": true,
+  "icon": "resources/icon.png",
+  "galleryBanner": {
+    "color": "#EFECFD",
+    "theme": "light"
+  },
+  "keywords": [
+    "git",
+    "scm",
+    "commit",
+    "log",
+    "graph",
+    "branch",
+    "stash",
+    "merge",
+    "rebase",
+    "jetbrains",
+    "intellij",
+    "提交",
+    "分支"
+  ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/zjqtzzc/make-git-great-again.git"
+    "url": "https://github.com/zjqtzzc/dummy-git.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zjqtzzc/dummy-git/issues"
   },
   "private": true,
   "engines": {

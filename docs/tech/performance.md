@@ -135,7 +135,7 @@ Windows 没有进程组信号，退回只杀直接子进程，取消在有慢速
 - 重新展开时扩展的 `resolveWebviewView` 根本没被再调（写在页面里的「开始建视图」时刻一直是第一次的），VS Code 拿存着的 HTML 直接重建 iframe。黑屏在 iframe 开始加载之前，是 VS Code 自己的，从点击到这一刻页面和扩展都量不到。
 - 所以「先画框架、数据后到」最多省 100 ms 左右，省不掉黑屏；改成收起时保留页面（`retainContextWhenHidden`），再展开不重建，实测没有黑屏、没有新的页面加载（日志里只有窗口刚打开时的两次）。
 
-再测：在 `main.ts` 开头、Vue 挂载后、`onMounted` 发第一个请求前、`load` 完成后两帧各记一次 `Date.now()`，加上 `performance.timeOrigin`，用 `reportError` 发回扩展日志（`~/.vscode-server/data/logs/<会话>/exthost*/zjqtzzc.dummy-git/Dummy Git.log`）；扩展在 HTML 里写下开始建视图的时刻作对照。测完撤掉。
+再测：在 `main.ts` 开头、Vue 挂载后、`onMounted` 发第一个请求前、`load` 完成后两帧各记一次 `Date.now()`，加上 `performance.timeOrigin`，用 `reportError` 发回扩展日志（`~/.vscode-server/data/logs/<会话>/exthost*/zhouzice.dummy-git/Dummy Git.log`）；扩展在 HTML 里写下开始建视图的时刻作对照。测完撤掉。
 
 ## 6. 尚未测量的
 

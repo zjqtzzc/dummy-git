@@ -97,7 +97,7 @@
 
 ## 发布
 
-- 上架 VS Code 商店（2026-10-16 暂缓：商店返回 429，账号可能被封）。已定：商店页面与描述只用中文。打包与 GitHub Release 已有（`process/workflow.md` §6）。还缺：商店 README、128×128 图标、CHANGELOG、`keywords` 与 `galleryBanner`，以及把上架接进发布步骤。
+- 上架 VS Code 商店：商店页材料已齐，首次上架手动。接进发布步骤仍暂缓。商店页面与描述只用中文。
 
 ## 暂缓
 

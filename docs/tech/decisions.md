@@ -10,9 +10,10 @@
 
 ## 扩展身份
 
-名字 **Dummy Git**（界面文案统一用英文），ID `zjqtzzc.dummy-git`，命令与视图前缀 `dummyGit.`，workspace scope `@dummy-git/*`。
+名字 **Dummy Git**（界面文案统一用英文），ID `zhouzice.dummy-git`，命令与视图前缀 `dummyGit.`，workspace scope `@dummy-git/*`。
 定位是「不用记命令、懒人和外行都能用」，对标「傻瓜相机」。否决过：Turtle Git（无信息量）、Lazy Git（撞 lazygit）。
-本地目录与 remote 仍叫 `turtle_git`，不改（改目录会打断在用的工作区路径）。不需兼容任何旧扩展的持久化状态。
+本地目录仍叫 `turtle_git`，不改（改目录会打断在用的工作区路径）。GitHub 仓库是 `zjqtzzc/dummy-git`。不需兼容任何旧扩展的持久化状态。
+商店页标 `preview`：0.1.0，密码输入还没做，先让人知道这是预览。
 
 ## 类型策略：已否决的方案
 
