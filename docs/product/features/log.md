@@ -54,12 +54,12 @@ committed by Bob <bob@x.com>  2026/9/21 09:00     ← 灰色
 - **作者**：单选。第一项是 **Me**（git 配置里的 `user.name` 与 `user.email`），下面是这一万条里出现过的作者，按提交数从多到少排。按「名字 <邮箱>」整串、当作普通文字匹配（`--author` + `-F`），不用正则。
   - **全部走 mailmap**（2026-10-21 项目负责人定）：列表显示的作者、这里列出来的作者、`--author` 比的、Me（用 `git check-mailmap` 换算）都是 mailmap 之后的，同一个人用过的几个邮箱合成一项。`--author` 本来就按 mailmap 比（git 2.25、2.43 实测），命令里写死 `-c log.mailmap=true`，用户配置关掉了也不变。否决照 IDEA 全用原样：一个人会被拆成好几个。
 - **日期**：`Last 24 Hours`、`Last 7 Days`、`Last Month` 三个预设，不做自定义。在页面里按骨架的时间筛，不问 git。
-- **路径**：列出所有被跟踪的文件，以及由它们推出的目录，可搜索，单选；`git log -- <路径>`，不跟改名（不加 `--follow`）。
+- **路径**：列出所有被跟踪的文件，以及由它们推出的目录，可搜索，单选；命中的规则同 `git log -- <路径>`（合并提交和每个父提交比都有改动才算），不跟改名（不加 `--follow`）。不用 `log --no-walk`，用 `diff-tree --stdin` 逐条和父提交比：git 2.55 起 `--no-walk` 不看路径（`tech/traps.md`），命令见 `git/parsers/log.ts` 的 `pathMatch`。IDEA 先查自己建的路径索引，没有索引时走历史：`git log <分支…> --full-history --simplify-merges -- <路径>`（`plugins/git4idea/backend/src/log/GitLogProvider.kt` 的 `getGitLogParameters`）。否决照 IDEA 走历史：匹配少时要走完全部历史，正是只在一万条里筛要避开的（`tech/architecture.md` 第 8 题）。
 - **搜索框：说明文字或 hash**（同 IDEA 的「Text or hash」），两路结果取并集：
   - 说明文字：普通文字，不分大小写（`--grep` + `-F -i`）；
   - hash：输入是 4 个以上的十六进制字符时，也匹配以它开头的 hash（在页面里对骨架做）。4 是 git 缩写的最短长度，免得 `add`、`fix` 这类短词误中。
   - 停止输入一会儿才查（防抖，`LogApp.vue` 的 `SEARCH_DELAY_MS`）；查询进行中旧列表留着，不转圈：限在一万条里以后查得很快，转圈只会一闪（实测见 `tech/performance.md` §3）；只收最新那次查询的结果。
-- **组合**：几种过滤取交集（同 IDEA）。过滤只在骨架那一万条里做：`git log --no-walk --stdin` 加上条件，一次一个条件，页面取交集。一万条以上的仓库上几种过滤都在 100 ms 以内（`tech/performance.md`）。
+- **组合**：几种过滤取交集（同 IDEA）。过滤只在骨架那一万条里做：把这些 hash 从 stdin 喂给 git（说明文字、作者用 `git log --no-walk --stdin` 加上条件，路径见上面），一次一个条件，页面取交集。一万条以上的仓库上几种过滤都在 100 ms 以内（`tech/performance.md`）。
 - 过滤后，原来选中的提交还在列表里的留着，一条都不剩就清空选中；分支过滤照骨架刷新的规则。没有结果时正中一行灰字 `No commits match the filters`。仓库变化时自动重查。过滤条件存进 `viewState`。
 - 筛选时提交图怎么画，见 `product/features/graph.md`。
 

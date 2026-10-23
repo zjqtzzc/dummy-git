@@ -130,9 +130,9 @@ export const matchCommits: GitCommand<
   lock: LockPolicy.None,
 
   execute: async (cli, repository, hashes, condition) => {
-    const { args, input } = matchArgs(hashes, condition);
+    const { args, input, parse } = matchArgs(hashes, condition);
     const result = await runRaw(cli, args, { cwd: repository, input });
-    return parseHashes(result.stdout);
+    return parse(result.stdout);
   },
 };
 

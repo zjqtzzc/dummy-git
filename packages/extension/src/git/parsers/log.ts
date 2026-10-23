@@ -264,13 +264,36 @@ export function outgoingArgs(
   ];
 }
 
+/** 按条件筛提交的命令：命令行、输入与怎么读它的输出绑在一起，三种条件的输出格式不一样。 */
+export interface MatchCommand extends StdinCommand {
+  readonly parse: (stdout: Buffer) => string[];
+}
+
 /**
  * 在给定的提交里按条件筛：只输出命中的 hash。
  *
- * `--no-walk --stdin` 同 `detailsArgs`：只看喂进去的这些，不顺着父提交走，仓库再大也最多检查这么多条。
+ * 只看喂进去的这些（`--stdin`），不顺着父提交走，仓库再大也最多检查这么多条。
+ */
+export function matchArgs(hashes: readonly string[], condition: MatchCondition): MatchCommand {
+  switch (condition.kind) {
+    case MatchKind.Text:
+      return logMatch(hashes, ["-i", `--grep=${condition.text}`]);
+    case MatchKind.Author:
+      // git 拿 `--author` 去比作者的「名字 <邮箱>」（走过 mailmap），邮箱为空时是 `名字 <>`。
+      // `-F` 下是「包含」：`Bob <b@x>` 也会命中 `JimBob <b@x>`，名字与邮箱同时撞上的极少，接受。
+      return logMatch(hashes, [`--author=${condition.name} <${condition.email}>`]);
+    case MatchKind.Path:
+      return pathMatch(hashes, condition.path);
+    default:
+      return assertNever(condition, "matchArgs");
+  }
+}
+
+/**
+ * 说明文字与作者：`log --no-walk --stdin`（同 `detailsArgs`）加上条件，一行一个命中的 hash。
  * 一律 `-F`（按普通文字）：说明里的 `a.b`、名字里的 `.` 都不被当成正则。
  */
-export function matchArgs(hashes: readonly string[], condition: MatchCondition): StdinCommand {
+function logMatch(hashes: readonly string[], condition: readonly string[]): MatchCommand {
   return {
     args: [
       // `--author` 比的是走过 mailmap 的「名字 <邮箱>」（git 2.25、2.43 实测），和列表显示的作者、
@@ -282,26 +305,67 @@ export function matchArgs(hashes: readonly string[], condition: MatchCondition):
       "--no-walk",
       "--stdin",
       "-F",
-      ...conditionArgs(condition),
+      ...condition,
     ],
     input: stdinOf(hashes),
+    parse: parseHashes,
   };
 }
 
-function conditionArgs(condition: MatchCondition): string[] {
-  switch (condition.kind) {
-    case MatchKind.Text:
-      return ["-i", `--grep=${condition.text}`];
-    case MatchKind.Author:
-      // git 拿 `--author` 去比作者的「名字 <邮箱>」（走过 mailmap），邮箱为空时是 `名字 <>`。
-      // `-F` 下是「包含」：`Bob <b@x>` 也会命中 `JimBob <b@x>`，名字与邮箱同时撞上的极少，接受。
-      return [`--author=${condition.name} <${condition.email}>`];
-    case MatchKind.Path:
-      // `:(literal)`：路径里的 `*`、`?` 不当通配符。`--` 之后只能是路径，所以这一项永远排在最后。
-      return ["--", `:(literal)${condition.path}`];
-    default:
-      return assertNever(condition, "conditionArgs");
+/**
+ * 路径：`diff-tree --stdin -m -r --root` 把每条提交和它的每个父提交比，只比这个路径下的。
+ *
+ * 不用 `log --no-walk -- <路径>`：git 2.55 起 `--no-walk` 不再看路径，给的提交全部输出。
+ *
+ * 命中的规则同 `git log -- <路径>`：普通提交在这个路径下有改动；合并提交和**每个**父提交比都有改动
+ * （和某一边一样，就是原样带过来的，不算）；根提交（`--root`，和空树比）这个路径下有东西。
+ * 所以要 `-m`（每个父提交各比一次），不用 `-c`：`-c` 按单个文件看，目录下 A 文件来自一边、B 文件来自另一边时
+ * 一个文件都不列，按目录看却和两边都不一样。`-r` 也不能省：不展开的话只比到最上面一层目录，
+ * 同一目录下别的文件改了也会算成命中。
+ *
+ * `:(literal)`：路径里的 `*`、`?` 不当通配符。`--` 之后只能是路径。
+ */
+function pathMatch(hashes: readonly string[], path: string): MatchCommand {
+  return {
+    args: [
+      "diff-tree",
+      "--stdin",
+      "-z",
+      "-m",
+      "-r",
+      "--root",
+      "--name-only",
+      `--format=${PATH_MATCH_HEADER}%H %P`,
+      "--",
+      `:(literal)${path}`,
+    ],
+    input: stdinOf(hashes),
+    parse: parsePathMatches,
+  };
+}
+
+/** `pathMatch` 输出里每段的开头，后面是 `<hash> <父提交…>`。文件名都以要筛的路径开头，不会以它开头。 */
+const PATH_MATCH_HEADER = "\x01";
+
+/**
+ * `pathMatch` 的输出：和某个父提交比出差异才有一段，段头 `\x01<hash> <父提交…>` 后面是有差异的文件名，都以 NUL 结尾。
+ * 没有差异的不出段头，所以一条提交的段数等于它的父提交数（根提交算一个）就是命中。
+ */
+function parsePathMatches(stdout: Buffer): string[] {
+  const parentCount = new Map<string, number>();
+  const changedCount = new Map<string, number>();
+  for (const token of stdout.toString("utf8").split("\0")) {
+    if (!token.startsWith(PATH_MATCH_HEADER)) continue;
+    const [hash = "", ...parents] = token
+      .slice(PATH_MATCH_HEADER.length)
+      .split(" ")
+      .filter((part) => part !== "");
+    parentCount.set(hash, Math.max(parents.length, 1));
+    changedCount.set(hash, (changedCount.get(hash) ?? 0) + 1);
   }
+  return [...changedCount].flatMap(([hash, count]) =>
+    count === parentCount.get(hash) ? [hash] : [],
+  );
 }
 
 /**

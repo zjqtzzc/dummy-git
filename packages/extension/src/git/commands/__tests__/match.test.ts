@@ -193,6 +193,44 @@ describe("按路径", () => {
     expect(await subjects("b*.txt")).toEqual(["star"]);
   });
 
+  it("合并提交同 git log：和每个父提交都不一样才中，原样带过来的不中；根提交按里面有没有算", async () => {
+    const repo = makeTempRepo("paths-merge");
+    const commit = (file: string, content: string, message: string) => {
+      mkdirSync(join(repo, "src"), { recursive: true });
+      writeFileSync(join(repo, file), content);
+      git(repo, ["add", "-A"]);
+      git(repo, ["commit", "-q", "-m", message]);
+    };
+    // 一边改 src/a，一边改 src/b：按文件看各和一边一样，按 src 看和两边都不一样。
+    git(repo, ["switch", "-q", "-c", "side"]);
+    commit("src/a", "side\n", "side a");
+    git(repo, ["switch", "-q", "main"]);
+    commit("src/b", "main\n", "main b");
+    git(repo, ["merge", "-q", "--no-edit", "-m", "both sides", "side"]);
+    // 只有一边动过 src：合并结果的 src 和 side 那边一样，不中。
+    git(repo, ["switch", "-q", "side"]);
+    git(repo, ["merge", "-q", "--ff-only", "main"]);
+    commit("src/c", "side\n", "side c");
+    git(repo, ["switch", "-q", "main"]);
+    commit("other", "x\n", "main other");
+    git(repo, ["merge", "-q", "--no-edit", "-m", "one side", "side"]);
+    const hashes = git(repo, ["log", "--format=%H"]).trim().split("\n");
+    const subjects = async (path: string) => {
+      const found = new Set(
+        await matchCommits.execute(cli, repo, hashes, { kind: MatchKind.Path, path }),
+      );
+      return git(repo, ["log", "--format=%H %s"])
+        .trim()
+        .split("\n")
+        .filter((line) => found.has(line.slice(0, 40)))
+        .map((line) => line.slice(41))
+        .sort();
+    };
+    expect(await subjects("src")).toEqual(["both sides", "main b", "side a", "side c"]);
+    expect(await subjects("src/a")).toEqual(["side a"]);
+    expect(await subjects("f1")).toEqual(["init"]);
+  });
+
   it("listPaths：被跟踪的文件与推出的目录，按路径排序", async () => {
     const { repo } = scene();
     expect(await listPaths.execute(cli, repo)).toEqual([
