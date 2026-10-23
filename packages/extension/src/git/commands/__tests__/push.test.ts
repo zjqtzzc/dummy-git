@@ -1,5 +1,8 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanupTempRepos, cli, git, makeTrackingRepos } from "../../../__tests__/support.js";
+import { GitFailureError } from "../../failure.js";
 import { getOutgoingCommits } from "../log.js";
 import { PushKind, push } from "../push.js";
 import { listRemotes } from "../remote.js";
@@ -47,6 +50,17 @@ describe("push", () => {
     const result = await push.execute(cli, repo, "origin", "main", "main", false, false);
     expect(result.kind).toBe(PushKind.Rejected);
     expect(tip(remote, "main")).toBe(before);
+  });
+
+  it("远程钩子拒绝：不是「先 Update」能解决的，按 git 失败抛出", async () => {
+    const { remote, repo } = repos();
+    writeFileSync(join(remote, ".git", "hooks", "pre-receive"), "#!/bin/sh\nexit 1\n", {
+      mode: 0o755,
+    });
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
+    await expect(
+      push.execute(cli, repo, "origin", "main", "main", false, false),
+    ).rejects.toBeInstanceOf(GitFailureError);
   });
 });
 

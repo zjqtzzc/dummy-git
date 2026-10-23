@@ -34,7 +34,7 @@
 - **操作里发生的事**都带上它的编号：
   - 问用户的问答：确认框、选择框、输入框、通知上的按钮，记下问题和回答（包括「取消」「关掉」）；
   - 状态栏消息、进度出口的完成消息、复制的内容；
-  - git 命令：`> git <参数> [用时] <结局>`，有 stderr 时在下面缩进附上。stdout 不记，它可能是几 MB 的 log 或文件内容。
+  - git 命令：`> git <参数> [用时] <结局>`，有 stderr 时在下面缩进附上。stdout 默认不记，它可能是几 MB 的 log 或文件内容；结果写在 stdout 里、又只有几行的命令单独打开（`ExecOptions.logStdout`，现在只有 push），附在 stderr 前面。同 IDEA：默认不记 stdout，push、fetch 等在调用处打开（`GitHandler.java:151`、`GitImpl.java:551`）。
 - **刷新**：仓库一变，记一行哪些域过期了，以及当时的操作情况：有哪些操作正在跑、上一个操作多久前结束。文件监听有防抖，分不清一次刷新是哪个操作引起的，所以只写这些事实，不猜。之后各页面重新拉数据的请求，按时间就挨在这一行后面。
 - **webview 的异常**：页面里 `report()` 到的、没被接住的（`window` 的 `error`、`unhandledrejection`）、Vue 组件里抛的，都经协议命令 `reportError` 送到扩展，记成 error，附上调用栈。请求失败不送：扩展那边已经记过了。送的过程本身失败，就只留开发者工具里那一份，不再报一遍，免得来回打转。
 - **错误出口**：我们的 bug 记 error 并附调用栈；已知的情况记 warn；git 拒绝的不另写，git 命令那一行已经有 stderr，操作结尾也记了。错误出口在操作里调用，所以也带编号。
@@ -56,5 +56,5 @@
 | 操作：编号、`AsyncLocalStorage`、开头与结尾、当时的操作情况 | `ipc/operation.ts` |
 | 精简规则与全部上限、慢的阈值 | `ipc/brief.ts` |
 | 问答与完成消息 | `ipc/loggedUi.ts` |
-| git 层交出的一条命令的记录（参数、用时、结局、stderr） | `git/cli.ts`、`git/types.ts` |
+| git 层交出的一条命令的记录（参数、用时、结局、stderr、要求记的 stdout） | `git/cli.ts`、`git/types.ts` |
 | webview 的异常 | `webview/src/logic/client.ts` 的 `report`、`webview/src/main.ts` |

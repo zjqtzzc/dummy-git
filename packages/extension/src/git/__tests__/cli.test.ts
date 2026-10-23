@@ -136,9 +136,19 @@ describe("日志", () => {
       args: ["log", "-1", "--format=%H"],
       outcome: "exit 0",
       stderr: "",
+      stdout: "",
     });
     // 拒绝的原因在这里。
     expect(records[1]?.stderr).toContain("fatal:");
+  });
+
+  it("stdout 默认不记，logStdout 时照记", async () => {
+    const records: GitCommandRecord[] = [];
+    const logged = new GitCli("git", { command: (r) => records.push(r) });
+    const head = (await cli.exec(["rev-parse", "HEAD"], { cwd: fixtures.base })).stdout;
+    await logged.exec(["rev-parse", "HEAD"], { cwd: fixtures.base });
+    await logged.exec(["rev-parse", "HEAD"], { cwd: fixtures.base, logStdout: true });
+    expect(records.map((r) => r.stdout)).toEqual(["", head]);
   });
 });
 

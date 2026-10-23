@@ -82,7 +82,7 @@ describe("慢：超过 1 秒标 (slow)、记 warn", () => {
   });
 
   it("git 命令", () => {
-    const record = { args: ["fetch", "--all"], outcome: "exit 0", stderr: "" };
+    const record = { args: ["fetch", "--all"], outcome: "exit 0", stderr: "", stdout: "" };
     expect(briefGitCommand({ ...record, ms: 1500 })).toEqual({
       line: "> git fetch --all [1500ms] exit 0 (slow)",
       slow: true,
@@ -99,6 +99,7 @@ describe("briefGitCommand", () => {
       ms: 3,
       outcome: "exit 0",
       stderr: "",
+      stdout: "",
     });
     expect(line).toBe(
       '> git log --format=... -m "a b" f0 f1 f2 f3 f4 f5 f6 f7 …（共 24 个参数） [3ms] exit 0',
@@ -112,6 +113,7 @@ describe("briefGitCommand", () => {
       ms: 3,
       outcome: "exit 1",
       stderr: `${stderr}\n`,
+      stdout: "",
     });
     expect(line.split("\n")).toEqual([
       "> git push [3ms] exit 1",
@@ -121,6 +123,22 @@ describe("briefGitCommand", () => {
       "    hint: 3",
       "    hint: 4",
       "    …（共 7 行）",
+    ]);
+  });
+
+  it("要求记的 stdout 写在 stderr 前面", () => {
+    const { line } = briefGitCommand({
+      args: ["push"],
+      ms: 3,
+      outcome: "exit 1",
+      stderr: "error: failed to push some refs\n",
+      stdout: "!\trefs/tags/v1:refs/tags/v1\t[rejected] (already exists)\nDone\n",
+    });
+    expect(line.split("\n")).toEqual([
+      "> git push [3ms] exit 1",
+      "    !\trefs/tags/v1:refs/tags/v1\t[rejected] (already exists)",
+      "    Done",
+      "    error: failed to push some refs",
     ]);
   });
 });

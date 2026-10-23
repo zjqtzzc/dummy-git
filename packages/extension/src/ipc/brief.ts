@@ -64,7 +64,8 @@ export function briefString(text: string): string {
 }
 
 /**
- * 一条 git 命令写成日志：`> git <参数> [用时] <结局>`，慢的标 `(slow)`；有 stderr 的另起几行缩进写上。
+ * 一条 git 命令写成日志：`> git <参数> [用时] <结局>`，慢的标 `(slow)`；
+ * 有 stdout（要求记的才有）、stderr 的另起几行缩进写上，stdout 在前：要求记它的命令，结果就在 stdout 里。
  * `--format=` 的值是一长串分隔符，刷屏且无信息量，折叠成 `--format=...`。
  */
 export function briefGitCommand(record: GitCommandRecord): {
@@ -79,7 +80,7 @@ export function briefGitCommand(record: GitCommandRecord): {
   const more = record.args.length > GIT_ARGS ? ` …（共 ${record.args.length} 个参数）` : "";
   const slow = record.ms > SLOW_MS;
   const head = `> git ${shown.join(" ")}${more} [${record.ms}ms] ${record.outcome}${slow ? " (slow)" : ""}`;
-  return { line: withAttached(head, record.stderr), slow };
+  return { line: withAttached(head, `${record.stdout.trimEnd()}\n${record.stderr}`), slow };
 }
 
 /** 一行，下面缩进附上多行内容（stderr、调用栈），最多 `ATTACHED_LINES` 行。内容为空就只有那一行。 */

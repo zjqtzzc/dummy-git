@@ -84,7 +84,7 @@
 
 ## 日志（`product/features/logging.md`）
 
-- 记 git 的 stdout（同 VS Code 的 `git.commandsToLog`）；一键导出日志（同 IDEA 的 Collect Logs）；记纯界面上的点击；请求带上是哪个按钮发起的。
+- 让用户在设置里点名要记 stdout 的命令（同 VS Code 的 `git.commandsToLog`；现在只有代码里打开的命令记，见 `product/features/logging.md`）；一键导出日志（同 IDEA 的 Collect Logs）；记纯界面上的点击；请求带上是哪个按钮发起的。
 
 ## 已知问题
 

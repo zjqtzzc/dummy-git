@@ -28,6 +28,11 @@ export interface ExecOptions {
   readonly input?: string;
   /** 取消信号。abort 时杀掉子进程，`execRaw`/`exec` 抛 `GitCancelledError`。 */
   readonly signal?: AbortSignal;
+  /**
+   * stdout 也写进日志。默认不写，理由见 `makeLogOnce`；
+   * 结果写在 stdout 里、又只有几行的命令才开（`push --porcelain` 每个引用一行）。
+   */
+  readonly logStdout?: boolean;
 }
 
 /**
@@ -90,16 +95,18 @@ export class GitCli {
    * 必须只记一次：进程起不来时 Node 先发 `error`、**随后还会发 `close`**
    * （带一个假退出码，errno 取负），两个处理器会把同一条命令记两遍。
    *
-   * 记命令行、耗时、结局、stderr——**不记 stdout**：它可能是几 MB 的 log 或文件内容。
+   * 记命令行、耗时、结局、stderr——**默认不记 stdout**：它可能是几 MB 的 log 或文件内容。
    * stderr 照记：钩子的输出、警告、拒绝的原因都在那里。
    */
-  private makeLogOnce(args: readonly string[]): (outcome: string, stderr?: string) => void {
+  private makeLogOnce(
+    args: readonly string[],
+  ): (outcome: string, stderr?: string, stdout?: string) => void {
     const startedAt = Date.now();
     let logged = false;
-    return (outcome, stderr = ""): void => {
+    return (outcome, stderr = "", stdout = ""): void => {
       if (logged) return;
       logged = true;
-      this.logger.command({ args, ms: Date.now() - startedAt, outcome, stderr });
+      this.logger.command({ args, ms: Date.now() - startedAt, outcome, stderr, stdout });
     };
   }
 
@@ -204,8 +211,9 @@ export class GitCli {
           return;
         }
         const stderr = Buffer.concat(stderrChunks).toString("utf8");
-        logOnce(`exit ${code}`, stderr);
-        resolve({ exitCode: code, stdout: Buffer.concat(stdoutChunks), stderr });
+        const stdout = Buffer.concat(stdoutChunks);
+        logOnce(`exit ${code}`, stderr, options.logStdout === true ? stdout.toString("utf8") : "");
+        resolve({ exitCode: code, stdout, stderr });
       });
     });
   }

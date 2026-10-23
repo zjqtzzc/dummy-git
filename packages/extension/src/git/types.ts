@@ -6,6 +6,8 @@ export interface GitCommandRecord {
   readonly outcome: string;
   /** git 的 stderr 原文。没有输出、进程没起来时是空串。 */
   readonly stderr: string;
+  /** git 的 stdout 原文。只有这条命令要求记（`ExecOptions.logStdout`）时才有，否则是空串。 */
+  readonly stdout: string;
 }
 
 /**

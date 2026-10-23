@@ -75,8 +75,8 @@
 
 只发到 GitHub Release，不上架商店。为什么这样做见 `tech/decisions.md`「不做检查型 CI」。
 
-1. 改 `packages/extension/package.json` 的 `version`，单独提交。
-2. 打 tag 并推上去：`git tag v<版本>`、`git push origin v<版本>`。tag 必须是 `v` 加上这个版本号，不一致 workflow 直接失败。
+1. 改 `packages/extension/package.json` 的 `version` 并提交，可以和别的改动放在一起。
+2. 打附注 tag 并推上去：`git tag -a v<版本> -m "<版本>"`、`git push origin v<版本>`。tag 必须是 `v` 加上这个版本号，不一致 workflow 直接失败。
 3. 在 GitHub 的 Actions 页看结果；成功后 Release 页有这个版本，挂着 .vsix，说明是上个 tag 以来的提交。
 4. 失败了什么都不会发：修好提交后删掉 tag（`git tag -d v<版本>`、`git push origin :v<版本>`），再从第 2 步来。
 
