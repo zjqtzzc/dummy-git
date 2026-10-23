@@ -7,6 +7,7 @@ import {
   IndexStage,
   MessageKind,
   OperationKind,
+  PushTagMode,
   RefKind,
 } from "@dummy-git/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -481,6 +482,28 @@ describe("handlers.getPushTarget / push", () => {
     ).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(UserFacingError);
     expect(git(remote, ["rev-parse", "main"])).toBe(before);
+  });
+
+  it("带 tag 推送、远程已有同名 tag：分支推上去了，报错说清分支的结果和被拒的 tag", async () => {
+    const { remote, repo } = repos();
+    git(remote, ["tag", "v1"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
+    git(repo, ["tag", "v1"]);
+    const error = await withHandlers(repo, (handlers) =>
+      handlers.push({
+        repo,
+        branch: "main",
+        remote: "origin",
+        remoteBranch: "main",
+        force: false,
+        tags: PushTagMode.All,
+      }),
+    ).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(UserFacingError);
+    expect(error instanceof UserFacingError && error.message).toBe(
+      "Pushed main → origin/main, but tags were rejected: v1 [rejected] (already exists)",
+    );
+    expect(git(remote, ["rev-parse", "main"])).toBe(git(repo, ["rev-parse", "main"]));
   });
 });
 

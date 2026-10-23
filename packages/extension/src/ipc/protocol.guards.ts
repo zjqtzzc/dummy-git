@@ -27,6 +27,7 @@ import {
   type MatchCondition,
   MatchKind,
   MessageKind,
+  PushTagMode,
 } from "@dummy-git/shared";
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
@@ -79,6 +80,17 @@ function asDiffOpenMode(value: unknown): DiffOpenMode | undefined {
       return DiffOpenMode.Open;
     case DiffOpenMode.Follow:
       return DiffOpenMode.Follow;
+    default:
+      return undefined;
+  }
+}
+
+function asPushTagMode(value: unknown): PushTagMode | undefined {
+  switch (value) {
+    case PushTagMode.All:
+      return PushTagMode.All;
+    case PushTagMode.Follow:
+      return PushTagMode.Follow;
     default:
       return undefined;
   }
@@ -434,19 +446,27 @@ const PARAM_GUARDS = {
     const remoteBranch = raw["remoteBranch"];
     const force = raw["force"];
     const remoteUrl = raw["remoteUrl"];
+    const tags = raw["tags"] === undefined ? undefined : asPushTagMode(raw["tags"]);
     if (
       typeof repo !== "string" ||
       typeof branch !== "string" ||
       typeof remote !== "string" ||
       typeof remoteBranch !== "string" ||
-      typeof force !== "boolean"
+      typeof force !== "boolean" ||
+      (remoteUrl !== undefined && typeof remoteUrl !== "string") ||
+      (raw["tags"] !== undefined && tags === undefined)
     ) {
       return undefined;
     }
-    if (remoteUrl === undefined) return { repo, branch, remote, remoteBranch, force };
-    return typeof remoteUrl === "string"
-      ? { repo, branch, remote, remoteBranch, force, remoteUrl }
-      : undefined;
+    return {
+      repo,
+      branch,
+      remote,
+      remoteBranch,
+      force,
+      ...(remoteUrl === undefined ? {} : { remoteUrl }),
+      ...(tags === undefined ? {} : { tags }),
+    };
   },
   update: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];

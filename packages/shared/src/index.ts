@@ -34,5 +34,6 @@ export {
   ResponseKind,
   type ResponseMessage,
 } from "./protocol.js";
+export { PushTagMode } from "./push.js";
 export { type Ref, RefKind, type Upstream, UpstreamState } from "./ref.js";
 export type { Stash } from "./stash.js";

@@ -24,7 +24,7 @@
  * | `fetchAll` | `fetch --all`，手动时再加 `--prune` | — | — |
  * | `listRemotes` | `remote` | — | — |
  * | `addRemote` | `remote add -- <名字> <地址>` | — | — |
- * | `push` | `push [-u] [--force-with-lease] <远程> refs/heads/<B>:refs/heads/<M>` | — | — |
+ * | `push` | `push --porcelain [-u] [--force-with-lease] [--tags \| --follow-tags] <远程> refs/heads/<B>:refs/heads/<M>` | — | — |
  * | `fetchInto` | `fetch <远程> refs/heads/<M>:refs/heads/<B>`（更新非当前分支） | — | — |
  * | `fetchBranch` | `fetch <远程> refs/heads/<M>`（更新当前分支第一步） | — | — |
  * | `fastForward` | `merge --ff-only <远程分支记录>`（更新当前分支第二步） | — | — |

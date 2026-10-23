@@ -1,4 +1,4 @@
-import { type CommandName, DiffOpenMode, DiffSideKind } from "@dummy-git/shared";
+import { type CommandName, DiffOpenMode, DiffSideKind, PushTagMode } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
 import { parseParams } from "../protocol.guards.js";
 
@@ -131,6 +131,21 @@ describe("update 的参数", () => {
     });
     expect(parseParams("update", { repo: "/r", branches: [] })).toBeUndefined();
     expect(parseParams("update", { repo: "/r", branch: "main" })).toBeUndefined();
+  });
+});
+
+describe("push 的参数", () => {
+  const base = { repo: "/r", branch: "feat", remote: "origin", remoteBranch: "feat", force: false };
+
+  it("remoteUrl、tags 都可以不带；带了就要是对的类型", () => {
+    expect(parseParams("push", base)).toEqual(base);
+    expect(parseParams("push", { ...base, tags: PushTagMode.Follow })).toEqual({
+      ...base,
+      tags: PushTagMode.Follow,
+    });
+    expect(parseParams("push", { ...base, remoteUrl: "u" })).toEqual({ ...base, remoteUrl: "u" });
+    expect(parseParams("push", { ...base, tags: "everything" })).toBeUndefined();
+    expect(parseParams("push", { ...base, remoteUrl: 1 })).toBeUndefined();
   });
 });
 

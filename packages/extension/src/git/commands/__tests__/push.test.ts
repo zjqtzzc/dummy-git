@@ -1,5 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { PushTagMode } from "@dummy-git/shared";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanupTempRepos, cli, git, makeTrackingRepos } from "../../../__tests__/support.js";
 import { GitFailureError } from "../../failure.js";
@@ -22,22 +23,25 @@ describe("push", () => {
   it("有新提交：推上去", async () => {
     const { remote, repo } = repos();
     git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
-    const result = await push.execute(cli, repo, "origin", "main", "main", false, false);
-    expect(result).toEqual({ kind: PushKind.Pushed });
+    const result = await push.execute(cli, repo, "origin", "main", "main", false, false, undefined);
+    expect(result).toEqual({ kind: PushKind.Pushed, rejectedTags: [] });
     expect(tip(remote, "main")).toBe(tip(repo, "main"));
   });
 
   it("远程已经一样：已是最新", async () => {
     const { repo } = repos();
-    expect(await push.execute(cli, repo, "origin", "main", "main", false, false)).toEqual({
+    expect(
+      await push.execute(cli, repo, "origin", "main", "main", false, false, undefined),
+    ).toEqual({
       kind: PushKind.UpToDate,
+      rejectedTags: [],
     });
   });
 
   it("新分支带 -u：推到同名并设为上游", async () => {
     const { remote, repo } = repos();
     git(repo, ["branch", "-q", "feat"]);
-    await push.execute(cli, repo, "origin", "feat", "feat", true, false);
+    await push.execute(cli, repo, "origin", "feat", "feat", true, false, undefined);
     expect(tip(remote, "feat")).toBe(tip(repo, "feat"));
     expect(git(repo, ["rev-parse", "--abbrev-ref", "feat@{upstream}"]).trim()).toBe("origin/feat");
   });
@@ -47,7 +51,7 @@ describe("push", () => {
     git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
     git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
     const before = tip(remote, "main");
-    const result = await push.execute(cli, repo, "origin", "main", "main", false, false);
+    const result = await push.execute(cli, repo, "origin", "main", "main", false, false, undefined);
     expect(result.kind).toBe(PushKind.Rejected);
     expect(tip(remote, "main")).toBe(before);
   });
@@ -59,7 +63,7 @@ describe("push", () => {
     });
     git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
     await expect(
-      push.execute(cli, repo, "origin", "main", "main", false, false),
+      push.execute(cli, repo, "origin", "main", "main", false, false, undefined),
     ).rejects.toBeInstanceOf(GitFailureError);
   });
 });
@@ -76,8 +80,8 @@ describe("push --force-with-lease", () => {
 
   it("远程还停在上次 fetch 看到的位置：覆盖掉", async () => {
     const { remote, repo } = diverged();
-    const result = await push.execute(cli, repo, "origin", "main", "main", false, true);
-    expect(result).toEqual({ kind: PushKind.Pushed });
+    const result = await push.execute(cli, repo, "origin", "main", "main", false, true, undefined);
+    expect(result).toEqual({ kind: PushKind.Pushed, rejectedTags: [] });
     expect(tip(remote, "main")).toBe(tip(repo, "main"));
   });
 
@@ -85,9 +89,84 @@ describe("push --force-with-lease", () => {
     const { remote, repo } = diverged();
     git(remote, ["commit", "-q", "--allow-empty", "-m", "someone else"]);
     const before = tip(remote, "main");
-    const result = await push.execute(cli, repo, "origin", "main", "main", false, true);
+    const result = await push.execute(cli, repo, "origin", "main", "main", false, true, undefined);
     expect(result.kind).toBe(PushKind.Rejected);
     expect(tip(remote, "main")).toBe(before);
+  });
+});
+
+describe("push 带 tag", () => {
+  const remoteTags = (remote: string) => git(remote, ["tag", "--list"]).trim().split("\n");
+
+  /** 本地一个轻量 tag、一个附注 tag，都在要推的提交上。 */
+  function tagged(): { remote: string; repo: string } {
+    const { remote, repo } = repos();
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
+    git(repo, ["tag", "light"]);
+    git(repo, ["tag", "-a", "annotated", "-m", "annotated"]);
+    return { remote, repo };
+  }
+
+  it("All：轻量 tag 和附注 tag 都推上去", async () => {
+    const { remote, repo } = tagged();
+    await push.execute(cli, repo, "origin", "main", "main", false, false, PushTagMode.All);
+    expect(remoteTags(remote)).toEqual(["annotated", "light"]);
+  });
+
+  it("Follow：只推附注 tag，轻量 tag 留在本地", async () => {
+    const { remote, repo } = tagged();
+    await push.execute(cli, repo, "origin", "main", "main", false, false, PushTagMode.Follow);
+    expect(remoteTags(remote)).toEqual(["annotated"]);
+  });
+
+  /** 远程已有 `v1`，指向的不是本地 `v1` 那条提交。 */
+  function conflicting(): { remote: string; repo: string } {
+    const { remote, repo } = repos();
+    git(remote, ["tag", "v1"]);
+    git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
+    git(repo, ["tag", "v1"]);
+    return { remote, repo };
+  }
+
+  it("远程已有同名 tag：分支照样推上去，被拒的 tag 列在结果里", async () => {
+    const { remote, repo } = conflicting();
+    const before = tip(remote, "v1");
+    const result = await push.execute(
+      cli,
+      repo,
+      "origin",
+      "main",
+      "main",
+      false,
+      false,
+      PushTagMode.All,
+    );
+    expect(result).toEqual({
+      kind: PushKind.Pushed,
+      rejectedTags: [{ name: "v1", summary: "[rejected] (already exists)" }],
+    });
+    expect(tip(remote, "main")).toBe(tip(repo, "main"));
+    expect(tip(remote, "v1")).toBe(before);
+  });
+
+  it("Force Push 也不覆盖远程的同名 tag", async () => {
+    const { remote, repo } = conflicting();
+    const before = tip(remote, "v1");
+    const result = await push.execute(
+      cli,
+      repo,
+      "origin",
+      "main",
+      "main",
+      false,
+      true,
+      PushTagMode.All,
+    );
+    expect(result.kind).toBe(PushKind.Pushed);
+    expect(result.kind === PushKind.Pushed && result.rejectedTags.map((tag) => tag.name)).toEqual([
+      "v1",
+    ]);
+    expect(tip(remote, "v1")).toBe(before);
   });
 });
 

@@ -631,7 +631,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       );
       return { commits: commits.slice(0, OUTGOING_LIMIT), more: commits.length > OUTGOING_LIMIT };
     },
-    push: async ({ branch, remote, remoteBranch, force, remoteUrl }) => {
+    push: async ({ branch, remote, remoteBranch, force, remoteUrl, tags }) => {
       const root = repository.location.root;
       const local = localBranch(await repository.run(getRefs, root), branch);
       if (local === undefined) throw new UserFacingError(`Branch ${branch} no longer exists.`);
@@ -660,6 +660,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
             remoteBranch,
             pushUpstream(local.upstream) === undefined,
             force,
+            tags,
           );
           if (result.kind === PushKind.Rejected) {
             throw new UserFacingError(
@@ -667,10 +668,16 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
               result.stderr,
             );
           }
+          // 分支已经推完，只是有 tag 没推上：前半句照实说分支，后半句列出每个 tag 和 git 给的原因。
+          if (result.rejectedTags.length > 0) {
+            const tags = result.rejectedTags.map((tag) => `${tag.name} ${tag.summary}`).join(", ");
+            throw new UserFacingError(
+              `${pushDone(result.kind, branch, tracked)}, but tags were rejected: ${tags}`,
+            );
+          }
           return result.kind;
         },
-        (kind) =>
-          kind === PushKind.UpToDate ? `${tracked} is up to date` : `Pushed ${branch} → ${tracked}`,
+        (kind) => pushDone(kind, branch, tracked),
       );
       return null;
     },
@@ -972,6 +979,21 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       return null;
     },
   });
+}
+
+function pushDone(
+  kind: PushKind.Pushed | PushKind.UpToDate,
+  branch: string,
+  tracked: string,
+): string {
+  switch (kind) {
+    case PushKind.Pushed:
+      return `Pushed ${branch} → ${tracked}`;
+    case PushKind.UpToDate:
+      return `${tracked} is up to date`;
+    default:
+      return assertNever(kind, "pushDone");
+  }
 }
 
 function mergeDone(outcome: MergeOutcome, name: string): string {

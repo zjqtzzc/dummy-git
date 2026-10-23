@@ -6,6 +6,7 @@ import type { GitDomain } from "./domain.js";
 import type { GitErrorCode } from "./error.js";
 import type { MatchCondition, PickedAuthor } from "./match.js";
 import type { OngoingOperation } from "./operation.js";
+import type { PushTagMode } from "./push.js";
 import type { Ref } from "./ref.js";
 import type { Stash } from "./stash.js";
 
@@ -243,6 +244,7 @@ export interface Commands {
    * 把本地分支 `branch` 推到 `remote` 的 `remoteBranch`，并关掉推送对话框。本地分支没有上游时顺带设为上游。
    * `force` 时用 `--force-with-lease`，扩展先确认；取消了什么都不做，对话框留着。
    * 带 `remoteUrl` 时先 `git remote add <remote> <remoteUrl>` 再推（仓库还没有远程时在对话框里定义）。
+   * 带 `tags` 时一起推 tag；分支推上去了而有 tag 被拒，报错列出被拒的 tag。
    */
   push: {
     params: {
@@ -252,6 +254,7 @@ export interface Commands {
       remoteBranch: string;
       force: boolean;
       remoteUrl?: string;
+      tags?: PushTagMode;
     };
     result: null;
   };
