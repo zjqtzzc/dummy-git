@@ -783,10 +783,11 @@ describe("handlers.deleteBranches", () => {
       repository.dispose();
     }
   };
+  /** 分支名。`origin/HEAD`（新版 git 的 fetch 会自动建）只是指向默认分支的指针，不列。 */
   const branches = (repo: string, args: readonly string[] = []) =>
-    git(repo, ["branch", ...args, "--format=%(refname:short)"])
-      .trim()
-      .split("\n");
+    git(repo, ["branch", ...args, "--format=%(if)%(symref)%(then)%(else)%(refname:short)%(end)"])
+      .split("\n")
+      .filter((line) => line !== "");
   /** 在 `name` 上做一条只有它有的提交，回到 main。 */
   const unmerged = (repo: string, name: string) => {
     git(repo, ["switch", "-q", "-c", name]);

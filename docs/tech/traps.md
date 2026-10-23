@@ -14,6 +14,7 @@
 | 撤销某个提交里一个文件的改动 | 按文件在该提交里的状态分三种：新增 → 删除文件；删除 → 从父提交恢复；修改 / 改名 → 改回父提交内容。一律 `checkout <hash>~1 -- <path>` 在新增文件上会报 `pathspec did not match` |
 | `push --follow-tags` 只推附注 tag（`git tag -a`），轻量 tag（`git tag`）留在本地，git 不提示、退出码 0 | 推送对话框选 `Current Branch` 时旁边写 `Annotated tags only`（`product/features/sync.md`）；发版用附注 tag（`process/workflow.md` §6）；`push.test.ts` 有测试 |
 | git 2.55 起 `log --no-walk`（`rev-list --no-walk` 同样）**不再看路径**：`--no-walk --stdin -- <路径>` 把给的提交全部输出，不报错、退出码 0。按路径过滤因此全中；2.43 及以前正常。新版 git 只在发布的 CI 上碰到（2026-10-23） | 路径改用 `diff-tree --stdin -m -r --root` 逐条和每个父提交比（`parsers/log.ts` 的 `pathMatch`，`match.test.ts` 有测试）。新版本也会改行为：动了 git 命令行时，除了 `pnpm test:old-git` 也留意发布 CI 上的新 git |
+| git 2.48 起 `fetch` 默认建 `refs/remotes/<远程>/HEAD`（`remote.<名字>.followRemoteHEAD=create`），`git branch -r --format=%(refname:short)` 会多出一行 `origin` | 产品代码按 `Ref` 建模已跳过 `origin/HEAD`；测试里列远程分支时跳过符号引用（`%(symref)` 非空的） |
 | 一次推送里某个 tag 被拒（远程已有同名 tag 指向别处；`--force-with-lease` 碰到远程已有的 tag 也拒，`(stale info)`），分支照样推上去了，退出码却是 1；给人看的输出里 tag 那行也是 `! [rejected]`，按它判断会误报成分支被拒 | 用 `--porcelain`，只按分支那一行（完整引用名）判断成败，`refs/tags/` 的 `!` 行记成被拒的 tag（`push.ts`）；porcelain 下这些行在 stdout，push 打开 `logStdout` 才进日志 |
 
 同一个形状出现过多次：**把一个动作当成单一操作，而正确做法取决于文件的状态。**
