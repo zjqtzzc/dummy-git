@@ -1,0 +1,60 @@
+# 推 v* tag 时：检查、打包、建 GitHub Release 并挂上 .vsix。
+# 只发到 GitHub，不上架商店。
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      # 要全部历史：找上一个 tag、列两个 tag 之间的提交。
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # 不写 version：读根 package.json 的 packageManager。
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: tag 与版本号一致
+        run: |
+          version=$(node -p "require('./packages/extension/package.json').version")
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "tag 是 $GITHUB_REF_NAME，packages/extension/package.json 的版本是 $version"
+            exit 1
+          fi
+
+      - run: pnpm check
+
+      - name: 打包
+        id: package
+        # 先赋值再 echo：写成 echo "$(…)" 的话，打包失败了 echo 照样成功。
+        run: |
+          vsix=$(pnpm --silent package | tail -n 1)
+          echo "vsix=$vsix" >> "$GITHUB_OUTPUT"
+
+      # 提交说明第一行原样列出，不按前缀筛选：提交说明没有格式约定。
+      - name: 发布说明
+        run: |
+          if prev=$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null); then
+            git log --format='- %s' "$prev..$GITHUB_REF_NAME" > notes.md
+          else
+            echo "首个版本" > notes.md
+          fi
+
+      - name: 建 Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "${{ steps.package.outputs.vsix }}" --title "$GITHUB_REF_NAME" --notes-file notes.md

@@ -24,10 +24,17 @@
 
 TS 5.0 起全字面量 enum 为 union enum（前提是禁计算成员）。`erasableSyntaxOnly` 禁止 enum，本项目不开。
 
-## 不要 CI，直接提 main
+## 不做检查型 CI，直接提 main；只有推 tag 触发的发布
 
 单人本地项目，remote 只作备份，没有 PR 流程。四项检查（typecheck / lint / test / build）提交前本地执行（`CLAUDE.md` E）。
-否决过保留 workflow「以后可能用」：无人看的绿灯比没有 CI 更有误导性，需要时再加是 20 行 yaml。
+否决过保留检查型 workflow「以后可能用」：无人看的绿灯比没有 CI 更有误导性。
+
+唯一的 workflow 是发布（`.github/workflows/release.yml`，步骤见 `process/workflow.md` §6）：推 `v*` tag 时检查、打包、建 GitHub Release。
+它里面的 `pnpm check` 是关卡，不过就不发，不是给人看的绿灯。本地和 workflow 都用 `pnpm package` 打包，两边是同一个做法。
+- 否决 release-please / semantic-release：靠 PR 和约定格式的提交说明算版本，我们两样都没有。
+- 否决发布说明按 `feat:` / `fix:` 前缀筛提交：提交说明没有格式约定，筛了就是一份没人声明的契约，漏写前缀的提交会悄悄消失。现在原样列出两个 tag 之间每条提交的第一行。
+- 否决手动点 Run workflow 填版本号：workflow 得自己改版本号再提交回 main。
+- 否决自己写打包、否决用时才 `npx` 下载 vsce：前者要照着实现清单格式和 `.vscodeignore` 的规则；后者 vsce 的依赖不受 lockfile 锁定。代价是 vsce 带进一百多个上架商店用的开发依赖，不进 .vsix。
 
 ## 日志不脱敏
 

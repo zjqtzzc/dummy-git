@@ -70,3 +70,14 @@
 2. 先看开头那行运行环境：git 版本、远程类型（容器、SSH、WSL）、系统。只在某些机器上出的问题，多半出在这里。
 3. 怀疑是 git 版本差异的，用 `pnpm test:old-git` 复现；确认了就记进 `tech/traps.md`。
 4. 用对方的真实数据跑一遍我们的代码，再下结论；不靠推测。
+
+## 6. 发布
+
+只发到 GitHub Release，不上架商店。为什么这样做见 `tech/decisions.md`「不做检查型 CI」。
+
+1. 改 `packages/extension/package.json` 的 `version`，单独提交。
+2. 打 tag 并推上去：`git tag v<版本>`、`git push origin v<版本>`。tag 必须是 `v` 加上这个版本号，不一致 workflow 直接失败。
+3. 在 GitHub 的 Actions 页看结果；成功后 Release 页有这个版本，挂着 .vsix，说明是上个 tag 以来的提交。
+4. 失败了什么都不会发：修好提交后删掉 tag（`git tag -d v<版本>`、`git push origin :v<版本>`），再从第 2 步来。
+
+本地要一个 .vsix 自己装，跑 `pnpm package`，产物在 `.tmp/`。

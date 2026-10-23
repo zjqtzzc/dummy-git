@@ -16,6 +16,7 @@
 |---|---|
 | 这条规则是什么、能不能破例 | `../CLAUDE.md` |
 | 一件事按什么顺序做、交接和提交怎么做 | `process/workflow.md` |
+| 怎么发版 | `process/workflow.md` §6 |
 | 文档、注释怎么写，写在哪 | `process/writing.md` |
 | 测试写什么、不写什么、怎么跑 | `process/testing.md` |
 | F5 调试窗口里是什么仓库、有哪些场景 | `process/manual-testing.md` |
@@ -66,4 +67,5 @@ pnpm check                       # 提交前必过：typecheck + lint + test + b
 pnpm docs:remind                 # 提交前看线索：哪些文档可能要跟着改，见 process/workflow.md §3
 pnpm test:old-git                # 在 Ubuntu 20.04（git 2.25）的容器里跑测试，动了 git 命令行时跑
 pnpm debug:setup <场景>          # 换 F5 调试窗口里的仓库，见 process/manual-testing.md
+pnpm package                     # 打 .vsix 到 .tmp/，发版见 process/workflow.md §6
 ```

@@ -2,9 +2,13 @@
   "name": "dummy-git",
   "displayName": "Dummy Git",
   "description": "不用记命令的 Git：JetBrains 式图形化操作，点两下就完事。",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "publisher": "zjqtzzc",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zjqtzzc/make-git-great-again.git"
+  },
   "private": true,
   "engines": {
     "vscode": "^1.85.0"
