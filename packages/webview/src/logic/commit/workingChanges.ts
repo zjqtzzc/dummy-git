@@ -19,7 +19,7 @@ import {
   menuItem,
   menuItemsContext,
 } from "../menuItems.js";
-import type { FileEntry, FileGroup } from "../tree/fileTree.js";
+import type { FileEntry, FileGroup, FileRow } from "../tree/fileTree.js";
 
 /**
  * Commit 面板的数据：
@@ -219,43 +219,38 @@ const FILE_MENU: readonly MenuItem<FileMenuTarget | null>[] = [
   }),
 ];
 
-/** 每个文件的右键菜单要用的：路径 → 它是哪一种。 */
-function fileMenuTargets(
-  conflicts: readonly ConflictFile[],
-  files: readonly WorkingFile[],
-): ReadonlyMap<string, FileMenuTarget> {
-  const targets = new Map<string, FileMenuTarget>();
-  for (const file of files) {
-    targets.set(
-      file.path,
-      file.status === WorkingStatus.Untracked
-        ? { kind: FileMenuKind.Untracked, path: file.path }
+/** 一行文件 → 它的右键菜单要用的：是哪一种、路径。 */
+function menuTarget(row: WorkingRow): FileMenuTarget {
+  switch (row.kind) {
+    case WorkingRowKind.Conflict:
+      return {
+        kind: FileMenuKind.Conflict,
+        path: row.file.path,
+        resolution: resolutionOf(row.file.conflict),
+      };
+    case WorkingRowKind.Change:
+      return row.file.status === WorkingStatus.Untracked
+        ? { kind: FileMenuKind.Untracked, path: row.file.path }
         : {
             kind: FileMenuKind.Change,
-            path: file.path,
-            deleted: file.status === WorkingStatus.Deleted,
-          },
-    );
+            path: row.file.path,
+            deleted: row.file.status === WorkingStatus.Deleted,
+          };
+    default:
+      return assertNever(row, "menuTarget");
   }
-  for (const file of conflicts) {
-    targets.set(file.path, {
-      kind: FileMenuKind.Conflict,
-      path: file.path,
-      resolution: resolutionOf(file.conflict),
-    });
-  }
-  return targets;
 }
 
 /** 选中（文件树已换成文件，目录与组是 `null`）→ 各文件是哪一种；对不上的（刚没了的）也当 `null`。 */
 function targetViews(
   conflicts: readonly ConflictFile[],
   files: readonly WorkingFile[],
-  views: MenuViews<{ readonly path: string } | null>,
+  views: MenuViews<FileRow | null>,
 ): MenuViews<FileMenuTarget | null> {
-  const targets = fileMenuTargets(conflicts, files);
-  const toTarget = (entry: { readonly path: string } | null): FileMenuTarget | null =>
-    entry === null ? null : (targets.get(entry.path) ?? null);
+  const toTarget = (row: FileRow | null): FileMenuTarget | null => {
+    const found = row === null ? undefined : workingRow(conflicts, files, row);
+    return found === undefined ? null : menuTarget(found);
+  };
   return { exact: views.exact.map(toTarget), expanded: views.expanded.map(toTarget) };
 }
 
@@ -266,7 +261,7 @@ export function workingMenuContext(
   repo: string,
   conflicts: readonly ConflictFile[],
   files: readonly WorkingFile[],
-  views: MenuViews<{ readonly path: string } | null>,
+  views: MenuViews<FileRow | null>,
 ): Readonly<Record<string, string | MenuArgs>> {
   return {
     [MenuContextKey.Repo]: repo,
@@ -282,7 +277,7 @@ export function workingMenuContext(
 export function rollbackArgs(
   conflicts: readonly ConflictFile[],
   files: readonly WorkingFile[],
-  views: MenuViews<{ readonly path: string } | null>,
+  views: MenuViews<FileRow | null>,
 ): { readonly paths: readonly string[] } | undefined {
   if (views.exact.length > 0) return ROLLBACK.evaluate(targetViews(conflicts, files, views));
   const tracked = files.filter((file) => file.status !== WorkingStatus.Untracked);
@@ -403,6 +398,42 @@ function toEntry(file: WorkingFile): FileEntry {
 
 /** 冲突组的 id。标题行上的按钮靠它认出这一行。 */
 export const CONFLICTS_GROUP = "conflicts";
+const CHANGES_GROUP = "changes";
+const UNVERSIONED_GROUP = "unversioned";
+
+export enum WorkingRowKind {
+  Conflict = "conflict",
+  Change = "change",
+}
+
+/** 树上一行对应的文件：冲突组里的是冲突文件，另外两组里的是合成后的改动。 */
+export type WorkingRow =
+  | { readonly kind: WorkingRowKind.Conflict; readonly file: ConflictFile }
+  | { readonly kind: WorkingRowKind.Change; readonly file: WorkingFile };
+
+/**
+ * 树上的一行（哪一组的哪个路径）→ 它是哪个文件。右键菜单、工具栏 Rollback、打开 diff 都从这里认。
+ * 要连组一起认：`git rm --cached` 后文件还在，同一路径在 Changes 里是删除、在 Unversioned Files 里是未跟踪。
+ * 对不上的（刚没了的）是 `undefined`。
+ */
+export function workingRow(
+  conflicts: readonly ConflictFile[],
+  files: readonly WorkingFile[],
+  row: FileRow,
+): WorkingRow | undefined {
+  const { path } = row.entry;
+  if (row.group === CONFLICTS_GROUP) {
+    const file = conflicts.find((candidate) => candidate.path === path);
+    return file === undefined ? undefined : { kind: WorkingRowKind.Conflict, file };
+  }
+  if (row.group !== CHANGES_GROUP && row.group !== UNVERSIONED_GROUP) return undefined;
+  const untracked = row.group === UNVERSIONED_GROUP;
+  const file = files.find(
+    (candidate) =>
+      candidate.path === path && (candidate.status === WorkingStatus.Untracked) === untracked,
+  );
+  return file === undefined ? undefined : { kind: WorkingRowKind.Change, file };
+}
 
 /**
  * 冲突组标题。
@@ -487,9 +518,9 @@ export function workingGroups(
             ...(heading.actions ? { alignEnd: true } : {}),
           }),
     },
-    { id: "changes", label: "Changes", entries: tracked.map(toEntry) },
+    { id: CHANGES_GROUP, label: "Changes", entries: tracked.map(toEntry) },
     {
-      id: "unversioned",
+      id: UNVERSIONED_GROUP,
       label: "Unversioned Files",
       entries: untracked.map(toEntry),
     },

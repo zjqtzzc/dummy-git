@@ -84,6 +84,8 @@ export type FileNode =
       readonly kind: FileNodeKind.File;
       /** 组的 id 加文件路径（`scopedId`）；路径本身在 `entry.path`。 */
       readonly id: string;
+      /** 所在组的 id。 */
+      readonly group: string;
       /** 文件名。 */
       readonly label: string;
       /** 改名 / 复制时：同一目录写旧文件名，换了目录写旧的完整路径；其余缺席。 */
@@ -207,6 +209,7 @@ function toFile(group: string, entry: FileEntry, folder: string): FileNode {
   const base = {
     kind: FileNodeKind.File,
     id: scopedId(group, entry.path),
+    group,
     label,
     entry,
     ...(folder === "" ? {} : { folder }),
@@ -225,11 +228,22 @@ function dirname(path: string): string {
   return slash === -1 ? "" : path.slice(0, slash);
 }
 
+/**
+ * 树上的一个文件：哪一组的哪个文件。交给使用方的是它，不是光秃秃的路径：
+ * 同一路径可以在几组里各有一行（`git rm --cached` 后，Changes 里是删除、Unversioned Files 里是未跟踪），
+ * 只按路径认会认成另一行。
+ */
+export interface FileRow {
+  readonly group: string;
+  readonly entry: FileEntry;
+}
+
 /** 文件节点 id → 文件。节点 id 不是路径（`scopedId`），页面拿到选中、要打开的节点时用它换回文件。 */
-export function filesById(nodes: readonly FileNode[]): ReadonlyMap<string, FileEntry> {
-  const index = new Map<string, FileEntry>();
+export function filesById(nodes: readonly FileNode[]): ReadonlyMap<string, FileRow> {
+  const index = new Map<string, FileRow>();
   const visit = (node: FileNode): void => {
-    if (node.kind === FileNodeKind.File) index.set(node.id, node.entry);
+    if (node.kind === FileNodeKind.File)
+      index.set(node.id, { group: node.group, entry: node.entry });
     else for (const child of node.children) visit(child);
   };
   for (const node of nodes) visit(node);
@@ -238,10 +252,10 @@ export function filesById(nodes: readonly FileNode[]): ReadonlyMap<string, FileE
 
 /** 勾选的路径 → 勾选的文件节点 id。同一路径在几组里各有一行时（删除 + 未跟踪），几行都算勾上。 */
 export function checkedIds(
-  files: ReadonlyMap<string, FileEntry>,
+  files: ReadonlyMap<string, FileRow>,
   paths: ReadonlySet<string>,
 ): ReadonlySet<string> {
-  return new Set([...files].flatMap(([id, entry]) => (paths.has(entry.path) ? [id] : [])));
+  return new Set([...files].flatMap(([id, row]) => (paths.has(row.entry.path) ? [id] : [])));
 }
 
 /** 文件树 → 基础树的节点：组没有图标、文字加粗；目录是文件夹图标；文件是 Seti 图标加改动字母。 */

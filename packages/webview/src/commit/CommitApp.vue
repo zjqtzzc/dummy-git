@@ -13,14 +13,16 @@ import {
   opensMergeEditor,
   rollbackArgs,
   type WorkingFile,
+  WorkingRowKind,
   workingDiffSides,
   workingFiles,
   workingGroups,
   workingMenuContext,
+  workingRow,
 } from "../logic/commit/workingChanges.js";
 import { AppIcon, appIcon, codicon } from "../logic/icons.js";
 import type { MenuViews } from "../logic/menuItems.js";
-import { type FileEntry, keepChecked } from "../logic/tree/fileTree.js";
+import { type FileRow, keepChecked } from "../logic/tree/fileTree.js";
 import { Grouping, groupingMenu, restoreGrouping, saveGrouping } from "../logic/tree/grouping.js";
 import { CheckState } from "../logic/tree/tree.js";
 import FileTree from "../tree/FileTree.vue";
@@ -68,7 +70,7 @@ async function copyText(text: string): Promise<void> {
 }
 
 /** 右键菜单：选中的文件交给 `workingMenuContext`。 */
-function menuOf(views: MenuViews<FileEntry | null>) {
+function menuOf(views: MenuViews<FileRow | null>) {
   return workingMenuContext(repo.value ?? "", conflicts.value, files.value, views);
 }
 const heading = computed(() => conflictHeading(operation.value, conflicts.value.length));
@@ -225,7 +227,7 @@ async function submit(): Promise<void> {
 }
 
 /** 文件树的选中（两种看法），工具栏的 Rollback 用。 */
-const fileSelection = ref<MenuViews<FileEntry | null>>({ exact: [], expanded: [] });
+const fileSelection = ref<MenuViews<FileRow | null>>({ exact: [], expanded: [] });
 /**
  * 工具栏 Rollback 撤哪些：和右键的 Rollback 同一份规则；什么都没选时撤全部已跟踪的改动（`rollbackArgs`）。
  * 未跟踪文件用右键菜单的 Delete。
@@ -361,24 +363,23 @@ async function load(repo: string): Promise<void> {
 }
 
 /** 双击或回车打开，单击或上下键跟随（由 `mode` 区分）。 */
-async function openFile(entry: FileEntry, mode: DiffOpenMode): Promise<void> {
+async function openFile(row: FileRow, mode: DiffOpenMode): Promise<void> {
   if (repo.value === undefined) return;
-  const conflict = conflicts.value.find((f) => f.path === entry.path);
-  if (conflict !== undefined) {
+  const target = workingRow(conflicts.value, files.value, row);
+  if (target === undefined) return;
+  if (target.kind === WorkingRowKind.Conflict) {
     // 冲突文件只在双击时打开合并编辑器：单击跟随会让它一点就弹出来。
     if (mode !== DiffOpenMode.Open) return;
     // 两边都有内容的进合并编辑器；一边删了的、两边都删了的，扩展弹框选保留或删除。
-    const command = opensMergeEditor(conflict.conflict) ? "openMergeEditor" : "resolveDeletion";
+    const command = opensMergeEditor(target.file.conflict) ? "openMergeEditor" : "resolveDeletion";
     try {
-      await props.client.request(command, { repo: repo.value, path: entry.path });
+      await props.client.request(command, { repo: repo.value, path: target.file.path });
     } catch (cause) {
       report(cause);
     }
     return;
   }
-  const file = files.value.find((f) => f.path === entry.path);
-  if (file === undefined) return;
-  const { left, right } = workingDiffSides(head.value, file);
+  const { left, right } = workingDiffSides(head.value, target.file);
   try {
     await props.client.request("openDiff", { repo: repo.value, left, right, mode });
   } catch (cause) {

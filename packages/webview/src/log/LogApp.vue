@@ -61,7 +61,7 @@ import {
   selectOnly,
   singleOf,
 } from "../logic/selection.js";
-import type { FileEntry } from "../logic/tree/fileTree.js";
+import type { FileRow } from "../logic/tree/fileTree.js";
 import { keepIfSame } from "../logic/utils/list.js";
 import type { RowRange } from "../logic/virtualList.js";
 import FileTree from "../tree/FileTree.vue";
@@ -580,7 +580,7 @@ async function copyCommits(hashes: readonly string[]): Promise<void> {
 }
 
 /** 右栏的文件：双击或回车打开，单击或上下键跟随（由 `mode` 区分）。 */
-async function openFile(entry: FileEntry, mode: DiffOpenMode): Promise<void> {
+async function openFile({ entry }: FileRow, mode: DiffOpenMode): Promise<void> {
   const commit = selected.value === undefined ? undefined : details.value.get(selected.value);
   const file = files.value.find((change) => change.path === entry.path);
   if (repo.value === undefined || commit === undefined || file === undefined) return;

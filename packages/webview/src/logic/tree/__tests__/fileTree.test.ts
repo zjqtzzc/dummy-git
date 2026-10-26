@@ -243,7 +243,10 @@ describe("filesById / checkedIds：节点 id 与路径互换", () => {
       "changes/same.txt",
       "unversioned/same.txt",
     ]);
-    expect(files.get("unversioned/same.txt")?.letter).toBe("U");
+    expect(files.get("unversioned/same.txt")).toMatchObject({
+      group: "unversioned",
+      entry: { letter: "U" },
+    });
   });
 
   it("勾选的路径在几组里各有一行，几行都勾上", () => {

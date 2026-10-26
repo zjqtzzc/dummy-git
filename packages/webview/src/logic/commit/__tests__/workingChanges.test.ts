@@ -8,16 +8,19 @@ import {
   OperationKind,
 } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
+import type { FileRow } from "../../tree/fileTree.js";
 import {
   conflictFiles,
   conflictHeading,
   opensMergeEditor,
   rollbackArgs,
+  WorkingRowKind,
   WorkingStatus,
   workingDiffSides,
   workingFiles,
   workingGroups,
   workingMenuContext,
+  workingRow,
 } from "../workingChanges.js";
 
 const tracked = (
@@ -29,6 +32,16 @@ const tracked = (
   oldPath === undefined
     ? { kind: ChangeKind.Tracked, path, index, worktree }
     : { kind: ChangeKind.Tracked, path, oldPath, index, worktree };
+
+/** 三组的 id 照 `workingGroups` 的，测试里不另写一份。 */
+const [CONFLICTS, CHANGES, UNVERSIONED] = workingGroups([], []).map((group) => group.id);
+/** 树上的一行：哪一组的哪个路径（文件树交给页面的就是它）。 */
+const rowIn =
+  (group: string | undefined) =>
+  (path: string): FileRow => ({ group: group ?? "", entry: { path, letter: "", color: "" } });
+const conflictRow = rowIn(CONFLICTS);
+const changeRow = rowIn(CHANGES);
+const untrackedRow = rowIn(UNVERSIONED);
 
 const U = FileStatus.Unchanged;
 const M = FileStatus.Modified;
@@ -109,36 +122,35 @@ describe("workingMenuContext：Commit 面板的右键菜单项", () => {
     { path: "a.ts", status: WorkingStatus.Modified },
     { path: "new.txt", status: WorkingStatus.Untracked },
   ];
-  /** 选中这些文件（`null` 是一个目录或组，下面什么都不算）：展开看就是这些文件本身。 */
-  const menuOf = (...paths: (string | null)[]) => {
-    const exact = paths.map((path) => (path === null ? null : { path }));
-    const expanded = paths.flatMap((path) => (path === null ? [] : [{ path }]));
-    return workingMenuContext("/repo", conflicts, files, { exact, expanded });
+  /** 选中这些行（`null` 是一个目录或组，下面什么都不算）：展开看就是这些行本身。 */
+  const menuOf = (...rows: (FileRow | null)[]) => {
+    const expanded = rows.flatMap((row) => (row === null ? [] : [row]));
+    return workingMenuContext("/repo", conflicts, files, { exact: rows, expanded });
   };
 
   it("各种文件：各自的菜单项，参数是路径", () => {
-    expect(menuOf("c.ts")).toEqual({
+    expect(menuOf(conflictRow("c.ts"))).toEqual({
       [MenuContextKey.Repo]: "/repo",
       [MenuContextKey.OpenFile]: { path: "c.ts" },
       [MenuContextKey.KeepFile]: { paths: ["c.ts"] },
       [MenuContextKey.RemoveConflictFile]: { paths: ["c.ts"] },
     });
-    expect(menuOf("m.ts")).toEqual({
+    expect(menuOf(conflictRow("m.ts"))).toEqual({
       [MenuContextKey.Repo]: "/repo",
       [MenuContextKey.OpenFile]: { path: "m.ts" },
       [MenuContextKey.OpenMergeEditor]: { path: "m.ts" },
       [MenuContextKey.MarkResolved]: { paths: ["m.ts"] },
     });
-    expect(menuOf("d.ts")).toEqual({
+    expect(menuOf(conflictRow("d.ts"))).toEqual({
       [MenuContextKey.Repo]: "/repo",
       [MenuContextKey.RemoveConflictFile]: { paths: ["d.ts"] },
     });
-    expect(menuOf("a.ts")).toEqual({
+    expect(menuOf(changeRow("a.ts"))).toEqual({
       [MenuContextKey.Repo]: "/repo",
       [MenuContextKey.OpenFile]: { path: "a.ts" },
       [MenuContextKey.RollbackFile]: { paths: ["a.ts"] },
     });
-    expect(menuOf("new.txt")).toEqual({
+    expect(menuOf(untrackedRow("new.txt"))).toEqual({
       [MenuContextKey.Repo]: "/repo",
       [MenuContextKey.OpenFile]: { path: "new.txt" },
       [MenuContextKey.AddUntracked]: { paths: ["new.txt"] },
@@ -153,31 +165,31 @@ describe("workingMenuContext：Commit 面板的右键菜单项", () => {
       // 改名后又删掉新路径：画成旧路径上的删除。
       { path: "moved-from.ts", status: WorkingStatus.Deleted },
     ];
-    const open = (path: string) =>
-      workingMenuContext("/repo", conflicts, changes, { exact: [{ path }], expanded: [{ path }] })[
+    const open = (row: FileRow) =>
+      workingMenuContext("/repo", conflicts, changes, { exact: [row], expanded: [row] })[
         MenuContextKey.OpenFile
       ];
-    expect(open("renamed.ts")).toEqual({ path: "renamed.ts" });
-    expect(open("gone.ts")).toBeUndefined();
-    expect(open("moved-from.ts")).toBeUndefined();
-    expect(open("d.ts")).toBeUndefined();
+    expect(open(changeRow("renamed.ts"))).toEqual({ path: "renamed.ts" });
+    expect(open(changeRow("gone.ts"))).toBeUndefined();
+    expect(open(changeRow("moved-from.ts"))).toBeUndefined();
+    expect(open(conflictRow("d.ts"))).toBeUndefined();
   });
 
   it("Open File 只对点中的一个文件：多选、目录都没有", () => {
-    const both = [{ path: "a.ts" }, { path: "new.txt" }];
+    const both = [changeRow("a.ts"), untrackedRow("new.txt")];
     expect(
       workingMenuContext("/repo", conflicts, files, { exact: both, expanded: both })[
         MenuContextKey.OpenFile
       ],
     ).toBeUndefined();
-    const folder = { exact: [null], expanded: [{ path: "a.ts" }] };
+    const folder = { exact: [null], expanded: [changeRow("a.ts")] };
     expect(
       workingMenuContext("/repo", conflicts, files, folder)[MenuContextKey.OpenFile],
     ).toBeUndefined();
   });
 
   it("选中 Unversioned Files 组：Add to Git、Delete 作用于下面全部未跟踪文件", () => {
-    const group = { exact: [null], expanded: [{ path: "new.txt" }, { path: "other.txt" }] };
+    const group = { exact: [null], expanded: [untrackedRow("new.txt"), untrackedRow("other.txt")] };
     const more = [...files, { path: "other.txt", status: WorkingStatus.Untracked }];
     expect(workingMenuContext("/repo", conflicts, more, group)).toEqual({
       [MenuContextKey.Repo]: "/repo",
@@ -189,7 +201,7 @@ describe("workingMenuContext：Commit 面板的右键菜单项", () => {
   it("选中 Conflicts 组、种类混着：没有批量项（全部严格）", () => {
     const group = {
       exact: [null],
-      expanded: [{ path: "c.ts" }, { path: "m.ts" }, { path: "d.ts" }],
+      expanded: [conflictRow("c.ts"), conflictRow("m.ts"), conflictRow("d.ts")],
     };
     expect(workingMenuContext("/repo", conflicts, files, group)).toEqual({
       [MenuContextKey.Repo]: "/repo",
@@ -198,7 +210,7 @@ describe("workingMenuContext：Commit 面板的右键菜单项", () => {
 
   it("两个两边都改的冲突：Mark as Resolved 一起做；合并编辑器只能单选", () => {
     const more = [...conflicts, { path: "n.ts", conflict: ConflictKind.BothAdded }];
-    const both = [{ path: "m.ts" }, { path: "n.ts" }];
+    const both = [conflictRow("m.ts"), conflictRow("n.ts")];
     expect(workingMenuContext("/repo", more, files, { exact: both, expanded: both })).toEqual({
       [MenuContextKey.Repo]: "/repo",
       [MenuContextKey.MarkResolved]: { paths: ["m.ts", "n.ts"] },
@@ -207,7 +219,48 @@ describe("workingMenuContext：Commit 面板的右键菜单项", () => {
 
   it("空的目录、混着选：只有仓库，没有菜单项", () => {
     expect(menuOf(null)).toEqual({ [MenuContextKey.Repo]: "/repo" });
-    expect(menuOf("new.txt", "a.ts")).toEqual({ [MenuContextKey.Repo]: "/repo" });
+    expect(menuOf(untrackedRow("new.txt"), changeRow("a.ts"))).toEqual({
+      [MenuContextKey.Repo]: "/repo",
+    });
+  });
+});
+
+describe("workingRow：树上的一行连组一起认", () => {
+  // git rm --cached 后文件还在：Changes 里是删除，Unversioned Files 里是未跟踪，同一个路径。
+  const files = [
+    { path: "kept.txt", status: WorkingStatus.Deleted },
+    { path: "kept.txt", status: WorkingStatus.Untracked },
+  ];
+  const menu = (row: FileRow) =>
+    workingMenuContext("/repo", [], files, { exact: [row], expanded: [row] });
+
+  it("同一路径的两行各认各的", () => {
+    expect(workingRow([], files, changeRow("kept.txt"))).toEqual({
+      kind: WorkingRowKind.Change,
+      file: { path: "kept.txt", status: WorkingStatus.Deleted },
+    });
+    expect(workingRow([], files, untrackedRow("kept.txt"))).toEqual({
+      kind: WorkingRowKind.Change,
+      file: { path: "kept.txt", status: WorkingStatus.Untracked },
+    });
+  });
+
+  it("右键删除那一行是 Rollback，未跟踪那一行是 Add to Git、Delete", () => {
+    expect(menu(changeRow("kept.txt"))).toEqual({
+      [MenuContextKey.Repo]: "/repo",
+      [MenuContextKey.RollbackFile]: { paths: ["kept.txt"] },
+    });
+    expect(menu(untrackedRow("kept.txt"))).toEqual({
+      [MenuContextKey.Repo]: "/repo",
+      [MenuContextKey.OpenFile]: { path: "kept.txt" },
+      [MenuContextKey.AddUntracked]: { paths: ["kept.txt"] },
+      [MenuContextKey.DeleteUntracked]: { paths: ["kept.txt"] },
+    });
+  });
+
+  it("对不上的（刚没了的、不认识的组）是 undefined", () => {
+    expect(workingRow([], files, changeRow("gone.txt"))).toBeUndefined();
+    expect(workingRow([], files, rowIn("files")("kept.txt"))).toBeUndefined();
   });
 });
 
@@ -220,12 +273,12 @@ describe("rollbackArgs：工具栏与右键的 Rollback 撤哪些", () => {
   const files = [...tracked, ...untracked];
 
   it("选中目录或 Changes 组：撤它下面列出的全部", () => {
-    const folder = { exact: [null], expanded: [{ path: "src/a.ts" }, { path: "src/b.ts" }] };
+    const folder = { exact: [null], expanded: [changeRow("src/a.ts"), changeRow("src/b.ts")] };
     expect(rollbackArgs([], files, folder)).toEqual({ paths: ["src/a.ts", "src/b.ts"] });
   });
 
   it("混着未跟踪文件：撤不了（全部严格）", () => {
-    const both = [{ path: "src/a.ts" }, { path: "new.txt" }];
+    const both = [changeRow("src/a.ts"), untrackedRow("new.txt")];
     expect(rollbackArgs([], files, { exact: both, expanded: both })).toBeUndefined();
   });
 
