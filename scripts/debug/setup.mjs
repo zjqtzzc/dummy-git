@@ -77,6 +77,10 @@ const g = {
     mkdirSync(dirname(join(target, file)), { recursive: true });
     writeFileSync(join(target, file), content, "utf8");
   },
+  /** 只删磁盘上的文件，不碰暂存区（造「改名后又删掉新路径」这类状态）。 */
+  remove(file) {
+    rmSync(join(target, file));
+  },
   git(...args) {
     return git(target, args);
   },
