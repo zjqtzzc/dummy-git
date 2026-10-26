@@ -22,9 +22,12 @@
 ## Update
 
 **Update Selected**（竖按钮）和分支右键的 **Update** 是同一条命令，作用于选中的本地分支 `B`（HEAD 那行就是当前分支），它的上游是 `origin/M`。只动 `B` 和 `origin/M`，不碰别的分支。
-- `B` 不是当前分支：一条 fetch 把 `origin/M` 直接取进 `B`（`M:B` 的写法，不带 `+`），只允许快进；不碰工作区和暂存区，不占本地道。
-- `B` 是当前分支：git 不允许 fetch 直接更新检出的分支，所以拆成远程道的 fetch，加本地道的快进。命令行见 `git/commands/index.ts`（`fetchInto`、`fetchBranch`、`fastForward`）。
-  - **取远程时切走了，更新的仍是 `B`**：快进那一步先看 `B` 此刻还是不是当前分支，和快进在同一条本地道命令里（Checkout 插不进中间）。还是就 `merge --ff-only`；不是就 `fetch . refs/remotes/origin/M:refs/heads/B`，只移动引用、不联网，同上一条。否则 `merge --ff-only` 认的是此刻的 HEAD，快进会打在切过去的那条分支上。
+- 两步，命令行见 `git/commands/index.ts`（`fetchBranch`、`fastForward`）：
+  1. 远程道：只取回 `origin/M`，更新远程分支记录，不碰 `B`。
+  2. 本地道：快进 `B`。同一条命令里先看 `B` 此刻还在不在、是不是当前分支：是当前分支就 `merge --ff-only`，连工作区一起更新；不是就 `fetch . refs/remotes/origin/M:refs/heads/B`，只移动引用、不碰工作区（不带 `+`，只允许快进）。
+- **写 `B` 放在本地道**，和删除、改名、Checkout 排队：取远程那几秒里它们都可能发生，取完再认一次才对。
+  - 切走了：更新的仍是 `B`。若照第一步之前看到的当前分支跑 `merge --ff-only`，它认的是此刻的 HEAD，快进会打在切过去的那条上。
+  - 删了或改了名：报 `Branch feat no longer exists.`，什么都不建。否决「一条 fetch 把 `origin/M` 直接取进 `B`、不占本地道」：fetch 走远程道，写引用时不管 `B` 刚被删掉，会新建一个 `B`，删掉的分支又回来，改名的多出一个（实测，退出码 0）。本地道只多占一次 `fetch .` 的毫秒，联网仍在远程道。
 - 完成消息：动了就是 `Updated feat from origin/feat`，没动就是 `feat is up to date`。
 - `B` 没有上游、或上游在远程已被删掉（`gone`）：菜单里没有 Update，竖按钮置灰（2026-10-20 项目负责人定）。不去猜上游：猜错了会把一个无关的同名分支快进进来，不容易察觉。万一按时上游刚被去掉，提示 `feat has no upstream branch. Push it first.`。
 - **分叉时**：远程分支的记录已经取回来了，弹一条原生通知 `feat and origin/feat have diverged.`，两个按钮：

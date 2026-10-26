@@ -25,9 +25,8 @@
  * | `listRemotes` | `remote` | — | — |
  * | `addRemote` | `remote add -- <名字> <地址>` | — | — |
  * | `push` | `push --porcelain [-u] [--force-with-lease] [--tags \| --follow-tags] <远程> refs/heads/<B>:refs/heads/<M>` | — | — |
- * | `fetchInto` | `fetch <远程> refs/heads/<M>:refs/heads/<B>`（更新非当前分支） | — | — |
- * | `fetchBranch` | `fetch <远程> refs/heads/<M>`（更新当前分支第一步） | — | — |
- * | `fastForward` | `symbolic-ref -q HEAD`，是当前分支则 `merge --ff-only <目标>`，否则 `fetch . <目标>:refs/heads/<B>` | — | — |
+ * | `fetchBranch` | `fetch <远程> refs/heads/<M>`（更新分支第一步） | — | — |
+ * | `fastForward` | `rev-parse --verify -q refs/heads/<B>`、`symbolic-ref -q HEAD`，是当前分支则 `merge --ff-only <目标>`，否则 `fetch . <目标>:refs/heads/<B>` | — | — |
  * | `switchBranch` | `switch <分支>` | `git switch` | 2.23 |
  * | `createTrackingBranch` | `switch -c <分支> --track <远程分支>` | `git switch` | 2.23 |
  * | `createBranch` | `switch -c <分支> --no-track <起点>` | `git switch` | 2.23 |
@@ -134,9 +133,7 @@ export {
 export { getStatus } from "./status.js";
 export {
   FastForwardKind,
-  type FastForwardResult,
   fastForward,
   fetchBranch,
-  fetchInto,
 } from "./update.js";
 export { getGitVersion } from "./version.js";

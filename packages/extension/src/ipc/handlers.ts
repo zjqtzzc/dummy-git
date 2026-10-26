@@ -34,11 +34,9 @@ import {
   deleteRemoteBranches,
   dropStash,
   FastForwardKind,
-  type FastForwardResult,
   fastForward,
   fetchAll,
   fetchBranch,
-  fetchInto,
   forceDeleteBranch,
   getCommitDetails,
   getCommitFiles,
@@ -220,29 +218,26 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
     branch: string,
   ): Promise<{ readonly result: UpdateResult; readonly tracked: string }> {
     const root = repository.location.root;
-    const [head, refs] = await Promise.all([
-      repository.run(getHead, root),
-      repository.run(getRefs, root),
-    ]);
-    const before = localBranch(refs, branch);
+    const before = localBranch(await repository.run(getRefs, root), branch);
     if (before === undefined) throw new UserFacingError(`Branch ${branch} no longer exists.`);
     const upstream = before.upstream;
     if (upstream === undefined) {
       throw new UserFacingError(`${branch} has no upstream branch. Push it first.`);
     }
     const tracked = `${upstream.remote}/${upstream.name}`;
-    const current = head.kind === RefKind.Head && head.branch === branch;
-    // 当前分支：git 不许 fetch 直接更新检出的分支，拆成远程道的 fetch + 本地道的快进。
-    // 取远程的那段时间里用户可能切走了，快进时由 `fastForward` 再认一次。
-    let forward: FastForwardResult;
-    if (current) {
-      await repository.run(fetchBranch, root, upstream.remote, upstream.name);
-      forward = await repository.run(fastForward, root, branch, `refs/remotes/${tracked}`);
-    } else {
-      forward = await repository.run(fetchInto, root, upstream.remote, upstream.name, branch);
-    }
-    if (forward.kind === FastForwardKind.Diverged) {
-      return { result: { kind: UpdateKind.Diverged, branch, tracked }, tracked };
+    // 远程道只取远程分支记录；写本地分支在本地道，和删除、改名、Checkout 排队。
+    // 取远程的那段时间里分支可能被删、被改名、被切走，`fastForward` 快进前再认一次。
+    await repository.run(fetchBranch, root, upstream.remote, upstream.name);
+    const forward = await repository.run(fastForward, root, branch, `refs/remotes/${tracked}`);
+    switch (forward.kind) {
+      case FastForwardKind.Missing:
+        throw new UserFacingError(`Branch ${branch} no longer exists.`);
+      case FastForwardKind.Diverged:
+        return { result: { kind: UpdateKind.Diverged, branch, tracked }, tracked };
+      case FastForwardKind.Done:
+        break;
+      default:
+        assertNever(forward, "updateOne");
     }
     const moved =
       localBranch(await repository.run(getRefs, root), branch)?.target !== before.target;

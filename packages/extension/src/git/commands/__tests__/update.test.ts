@@ -31,6 +31,14 @@ describe("fastForward", () => {
     expect(git(repo, ["branch", "--show-current"]).trim()).toBe("other");
   });
 
+  it("取远程时被删了：说不在了，不新建（fetch 写不存在的分支会建出来）", async () => {
+    const { repo } = behind();
+    git(repo, ["branch", "-q", "-D", "other"]);
+    const result = await fastForward.execute(cli, repo, "other", "refs/remotes/origin/main");
+    expect(result.kind).toBe(FastForwardKind.Missing);
+    expect(git(repo, ["branch", "--list", "other"]).trim()).toBe("");
+  });
+
   it("切走了且分叉：说分叉，两条都不动", async () => {
     const { repo } = behind();
     git(repo, ["commit", "-q", "--allow-empty", "-m", "local"]);
