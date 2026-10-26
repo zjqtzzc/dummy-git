@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   DialogKind,
@@ -128,6 +128,20 @@ describe("handlers.commit", () => {
     repository.dispose();
     expect(git(path, ["status", "--porcelain"]).trim()).toBe("");
   });
+
+  it("改名后又删掉新路径：界面只给旧路径，暂存区里的新路径也一起提交，不剩下一个 AD", async () => {
+    const path = makeTempRepo("commit-rename-deleted");
+    git(path, ["mv", "f1", "renamed"]);
+    rmSync(join(path, "renamed"));
+    const repository = new Repository(plainLocation(path), cli);
+    await createHandlers(repository, NO_UI).commit({
+      repo: path,
+      message: "delete",
+      paths: ["f1"],
+    });
+    repository.dispose();
+    expect(git(path, ["status", "--porcelain"]).trim()).toBe("");
+  });
 });
 
 describe("handlers.rollback", () => {
@@ -149,6 +163,19 @@ describe("handlers.rollback", () => {
     repository.dispose();
     expect(asked).toEqual([["renamed"]]);
     expect(git(path, ["status", "--porcelain"]).trim()).toBe("?? untracked.txt");
+  });
+
+  it("改名后又删掉新路径：界面只给旧路径，暂存区里的新路径也一起撤掉", async () => {
+    const path = makeTempRepo("rollback-rename-deleted");
+    git(path, ["mv", "f1", "renamed"]);
+    rmSync(join(path, "renamed"));
+    const repository = new Repository(plainLocation(path), cli);
+    await createHandlers(repository, { ...NO_UI, confirmRollback: async () => true }).rollback({
+      repo: path,
+      paths: ["f1"],
+    });
+    repository.dispose();
+    expect(git(path, ["status", "--porcelain"]).trim()).toBe("");
   });
 
   it("取消确认：什么都不做", async () => {
@@ -921,6 +948,14 @@ describe("handlers.stash", () => {
     expect(status(repo)).toEqual([" M keep"]);
     git(repo, ["stash", "apply", "-q"]);
     expect(status(repo).sort()).toEqual([" D a", " D b", " M keep", "?? u", "A  a2"].sort());
+  });
+
+  it("改名后又删掉新路径：界面只给旧路径，整个改名存走，只存一条", async () => {
+    const repo = scene("stash-rename-deleted");
+    rmSync(join(repo, "a2"));
+    await stash(repo, ["a"]);
+    expect(stashes(repo)).toHaveLength(1);
+    expect(status(repo).sort()).toEqual(["D  b", " M keep", "?? u"].sort());
   });
 
   it("什么都没勾：存全部改动，含未跟踪", async () => {

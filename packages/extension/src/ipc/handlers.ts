@@ -333,19 +333,22 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
 
   /**
    * 按当前的 `git status` 看勾选的路径：哪些是未跟踪文件（提交前要先 `add`；Rollback 不管），
-   * 哪些是已跟踪的；`withOldPaths` 给改名的补上旧路径——界面上只有新路径一行，
-   * 旧路径那一半（删除）要一起交给 git，否则剩下一个 D。
+   * 哪些是已跟踪的；`withRenamePartners` 给改名的补上另一头——界面上改名只有一行，
+   * 平常是新路径；新路径又从磁盘上删掉时，界面画成旧路径上的删除。两头要一起交给 git，
+   * 只交新路径会剩下一个 D，只交旧路径会剩下一个 AD。
    * 由扩展自己问 git，不信 webview 手里可能已过时的状态。
    */
   const inspect = async (paths: readonly string[]) => {
     const { changes } = await repository.run(getStatus, repository.location.root);
     const untracked = new Set<string>();
     const renamedFrom = new Map<string, string>();
+    const renamedTo = new Map<string, string>();
     const deleted = new Set<string>();
     for (const change of changes) {
       if (change.kind === ChangeKind.Untracked) untracked.add(change.path);
       if (change.kind === ChangeKind.Tracked && change.oldPath !== undefined) {
         renamedFrom.set(change.path, change.oldPath);
+        renamedTo.set(change.oldPath, change.path);
       }
       if (change.kind === ChangeKind.Tracked && change.index === FileStatus.Deleted) {
         deleted.add(change.path);
@@ -354,16 +357,17 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
     return {
       untracked: paths.filter((path) => untracked.has(path)),
       tracked: paths.filter((path) => !untracked.has(path)),
-      withOldPaths: (list: readonly string[]): string[] =>
+      withRenamePartners: (list: readonly string[]): string[] =>
         list.flatMap((path) => {
-          const old = renamedFrom.get(path);
-          return old === undefined ? [path] : [path, old];
+          const partner = renamedFrom.get(path) ?? renamedTo.get(path);
+          return partner === undefined ? [path] : [path, partner];
         }),
-      /** 这些路径里已暂存的删除：改名的旧路径、暂存区里删掉的文件。 */
+      /** 这些路径里已暂存的删除：改名的旧路径（给的是哪一头都算）、暂存区里删掉的文件。 */
       stagedDeletions: (list: readonly string[]): string[] =>
         list.flatMap((path) => {
           const old = renamedFrom.get(path);
-          return [...(old === undefined ? [] : [old]), ...(deleted.has(path) ? [path] : [])];
+          if (old !== undefined) return [old];
+          return renamedTo.has(path) || deleted.has(path) ? [path] : [];
         }),
     };
   };
@@ -498,23 +502,23 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       return null;
     },
     commit: async ({ message, paths }) => {
-      const { untracked, withOldPaths } = await inspect(paths);
+      const { untracked, withRenamePartners } = await inspect(paths);
       await repository.run(
         commit,
         repository.location.root,
         message,
-        withOldPaths(paths),
+        withRenamePartners(paths),
         untracked,
       );
       return null;
     },
     amend: async ({ message, paths }) => {
-      const { untracked, withOldPaths } = await inspect(paths);
+      const { untracked, withRenamePartners } = await inspect(paths);
       await repository.run(
         amendCommit,
         repository.location.root,
         message,
-        withOldPaths(paths),
+        withRenamePartners(paths),
         untracked,
       );
       return null;
@@ -879,7 +883,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         );
         return null;
       }
-      const { withOldPaths, stagedDeletions } = await inspect(paths);
+      const { withRenamePartners, stagedDeletions } = await inspect(paths);
       const deletions = stagedDeletions(paths);
       await ui.withProgress(
         "Stashing selected changes…",
@@ -887,7 +891,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
           // 已暂存的删除先退回成未暂存的，`stash push -- <路径>` 才不会存了一半（见 `stashPaths`）。
           // 代价：Apply 回来后改名显示成新增 + 删除两行（不带 --index 的 Apply 本来就不还原暂存状态）。
           if (deletions.length > 0) await repository.run(unstage, root, deletions);
-          return repository.run(stashPaths, root, withOldPaths(paths));
+          return repository.run(stashPaths, root, withRenamePartners(paths));
         },
         (said) => said,
       );
@@ -973,9 +977,9 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
     },
     rollback: async ({ paths }) => {
       // 未跟踪文件不归 Rollback 管。一个已跟踪的都没有就什么都不做。
-      const { tracked, withOldPaths } = await inspect(paths);
+      const { tracked, withRenamePartners } = await inspect(paths);
       if (tracked.length === 0 || !(await ui.confirmRollback(tracked))) return null;
-      await repository.run(rollback, repository.location.root, withOldPaths(tracked));
+      await repository.run(rollback, repository.location.root, withRenamePartners(tracked));
       return null;
     },
   });
