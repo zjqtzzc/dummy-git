@@ -614,13 +614,11 @@ onMounted(async () => {
 });
 
 /**
- * 三栏宽度（像素）与右栏上下的比例。从 `viewState` 取回（收起再展开、重新加载窗口都在），拖动时存回去。
- *
- * 外层 `fixed-pane="start"`、内层 `fixed-pane="end"`：窗口或面板大小变化时，
- * 左栏和右栏保持像素宽度，只有中间的提交列表伸缩。设了 fixed-pane，组件才会自己
- * 监听尺寸变化；不设的话它不跟踪宽度，改过尺寸后第一次按下分隔线会跳位。
+ * 三栏宽度（像素）与右栏上下的比例。从 `viewState` 取回（重新加载窗口也在），拖动时存回去。
+ * 尺寸只记在这一处，分隔线的位置都从它摆（见下面的 `resizes`）。
  */
 let layout: Layout = restoreLayout(viewState.read("layout"));
+const outerSplit = ref<VscodeSplitLayout>();
 const innerSplit = ref<VscodeSplitLayout>();
 const detailsSplit = ref<VscodeSplitLayout>();
 
@@ -649,30 +647,32 @@ function onDetailsSplit(event: Event): void {
 }
 
 /**
- * 右栏的初始宽度。组件的分隔线位置只能从左边算，没有「从右边算」的写法，
- * 所以等它自己渲染完、量出内层宽度，一次性把分隔线放到「宽度 − 右栏宽度」。
- * 之后的尺寸变化由 fixed-pane 保持右栏宽度，不再管。
+ * 每层的尺寸一变，就从 `layout` 重摆这一层的分隔线：窗口或面板变大变小时，左右两栏保持像素宽度、
+ * 右栏上下保持比例，多出来的都给中间的提交列表。
  *
- * 右栏上下按比例分，不设 fixed-pane。这时组件不跟踪尺寸，内部记的分隔线像素位置和总高度都会过时，
- * 面板改过大小后一按分隔线就跳位。所以由我们监听尺寸变化，每次都按比例重设一次 `handlePosition`：
- * 它会先重新量总高度再定位置。不能用 `resetHandlePosition()`：它只重算位置、不更新总高度，比例会越拉越歪。
+ * 不用组件的 `fixed-pane`：它自己另记一份固定栏的宽度。面板收起时页面还在、只是缩成 0，
+ * 它就把那份记成 0，再展开时那一栏没了。`layout` 只在拖动时写，收起、窗口变窄都碰不到它。
+ *
+ * 只摆尺寸变了的那层：拖左边的分隔线时内层跟着变宽变窄，这时连外层一起重摆，会把正在拖的分隔线拽回去。
+ * 内层的位置只能从左边算，所以是「宽度 − 右栏宽度」；比右栏还窄时组件自己压到 0。
+ * 摆的时候设 `handlePosition`，它会先重新量这一层的尺寸，之后按下分隔线才不跳位。
+ * 不能用 `resetHandlePosition()`：它只重算位置、不更新尺寸，比例会越拉越歪。
  */
-const resizes = new ResizeObserver(() => {
-  if (detailsSplit.value !== undefined) detailsSplit.value.handlePosition = `${layout.files}%`;
+const resizes = new ResizeObserver((entries) => {
+  for (const { target, contentRect } of entries) {
+    const outer = outerSplit.value;
+    const inner = innerSplit.value;
+    const vertical = detailsSplit.value;
+    if (target === outer) outer.handlePosition = `${layout.left}px`;
+    if (target === inner) inner.handlePosition = `${contentRect.width - layout.right}px`;
+    if (target === vertical) vertical.handlePosition = `${layout.files}%`;
+  }
 });
 onMounted(async () => {
-  const split = innerSplit.value;
-  if (split !== undefined) {
+  for (const split of [outerSplit.value, innerSplit.value, detailsSplit.value]) {
+    if (split === undefined) continue;
     await split.updateComplete;
-    const width = split.getBoundingClientRect().width;
-    split.initialHandlePosition = `${Math.max(0, width - layout.right)}px`;
-    split.resetHandlePosition();
-  }
-  const vertical = detailsSplit.value;
-  if (vertical !== undefined) {
-    await vertical.updateComplete;
-    vertical.handlePosition = `${layout.files}%`;
-    resizes.observe(vertical);
+    resizes.observe(split);
   }
 });
 onUnmounted(() => resizes.disconnect());
@@ -682,7 +682,7 @@ onUnmounted(() => resizes.disconnect());
   <vscode-split-layout
     class="layout"
     split="vertical"
-    fixed-pane="start"
+    ref="outerSplit"
     :initial-handle-position="`${layout.left}px`"
     @vsc-split-layout-change="onLeftSplit"
   >
@@ -736,7 +736,6 @@ onUnmounted(() => resizes.disconnect());
     <vscode-split-layout
       slot="end"
       split="vertical"
-      fixed-pane="end"
       ref="innerSplit"
       @vsc-split-layout-change="onRightSplit"
     >
