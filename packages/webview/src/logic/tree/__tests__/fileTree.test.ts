@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   buildFileTree,
+  checkedIds,
   type FileEntry,
   type FileNode,
   FileNodeKind,
+  filesById,
   keepChecked,
   toTreeNodes,
 } from "../fileTree.js";
@@ -68,10 +70,34 @@ describe("buildFileTree", () => {
     ]);
   });
 
-  it("节点 id 是相对仓库根的完整路径", () => {
+  it("节点 id 是组的 id 加完整路径", () => {
     const [folder] = flat([m("apps/parser/a.py")]);
-    expect(folder?.id).toBe("apps/parser");
-    expect(folder?.kind === FileNodeKind.Folder && folder.children[0]?.id).toBe("apps/parser/a.py");
+    expect(folder?.id).toBe("all/apps/parser");
+    expect(folder?.kind === FileNodeKind.Folder && folder.children[0]?.id).toBe(
+      "all/apps/parser/a.py",
+    );
+  });
+
+  it("同一目录、同一文件出现在两组里：id 不撞（Vue 的 key、展开、选中都按 id）", () => {
+    const nodes = toTreeNodes(
+      buildFileTree(
+        [
+          { id: "changes", label: "Changes", entries: [m("m/input/a.h"), m("same.txt")] },
+          {
+            id: "unversioned",
+            label: "Unversioned Files",
+            entries: [m("m/input/b.cpp"), m("same.txt")],
+          },
+        ],
+        true,
+      ),
+      false,
+    );
+    const ids = (list: readonly TreeNode[]): string[] =>
+      list.flatMap((node) => [node.id, ...ids(node.children ?? [])]);
+    const all = ids(nodes);
+    expect(all).toHaveLength(8);
+    expect(new Set(all).size).toBe(all.length);
   });
 
   it("没有文件（比如合并提交）→ 空树", () => {
@@ -190,5 +216,40 @@ describe("平铺（不按目录分组）", () => {
       false,
     );
     expect(descriptions(nodes)).toEqual(["1 file", undefined]);
+  });
+});
+
+describe("filesById / checkedIds：节点 id 与路径互换", () => {
+  const nodes = buildFileTree(
+    [
+      {
+        id: "changes",
+        label: "Changes",
+        entries: [{ ...m("same.txt"), letter: "D" }, m("src/a.ts")],
+      },
+      {
+        id: "unversioned",
+        label: "Unversioned Files",
+        entries: [{ ...m("same.txt"), letter: "U" }],
+      },
+    ],
+    true,
+  );
+  const files = filesById(nodes);
+
+  it("只收文件，id 换回各自那一组的文件", () => {
+    expect([...files.keys()]).toEqual([
+      "changes/src/a.ts",
+      "changes/same.txt",
+      "unversioned/same.txt",
+    ]);
+    expect(files.get("unversioned/same.txt")?.letter).toBe("U");
+  });
+
+  it("勾选的路径在几组里各有一行，几行都勾上", () => {
+    expect([...checkedIds(files, new Set(["same.txt"]))]).toEqual([
+      "changes/same.txt",
+      "unversioned/same.txt",
+    ]);
   });
 });

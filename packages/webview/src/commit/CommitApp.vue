@@ -20,7 +20,7 @@ import {
 } from "../logic/commit/workingChanges.js";
 import { AppIcon, appIcon, codicon } from "../logic/icons.js";
 import type { MenuViews } from "../logic/menuItems.js";
-import { type FileEntry, groupNodeId, keepChecked } from "../logic/tree/fileTree.js";
+import { type FileEntry, keepChecked } from "../logic/tree/fileTree.js";
 import { Grouping, groupingMenu, restoreGrouping, saveGrouping } from "../logic/tree/grouping.js";
 import { CheckState } from "../logic/tree/tree.js";
 import FileTree from "../tree/FileTree.vue";
@@ -76,7 +76,6 @@ const heading = computed(() => conflictHeading(operation.value, conflicts.value.
 const hasFiles = computed(
   () => files.value.length > 0 || conflicts.value.length > 0 || operation.value !== null,
 );
-const conflictRow = groupNodeId(CONFLICTS_GROUP);
 
 /**
  * 勾选的路径。默认都不勾。存进 `viewState`：面板收起再展开、重新加载窗口都还在。
@@ -483,7 +482,7 @@ onMounted(async () => {
         @open="openFile"
       >
         <template v-if="heading?.actions" #after="{ node }">
-          <span v-if="node.id === conflictRow" class="ops">
+          <span v-if="node.id === CONFLICTS_GROUP" class="ops">
             <button
               type="button"
               class="op"

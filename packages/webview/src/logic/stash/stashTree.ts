@@ -9,7 +9,7 @@ import {
   menuItem,
   menuItemsContext,
 } from "../menuItems.js";
-import { buildFileTree, toTreeNodes as fileTreeNodes } from "../tree/fileTree.js";
+import { buildFileTree, toTreeNodes as fileTreeNodes, scopedId } from "../tree/fileTree.js";
 import type { TreeNode } from "../tree/tree.js";
 import { formatTime } from "../utils/time.js";
 
@@ -59,8 +59,8 @@ export function stashMenuContext(
  * Stash 模式的树：每条 stash 一个顶层节点，
  * 标题是 git 生成的说明、后面灰字时间；下面是它改了的文件（已跟踪与未跟踪合在一起），`byDirectory` 时按目录整理，否则平铺。
  *
- * 同一个文件可以出现在好几条 stash 里，而节点 id 在一棵树里必须唯一，
- * 所以文件与目录的 id 前面加上 stash 的 hash（`<hash>/<路径>`）。顶层节点的 id 就是 hash。
+ * 每条 stash 是文件树的一组，组的 id 是 hash：文件与目录的 id 是 `<hash>/<路径>`（`scopedId`），
+ * 同一个文件出现在好几条 stash 里也不撞。顶层节点的 id 就是 hash。
  * 顶层节点带右键菜单上下文（Pop、Apply ｜ Delete），和 `package.json` 菜单项的 `when` 条件对应。
  */
 export function stashTreeNodes(
@@ -76,7 +76,7 @@ export function stashTreeNodes(
       id: stash.hash,
       label: stash.message,
       description: formatTime(stash.at, now),
-      children: scoped(stash.hash, files),
+      children: files,
     };
   });
 }
@@ -105,16 +105,4 @@ export function stashByNodeId(nodes: readonly TreeNode[]): ReadonlyMap<string, s
   };
   for (const node of nodes) visit(node, node.id);
   return index;
-}
-
-function scopedId(hash: string, id: string): string {
-  return `${hash}/${id}`;
-}
-
-function scoped(hash: string, nodes: readonly TreeNode[]): TreeNode[] {
-  return nodes.map((node) =>
-    node.children === undefined
-      ? { ...node, id: scopedId(hash, node.id) }
-      : { ...node, id: scopedId(hash, node.id), children: scoped(hash, node.children) },
-  );
 }

@@ -72,7 +72,7 @@ export type FileNode =
     }
   | {
       readonly kind: FileNodeKind.Folder;
-      /** 相对仓库根的目录路径，也是节点 id。 */
+      /** 组的 id 加目录路径（`scopedId`）。 */
       readonly id: string;
       /** 合并后的显示名，比如 `apps/rgv_calib_parser`。 */
       readonly label: string;
@@ -82,7 +82,7 @@ export type FileNode =
     }
   | {
       readonly kind: FileNodeKind.File;
-      /** 相对仓库根的路径，也是节点 id。 */
+      /** 组的 id 加文件路径（`scopedId`）；路径本身在 `entry.path`。 */
       readonly id: string;
       /** 文件名。 */
       readonly label: string;
@@ -108,7 +108,9 @@ export function buildFileTree(
 ): readonly FileNode[] {
   return groups.flatMap((group): FileNode[] => {
     if (group.entries.length === 0 && group.keepEmpty !== true) return [];
-    const children = byDirectory ? buildEntries(group.entries) : flatEntries(group.entries);
+    const children = byDirectory
+      ? buildEntries(group.id, group.entries)
+      : flatEntries(group.id, group.entries);
     if (group.label === undefined) return children;
     return [
       {
@@ -125,7 +127,16 @@ export function buildFileTree(
   });
 }
 
-function buildEntries(entries: readonly FileEntry[]): FileNode[] {
+/**
+ * 组下面目录与文件的节点 id：组的 id 加路径。同一个目录、同一个文件可以出现在好几组里
+ * （Changes 与 Unversioned Files 共用一个目录，好几条 stash 改了同一个文件），而节点 id 在一棵树里必须唯一。
+ * 组的 id 是固定的名字或 stash 的 hash，不含 `/`：不会和路径接出同一个串，组那一行直接用组的 id 也撞不上。
+ */
+export function scopedId(group: string, path: string): string {
+  return `${group}/${path}`;
+}
+
+function buildEntries(group: string, entries: readonly FileEntry[]): FileNode[] {
   const root: Draft = { folders: new Map(), files: [] };
   for (const entry of entries) {
     const parts = entry.path.split("/");
@@ -140,26 +151,26 @@ function buildEntries(entries: readonly FileEntry[]): FileNode[] {
     }
     draft.files.push(entry);
   }
-  return toNodes(root, "");
+  return toNodes(group, root, "");
 }
 
-function flatEntries(entries: readonly FileEntry[]): FileNode[] {
+function flatEntries(group: string, entries: readonly FileEntry[]): FileNode[] {
   return [...entries]
     .sort((a, b) => a.path.localeCompare(b.path))
-    .map((entry) => toFile(entry, dirname(entry.path)));
+    .map((entry) => toFile(group, entry, dirname(entry.path)));
 }
 
-function toNodes(draft: Draft, prefix: string): FileNode[] {
+function toNodes(group: string, draft: Draft, prefix: string): FileNode[] {
   const folders = [...draft.folders.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([name, child]) => toFolder(name, child, prefix));
+    .map(([name, child]) => toFolder(group, name, child, prefix));
   const files = [...draft.files]
     .sort((a, b) => basename(a.path).localeCompare(basename(b.path)))
-    .map((entry) => toFile(entry, ""));
+    .map((entry) => toFile(group, entry, ""));
   return [...folders, ...files];
 }
 
-function toFolder(name: string, draft: Draft, prefix: string): FileNode {
+function toFolder(group: string, name: string, draft: Draft, prefix: string): FileNode {
   // 合并单子目录链：自己没有文件、只有一个子目录，就把名字接上继续往下。
   let label = name;
   let current = draft;
@@ -169,8 +180,14 @@ function toFolder(name: string, draft: Draft, prefix: string): FileNode {
     path = `${path}/${only[0]}`;
     current = only[1];
   }
-  const children = toNodes(current, `${path}/`);
-  return { kind: FileNodeKind.Folder, id: path, label, count: countFiles(current), children };
+  const children = toNodes(group, current, `${path}/`);
+  return {
+    kind: FileNodeKind.Folder,
+    id: scopedId(group, path),
+    label,
+    count: countFiles(current),
+    children,
+  };
 }
 
 function soleChild(draft: Draft): [string, Draft] | undefined {
@@ -185,11 +202,11 @@ function countFiles(draft: Draft): number {
 }
 
 /** `folder` 是平铺时要写的所在目录，空串就不写。 */
-function toFile(entry: FileEntry, folder: string): FileNode {
+function toFile(group: string, entry: FileEntry, folder: string): FileNode {
   const label = basename(entry.path);
   const base = {
     kind: FileNodeKind.File,
-    id: entry.path,
+    id: scopedId(group, entry.path),
     label,
     entry,
     ...(folder === "" ? {} : { folder }),
@@ -208,15 +225,23 @@ function dirname(path: string): string {
   return slash === -1 ? "" : path.slice(0, slash);
 }
 
-/**
- * 组的 id 前缀。路径里不会有 NUL，所以组的 id 不会和同名目录的路径撞上
- * （节点 id 在一棵树里必须唯一，见 `tree.ts`）。
- */
-const GROUP_PREFIX = "\0";
+/** 文件节点 id → 文件。节点 id 不是路径（`scopedId`），页面拿到选中、要打开的节点时用它换回文件。 */
+export function filesById(nodes: readonly FileNode[]): ReadonlyMap<string, FileEntry> {
+  const index = new Map<string, FileEntry>();
+  const visit = (node: FileNode): void => {
+    if (node.kind === FileNodeKind.File) index.set(node.id, node.entry);
+    else for (const child of node.children) visit(child);
+  };
+  for (const node of nodes) visit(node);
+  return index;
+}
 
-/** 组在基础树里的节点 id。页面要把插槽画在某一组上时用它认那一行。 */
-export function groupNodeId(id: string): string {
-  return `${GROUP_PREFIX}${id}`;
+/** 勾选的路径 → 勾选的文件节点 id。同一路径在几组里各有一行时（删除 + 未跟踪），几行都算勾上。 */
+export function checkedIds(
+  files: ReadonlyMap<string, FileEntry>,
+  paths: ReadonlySet<string>,
+): ReadonlySet<string> {
+  return new Set([...files].flatMap(([id, entry]) => (paths.has(entry.path) ? [id] : [])));
 }
 
 /** 文件树 → 基础树的节点：组没有图标、文字加粗；目录是文件夹图标；文件是 Seti 图标加改动字母。 */
@@ -232,7 +257,7 @@ export function toTreeNodes(
       case FileNodeKind.Group: {
         const description = groupDescription(node);
         return {
-          id: groupNodeId(node.id),
+          id: node.id,
           label: node.label,
           bold: true,
           ...(description === undefined ? {} : { description }),

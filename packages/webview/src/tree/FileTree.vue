@@ -2,7 +2,14 @@
 import { DiffOpenMode } from "@dummy-git/shared";
 import { computed, ref, watch } from "vue";
 import type { MenuArgs, MenuViews } from "../logic/menuItems.js";
-import { buildFileTree, type FileEntry, type FileGroup, toTreeNodes } from "../logic/tree/fileTree.js";
+import {
+  buildFileTree,
+  checkedIds,
+  type FileEntry,
+  type FileGroup,
+  filesById,
+  toTreeNodes,
+} from "../logic/tree/fileTree.js";
 import { branchIds, type TreeNode, viewsOfIds } from "../logic/tree/tree.js";
 import { useLightTheme } from "../ui/lightTheme.js";
 import Tree from "./Tree.vue";
@@ -26,7 +33,7 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{
   open: [entry: FileEntry, mode: DiffOpenMode];
-  /** 叶子的 id 就是文件路径。 */
+  /** 想把这些路径改成勾（`true`）或不勾。 */
   check: [paths: readonly string[], value: boolean];
   /** 复制快捷键：选中的行显示的文字，一行一个（文件名、目录名、组的标题）。 */
   copy: [text: string];
@@ -41,7 +48,14 @@ const slots = defineSlots<{
 }>();
 
 const light = useLightTheme();
-const nodes = computed(() => toTreeNodes(buildFileTree(props.groups, props.byDirectory !== false), light.value));
+const fileNodes = computed(() => buildFileTree(props.groups, props.byDirectory !== false));
+const nodes = computed(() => toTreeNodes(fileNodes.value, light.value));
+/** 节点 id → 文件。节点 id 带着组（`scopedId`），对外一律用路径。 */
+const byId = computed(() => filesById(fileNodes.value));
+/** 勾选按路径记，基础树按叶子 id 画：同一路径在几组里各有一行时都画成勾上。 */
+const checkedNodes = computed(() =>
+  props.checked === undefined ? undefined : checkedIds(byId.value, props.checked),
+);
 
 /**
  * 展开状态。新出现的目录（第一次见到的 id）默认展开；用户收起过的、刷新后还在的保持收起。
@@ -58,11 +72,6 @@ watch(
     expanded.value = next;
   },
   { immediate: true },
-);
-
-/** 节点 id（完整路径）→ 文件。目录的路径不会和文件相同，组的 id 带前缀，查不到的就不是文件。 */
-const byId = computed(
-  () => new Map(props.groups.flatMap((group) => group.entries.map((entry) => [entry.path, entry]))),
 );
 
 /** 上次跟随的文件：同一个文件重复选中时不再跟，免得 diff 反复打开。 */
@@ -112,6 +121,15 @@ const treeMenu = computed(() => {
     menu({ exact: views.exact.map(toEntry), expanded: views.expanded.map(toEntry) });
 });
 
+/** 基础树给的是叶子 id，交出去换成路径。 */
+function onCheck(ids: readonly string[], value: boolean): void {
+  const paths = ids.flatMap((id) => {
+    const entry = byId.value.get(id);
+    return entry === undefined ? [] : [entry.path];
+  });
+  emit("check", [...new Set(paths)], value);
+}
+
 function onActivate(node: TreeNode): void {
   const entry = byId.value.get(node.id);
   if (entry === undefined) return;
@@ -124,11 +142,11 @@ function onActivate(node: TreeNode): void {
   <Tree
     v-model:expanded="expanded"
     :nodes="nodes"
-    :checked="checked"
+    :checked="checkedNodes"
     :menu="treeMenu"
     @select="onSelect"
     @activate="onActivate"
-    @check="(paths, value) => emit('check', paths, value)"
+    @check="onCheck"
     @copy="(text) => emit('copy', text)"
   >
     <template v-if="slots.after" #after="slotProps">

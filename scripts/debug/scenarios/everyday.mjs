@@ -10,7 +10,7 @@
  * Commit 面板：
  *   Changes：src/a.txt 修改；src/b.txt 部分暂存；added.txt 新增（已暂存）；gone.txt 删了；
  *     renamed.txt 改名自 old.txt；from.txt 改名成 to.txt 后又删掉 to.txt，画成 from.txt 的删除。
- *   Unversioned Files：new.txt、docs/new/notes.txt。
+ *   Unversioned Files：new.txt、docs/new/notes.txt、src/new.txt（src/ 两组都有：收起、选中只动一组）。
  *   这些文件 one、two、three 都没碰：Reset → Keep 到合并之后的任一条都保得住。
  */
 export function build(g) {
@@ -65,4 +65,5 @@ export function build(g) {
   g.remove("to.txt");
   g.write("new.txt", "untracked\n");
   g.write("docs/new/notes.txt", "untracked\n");
+  g.write("src/new.txt", "untracked\n");
 }
