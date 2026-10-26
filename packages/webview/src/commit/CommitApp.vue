@@ -602,18 +602,18 @@ onMounted(async () => {
   padding: 0;
   border: none;
   border-radius: 4px;
-  background: transparent;
-  color: var(--vscode-charts-green);
+  background: var(--vscode-charts-green);
+  color: #fff;
   cursor: pointer;
 }
 .op:hover:not(:disabled) {
-  background: var(--vscode-toolbar-hoverBackground);
+  filter: brightness(1.15);
 }
 .op:active:not(:disabled) {
-  background: var(--vscode-toolbar-activeBackground);
+  filter: brightness(0.85);
 }
 .op.abort {
-  color: var(--vscode-charts-red);
+  background: var(--vscode-charts-red);
 }
 .op:focus-visible {
   outline: 1px solid var(--vscode-focusBorder);
