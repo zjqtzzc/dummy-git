@@ -373,7 +373,7 @@ handler 声明「这一段是什么」（`Pushing zzc-dev`）与「做完了怎�
 - 保留 `GIT_TERMINAL_PROMPT=0`。进程层 `detached: true` 让 git 脱离终端，ssh 拿不到 tty。
 - GPG 签名不拦，交给系统 pinentry：桌面上弹系统窗口，没有图形界面时通常直接失败。
 - Git Credential Manager 不拦：它弹的是看得见的窗口。凭据助手里已存的密码照常用。
-- 失败时的 stderr 实测后写进第 15 题的已知错误「需要密码」。
+- 失败时先显示 git 原文。第 15 题的已知错误「需要密码」随第 6 阶段的输入密码一起做。
 
 第 6 阶段把 `echo ''` 脚本换成回调扩展、弹输入框的版本，结构不变。
 

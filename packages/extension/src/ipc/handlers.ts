@@ -150,7 +150,7 @@ export interface HandlerUi {
     message: string,
     actions: readonly string[],
   ) => Promise<number | undefined>;
-  /** Rollback 前的确认：`true` 是确认。只列勾选的已跟踪文件（不含补上的旧路径）。 */
+  /** Rollback 前的确认：`true` 是确认。只列选中的已跟踪文件（不含补上的改名另一头）。 */
   readonly confirmRollback: (paths: readonly string[]) => Promise<boolean>;
   /**
    * 进度出口（`vscode/progress.ts`）：`title` 是正在做什么，`done` 由结果说做完了什么。
@@ -334,7 +334,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
   }
 
   /**
-   * 按当前的 `git status` 看勾选的路径：哪些是未跟踪文件（提交前要先 `add`；Rollback 不管），
+   * 按当前的 `git status` 看交来的路径（提交、Stash 是勾选的，Rollback 是选中的）：哪些是未跟踪文件（提交前要先 `add`；Rollback 不管），
    * 哪些是已跟踪的；`withRenamePartners` 给改名的补上另一头——界面上改名只有一行，
    * 平常是新路径；新路径又从磁盘上删掉时，界面画成旧路径上的删除。两头要一起交给 git，
    * 只交新路径会剩下一个 D，只交旧路径会剩下一个 AD。

@@ -51,7 +51,6 @@
 - 单独的 Rollback 确认页：文件树加复选框，可以在页面里调整勾选。
 - 文件右键 Add to .gitignore、Reveal in Explorer / Open in System Folder。
 - 树里按空格切换勾选。
-- 文件树 / 平铺切换。
 
 ## Stash（`product/features/stash.md`）
 

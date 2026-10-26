@@ -73,9 +73,9 @@ VS Code 的 `webview/context` 菜单项被点时，VS Code 直接调扩展里注
 
 ## 右键菜单的排序与分隔
 
-所有右键菜单按「作用由轻到重」分组，组间分隔线：① 切换 / 查看类（不改内容或最常用）② 同步类（Pull、Push）③ 新建 / 修改类（可撤回）④ 删除类（找不回来，永远最下、单独一组，免得手滑）。
+所有右键菜单按「作用由轻到重」分组，组间分隔线：① 切换 / 查看类（不改内容或最常用）② 同步类（Update、Push）③ 新建 / 修改类（可撤回）④ 删除类（找不回来，永远最下、单独一组，免得手滑）。
 组内按使用频率排。只有一两项时不加分隔线。落地为 `package.json` 菜单项的 `group`：`1_switch` / `2_sync` / `3_edit` / `4_delete`（stash 的取回类叫 `1_apply`），组内 `@1`、`@2` 排序。
-分支菜单：Checkout ｜ Pull、Push ｜ New Branch from Here…、Rename… ｜ Delete（同 IDEA 的顺序）。
+分支菜单同 IDEA 的顺序，各项见 `product/features/branches.md`。
 不可用的项不出现（`when` 条件），不置灰。
 
 ## 右键菜单：每个菜单项一个键，右键那一刻按整个选中算好（2026-10-19）

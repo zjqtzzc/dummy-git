@@ -15,7 +15,7 @@ export enum GitDomain {
   /**
    * 分支、tag、提交图。
    *
-   * 消费者：分支树（左栏）、提交列表与图（中栏）、Push 面板的 ahead 列表。
+   * 消费者：分支树（左栏）、提交列表与图（中栏）。
    *
    * **四个域里唯一昂贵的一个**，别顺手带上。
    * 注意它内部还差两个数量级：列 ref 很快，提交图骨架慢得多。
@@ -47,12 +47,11 @@ export enum GitDomain {
   /**
    * merge / rebase / cherry-pick 的「进行中」状态。
    *
-   * 消费者：Commit 面板顶部的三条 Banner（continue / abort）。
+   * 消费者：Commit 面板冲突组的标题行（继续 / 放弃）。
    *
    * 单独成域是因为**代价与 `Refs` 差两个数量级**：
    * 重拉它只是看几个文件在不在，而 rebase 每重放一个提交都会动 `rebase-merge/`。
-   * 不分开的话，rebase 20 个提交就是 20 次提交图的无谓重算，
-   * 而界面上真正变的只有 Banner 上 `(3/7)` 那个数字。
+   * 不分开的话，rebase 20 个提交就是 20 次提交图的无谓重算。
    */
   Operation = "operation",
 }

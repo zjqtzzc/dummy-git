@@ -90,7 +90,6 @@ committed by Bob <bob@x.com>  2026/9/21 09:00     ← 灰色
 | 1 | Copy Hash | 上面 |
 | 2 | Cherry-Pick、Revert、Rebase onto Here | `product/features/conflicts.md` |
 | 3 | Reset Current Branch to Here…、Edit Commit Message… | `product/features/history.md` |
-| 3 | New Branch from Here… | `product/features/branches.md` |
 
 `Edit Commit Message…` 只在能改的提交上出现，见 `product/features/history.md`。
 
