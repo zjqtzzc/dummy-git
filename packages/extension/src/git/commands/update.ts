@@ -50,18 +50,35 @@ export const fetchBranch: GitCommand<
 };
 
 /**
- * 更新当前分支的第二步：`merge --ff-only <远程分支记录>`。改工作区，走本地道。
+ * 把本地分支 `B` 快进到 `target`（本地已有的提交，比如刚取回的远程分支记录）。走本地道。
  *
- * 不能快进时 git 报 `Not possible to fast-forward`。工作区的改动挡住时（`would be overwritten`）
- * 是别的失败，原样抛出：git 那一句已经说清楚了。
+ * 先看 `B` 此刻还是不是当前分支，和快进在同一条命令里：Checkout 也走本地道，插不到两步中间。
+ * 调用方早先看到的「是当前分支」不作数——取远程走远程道，那段时间里用户可能已经切走了。
+ * - 是：`merge --ff-only <target>`，连工作区一起更新。不能快进时 git 报 `Not possible to fast-forward`；
+ *   工作区的改动挡住时（`would be overwritten`）是别的失败，原样抛出：git 那一句已经说清楚了。
+ * - 不是：`fetch . <target>:refs/heads/<B>`，只移动引用、不联网，只允许快进（同 `fetchInto`）。
  */
-export const fastForward: GitCommand<[repository: string, target: string], FastForwardResult> = {
+export const fastForward: GitCommand<
+  [repository: string, branch: string, target: string],
+  FastForwardResult
+> = {
   lock: LockPolicy.Exclusive,
 
-  execute: async (cli, repository, target) =>
-    fastForwardResult(cli, repository, ["merge", "--ff-only", target], (stderr) =>
-      stderr.includes("Not possible to fast-forward"),
-    ),
+  execute: async (cli, repository, branch, target) => {
+    // detached 时退出码 1，`-q` 不报错：当作「不是」。
+    const head = await cli.exec(["symbolic-ref", "-q", "HEAD"], { cwd: repository });
+    if (head.exitCode === 0 && head.stdout.trim() === `refs/heads/${branch}`) {
+      return fastForwardResult(cli, repository, ["merge", "--ff-only", target], (stderr) =>
+        stderr.includes("Not possible to fast-forward"),
+      );
+    }
+    return fastForwardResult(
+      cli,
+      repository,
+      ["fetch", ".", `${target}:refs/heads/${branch}`],
+      (stderr) => stderr.includes("(non-fast-forward)"),
+    );
+  },
 };
 
 async function fastForwardResult(

@@ -216,11 +216,9 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
    * 更新一个本地分支：只取它跟踪的远程分支，能快进就快进。分叉时远程分支记录已经更新，
    * 后面的变基或合并用这份记录，不再取一次。
    */
-  async function updateOne(branch: string): Promise<{
-    readonly result: UpdateResult;
-    readonly tracked: string;
-    readonly current: boolean;
-  }> {
+  async function updateOne(
+    branch: string,
+  ): Promise<{ readonly result: UpdateResult; readonly tracked: string }> {
     const root = repository.location.root;
     const [head, refs] = await Promise.all([
       repository.run(getHead, root),
@@ -235,22 +233,22 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
     const tracked = `${upstream.remote}/${upstream.name}`;
     const current = head.kind === RefKind.Head && head.branch === branch;
     // 当前分支：git 不许 fetch 直接更新检出的分支，拆成远程道的 fetch + 本地道的快进。
+    // 取远程的那段时间里用户可能切走了，快进时由 `fastForward` 再认一次。
     let forward: FastForwardResult;
     if (current) {
       await repository.run(fetchBranch, root, upstream.remote, upstream.name);
-      forward = await repository.run(fastForward, root, `refs/remotes/${tracked}`);
+      forward = await repository.run(fastForward, root, branch, `refs/remotes/${tracked}`);
     } else {
       forward = await repository.run(fetchInto, root, upstream.remote, upstream.name, branch);
     }
     if (forward.kind === FastForwardKind.Diverged) {
-      return { result: { kind: UpdateKind.Diverged, branch, tracked }, tracked, current };
+      return { result: { kind: UpdateKind.Diverged, branch, tracked }, tracked };
     }
     const moved =
       localBranch(await repository.run(getRefs, root), branch)?.target !== before.target;
     return {
       result: { kind: moved ? UpdateKind.Updated : UpdateKind.UpToDate, branch, tracked },
       tracked,
-      current,
     };
   }
 
@@ -545,13 +543,14 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         await updateMany(branches);
         return null;
       }
-      const { result, tracked, current } = await ui.withProgress(
+      const { result, tracked } = await ui.withProgress(
         `Updating ${only}…`,
         () => updateOne(only),
         ({ result }) => updateDone(result),
       );
       if (result.kind !== UpdateKind.Diverged) return null;
-      // 关掉通知就停在这里：本地分支不动。
+      // 关掉通知就停在这里：本地分支不动。通知开着时用户可能已经切走，
+      // 所以下面不沿用更新前看到的「是不是当前分支」：变基指名分支，合并前再看一次 HEAD。
       const choice = await ui.notifyChoice(`${only} and ${tracked} have diverged.`, [
         "Rebase",
         "Merge",
@@ -560,12 +559,13 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       if (choice === 0) {
         await ui.withProgress(
           `Rebasing onto ${tracked}…`,
-          () => repository.run(rebaseOnto, root, gitDir, onto, current ? undefined : only),
+          () => repository.run(rebaseOnto, root, gitDir, onto, only),
           (outcome) => rebaseDone(outcome, tracked),
         );
       } else if (choice === 1) {
-        // 合并只改当前检出的分支，所以先切过去。变基可以在参数里指名分支。
-        if (!current) {
+        // 合并只改当前检出的分支，所以先切过去。
+        const head = await repository.run(getHead, root);
+        if (head.kind !== RefKind.Head || head.branch !== only) {
           await ui.withProgress(
             `Checking out ${only}…`,
             () => repository.run(switchBranch, root, only),
@@ -772,7 +772,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         `Checking out ${branch}…`,
         async () => {
           const said = await repository.run(switchBranch, root, branch);
-          const result = await repository.run(fastForward, root, `refs/remotes/${tracked}`);
+          const result = await repository.run(fastForward, root, branch, `refs/remotes/${tracked}`);
           return result.kind === FastForwardKind.Diverged
             ? `${branch} and ${tracked} have diverged`
             : said;

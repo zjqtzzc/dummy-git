@@ -23,13 +23,15 @@
 
 **Update Selected**（竖按钮）和分支右键的 **Update** 是同一条命令，作用于选中的本地分支 `B`（HEAD 那行就是当前分支），它的上游是 `origin/M`。只动 `B` 和 `origin/M`，不碰别的分支。
 - `B` 不是当前分支：一条 fetch 把 `origin/M` 直接取进 `B`（`M:B` 的写法，不带 `+`），只允许快进；不碰工作区和暂存区，不占本地道。
-- `B` 是当前分支：git 不允许 fetch 直接更新检出的分支，所以拆成远程道的 fetch，加本地道的 `merge --ff-only`。命令行见 `git/commands/index.ts`（`fetchInto`、`fetchBranch`、`fastForward`）。
+- `B` 是当前分支：git 不允许 fetch 直接更新检出的分支，所以拆成远程道的 fetch，加本地道的快进。命令行见 `git/commands/index.ts`（`fetchInto`、`fetchBranch`、`fastForward`）。
+  - **取远程时切走了，更新的仍是 `B`**：快进那一步先看 `B` 此刻还是不是当前分支，和快进在同一条本地道命令里（Checkout 插不进中间）。还是就 `merge --ff-only`；不是就 `fetch . refs/remotes/origin/M:refs/heads/B`，只移动引用、不联网，同上一条。否则 `merge --ff-only` 认的是此刻的 HEAD，快进会打在切过去的那条分支上。
 - 完成消息：动了就是 `Updated feat from origin/feat`，没动就是 `feat is up to date`。
 - `B` 没有上游、或上游在远程已被删掉（`gone`）：菜单里没有 Update，竖按钮置灰（2026-10-20 项目负责人定）。不去猜上游：猜错了会把一个无关的同名分支快进进来，不容易察觉。万一按时上游刚被去掉，提示 `feat has no upstream branch. Push it first.`。
 - **分叉时**：远程分支的记录已经取回来了，弹一条原生通知 `feat and origin/feat have diverged.`，两个按钮：
   - **Rebase**：把 `B` 变基到 `origin/M` 上（指名分支，不用先切过去）；
   - **Merge**：先切到 `B`（合并只改当前检出的分支），再合并 `origin/M`。
-  - 都用刚取回的记录，不再联网。关掉通知就停在这里，本地分支不动。不另加 Pull (Rebase)、Pull (Merge) 菜单项（项目负责人定：和 Update 按钮统一）。
+  - 都用刚取回的记录，不再联网。关掉通知就停在这里，本地分支不动。
+  - 通知开着时用户可能切走了，所以不沿用更新前看到的「是不是当前分支」：Rebase 一律指名 `B`（`rebase <远程分支记录> B`），Merge 前再看一次 HEAD，不在 `B` 上就先切过去。不另加 Pull (Rebase)、Pull (Merge) 菜单项（项目负责人定：和 Update 按钮统一）。
 - 工作区的改动挡住了：显示 git 原文。
 - **一次更新好几个**（多选，或右键目录、`Local` 组，2026-10-20 项目负责人定）：
   - 展开看、全部严格：每一个都要能更新（配了上游、上游还在），有一个不行 Update 就不出现。所以 `Local` 组里只要有只在本地的分支，就没有 Update；远程分支、远程名、`Remote` 组都没有。

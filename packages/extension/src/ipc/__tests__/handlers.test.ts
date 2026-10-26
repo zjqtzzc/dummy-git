@@ -303,6 +303,44 @@ describe("handlers.update", () => {
     expect(existsSync(join(repo, ".git", "MERGE_HEAD"))).toBe(true);
   });
 
+  /** 分叉通知开着时用户切到了 other，再选按钮。 */
+  const switchAwayThenChoose = async (repo: string, choice: number): Promise<void> => {
+    const repository = new Repository(plainLocation(repo), cli);
+    try {
+      await createHandlers(repository, {
+        ...NO_UI,
+        notifyChoice: async () => {
+          git(repo, ["switch", "-q", "other"]);
+          return choice;
+        },
+      }).update({ repo, branches: ["main"] });
+    } finally {
+      repository.dispose();
+    }
+  };
+
+  it("通知开着时切走了再选 Rebase：变基的仍是点的那条，切过去的那条不动", async () => {
+    const { remote, repo } = makeTrackingRepos();
+    diverge(remote, repo, "main");
+    const other = git(repo, ["rev-parse", "other"]);
+    await switchAwayThenChoose(repo, 0);
+    expect(git(repo, ["rev-parse", "other"])).toBe(other);
+    expect(git(repo, ["log", "-1", "--format=%s", "main"]).trim()).toBe("local");
+    git(repo, ["merge-base", "--is-ancestor", "origin/main", "main"]);
+  });
+
+  it("通知开着时切走了再选 Merge：先切回点的那条再合并，切过去的那条不动", async () => {
+    const { remote, repo } = makeTrackingRepos();
+    diverge(remote, repo, "main");
+    const other = git(repo, ["rev-parse", "other"]);
+    await switchAwayThenChoose(repo, 1);
+    expect(git(repo, ["rev-parse", "other"])).toBe(other);
+    expect(git(repo, ["branch", "--show-current"]).trim()).toBe("main");
+    expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe(
+      "Merge remote-tracking branch 'origin/main'",
+    );
+  });
+
   it("非当前分支选 Rebase：先切到那条，原来的当前分支不动", async () => {
     const { remote, repo } = makeTrackingRepos();
     diverge(remote, repo, "other");
