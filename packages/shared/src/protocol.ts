@@ -367,6 +367,11 @@ export interface Commands {
     params: { text: string };
     result: null;
   };
+  /** 在编辑器里打开工作区里的一个文件（不是 diff）。 */
+  openFile: {
+    params: { repo: string; path: string };
+    result: null;
+  };
   /** 用 VS Code 的合并编辑器打开一个冲突文件：三栏取暂存区，结果写回工作区。 */
   openMergeEditor: {
     params: { repo: string; path: string };

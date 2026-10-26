@@ -70,6 +70,7 @@ const MENU_COMMANDS: readonly MenuCommand[] = [
   menuCommand(MenuContextKey.CherryPick, "cherryPick"),
   menuCommand(MenuContextKey.Revert, "revert"),
   menuCommand(MenuContextKey.RebaseHere, "rebase"),
+  menuCommand(MenuContextKey.OpenFile, "openFile"),
   menuCommand(MenuContextKey.OpenMergeEditor, "openMergeEditor"),
   menuCommand(MenuContextKey.MarkResolved, "markResolved"),
   // Keep 就是标记已解决：留下工作区里的那份（一边删了的冲突，文件里本来没有冲突标记）。

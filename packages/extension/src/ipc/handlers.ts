@@ -135,6 +135,8 @@ export interface HandlerUi {
   ) => Promise<number | undefined>;
   /** 从几项里选一项（`vscode/pick.ts`）：返回选中的序号，取消是 `undefined`。 */
   readonly pick: (title: string, items: readonly PickItem[]) => Promise<number | undefined>;
+  /** 在编辑器里打开工作区里的文件（`vscode/openFile.ts`）。 */
+  readonly openFile: (root: string, path: string) => Promise<void>;
   /** 打开合并编辑器（`vscode/mergeEditor.ts`）。 */
   readonly openMergeEditor: (root: string, sides: MergeSides) => Promise<void>;
   /** webview 的异常写进日志（error 级别）。 */
@@ -438,6 +440,10 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         paths.map(({ path, folder }) => ({ label: `${folder ? "$(folder)" : "$(file)"} ${path}` })),
       );
       return (index === undefined ? undefined : paths[index]?.path) ?? null;
+    },
+    openFile: async ({ path }) => {
+      await ui.openFile(repository.location.root, path);
+      return null;
     },
     openMergeEditor: async ({ path }) => {
       const root = repository.location.root;

@@ -36,6 +36,7 @@ export const MenuContextKey = {
   DropStash: "dummyGit.dropStash",
 
   // Commit 面板
+  OpenFile: "dummyGit.openFile",
   OpenMergeEditor: "dummyGit.openMergeEditor",
   MarkResolved: "dummyGit.markResolved",
   KeepFile: "dummyGit.keepFile",

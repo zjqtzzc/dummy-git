@@ -112,6 +112,18 @@ function asPathsTarget(
     : undefined;
 }
 
+/** 工作区里的一个文件：相对仓库根的路径，带 `..` 的段会走出仓库，拒收。 */
+function asFileTarget(raw: Record<string, unknown>): { repo: string; path: string } | undefined {
+  const repo = raw["repo"];
+  const path = raw["path"];
+  return typeof repo === "string" &&
+    typeof path === "string" &&
+    path.length > 0 &&
+    !path.split(/[\\/]/).includes("..")
+    ? { repo, path }
+    : undefined;
+}
+
 /** 远程分支的列表：每项是 `{ remote, branch }`，都是字符串。有一项不对就整条拒收。 */
 function asRemoteBranches(
   value: unknown,
@@ -320,6 +332,7 @@ const PARAM_GUARDS = {
   },
   addUntracked: asPathsTarget,
   deleteUntracked: asPathsTarget,
+  openFile: asFileTarget,
   openMergeEditor: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const path = raw["path"];

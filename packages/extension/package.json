@@ -144,6 +144,10 @@
         "title": "Rebase onto Here"
       },
       {
+        "command": "dummyGit.openFile",
+        "title": "Open File"
+      },
+      {
         "command": "dummyGit.openMergeEditor",
         "title": "Open in Merge Editor"
       },
@@ -268,6 +272,11 @@
           "group": "1_switch@1"
         },
         {
+          "command": "dummyGit.openFile",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.openFile",
+          "group": "1_switch@2"
+        },
+        {
           "command": "dummyGit.markResolved",
           "when": "webviewId == 'dummyGit.commit' && dummyGit.markResolved",
           "group": "3_edit@1"
@@ -371,6 +380,10 @@
         },
         {
           "command": "dummyGit.rebaseHere",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.openFile",
           "when": "false"
         },
         {

@@ -44,6 +44,7 @@ const NO_UI: HandlerUi = {
   closeDialog: () => undefined,
   copyText: () => Promise.reject(new Error("测试里不该写剪贴板")),
   logWebviewError: () => undefined,
+  openFile: () => Promise.reject(new Error("测试里不该打开文件")),
   openMergeEditor: () => Promise.reject(new Error("测试里不该打开合并编辑器")),
   openDiff: () => Promise.reject(new Error("测试里不该打开 diff")),
 };

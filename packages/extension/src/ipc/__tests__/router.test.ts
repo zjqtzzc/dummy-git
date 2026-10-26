@@ -65,6 +65,7 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     pickPath: async () => null,
     copyText: async () => null,
     reportError: async () => null,
+    openFile: async () => null,
     openMergeEditor: async () => null,
     markResolved: async () => null,
     resetTo: async () => null,

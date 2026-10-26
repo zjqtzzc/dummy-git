@@ -60,9 +60,11 @@
 
 | 文件 | 菜单项 |
 |---|---|
-| `Changes` 里的文件 | Rollback |
-| 未跟踪文件 | Add to Git（`git add`，不确认）、Delete（原生模态确认 `Delete <文件名>? This cannot be undone.`，直接删磁盘上的文件） |
+| `Changes` 里的文件 | Open File（删除的没有）、Rollback |
+| 未跟踪文件 | Open File、Add to Git（`git add`，不确认）、Delete（原生模态确认 `Delete <文件名>? This cannot be undone.`，直接删磁盘上的文件） |
 | 冲突文件 | 见 `product/features/conflicts.md` |
 
-- **多选、目录、组**（2026-10-20 项目负责人定）：除了 Open in Merge Editor（合并编辑器一次开一个文件），都作用于选中的全部；目录、组等于它下面列出的全部文件，只动列出来的，不碰目录里没列出的（被忽略的文件等）。全部严格：混着别的种类（比如未跟踪文件里夹着已跟踪的改动）就没有这一项。
+- **Open File**：在编辑器里打开工作区里的文件（`vscode.open`，图片等也能开），不是 diff；双击仍是 diff。只对点中的一个文件，磁盘上有它才出现。路径就是那一行的路径，不用再判断暂存区：改名打开新路径；删除的（含改名后又删掉新路径、画在旧路径上的那行）磁盘上没有，不出现；冲突里只有两边都删了的（`DD`）git 不在工作区留文件（`AU` `UA` `DU` `UD` 都留着一边，git 2.43 实测）。`git rm --cached` 后文件还在磁盘上的，界面是同一路径的删除 + 未跟踪两行，在未跟踪那行打开。IDEA 变更列表的 Jump to Source 同样只导航到存在的文件。
+
+- **多选、目录、组**（2026-10-20 项目负责人定）：除了 Open File 与 Open in Merge Editor（一次开一个文件），都作用于选中的全部；目录、组等于它下面列出的全部文件，只动列出来的，不碰目录里没列出的（被忽略的文件等）。全部严格：混着别的种类（比如未跟踪文件里夹着已跟踪的改动）就没有这一项。
 - 规则和单个文件一样，同一类的合成一次问：Delete 一批未跟踪文件问一次 `Delete 3 files? This cannot be undone.`，说明里列出前 5 个文件名；Add to Git 一条 `git add`，不问。

@@ -167,3 +167,28 @@ describe("Commit 面板批量命令的参数", () => {
     }
   });
 });
+
+describe("openFile 的参数校验：路径会拼成磁盘路径", () => {
+  it("仓库里的相对路径原样通过", () => {
+    expect(parseParams("openFile", { repo: "/r", path: "src/a.ts" })).toEqual({
+      repo: "/r",
+      path: "src/a.ts",
+    });
+  });
+
+  it.each([
+    ["带 .. 的段", "../outside"],
+    ["中间带 ..", "src/../../outside"],
+    ["反斜杠分隔的 ..", "src\\..\\..\\outside"],
+    ["空串", ""],
+  ])("拒绝：%s", (_name, path) => {
+    expect(parseParams("openFile", { repo: "/r", path })).toBeUndefined();
+  });
+
+  it("文件名里含两个点不算", () => {
+    expect(parseParams("openFile", { repo: "/r", path: "a..b/..c" })).toEqual({
+      repo: "/r",
+      path: "a..b/..c",
+    });
+  });
+});

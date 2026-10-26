@@ -122,7 +122,9 @@ type FileMenuTarget =
       readonly path: string;
       readonly resolution: ConflictResolution;
     }
-  | { readonly kind: FileMenuKind.Change | FileMenuKind.Untracked; readonly path: string };
+  /** `deleted`：磁盘上已经没有这个文件（删除，含改名后又删掉新路径）。 */
+  | { readonly kind: FileMenuKind.Change; readonly path: string; readonly deleted: boolean }
+  | { readonly kind: FileMenuKind.Untracked; readonly path: string };
 
 /** 冲突文件、且解决方式是给出的几种之一时，取出路径。`null` 是目录或组。 */
 function conflictPath(...resolutions: readonly ConflictResolution[]) {
@@ -135,6 +137,22 @@ function conflictPath(...resolutions: readonly ConflictResolution[]) {
 function pathOf(kind: FileMenuKind.Change | FileMenuKind.Untracked) {
   return (target: FileMenuTarget | null): string | undefined =>
     target?.kind === kind ? target.path : undefined;
+}
+
+/** 磁盘上有这个文件时，取出路径。删除的、两边都删了的冲突没有可打开的。 */
+function diskPath(target: FileMenuTarget | null): string | undefined {
+  if (target === null) return undefined;
+  switch (target.kind) {
+    case FileMenuKind.Conflict:
+      // 只能删除的就是两边都删了（DD），git 不在工作区留文件；其余冲突都留着一边。
+      return target.resolution === ConflictResolution.DeleteOnly ? undefined : target.path;
+    case FileMenuKind.Change:
+      return target.deleted ? undefined : target.path;
+    case FileMenuKind.Untracked:
+      return target.path;
+    default:
+      return assertNever(target, "diskPath");
+  }
 }
 
 /**
@@ -150,10 +168,17 @@ const ROLLBACK = menuItem({
 
 /**
  * Commit 面板文件的右键菜单项，顺序无关（菜单里的顺序由 `package.json` 的 `group` 定）。
- * 除了 Open in Merge Editor（合并编辑器一次开一个文件），都是展开看、全部严格：
+ * 除了 Open File 与 Open in Merge Editor（只对点中的一个文件），都是展开看、全部严格：
  * 目录、组等于它下面列出的全部文件，只动列出来的，不碰目录里没列出的（被忽略的文件等）；混着别的种类就不出现。
  */
 const FILE_MENU: readonly MenuItem<FileMenuTarget | null>[] = [
+  menuItem({
+    view: MenuView.Exact,
+    key: MenuContextKey.OpenFile,
+    pick: diskPath,
+    whole: exactlyOne,
+    value: ([path]) => ({ path }),
+  }),
   menuItem({
     view: MenuView.Exact,
     key: MenuContextKey.OpenMergeEditor,
@@ -201,9 +226,16 @@ function fileMenuTargets(
 ): ReadonlyMap<string, FileMenuTarget> {
   const targets = new Map<string, FileMenuTarget>();
   for (const file of files) {
-    const kind =
-      file.status === WorkingStatus.Untracked ? FileMenuKind.Untracked : FileMenuKind.Change;
-    targets.set(file.path, { kind, path: file.path });
+    targets.set(
+      file.path,
+      file.status === WorkingStatus.Untracked
+        ? { kind: FileMenuKind.Untracked, path: file.path }
+        : {
+            kind: FileMenuKind.Change,
+            path: file.path,
+            deleted: file.status === WorkingStatus.Deleted,
+          },
+    );
   }
   for (const file of conflicts) {
     targets.set(file.path, {

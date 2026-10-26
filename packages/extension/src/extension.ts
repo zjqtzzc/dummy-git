@@ -25,6 +25,7 @@ import {
 import { registerMenuCommands } from "./vscode/menu.js";
 import { openMergeEditor } from "./vscode/mergeEditor.js";
 import { describeStartup, discoverRepositories, StartupKind } from "./vscode/open.js";
+import { openFile } from "./vscode/openFile.js";
 import { pick } from "./vscode/pick.js";
 import { notify, withProgress } from "./vscode/progress.js";
 import { registerRevisionFileSystem } from "./vscode/revisionFileSystem.js";
@@ -78,6 +79,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       notify,
       notifyChoice,
       openDiff,
+      openFile,
       openMergeEditor,
       pick,
       withProgress,

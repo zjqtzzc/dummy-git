@@ -98,6 +98,7 @@ export const _baseline = defineHandlers({
   pickPath: async (): Promise<string | null> => null,
   copyText: openDiffStub,
   reportError: openDiffStub,
+  openFile: openDiffStub,
   openMergeEditor: openDiffStub,
   markResolved: openDiffStub,
   resetTo: openDiffStub,

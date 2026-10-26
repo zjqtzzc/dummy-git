@@ -55,8 +55,8 @@ Commit 面板只问两件事：有没有停下的操作（读状态文件，不�
 
 | 冲突 | 双击 | 右键 |
 |---|---|---|
-| 两边都改了、两边都新增了 | 打开合并编辑器 | Open in Merge Editor ｜ Mark as Resolved |
-| 一边删了、一边改了，只有一边新增了 | 弹选择：Keep / Delete File（问题写明是哪一边删的） | Keep ｜ Delete File |
+| 两边都改了、两边都新增了 | 打开合并编辑器 | Open in Merge Editor ｜ Open File ｜ Mark as Resolved |
+| 一边删了、一边改了，只有一边新增了 | 弹选择：Keep / Delete File（问题写明是哪一边删的） | Open File ｜ Keep ｜ Delete File |
 | 两边都删了 | 弹选择：Delete File | Delete File |
 
 - **合并编辑器**用 VS Code 自带的（内部命令 `_open.mergeEditor`）。三栏都从暂存区取：基准 `:1`，左边 Current `:2`，右边 Incoming `:3`，输出是工作区里的文件。五种冲突（merge、rebase、cherry-pick、revert、stash 取出）都会把三栏写进暂存区，所以只有一条路；改名时各栏已经是 git 对好路径的内容。

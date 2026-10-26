@@ -28,6 +28,7 @@ const ANSWERING: HandlerUi = {
   openDialog: () => undefined,
   closeDialog: () => undefined,
   openDiff: async () => undefined,
+  openFile: async () => undefined,
   openMergeEditor: async () => undefined,
 };
 

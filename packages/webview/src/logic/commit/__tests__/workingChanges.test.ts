@@ -119,11 +119,13 @@ describe("workingMenuContext：Commit 面板的右键菜单项", () => {
   it("各种文件：各自的菜单项，参数是路径", () => {
     expect(menuOf("c.ts")).toEqual({
       [MenuContextKey.Repo]: "/repo",
+      [MenuContextKey.OpenFile]: { path: "c.ts" },
       [MenuContextKey.KeepFile]: { paths: ["c.ts"] },
       [MenuContextKey.RemoveConflictFile]: { paths: ["c.ts"] },
     });
     expect(menuOf("m.ts")).toEqual({
       [MenuContextKey.Repo]: "/repo",
+      [MenuContextKey.OpenFile]: { path: "m.ts" },
       [MenuContextKey.OpenMergeEditor]: { path: "m.ts" },
       [MenuContextKey.MarkResolved]: { paths: ["m.ts"] },
     });
@@ -133,13 +135,45 @@ describe("workingMenuContext：Commit 面板的右键菜单项", () => {
     });
     expect(menuOf("a.ts")).toEqual({
       [MenuContextKey.Repo]: "/repo",
+      [MenuContextKey.OpenFile]: { path: "a.ts" },
       [MenuContextKey.RollbackFile]: { paths: ["a.ts"] },
     });
     expect(menuOf("new.txt")).toEqual({
       [MenuContextKey.Repo]: "/repo",
+      [MenuContextKey.OpenFile]: { path: "new.txt" },
       [MenuContextKey.AddUntracked]: { paths: ["new.txt"] },
       [MenuContextKey.DeleteUntracked]: { paths: ["new.txt"] },
     });
+  });
+
+  it("Open File 打开磁盘上的那个路径：改名打开新路径；删除的、两边都删了的冲突没有", () => {
+    const changes = [
+      { path: "renamed.ts", oldPath: "old.ts", status: WorkingStatus.Renamed },
+      { path: "gone.ts", status: WorkingStatus.Deleted },
+      // 改名后又删掉新路径：画成旧路径上的删除。
+      { path: "moved-from.ts", status: WorkingStatus.Deleted },
+    ];
+    const open = (path: string) =>
+      workingMenuContext("/repo", conflicts, changes, { exact: [{ path }], expanded: [{ path }] })[
+        MenuContextKey.OpenFile
+      ];
+    expect(open("renamed.ts")).toEqual({ path: "renamed.ts" });
+    expect(open("gone.ts")).toBeUndefined();
+    expect(open("moved-from.ts")).toBeUndefined();
+    expect(open("d.ts")).toBeUndefined();
+  });
+
+  it("Open File 只对点中的一个文件：多选、目录都没有", () => {
+    const both = [{ path: "a.ts" }, { path: "new.txt" }];
+    expect(
+      workingMenuContext("/repo", conflicts, files, { exact: both, expanded: both })[
+        MenuContextKey.OpenFile
+      ],
+    ).toBeUndefined();
+    const folder = { exact: [null], expanded: [{ path: "a.ts" }] };
+    expect(
+      workingMenuContext("/repo", conflicts, files, folder)[MenuContextKey.OpenFile],
+    ).toBeUndefined();
   });
 
   it("选中 Unversioned Files 组：Add to Git、Delete 作用于下面全部未跟踪文件", () => {
