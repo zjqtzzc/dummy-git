@@ -159,10 +159,12 @@ export class Repository {
   }
 
   private emit(domains: ReadonlySet<GitDomain>): void {
-    // 先解析 ignore 的待问项，让下一轮能命中缓存。
-    // 失败不影响本次通知——最坏情况是下一轮再放行一次。
+    // 先解析 ignore 的待问项，让下一轮能命中缓存。不走 run()：emit 不能排队等写锁。
+    // 失败不影响本次通知。仓库没了要 dispose，否则下一轮还对已死仓库起 check-ignore。
     if (this.ignoreCache.hasPending()) {
-      void this.ignoreCache.resolvePending().catch(() => undefined);
+      void this.ignoreCache.resolvePending().catch((error) => {
+        this.disposeIfRepositoryGone(error);
+      });
     }
     for (const listener of this.listeners) listener(domains);
   }

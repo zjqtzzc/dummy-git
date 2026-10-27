@@ -188,6 +188,20 @@ export interface HandlerUi {
 const OUTGOING_LIMIT = 1000;
 
 export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMap {
+  /** 一个写名字、多个写数量。名单给确认框列出。 */
+  async function confirmOneOrMany(
+    names: readonly string[],
+    action: string,
+    one: (name: string) => string,
+    many: (count: number) => string,
+  ): Promise<boolean> {
+    const [only] = names;
+    if (only === undefined) return false;
+    return names.length === 1
+      ? ui.confirm(one(only), action)
+      : ui.confirm(many(names.length), action, names);
+  }
+
   /**
    * 弹输入框问一个分支名，`value` 预填。边输入边校验：git 认不认这个名字、和已有的本地分支重不重名
    * （预填的那个不算重名，改名时它就是自己）。空着点确定、没改、取消，都是 `undefined`。
@@ -300,20 +314,16 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       const text = await readFile(join(root, ...path.split("/")), "utf8").catch(() => "");
       (hasConflictMarkers(text) ? marked : clean).push(path);
     }
-    const [only] = marked;
-    if (only !== undefined) {
-      const sure =
-        marked.length === 1
-          ? await ui.confirm(
-              `${basename(only)} still contains conflict markers. Mark as resolved anyway?`,
-              "Mark as Resolved",
-            )
-          : await ui.confirm(
-              `${marked.length} files still contain conflict markers. Mark them as resolved anyway?`,
-              "Mark as Resolved",
-              marked.map(basename),
-            );
-      if (sure) clean.push(...marked);
+    const names = marked.map(basename);
+    if (
+      await confirmOneOrMany(
+        names,
+        "Mark as Resolved",
+        (name) => `${name} still contains conflict markers. Mark as resolved anyway?`,
+        (count) => `${count} files still contain conflict markers. Mark them as resolved anyway?`,
+      )
+    ) {
+      clean.push(...marked);
     }
     if (clean.length > 0) await repository.run(addPaths, root, clean);
   }
@@ -490,12 +500,16 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       return null;
     },
     abortOperation: async () => {
-      const current = await readOperation(repository.location.gitDir);
+      const { root, gitDir } = repository.location;
+      const current = await readOperation(gitDir);
       if (current === null) throw new UserFacingError("No operation in progress.");
       if (!(await ui.confirm(abortQuestion(current.kind), "Abort"))) return null;
+      // 确认期间可以 Continue：操作没了、或变成另一次，再用当时的种类 --abort 会打到错的。
+      const latest = await readOperation(gitDir);
+      if (latest === null || latest.id !== current.id) return null;
       await ui.withProgress(
         "Aborting…",
-        () => repository.run(abortInProgress, repository.location.root, current.kind),
+        () => repository.run(abortInProgress, root, latest.kind),
         () => "Aborted",
       );
       return null;
@@ -813,42 +827,34 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
             assertNever(result, "delete branch");
         }
       }
-      const [onlyUnmerged] = unmerged;
-      if (onlyUnmerged !== undefined) {
-        const sure =
-          unmerged.length === 1
-            ? await ui.confirm(
-                `${onlyUnmerged} has commits that are not merged anywhere. Delete it anyway?`,
-                "Delete",
-              )
-            : await ui.confirm(
-                `${unmerged.length} branches have commits that are not merged anywhere. Delete them anyway?`,
-                "Delete",
-                unmerged,
-              );
-        if (sure) {
-          for (const branch of unmerged) {
-            ui.notify(await repository.run(forceDeleteBranch, root, branch));
-            deleted += 1;
-          }
+      if (
+        await confirmOneOrMany(
+          unmerged,
+          "Delete",
+          (name) => `${name} has commits that are not merged anywhere. Delete it anyway?`,
+          (count) =>
+            `${count} branches have commits that are not merged anywhere. Delete them anyway?`,
+        )
+      ) {
+        for (const branch of unmerged) {
+          ui.notify(await repository.run(forceDeleteBranch, root, branch));
+          deleted += 1;
         }
       }
       // 远程：问一次，每个远程一条 push --delete。
       const [onlyRemote] = remote;
       if (onlyRemote !== undefined) {
         const names = remote.map(({ remote: r, branch }) => `${r}/${branch}`);
-        const sure =
-          remote.length === 1
-            ? await ui.confirm(
-                `Delete ${onlyRemote.branch} on ${onlyRemote.remote}? This removes it for everyone using the remote.`,
-                "Delete",
-              )
-            : await ui.confirm(
-                `Delete ${remote.length} branches on remotes? This removes them for everyone using the remote.`,
-                "Delete",
-                names,
-              );
-        if (sure) {
+        if (
+          await confirmOneOrMany(
+            names,
+            "Delete",
+            () =>
+              `Delete ${onlyRemote.branch} on ${onlyRemote.remote}? This removes it for everyone using the remote.`,
+            (count) =>
+              `Delete ${count} branches on remotes? This removes them for everyone using the remote.`,
+          )
+        ) {
           const byRemote = new Map<string, string[]>();
           for (const { remote: r, branch } of remote) {
             byRemote.set(r, [...(byRemote.get(r) ?? []), branch]);
@@ -960,17 +966,17 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       return null;
     },
     deleteUntracked: async ({ paths }) => {
-      const [only] = paths;
-      if (only === undefined) return null;
-      const sure =
-        paths.length === 1
-          ? await ui.confirm(`Delete ${basename(only)}? This cannot be undone.`, "Delete")
-          : await ui.confirm(
-              `Delete ${paths.length} files? This cannot be undone.`,
-              "Delete",
-              paths.map(basename),
-            );
-      if (!sure) return null;
+      const names = paths.map(basename);
+      if (
+        !(await confirmOneOrMany(
+          names,
+          "Delete",
+          (name) => `Delete ${name}? This cannot be undone.`,
+          (count) => `Delete ${count} files? This cannot be undone.`,
+        ))
+      ) {
+        return null;
+      }
       // 未跟踪的文件 git 不管，直接删磁盘上的；watcher 看到变化就刷新。
       const root = repository.location.root;
       for (const path of paths) await rm(join(root, ...path.split("/")));

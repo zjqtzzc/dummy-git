@@ -341,14 +341,14 @@
 2. 注册 VS Code 命令的包装函数：标题栏按钮、右键菜单。
 3. 后台任务：扩展启动、文件变化后的刷新。
 
-关口做同一件事：写日志（规则见 `CLAUDE.md` G：git 拒绝的命令行、退出码与 stderr 由进程层记，关口不再写一遍；已知情况记 warn，我们的 bug 记 error 带调用栈；都带所在操作的编号）；弹 VS Code 错误通知，显示第一行，带「查看输出」按钮（后台任务只写日志、不弹：用户没有点什么，不打扰人，`ErrorGate.logOnly`）；webview 的请求照常回错误响应，让界面停掉进度；同一条错误的通知未关闭前不重复弹（`showErrorMessage` 的 Promise 在关闭时才结束）。
+关口做同一件事：写日志（规则见 `CLAUDE.md` G：git 拒绝的命令行、退出码与 stderr 由进程层记，关口不再写一遍；已知情况记 warn，我们的 bug 记 error 带调用栈；都带所在操作的编号）；弹 VS Code 错误通知，显示摘要一行（一般是 stderr 第一行；`RepositoryIsLocked` 用空行后那句，见 `tech/locking.md`），带「查看输出」按钮（后台任务只写日志、不弹：用户没有点什么，不打扰人，`ErrorGate.logOnly`）；webview 的请求照常回错误响应，让界面停掉进度；同一条错误的通知未关闭前不重复弹（`showErrorMessage` 的 Promise 在关闭时才结束）。
 
 还没实现处理逻辑的已知错误，自然落到未知错误这条路，不需要特殊处理。面板取数失败同样走关口。
 
 **解析失败与错误分类**（`git/parsers/errors.ts`、`git/failure.ts`）：
 - **parser 遇未知值抛 `GitParseError`**，带足诊断（哪个 parser、第几条记录、原始字节）。否决「加 `Unknown` 变体优雅降级」：每个调用方永远要处理这个分支，且把解析事故变成数据结构里的合法状态。
 - **错误分类遇认不出的 stderr 返回 `undefined`**，与 parser 刻意不对称：git 的错误文案本来就是开放集，认不出是常态。同理不设 `Unknown` 成员。
-- **错误码只有两个**：`NotAGitRepository`（`Repository` 据此置 Disposed，唯一带来行为差异的码）、`RepositoryIsLocked`（原始 stderr 第一行会误导，有用的解释在第三行）。判据：加一个码的前提是下游会据此做不同的事，「把 stderr 显示出来」不算。留着没有消费者的码比缺一个更糟：它会让人误以为「这里已经处理过了」。
+- **错误码只有两个**：`NotAGitRepository`（`Repository` 据此置 Disposed）、`RepositoryIsLocked`（关口据此把通知从第一行换成空行后那句，见 `tech/locking.md`）。判据：加一个码的前提是下游会据此做不同的事，「把 stderr 显示出来」不算。留着没有消费者的码比缺一个更糟：它会让人误以为「这里已经处理过了」。
 - 需要命令上下文才能判定的错误（cherry-pick 冲突与 stash 冲突的 stderr 可能一样）归命令层，不在分类函数里猜 `args[0]`。
 
 **进度出口**（与错误关口对称，第 3 阶段起）：`vscode/` 层一个统一出口，注入给 handler（同确认框、打开 diff）。

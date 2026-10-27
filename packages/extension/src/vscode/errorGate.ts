@@ -1,3 +1,4 @@
+import { assertNever, GitErrorCode } from "@dummy-git/shared";
 import { GitFailureError } from "../git/failure.js";
 import { UserFacingError } from "../ipc/userFacingError.js";
 
@@ -60,13 +61,30 @@ export function describeError(error: unknown): { summary: string; detail: string
       .map((arg) => (arg.startsWith("--format=") ? "--format=..." : arg))
       .join(" ");
     const failed = `git ${command} failed (exit ${error.exitCode}):`;
-    const firstLine = error.stderr.split("\n")[0] ?? "";
-    // 输出面板写 stderr 全文，开头那句不再带第一行，免得它出现两次。
-    return { summary: `${failed} ${firstLine}`, detail: `${failed}\n${error.stderr}` };
+    const line = summaryLine(error);
+    // 输出面板写 stderr 全文，开头那句不再带摘要行，免得它出现两次。
+    return { summary: `${failed} ${line}`, detail: `${failed}\n${error.stderr}` };
   }
   if (error instanceof Error) {
     return { summary: error.message, detail: error.stack ?? error.message };
   }
   const text = String(error);
   return { summary: text, detail: text };
+}
+
+/** 通知那一行。一般用 stderr 第一行；锁占用的第一行是 `File exists`，有用的在空行后面。 */
+function summaryLine(error: GitFailureError): string {
+  const lines = error.stderr.split("\n");
+  const first = lines[0] ?? "";
+  if (error.code === undefined) return first;
+  switch (error.code) {
+    case GitErrorCode.NotAGitRepository:
+      return first;
+    case GitErrorCode.RepositoryIsLocked: {
+      const useful = lines.slice(1).find((line) => line.trim() !== "");
+      return useful ?? first;
+    }
+    default:
+      return assertNever(error.code, "summaryLine");
+  }
 }

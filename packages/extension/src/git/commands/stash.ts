@@ -56,13 +56,18 @@ export const stashPaths: GitCommand<[repository: string, paths: readonly string[
     );
     const selected = new Set(paths);
     const others = staged.stdout.split("\0").filter((path) => path !== "" && !selected.has(path));
-    if (others.length > 0) await run(cli, ["restore", "--staged", "--", ...others], options);
+    const otherSpecs = others.map(literal);
+    if (others.length > 0) await run(cli, ["restore", "--staged", "--", ...otherSpecs], options);
     try {
-      const { stdout } = await run(cli, ["stash", "push", "-u", "--", ...paths], options);
+      const { stdout } = await run(
+        cli,
+        ["stash", "push", "-u", "--", ...paths.map(literal)],
+        options,
+      );
       return firstLine(stdout);
     } finally {
       if (others.length > 0) {
-        await run(cli, ["restore", `--source=${index}`, "--staged", "--", ...others], options);
+        await run(cli, ["restore", `--source=${index}`, "--staged", "--", ...otherSpecs], options);
       }
     }
   },
@@ -73,7 +78,7 @@ export const unstage: GitCommand<[repository: string, paths: readonly string[]],
   lock: LockPolicy.Exclusive,
 
   execute: async (cli, repository, paths) => {
-    await run(cli, ["restore", "--staged", "--", ...paths], { cwd: repository });
+    await run(cli, ["restore", "--staged", "--", ...paths.map(literal)], { cwd: repository });
   },
 };
 
@@ -123,4 +128,9 @@ async function stashRef(cli: GitCli, repository: string, hash: string): Promise<
 
 function firstLine(text: string): string {
   return text.split("\n")[0]?.trim() ?? "";
+}
+
+/** 路径里的 `*`、`?`、`[]` 不当通配符。 */
+function literal(path: string): string {
+  return `:(literal)${path}`;
 }

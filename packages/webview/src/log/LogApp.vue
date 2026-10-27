@@ -13,7 +13,7 @@ import {
 } from "@dummy-git/shared";
 import type { VscodeSplitLayout } from "@vscode-elements/elements/dist/vscode-split-layout/vscode-split-layout.js";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { type Client, report } from "../logic/client.js";
+import { type Client, copyText, report } from "../logic/client.js";
 import { AppIcon, appIcon, codicon } from "../logic/icons.js";
 import {
   type BranchNode,
@@ -546,12 +546,8 @@ async function newBranchFromSelected(): Promise<void> {
   }
 }
 
-async function copyText(text: string): Promise<void> {
-  try {
-    await props.client.request("copyText", { text });
-  } catch (cause) {
-    report(cause);
-  }
+function onCopy(text: string): void {
+  void copyText(props.client, text);
 }
 
 /**
@@ -573,7 +569,7 @@ async function copyCommits(hashes: readonly string[]): Promise<void> {
       const commit = details.value.get(hash);
       return commit === undefined ? [] : [commit];
     });
-    if (commits.length > 0) await copyText(commitCopyText(commits));
+    if (commits.length > 0) await copyText(props.client, commitCopyText(commits));
   } catch (cause) {
     report(cause);
   }
@@ -728,7 +724,7 @@ onUnmounted(() => resizes.disconnect());
           :repo="repo ?? ''"
           @select="(views) => (branchSelection = views)"
           @filter="(branch) => setFilter({ ...filter, branch })"
-          @copy="copyText"
+          @copy="onCopy"
         />
       </div>
     </div>
@@ -782,7 +778,7 @@ onUnmounted(() => resizes.disconnect());
         <div slot="start" class="pane">
           <p v-if="selection.ids.size > 1" class="dim loading">{{ selection.ids.size }} commits selected</p>
           <p v-else-if="filesLoading" class="dim loading">Loading…</p>
-          <FileTree v-else :groups="fileGroups" @open="openFile" @copy="copyText" />
+          <FileTree v-else :groups="fileGroups" @open="openFile" @copy="onCopy" />
         </div>
         <div slot="end" class="details">
           <template v-if="selectedDetails !== undefined">

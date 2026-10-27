@@ -72,6 +72,16 @@ describe("Repository：NotAGitRepository → Disposed", () => {
     expect(repo.state).toBe(RepositoryState.Disposed);
   });
 
+  it("ignore 待问时仓库没了 → Disposed，不再反复起进程", async () => {
+    const path = makeTempRepo("repo-gone-ignore");
+    const repo = new Repository(plainLocation(path), cli);
+    repo.notifyWorkspacePath("app.log");
+    rmSync(join(path, ".git"), { recursive: true, force: true });
+    repo.flushPending();
+    await new Promise((r) => setTimeout(r, 200));
+    expect(repo.state).toBe(RepositoryState.Disposed);
+  });
+
   it("Disposed 之后 run() 直接拒绝，不再起 git 进程", async () => {
     const path = makeTempRepo("repo-disposed");
     const repo = new Repository(plainLocation(path), cli);

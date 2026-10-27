@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanupTempRepos, cli, git, makeTempRepo } from "../../../__tests__/support.js";
-import { getStashes, stashPaths } from "../stash.js";
+import { getStashes, stashPaths, unstage } from "../stash.js";
 
 afterEach(cleanupTempRepos);
 
@@ -72,5 +72,32 @@ describe("stashPaths", () => {
     const before = status(repo);
     await expect(stashPaths.execute(cli, repo, ["d"])).rejects.toThrow(/pathspec/);
     expect(status(repo)).toEqual(before);
+  });
+
+  it("路径里的 [] 不当通配符：旁边的文件不进 stash", async () => {
+    const repo = makeTempRepo("literal-stash");
+    writeFileSync(join(repo, "foo[bar].txt"), "x\n");
+    writeFileSync(join(repo, "foob.txt"), "b\n");
+    git(repo, ["add", "-A"]);
+    git(repo, ["commit", "-qm", "files"]);
+    writeFileSync(join(repo, "foo[bar].txt"), "xx\n");
+    writeFileSync(join(repo, "foob.txt"), "bb\n");
+    await stashPaths.execute(cli, repo, ["foo[bar].txt"]);
+    expect(git(repo, ["diff", "--name-only", "stash@{0}^1", "stash@{0}"]).trim()).toBe(
+      "foo[bar].txt",
+    );
+    expect(git(repo, ["diff", "--name-only"]).trim()).toBe("foob.txt");
+  });
+});
+
+describe("unstage", () => {
+  it("路径里的 [] 不当通配符：旁边已暂存的文件留着", async () => {
+    const repo = makeTempRepo("literal-unstage");
+    writeFileSync(join(repo, "foo[bar].txt"), "x\n");
+    writeFileSync(join(repo, "foob.txt"), "b\n");
+    git(repo, ["add", "foo[bar].txt", "foob.txt"]);
+    await unstage.execute(cli, repo, ["foo[bar].txt"]);
+    expect(git(repo, ["diff", "--cached", "--name-only"]).trim()).toBe("foob.txt");
+    expect(git(repo, ["ls-files", "--others", "--exclude-standard"]).trim()).toBe("foo[bar].txt");
   });
 });

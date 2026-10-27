@@ -10,6 +10,7 @@ import {
   ResponseKind,
 } from "@dummy-git/shared";
 import { GitFailureError } from "../git/failure.js";
+import { brief } from "./brief.js";
 import { InboundKind, parseInbound } from "./protocol.guards.js";
 
 /**
@@ -146,7 +147,7 @@ export class Router {
   receive(raw: unknown): void {
     const inbound = parseInbound(raw);
     if (inbound === undefined) {
-      this.hooks.log(`丢弃：无法解析的消息 ${JSON.stringify(raw)?.slice(0, 200)}`);
+      this.hooks.log(`丢弃：无法解析的消息 ${brief(raw)}`);
       return;
     }
     if (inbound.kind === InboundKind.Rejected) {

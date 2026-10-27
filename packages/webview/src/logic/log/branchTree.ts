@@ -75,6 +75,12 @@ export type BranchNode =
     };
 
 const HEAD_ID = "head";
+
+/** `origin/HEAD` 只是指向远程默认分支的指针，不是一个分支。 */
+export function isRemoteHead(ref: Ref): boolean {
+  return ref.kind === RefKind.RemoteBranch && ref.name === "HEAD";
+}
+
 const LOCAL_ID = "local";
 const REMOTE_ID = "remote";
 
@@ -92,8 +98,7 @@ export function buildBranchTree(refs: readonly Ref[]): readonly BranchNode[] {
         local.push({ path: ref.name, ref });
         break;
       case RefKind.RemoteBranch:
-        // `origin/HEAD` 只是指向远程默认分支的指针，不是一个分支。
-        if (ref.name !== "HEAD")
+        if (!isRemoteHead(ref))
           remotes.set(ref.remote, [...(remotes.get(ref.remote) ?? []), { path: ref.name, ref }]);
         break;
       case RefKind.Tag:
@@ -356,7 +361,7 @@ export function branchFilters(refs: readonly Ref[]): BranchFilter[] {
   for (const ref of refs) {
     if (ref.kind === RefKind.LocalBranch) {
       local.push({ ref: `refs/heads/${ref.name}`, name: ref.name });
-    } else if (ref.kind === RefKind.RemoteBranch && ref.name !== "HEAD") {
+    } else if (ref.kind === RefKind.RemoteBranch && !isRemoteHead(ref)) {
       const name = `${ref.remote}/${ref.name}`;
       remote.push({ ref: `refs/remotes/${name}`, name });
     }

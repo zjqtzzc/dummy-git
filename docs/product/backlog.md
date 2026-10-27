@@ -2,6 +2,7 @@
 
 > 以后可能做、还没排进阶段的需求，按功能分组，组名和 `product/features/` 一一对应。排进阶段时从这里移到 `product/roadmap.md`；决定永远不做的移到 `product/never.md`；做完了就删掉。
 > 先后由项目负责人定，定了的移到组的最前面并标「下一批」。标「大」的是要单独成一个阶段的工程。
+> 条目可带 `#标签`，闭集：`#autostash` `#冲突` `#通知`。筛查：`rg '#冲突' docs/product/backlog.md`。
 
 ## 跨功能
 
@@ -48,12 +49,13 @@
 
 - 按行提交：一个文件里只提交勾了的那几处改动。
 - 提交说明的历史下拉。
-- 单独的 Rollback 确认页：文件树加复选框，可以在页面里调整勾选。
+- Rollback 确认改成推送那种对话框（编辑器 webview 标签页，`product/features/dialogs.md`）（2026-10-27 项目负责人定）。中间是 Commit 面板那样的文件树，只列出可 Rollback 的（`Changes` 里已跟踪的改动，不含未跟踪、不含冲突）。树上是勾选：打开时自动勾上 Commit 面板里当前选中的那些（什么都没选则全勾，与现在工具栏「没选就撤全部」一致）；可以在页里改勾选再确认。点 Rollback 关标签页，操作在后台跑。这是第三种对话框，做的时候必须先抽共用部分（见「技术债与触发条件」）。
 - 文件右键 Add to .gitignore、Reveal in Explorer / Open in System Folder。
 - 树里按空格切换勾选。
 
 ## Stash（`product/features/stash.md`）
 
+- Stash 从勾选改为和 Rollback 一样看选中（2026-10-27 项目负责人定）。工具栏与右键同一份规则：选中目录或组等于它下面列出的全部；什么都没选时工具栏 Stash 存全部。勾选只剩提交。Stash 仍可含未跟踪（带 `-u`），和 Rollback 只管 `Changes` 不同；选中里混着冲突文件就置灰。不另开确认页。做的时候把 `product/features/stash.md`「Stash Selected」里那两处一起改。
 - 单文件 Stash：只把这一个文件的改动存起来。
 - 只存已暂存，或只存未暂存的那一部分。
 - Stash 重命名。
@@ -89,6 +91,10 @@
 ## 已知问题
 
 - 未跟踪文件成千上万时：树已经是虚拟滚动，但 `git status -uall` 和勾选的推算仍是全量。
+- `#autostash` `#冲突` `#通知` Continue 把 autostash 取回冲突说成完成。带 `--autostash` 的 rebase 先因提交冲突停下，解决后点继续，最后一步取回 stash 又冲突时，git 退出码仍是 0，`rebase-merge` 已经没了。现在当完成，通知写 `Rebase completed`。Commit 面板会走到情况②（冲突组、没有继续/放弃），冲突不会丢。修的时候 Continue 在退出码 0 时也认 `Applying autostash resulted in conflicts.`，完成消息和 `rebaseOnto` 一样。这条路径还没有测试；git 2.25 再确认一次。
+- Log 详情预取失败后，可见范围不变就不再要，行停在占位。滚一下会再取。失败立刻重试要防死循环。
+- `#冲突` Mark as Resolved 读文件失败：删了的不查、直接 `git add`（接受删除，见 `product/features/conflicts.md`）。权限等非 ENOENT 也当成空文件，会不问就 add。
+- 喂 git 的 stdin 写入失败（非 EPIPE）会变成扩展宿主未捕获异常，真正原因在退出码。EPIPE 已接住。
 
 ## 技术债与触发条件
 

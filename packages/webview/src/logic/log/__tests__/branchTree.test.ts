@@ -1,4 +1,10 @@
-import { MenuContextKey, type Ref, RefKind, UpstreamState } from "@dummy-git/shared";
+import {
+  assertNever,
+  MenuContextKey,
+  type Ref,
+  RefKind,
+  UpstreamState,
+} from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
 import {
   type BranchNode,
@@ -40,8 +46,12 @@ function outline(nodes: readonly BranchNode[], depth = 0): string[] {
         return [`${pad}${node.label}`];
       case BranchNodeKind.Branch:
         return [`${pad}${node.label}${node.current ? " *" : ""}`];
-      default:
+      case BranchNodeKind.Group:
+      case BranchNodeKind.Folder:
+      case BranchNodeKind.Remote:
         return [`${pad}${node.label}/`, ...outline(node.children, depth + 1)];
+      default:
+        return assertNever(node, "outline");
     }
   });
 }

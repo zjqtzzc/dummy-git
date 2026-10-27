@@ -19,7 +19,14 @@ Commit 面板工具栏上，Rollback 旁边的 **Stash** 按钮（`AppIcon.Stash
 
 另外两条：
 - 改名的两头一起交（同提交）。
-- 勾了的路径里有**已暂存的删除**（改名的旧路径、`git rm` 过的）时，git 先把 stash 存下，再在清理工作区时报 `pathspec did not match` 退出：stash 建了，改动还留在工作区。不带 `-u` 时则直接拒绝。所以先 `restore --staged` 把它们退回成未暂存的删除。代价：Apply 回来后，改名显示成新增 + 删除两行。
+- 勾了的路径里有**已暂存的删除**（改名的旧路径、`git rm` 过的）时，git 先把 stash 存下，再在清理工作区时报 `pathspec did not match` 退出：stash 建了，改动还留在工作区。不带 `-u` 时则直接拒绝。所以调用方先 `unstage` 把它们退回成未暂存的删除。代价：Apply 回来后，改名显示成新增 + 删除两行。
+
+这两处现在是洞，改成选中时一起改（`product/backlog.md` Stash）：
+- 收尾还原暂存区失败会盖住 stash 的结果：成功当失败（stash 其实在），失败只看到 restore 的错。`commit.ts` 是撤回失败先吞掉、再抛原来的。
+- `unstage` 和 `stashPaths` 是两次 `repository.run`，中间能插进 checkout、commit。该并进同一条命令。
+- 现有测试只覆盖 stash 失败、restore 成功。
+
+IDEA、VS Code git、GitLens 都是一条 `stash push`，没有「先退暂存再还原」。这条绕法是我们为上面那个 git 坑加的。
 
 否决过：
 - 自己用 `commit-tree` 造 stash 提交再 `stash store`：等于重写一遍 `git stash`，未跟踪文件那份附属提交也得自己造。

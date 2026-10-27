@@ -51,8 +51,8 @@ export enum GitErrorCode {
    * Another git process seems to be running in this repository…   ← 有用的在这儿
    * ```
    *
-   * 弹通知只显示一行时，用户看到的恰好是最不可操作的那句——他不会想到
-   * 是自己终端里那条命令。
+   * 关口挑空行后的那句做通知摘要（`errorGate.ts`），用户才能看到
+   * 是另一个 git 进程，而不是 `File exists`。
    */
   RepositoryIsLocked = "repositoryIsLocked",
 }

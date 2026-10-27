@@ -19,7 +19,7 @@
  * | `getRepositoryLocation` | `rev-parse --show-toplevel --absolute-git-dir --git-common-dir` | `--absolute-git-dir` | 2.13 |
  * | `getStatus` | `status --porcelain=v2 --branch -z -uall`，环境 `GIT_OPTIONAL_LOCKS=0` | `--porcelain=v2`；`GIT_OPTIONAL_LOCKS` | 2.11；2.15 |
  * | `checkIgnore` | `check-ignore -z --stdin --verbose` | — | — |
- * | `commit` | `add -- <未跟踪…>`（有才跑）+ `commit --only -F - -- <路径…>` | — | — |
+ * | `commit` | `add -- :(literal)<未跟踪…>`（有才跑）+ `commit --only -F - -- :(literal)<路径…>` | — | — |
  * | `amendCommit` | 同上，`commit --amend --only …`；路径可为空（只改说明） | — | — |
  * | `fetchAll` | `fetch --all`，手动时再加 `--prune` | — | — |
  * | `listRemotes` | `remote` | — | — |
@@ -37,11 +37,11 @@
  * | `isValidBranchName` | `check-ref-format --branch <名字>` | — | — |
  * | `getStashes` | `stash list -z --format=…` | — | — |
  * | `stashAll` | `stash push -u` | — | — |
- * | `stashPaths` | `write-tree` + `diff --cached --name-only --no-renames -z` + `restore --staged -- <没勾的>` + `stash push -u -- <路径…>` + `restore --source=<树> --staged -- <没勾的>` | `git restore` | 2.23 |
+ * | `stashPaths` | `write-tree` + `diff --cached --name-only --no-renames -z` + `restore --staged -- :(literal)<没勾的>` + `stash push -u -- :(literal)<路径…>` + `restore --source=<树> --staged -- :(literal)<没勾的>` | `git restore` | 2.23 |
  * | `applyStash` | `stash apply <hash>` | — | — |
  * | `popStash` | `stash list …` 找序号 + `stash pop stash@{n}` | — | — |
  * | `dropStash` | `stash list …` 找序号 + `stash drop stash@{n}` | — | — |
- * | `unstage` | `restore --staged -- <路径…>` | `git restore` | 2.23 |
+ * | `unstage` | `restore --staged -- :(literal)<路径…>` | `git restore` | 2.23 |
  * | `addPaths` | `add -- :(literal)<路径>…` | — | — |
  * | `removeConflictPaths` | `rm -q -- :(literal)<路径>…` | — | — |
  * | `continueInProgress` | `merge` / `rebase` / `cherry-pick` / `revert --continue`，环境 `GIT_EDITOR=true` | — | — |
@@ -51,7 +51,7 @@
  * | `replayCommits` | `cherry-pick` / `revert --no-edit --stdin`，变空时 `--skip` | `--skip` | **2.23** |
  * | `resetTo` | `reset -q --soft/--mixed/--keep/--hard <hash>` | — | — |
  * | `rewordCommit` | `rev-list --first-parent --parents HEAD --not <hash>^@` + `config --bool --get commit.gpgSign` + `stripspace` + 逐条 `cat-file commit` 与 `commit-tree [-S] <tree> -p <父>` + `update-ref -m reword HEAD <新> <旧>` | — | — |
- * | `rollback` | `restore --source=HEAD --staged --worktree -- <路径…>` | `git restore` | **2.23** |
+ * | `rollback` | `restore --source=HEAD --staged --worktree -- :(literal)<路径…>` | `git restore` | **2.23** |
  * | `getSkeleton` | `-c log.showSignature=false log --format=… --max-count=10000 HEAD --branches --remotes --tags --date-order --`；按分支过滤时起点换成那个分支；拓扑排序时 `--topo-order` | — | — |
  * | `getHeadBases` | `merge-base --all HEAD <起点>`（不按分支过滤时起点是 HEAD） | — | — |
  * | `getCommitDetails` | `-c log.showSignature=false log --format=… --no-walk --stdin` | — | — |

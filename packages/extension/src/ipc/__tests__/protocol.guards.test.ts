@@ -35,6 +35,12 @@ describe("commit 的参数校验", () => {
   it("拒绝空的路径列表：commit --only 不带路径会提交整个暂存区", () => {
     expect(parseParams("commit", { repo: "/r", message: "msg", paths: [] })).toBeUndefined();
   });
+
+  it("拒绝带 .. 的路径：会走出仓库", () => {
+    expect(
+      parseParams("commit", { repo: "/r", message: "msg", paths: ["a.ts", "../outside"] }),
+    ).toBeUndefined();
+  });
 });
 
 describe("amend 的参数校验", () => {
@@ -120,6 +126,9 @@ describe("deleteBranches 的参数", () => {
     expect(
       parseParams("deleteBranches", { repo: "/r", local: [], remote: [{ remote: "origin" }] }),
     ).toBeUndefined();
+    expect(
+      parseParams("deleteBranches", { repo: "/r", local: ["--delete"], remote: [] }),
+    ).toBeUndefined();
   });
 });
 
@@ -131,6 +140,7 @@ describe("update 的参数", () => {
     });
     expect(parseParams("update", { repo: "/r", branches: [] })).toBeUndefined();
     expect(parseParams("update", { repo: "/r", branch: "main" })).toBeUndefined();
+    expect(parseParams("update", { repo: "/r", branches: ["--all"] })).toBeUndefined();
   });
 });
 
@@ -146,6 +156,8 @@ describe("push 的参数", () => {
     expect(parseParams("push", { ...base, remoteUrl: "u" })).toEqual({ ...base, remoteUrl: "u" });
     expect(parseParams("push", { ...base, tags: "everything" })).toBeUndefined();
     expect(parseParams("push", { ...base, remoteUrl: 1 })).toBeUndefined();
+    expect(parseParams("push", { ...base, remote: "--force" })).toBeUndefined();
+    expect(parseParams("push", { ...base, branch: "-u" })).toBeUndefined();
   });
 });
 
@@ -164,6 +176,7 @@ describe("Commit 面板批量命令的参数", () => {
       });
       expect(parseParams(command, { repo: "/r", paths: [] })).toBeUndefined();
       expect(parseParams(command, { repo: "/r", path: "a" })).toBeUndefined();
+      expect(parseParams(command, { repo: "/r", paths: ["../outside"] })).toBeUndefined();
     }
   });
 });
@@ -190,5 +203,94 @@ describe("openFile 的参数校验：路径会拼成磁盘路径", () => {
       repo: "/r",
       path: "a..b/..c",
     });
+  });
+});
+
+describe("会拼成磁盘路径的命令：带 .. 的段拒收", () => {
+  it.each(["openMergeEditor", "resolveDeletion"] as const)("%s", (command) => {
+    expect(parseParams(command, { repo: "/r", path: "src/a.ts" })).toEqual({
+      repo: "/r",
+      path: "src/a.ts",
+    });
+    expect(parseParams(command, { repo: "/r", path: "../outside" })).toBeUndefined();
+  });
+
+  it("openDiff 的 path", () => {
+    expect(
+      parseParams("openDiff", {
+        ...valid,
+        left: { kind: DiffSideKind.WorkingTree, path: "../outside" },
+      }),
+    ).toBeUndefined();
+  });
+
+  it("rollback、stash、amend 的 paths", () => {
+    expect(parseParams("rollback", { repo: "/r", paths: ["a.ts"] })).toEqual({
+      repo: "/r",
+      paths: ["a.ts"],
+    });
+    expect(parseParams("rollback", { repo: "/r", paths: ["../x"] })).toBeUndefined();
+    expect(parseParams("stash", { repo: "/r", paths: [] })).toEqual({ repo: "/r", paths: [] });
+    expect(parseParams("stash", { repo: "/r", paths: ["../x"] })).toBeUndefined();
+    expect(parseParams("amend", { repo: "/r", message: "m", paths: [] })).toEqual({
+      repo: "/r",
+      message: "m",
+      paths: [],
+    });
+    expect(parseParams("amend", { repo: "/r", message: "m", paths: ["../x"] })).toBeUndefined();
+  });
+});
+
+describe("进命令行的 hash：只收完整 hash", () => {
+  const hash = "ab".repeat(20);
+
+  it.each(["getCommitFiles", "resetTo", "applyStash", "popStash", "dropStash"] as const)(
+    "%s",
+    (command) => {
+      expect(parseParams(command, { repo: "/r", hash })).toEqual({ repo: "/r", hash });
+      expect(parseParams(command, { repo: "/r", hash: "--all" })).toBeUndefined();
+      expect(parseParams(command, { repo: "/r", hash: hash.slice(0, 7) })).toBeUndefined();
+    },
+  );
+
+  it("getCommitDetails 的列表：有一个不是完整 hash 就整条拒收", () => {
+    expect(parseParams("getCommitDetails", { repo: "/r", hashes: [hash] })).toEqual({
+      repo: "/r",
+      hashes: [hash],
+    });
+    expect(parseParams("getCommitDetails", { repo: "/r", hashes: [] })).toEqual({
+      repo: "/r",
+      hashes: [],
+    });
+    expect(
+      parseParams("getCommitDetails", { repo: "/r", hashes: [hash, "--all"] }),
+    ).toBeUndefined();
+  });
+});
+
+describe("进命令行的短名：空串和 - 开头拒收", () => {
+  it("checkout、renameBranch", () => {
+    expect(parseParams("checkout", { repo: "/r", branch: "feat/x" })).toEqual({
+      repo: "/r",
+      branch: "feat/x",
+    });
+    expect(parseParams("checkout", { repo: "/r", branch: "--detach" })).toBeUndefined();
+    expect(parseParams("renameBranch", { repo: "/r", branch: "" })).toBeUndefined();
+  });
+
+  it("newBranch 的 start 与 rebase 一样：完整引用或完整 hash", () => {
+    const ok = { repo: "/r", start: "refs/heads/main", startName: "main" };
+    expect(parseParams("newBranch", ok)).toEqual(ok);
+    expect(parseParams("newBranch", { repo: "/r", start: HASH, startName: "x" })).toEqual({
+      repo: "/r",
+      start: HASH,
+      startName: "x",
+    });
+    expect(
+      parseParams("newBranch", { repo: "/r", start: "main", startName: "main" }),
+    ).toBeUndefined();
+    expect(
+      parseParams("newBranch", { repo: "/r", start: "--detach", startName: "x" }),
+    ).toBeUndefined();
   });
 });

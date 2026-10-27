@@ -38,14 +38,21 @@ function asGeneration(value: unknown): Generation | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
+/** 相对仓库根的路径。带 `..` 的段会走出仓库，拒收。 */
+function asRelPath(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 && !value.split(/[\\/]/).includes("..")
+    ? value
+    : undefined;
+}
+
 /**
- * diff 的一边。深验：`hash` 与 `path` 会拼进 `git cat-file` 的命令行。
- * hash 的格式（完整 40 / 64 位）在 URI 解析时再卡一次，这里只管类型与闭集。
+ * diff 的一边。深验：`hash` 与 `path` 会拼进 `git cat-file` 的命令行，工作区路径会拼成磁盘路径。
+ * hash 的格式（完整 40 / 64 位）在 URI 解析时再卡一次，这里只管类型、闭集，以及路径不能有 `..`。
  */
 function asDiffSide(value: unknown): DiffSide | undefined {
   if (!isRecord(value)) return undefined;
-  const path = value["path"];
-  if (typeof path !== "string") return undefined;
+  const path = asRelPath(value["path"]);
+  if (path === undefined) return undefined;
   switch (value["kind"]) {
     case DiffSideKind.Revision: {
       const hash = value["hash"];
@@ -101,12 +108,44 @@ function asStringArray(value: unknown): readonly string[] | undefined {
   return value.every((item) => typeof item === "string") ? value : undefined;
 }
 
+function asRelPaths(value: unknown): readonly string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const paths: string[] = [];
+  for (const item of value) {
+    const path = asRelPath(item);
+    if (path === undefined) return undefined;
+    paths.push(path);
+  }
+  return paths;
+}
+
+/**
+ * 会进 git 命令行的短名（分支、远程）。空串和 `-` 开头会被当成选项。
+ * 完整引用名走 `asRef`，不走这里。
+ */
+function asArgName(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 && !value.startsWith("-")
+    ? value
+    : undefined;
+}
+
+function asArgNames(value: unknown): readonly string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const names: string[] = [];
+  for (const item of value) {
+    const name = asArgName(item);
+    if (name === undefined) return undefined;
+    names.push(name);
+  }
+  return names;
+}
+
 /** 一批文件：仓库和相对仓库根的路径，至少一个。 */
 function asPathsTarget(
   raw: Record<string, unknown>,
 ): { repo: string; paths: readonly string[] } | undefined {
   const repo = raw["repo"];
-  const paths = asStringArray(raw["paths"]);
+  const paths = asRelPaths(raw["paths"]);
   return typeof repo === "string" && paths !== undefined && paths.length > 0
     ? { repo, paths }
     : undefined;
@@ -115,16 +154,19 @@ function asPathsTarget(
 /** 工作区里的一个文件：相对仓库根的路径，带 `..` 的段会走出仓库，拒收。 */
 function asFileTarget(raw: Record<string, unknown>): { repo: string; path: string } | undefined {
   const repo = raw["repo"];
-  const path = raw["path"];
-  return typeof repo === "string" &&
-    typeof path === "string" &&
-    path.length > 0 &&
-    !path.split(/[\\/]/).includes("..")
-    ? { repo, path }
-    : undefined;
+  const path = asRelPath(raw["path"]);
+  return typeof repo === "string" && path !== undefined ? { repo, path } : undefined;
 }
 
-/** 远程分支的列表：每项是 `{ remote, branch }`，都是字符串。有一项不对就整条拒收。 */
+function asBranchTarget(
+  raw: Record<string, unknown>,
+): { repo: string; branch: string } | undefined {
+  const repo = raw["repo"];
+  const branch = asArgName(raw["branch"]);
+  return typeof repo === "string" && branch !== undefined ? { repo, branch } : undefined;
+}
+
+/** 远程分支的列表：每项是 `{ remote, branch }`。有一项不对就整条拒收。 */
 function asRemoteBranches(
   value: unknown,
 ): readonly { readonly remote: string; readonly branch: string }[] | undefined {
@@ -132,9 +174,9 @@ function asRemoteBranches(
   const list: { readonly remote: string; readonly branch: string }[] = [];
   for (const item of value) {
     if (!isRecord(item)) return undefined;
-    const remote = item["remote"];
-    const branch = item["branch"];
-    if (typeof remote !== "string" || typeof branch !== "string") return undefined;
+    const remote = asArgName(item["remote"]);
+    const branch = asArgName(item["branch"]);
+    if (remote === undefined || branch === undefined) return undefined;
     list.push({ remote, branch });
   }
   return list;
@@ -155,6 +197,17 @@ function asCommit(value: unknown): string | undefined {
   return typeof value === "string" && /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/i.test(value)
     ? value
     : undefined;
+}
+
+function asCommitList(value: unknown): readonly string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const hashes: string[] = [];
+  for (const item of value) {
+    const hash = asCommit(item);
+    if (hash === undefined) return undefined;
+    hashes.push(hash);
+  }
+  return hashes;
 }
 
 /** 仓库、起点、显示名。起点由调用方决定认引用还是也认 hash。 */
@@ -190,11 +243,8 @@ function asCommitsTarget(
   raw: Record<string, unknown>,
 ): { repo: string; hashes: readonly string[] } | undefined {
   const repo = raw["repo"];
-  const hashes = asStringArray(raw["hashes"]);
-  return typeof repo === "string" &&
-    hashes !== undefined &&
-    hashes.length > 0 &&
-    hashes.every((hash) => asCommit(hash) !== undefined)
+  const hashes = asCommitList(raw["hashes"]);
+  return typeof repo === "string" && hashes !== undefined && hashes.length > 0
     ? { repo, hashes }
     : undefined;
 }
@@ -258,7 +308,7 @@ const PARAM_GUARDS = {
   },
   getCommitDetails: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
-    const hashes = asStringArray(raw["hashes"]);
+    const hashes = asCommitList(raw["hashes"]);
     return typeof repo === "string" && hashes !== undefined ? { repo, hashes } : undefined;
   },
   getRefs: (raw: Record<string, unknown>) => {
@@ -277,30 +327,14 @@ const PARAM_GUARDS = {
       ? { repo, left, right, mode }
       : undefined;
   },
-  getCommitFiles: (raw: Record<string, unknown>) => {
-    const repo = raw["repo"];
-    const hash = raw["hash"];
-    return typeof repo === "string" && typeof hash === "string" ? { repo, hash } : undefined;
-  },
+  getCommitFiles: asCommitTarget,
   getStashes: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     return typeof repo === "string" ? { repo } : undefined;
   },
-  applyStash: (raw: Record<string, unknown>) => {
-    const repo = raw["repo"];
-    const hash = raw["hash"];
-    return typeof repo === "string" && typeof hash === "string" ? { repo, hash } : undefined;
-  },
-  popStash: (raw: Record<string, unknown>) => {
-    const repo = raw["repo"];
-    const hash = raw["hash"];
-    return typeof repo === "string" && typeof hash === "string" ? { repo, hash } : undefined;
-  },
-  dropStash: (raw: Record<string, unknown>) => {
-    const repo = raw["repo"];
-    const hash = raw["hash"];
-    return typeof repo === "string" && typeof hash === "string" ? { repo, hash } : undefined;
-  },
+  applyStash: asCommitTarget,
+  popStash: asCommitTarget,
+  dropStash: asCommitTarget,
   matchCommits: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const hashes = asStringArray(raw["hashes"]);
@@ -318,31 +352,15 @@ const PARAM_GUARDS = {
     const hashes = asStringArray(raw["hashes"]);
     return typeof repo === "string" && hashes !== undefined ? { repo, hashes } : undefined;
   },
-  resetTo: (raw: Record<string, unknown>) => {
-    const repo = raw["repo"];
-    const hash = raw["hash"];
-    return typeof repo === "string" && typeof hash === "string" ? { repo, hash } : undefined;
-  },
+  resetTo: asCommitTarget,
   markResolved: asPathsTarget,
   removeConflictFile: asPathsTarget,
-  resolveDeletion: (raw: Record<string, unknown>) => {
-    const repo = raw["repo"];
-    const path = raw["path"];
-    return typeof repo === "string" && typeof path === "string" ? { repo, path } : undefined;
-  },
+  resolveDeletion: asFileTarget,
   addUntracked: asPathsTarget,
   deleteUntracked: asPathsTarget,
   openFile: asFileTarget,
-  openMergeEditor: (raw: Record<string, unknown>) => {
-    const repo = raw["repo"];
-    const path = raw["path"];
-    return typeof repo === "string" && typeof path === "string" ? { repo, path } : undefined;
-  },
-  openPushDialog: (raw: Record<string, unknown>) => {
-    const repo = raw["repo"];
-    const branch = raw["branch"];
-    return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;
-  },
+  openMergeEditor: asFileTarget,
+  openPushDialog: asBranchTarget,
   openRewordDialog: asCommitTarget,
   reword: (raw: Record<string, unknown>) => {
     const target = asCommitTarget(raw);
@@ -389,7 +407,7 @@ const PARAM_GUARDS = {
   commit: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const message = raw["message"];
-    const paths = asStringArray(raw["paths"]);
+    const paths = asRelPaths(raw["paths"]);
     // 空列表会让 `commit --only` 提交整个暂存区：在这里拒绝。
     return typeof repo === "string" &&
       typeof message === "string" &&
@@ -398,35 +416,20 @@ const PARAM_GUARDS = {
       ? { repo, message, paths }
       : undefined;
   },
-  checkout: (raw: Record<string, unknown>) => {
-    const repo = raw["repo"];
-    const branch = raw["branch"];
-    return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;
-  },
+  checkout: asBranchTarget,
   checkoutRemote: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
-    const remote = raw["remote"];
-    const branch = raw["branch"];
-    return typeof repo === "string" && typeof remote === "string" && typeof branch === "string"
+    const remote = asArgName(raw["remote"]);
+    const branch = asArgName(raw["branch"]);
+    return typeof repo === "string" && remote !== undefined && branch !== undefined
       ? { repo, remote, branch }
       : undefined;
   },
-  newBranch: (raw: Record<string, unknown>) => {
-    const repo = raw["repo"];
-    const start = raw["start"];
-    const startName = raw["startName"];
-    return typeof repo === "string" && typeof start === "string" && typeof startName === "string"
-      ? { repo, start, startName }
-      : undefined;
-  },
-  renameBranch: (raw: Record<string, unknown>) => {
-    const repo = raw["repo"];
-    const branch = raw["branch"];
-    return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;
-  },
+  newBranch: asRebaseTarget,
+  renameBranch: asBranchTarget,
   deleteBranches: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
-    const local = asStringArray(raw["local"]);
+    const local = asArgNames(raw["local"]);
     const remote = asRemoteBranches(raw["remote"]);
     return typeof repo === "string" &&
       local !== undefined &&
@@ -435,36 +438,32 @@ const PARAM_GUARDS = {
       ? { repo, local, remote }
       : undefined;
   },
-  getPushTarget: (raw: Record<string, unknown>) => {
-    const repo = raw["repo"];
-    const branch = raw["branch"];
-    return typeof repo === "string" && typeof branch === "string" ? { repo, branch } : undefined;
-  },
+  getPushTarget: asBranchTarget,
   getOutgoingCommits: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
-    const branch = raw["branch"];
-    const remote = raw["remote"];
-    const remoteBranch = raw["remoteBranch"];
+    const branch = asArgName(raw["branch"]);
+    const remote = asArgName(raw["remote"]);
+    const remoteBranch = asArgName(raw["remoteBranch"]);
     return typeof repo === "string" &&
-      typeof branch === "string" &&
-      typeof remote === "string" &&
-      typeof remoteBranch === "string"
+      branch !== undefined &&
+      remote !== undefined &&
+      remoteBranch !== undefined
       ? { repo, branch, remote, remoteBranch }
       : undefined;
   },
   push: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
-    const branch = raw["branch"];
-    const remote = raw["remote"];
-    const remoteBranch = raw["remoteBranch"];
+    const branch = asArgName(raw["branch"]);
+    const remote = asArgName(raw["remote"]);
+    const remoteBranch = asArgName(raw["remoteBranch"]);
     const force = raw["force"];
     const remoteUrl = raw["remoteUrl"];
     const tags = raw["tags"] === undefined ? undefined : asPushTagMode(raw["tags"]);
     if (
       typeof repo !== "string" ||
-      typeof branch !== "string" ||
-      typeof remote !== "string" ||
-      typeof remoteBranch !== "string" ||
+      branch === undefined ||
+      remote === undefined ||
+      remoteBranch === undefined ||
       typeof force !== "boolean" ||
       (remoteUrl !== undefined && typeof remoteUrl !== "string") ||
       (raw["tags"] !== undefined && tags === undefined)
@@ -483,7 +482,7 @@ const PARAM_GUARDS = {
   },
   update: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
-    const branches = asStringArray(raw["branches"]);
+    const branches = asArgNames(raw["branches"]);
     return typeof repo === "string" && branches !== undefined && branches.length > 0
       ? { repo, branches }
       : undefined;
@@ -496,22 +495,16 @@ const PARAM_GUARDS = {
     const repo = raw["repo"];
     return typeof repo === "string" ? { repo } : undefined;
   },
-  rollback: (raw: Record<string, unknown>) => {
-    const repo = raw["repo"];
-    const paths = asStringArray(raw["paths"]);
-    return typeof repo === "string" && paths !== undefined && paths.length > 0
-      ? { repo, paths }
-      : undefined;
-  },
+  rollback: asPathsTarget,
   stash: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
-    const paths = asStringArray(raw["paths"]);
+    const paths = asRelPaths(raw["paths"]);
     return typeof repo === "string" && paths !== undefined ? { repo, paths } : undefined;
   },
   amend: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const message = raw["message"];
-    const paths = asStringArray(raw["paths"]);
+    const paths = asRelPaths(raw["paths"]);
     return typeof repo === "string" && typeof message === "string" && paths !== undefined
       ? { repo, message, paths }
       : undefined;
@@ -614,8 +607,8 @@ function parseMatchCondition(raw: unknown): MatchCondition | undefined {
         : undefined;
     }
     case MatchKind.Path: {
-      const path = raw["path"];
-      return typeof path === "string" && path !== "" ? { kind: MatchKind.Path, path } : undefined;
+      const path = asRelPath(raw["path"]);
+      return path === undefined ? undefined : { kind: MatchKind.Path, path };
     }
     default:
       return undefined;

@@ -2,7 +2,7 @@
 import { DiffOpenMode, GitDomain, type OngoingOperation } from "@dummy-git/shared";
 import { VscodeTextarea } from "@vscode-elements/elements/dist/vscode-textarea/vscode-textarea.js";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { type Client, report } from "../logic/client.js";
+import { type Client, copyText, report } from "../logic/client.js";
 import { commitMessage, isBlankMessage } from "../logic/commit/message.js";
 import { MessageUpdate, messageUpdate } from "../logic/commit/operationMessage.js";
 import {
@@ -60,13 +60,8 @@ const conflicts = ref<ConflictFile[]>([]);
 /** 停在半路的操作。没有是 `null`（stash 取出冲突也是 `null`）。 */
 const operation = ref<OngoingOperation | null>(null);
 const groups = computed(() => workingGroups(conflicts.value, files.value, operation.value));
-/** 复制快捷键：交给扩展写剪贴板。 */
-async function copyText(text: string): Promise<void> {
-  try {
-    await props.client.request("copyText", { text });
-  } catch (cause) {
-    report(cause);
-  }
+function onCopy(text: string): void {
+  void copyText(props.client, text);
 }
 
 /** 右键菜单：选中的文件交给 `workingMenuContext`。 */
@@ -478,7 +473,7 @@ onMounted(async () => {
         :checked="checked"
         :menu="menuOf"
         @check="onCheck"
-        @copy="copyText"
+        @copy="onCopy"
         @select="(views) => (fileSelection = views)"
         @open="openFile"
       >

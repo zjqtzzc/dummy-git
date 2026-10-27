@@ -1,4 +1,5 @@
 import { assertNever, type Ref, RefKind } from "@dummy-git/shared";
+import { isRemoteHead } from "./branchTree.js";
 
 /** 提交行上的一个 ref 标签。 */
 export interface RefLabel {
@@ -12,13 +13,11 @@ export interface RefLabel {
   readonly current: boolean;
 }
 
-const MAIN_NAMES = new Set(["main", "master"]);
 /** 超过这个长度的名字，第一个 `/` 之前换成 `..`。 */
 const MAX_NAME = 22;
 
 /**
- * 每个提交上的标签，按顺序：detached HEAD → 当前分支 → main|master → origin/main|master
- * → 本地分支 → 远程分支 → tag，同类按名字。
+ * 每个提交上的标签，按顺序：detached HEAD → 当前分支 → 其它本地分支 → 远程分支 → tag，同类按名字。
  * 本地分支与它跟踪的、指向同一个提交的远程分支合成一个标签。指着当前分支的 HEAD 不单独出标签。
  */
 export function refLabels(refs: readonly Ref[]): Map<string, RefLabel[]> {
@@ -53,7 +52,7 @@ export function refLabels(refs: readonly Ref[]): Map<string, RefLabel[]> {
         break;
       case RefKind.LocalBranch: {
         const upstream = upstreamOf.get(ref.name);
-        const rank = ref.name === current ? 1 : MAIN_NAMES.has(ref.name) ? 2 : 4;
+        const rank = ref.name === current ? 1 : 2;
         if (upstream === undefined) add(ref, ref.kind, ref.name, ref.name, rank);
         else
           add(
@@ -66,16 +65,14 @@ export function refLabels(refs: readonly Ref[]): Map<string, RefLabel[]> {
         break;
       }
       case RefKind.RemoteBranch: {
-        // `origin/HEAD` 只是指向远程默认分支的指针，不是一个分支（同分支树）。
-        if (ref.name === "HEAD") break;
+        if (isRemoteHead(ref)) break;
         const full = remoteKey(ref.remote, ref.name);
         if (merged.has(full)) break;
-        const rank = ref.remote === "origin" && MAIN_NAMES.has(ref.name) ? 3 : 5;
-        add(ref, ref.kind, full, full, rank);
+        add(ref, ref.kind, full, full, 3);
         break;
       }
       case RefKind.Tag:
-        add(ref, ref.kind, ref.name, ref.name, 6);
+        add(ref, ref.kind, ref.name, ref.name, 4);
         break;
       default:
         assertNever(ref, "refLabels");

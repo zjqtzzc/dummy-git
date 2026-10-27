@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { DiffOpenMode, GitDomain } from "@dummy-git/shared";
 import { computed, onMounted, ref, watch } from "vue";
-import { type Client, report } from "../logic/client.js";
+import { type Client, copyText, report } from "../logic/client.js";
 import { AppIcon, appIcon, codicon } from "../logic/icons.js";
 import { commitDiffSides } from "../logic/log/commitDiff.js";
 import type { MenuViews } from "../logic/menuItems.js";
@@ -134,13 +134,8 @@ function onSelect({ exact: selected }: MenuViews<TreeNode>): void {
   if (selected.length === 1 && node !== undefined) void open(node, DiffOpenMode.Follow);
 }
 
-/** 复制快捷键：交给扩展写剪贴板。 */
-async function copyText(text: string): Promise<void> {
-  try {
-    await props.client.request("copyText", { text });
-  } catch (cause) {
-    report(cause);
-  }
+function onCopy(text: string): void {
+  void copyText(props.client, text);
 }
 
 /** 右键菜单：stash 那一行换成它的 hash，它下面的文件、目录是 `null`。 */
@@ -212,7 +207,7 @@ async function open(node: TreeNode, mode: DiffOpenMode): Promise<void> {
         :nodes="nodes"
         :menu="menuOf"
         @select="onSelect"
-        @copy="copyText"
+        @copy="onCopy"
         @activate="(node) => open(node, DiffOpenMode.Open)"
       />
     </div>

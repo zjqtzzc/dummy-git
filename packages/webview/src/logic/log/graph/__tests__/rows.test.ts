@@ -8,6 +8,11 @@ import { visibleLines } from "../visible.js";
 import { skeleton } from "./skeleton.js";
 
 const local = (name: string, target: string): Ref => ({ kind: RefKind.LocalBranch, name, target });
+const head = (target: string, branch: string): Ref => ({
+  kind: RefKind.Head,
+  target,
+  branch,
+});
 
 /** 颜色 id 直接用编号，线的颜色取哪一端一眼可见。 */
 function graph(rows: readonly (readonly string[])[], refs: readonly Ref[]): Graph {
@@ -71,7 +76,7 @@ describe("buildGraph：位置", () => {
   });
 
   it("分叉：编号大的分支在右；左边的边结束后，右边的节点左移回来", () => {
-    const g = graph(FORK, [local("main", "m2"), local("feature", "f2")]);
+    const g = graph(FORK, [local("main", "m2"), local("feature", "f2"), head("m2", "main")]);
     // f2 独占第 0 行；m2 那行 main 在左、feature 的边在右；f1 那行 main 的边在左、f1 在右；m1 合回第 0 个位置。
     expect(g.rows.map((row) => row.nodePosition)).toEqual([0, 0, 1, 0, 0]);
     expect(g.rows[0]?.segments).toEqual([
@@ -111,10 +116,10 @@ describe("buildGraph：位置", () => {
   });
 
   it("并行的边按编号排，与谁先出发无关", () => {
-    // feature 的边先出发，但 main 编号小，o 那行 main 的边仍在左；两条边都走直线。
+    // feature 的边先出发，但当前分支 main 编号小，o 那行 main 的边仍在左；两条边都走直线。
     const g = graph(
       [["f", "fb"], ["m", "mb"], ["o"], ["fb", "mb"], ["mb"]],
-      [local("main", "m"), local("feature", "f"), local("other", "o")],
+      [local("main", "m"), local("feature", "f"), local("other", "o"), head("m", "main")],
     );
     expect(g.rows.map((row) => row.nodePosition)).toEqual([0, 0, 2, 1, 0]);
     expect(g.rows[1]?.segments).toContainEqual({
@@ -205,7 +210,7 @@ describe("buildGraph：截断", () => {
 
 describe("buildGraph：宽度", () => {
   it("斜线在本行只画一半，按半格算", () => {
-    const g = graph(FORK, [local("main", "m2"), local("feature", "f2")]);
+    const g = graph(FORK, [local("main", "m2"), local("feature", "f2"), head("m2", "main")]);
     // f2 在第 0 个位置，往下斜到第 1 个位置：最右到 0.5，宽 1.5。
     expect(g.rows[0]?.width).toBe(1.5);
     expect(g.rows[1]?.width).toBe(2);

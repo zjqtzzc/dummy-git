@@ -17,7 +17,8 @@ export const rollback: GitCommand<[repository: string, paths: readonly string[]]
   lock: LockPolicy.Exclusive,
 
   execute: async (cli, repository, paths) => {
-    await run(cli, ["restore", "--source=HEAD", "--staged", "--worktree", "--", ...paths], {
+    const specs = paths.map((path) => `:(literal)${path}`);
+    await run(cli, ["restore", "--source=HEAD", "--staged", "--worktree", "--", ...specs], {
       cwd: repository,
     });
   },

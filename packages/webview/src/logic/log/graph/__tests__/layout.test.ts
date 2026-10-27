@@ -11,6 +11,11 @@ const remote = (r: string, name: string, target: string): Ref => ({
   name,
   target,
 });
+const head = (target: string, branch?: string): Ref => ({
+  kind: RefKind.Head,
+  target,
+  ...(branch === undefined ? {} : { branch }),
+});
 
 function layout(rows: readonly (readonly string[])[], refs: readonly Ref[]) {
   return buildLayout(buildStructure(skeleton(rows)), refs);
@@ -25,7 +30,7 @@ describe("buildLayout：沿第一父提交编号", () => {
   it("分叉：先编号的头占住共同祖先，另一条只到分叉点为止", () => {
     const { indexes } = layout(
       [["f2", "f1"], ["m2", "m1"], ["f1", "m1"], ["m1", "m0"], ["m0"]],
-      [local("main", "m2"), local("feature", "f2")],
+      [local("main", "m2"), local("feature", "f2"), head("m2", "main")],
     );
     expect(indexes).toEqual([2, 1, 2, 1, 1]);
   });
@@ -52,22 +57,26 @@ describe("buildLayout：头的先后", () => {
   const twoHeads = (first: Ref, second: Ref) =>
     layout([["x", "base"], ["y", "base"], ["base"]], [first, second]).indexes;
 
-  it("origin/main 排在本地 main 前面", () => {
+  it("远程排在本地前面", () => {
     expect(twoHeads(local("main", "x"), remote("origin", "main", "y"))).toEqual([2, 1, 1]);
   });
 
-  it("main 排在其它本地分支前面，与 refs 的顺序无关", () => {
-    expect(twoHeads(local("feature", "x"), local("main", "y"))).toEqual([2, 1, 1]);
+  it("当前分支排最左，与名字无关", () => {
+    expect(
+      layout(
+        [["x", "base"], ["y", "base"], ["base"]],
+        [local("aaa", "x"), local("zzz", "y"), head("y", "zzz")],
+      ).indexes,
+    ).toEqual([2, 1, 1]);
   });
 
   it("同类按名字", () => {
     expect(twoHeads(local("b", "x"), local("a", "y"))).toEqual([2, 1, 1]);
   });
 
-  it("detached HEAD 排在 tag 后面", () => {
-    const headRef: Ref = { kind: RefKind.Head, target: "x" };
+  it("detached HEAD 排在 tag 前面", () => {
     const tag: Ref = { kind: RefKind.Tag, name: "v1", target: "y", annotated: false };
-    expect(twoHeads(headRef, tag)).toEqual([2, 1, 1]);
+    expect(twoHeads(head("x"), tag)).toEqual([1, 2, 1]);
   });
 
   it("没有 ref 的头排在有 ref 的后面", () => {
@@ -77,8 +86,8 @@ describe("buildLayout：头的先后", () => {
   });
 
   it("同一提交上有多个 ref：按排第一的那个", () => {
-    const refs = [local("zzz", "x"), local("main", "x"), local("feature", "y")];
-    expect(layout([["x", "base"], ["y", "base"], ["base"]], refs).indexes).toEqual([1, 2, 1]);
+    const refs = [local("zzz", "x"), local("aaa", "x"), local("feature", "y"), head("y", "feature")];
+    expect(layout([["x", "base"], ["y", "base"], ["base"]], refs).indexes).toEqual([2, 1, 1]);
   });
 });
 

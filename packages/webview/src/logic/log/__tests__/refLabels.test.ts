@@ -35,7 +35,7 @@ const names = (refs: readonly Ref[], hash = "c") =>
     ?.map((label) => label.name);
 
 describe("refLabels", () => {
-  it("顺序：当前分支 → main → origin/main → 本地 → 远程 → tag，同类按名字", () => {
+  it("顺序：当前分支 → 本地 → 远程 → tag，同类按名字", () => {
     const refs = [
       tag("v1"),
       remote("zeta"),
@@ -46,7 +46,7 @@ describe("refLabels", () => {
       local("topic"),
       head("c", "topic"),
     ];
-    expect(names(refs)).toEqual(["topic", "main", "origin/main", "a", "b", "origin/zeta", "v1"]);
+    expect(names(refs)).toEqual(["topic", "a", "b", "main", "origin/main", "origin/zeta", "v1"]);
   });
 
   it("detached HEAD 排第一；指着分支的 HEAD 不单独出标签", () => {

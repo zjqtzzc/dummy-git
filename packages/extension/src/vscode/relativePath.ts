@@ -25,7 +25,10 @@ export function relativeTo(basePath: string, targetPath: string): string | undef
   const base = basePath.replaceAll("\\", "/");
   const target = targetPath.replaceAll("\\", "/");
   const prefix = base.endsWith("/") ? base : `${base}/`;
-  if (!target.startsWith(prefix)) return undefined;
+  // 盘符路径大小写不敏感：VS Code 的 fsPath 可能是 `C:\Repo`，工作区根是 `c:\repo`。
+  // 对不上则事件丢掉、外部 git 不刷新。POSIX 仍区分大小写。只折盘符形式，Linux 上也能测。
+  const comparable = (path: string): string => (/^[A-Za-z]:/.test(path) ? path.toLowerCase() : path);
+  if (!comparable(target).startsWith(comparable(prefix))) return undefined;
   return target.slice(prefix.length);
 }
 

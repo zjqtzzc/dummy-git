@@ -1464,6 +1464,55 @@ describe("停在半路：继续与放弃", () => {
     expect(existsSync(join(dropped, ".git", "MERGE_HEAD"))).toBe(false);
   });
 
+  it("确认期间操作没了：不再跑 abort", async () => {
+    const repo = conflictedMerge("op-abort-gone");
+    const repository = new Repository(plainLocation(repo), cli);
+    try {
+      await createHandlers(repository, {
+        ...NO_UI,
+        confirm: async () => {
+          git(repo, ["merge", "--abort"]);
+          return true;
+        },
+      }).abortOperation({ repo });
+      expect(existsSync(join(repo, ".git", "MERGE_HEAD"))).toBe(false);
+    } finally {
+      repository.dispose();
+    }
+  });
+
+  it("确认期间变成另一次同类操作：不动那次", async () => {
+    const repo = makeTempRepo("op-abort-other");
+    writeFileSync(join(repo, "f.txt"), "base\n");
+    git(repo, ["add", "f.txt"]);
+    git(repo, ["commit", "-qm", "base"]);
+    git(repo, ["switch", "-q", "-c", "feature"]);
+    writeFileSync(join(repo, "f.txt"), "feature\n");
+    git(repo, ["commit", "-qam", "feature side"]);
+    git(repo, ["switch", "-q", "-c", "other", "main"]);
+    writeFileSync(join(repo, "f.txt"), "other\n");
+    git(repo, ["commit", "-qam", "other side"]);
+    git(repo, ["switch", "-q", "main"]);
+    writeFileSync(join(repo, "f.txt"), "main\n");
+    git(repo, ["commit", "-qam", "main side"]);
+    expect(() => git(repo, ["merge", "feature"])).toThrow();
+
+    const repository = new Repository(plainLocation(repo), cli);
+    try {
+      await createHandlers(repository, {
+        ...NO_UI,
+        confirm: async () => {
+          git(repo, ["merge", "--abort"]);
+          expect(() => git(repo, ["merge", "other"])).toThrow();
+          return true;
+        },
+      }).abortOperation({ repo });
+      expect(existsSync(join(repo, ".git", "MERGE_HEAD"))).toBe(true);
+    } finally {
+      repository.dispose();
+    }
+  });
+
   it("冲突解决后继续：用说明框里的那句提交，不带走别的改动", async () => {
     const repo = conflictedMerge("op-continue");
     writeFileSync(join(repo, "f.txt"), "resolved\n");

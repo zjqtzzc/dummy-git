@@ -42,4 +42,17 @@ describe("rollback：勾选的已跟踪文件恢复成 HEAD 的样子", () => {
     expect(existsSync(join(repo, "f1"))).toBe(true);
     expect(git(repo, ["status", "--porcelain"]).trim()).toBe("");
   });
+
+  it("路径里的 [] 不当通配符：旁边的改动还在", async () => {
+    const repo = makeTempRepo("literal-rollback");
+    writeFileSync(join(repo, "foo[bar].txt"), "x\n");
+    writeFileSync(join(repo, "foob.txt"), "b\n");
+    git(repo, ["add", "-A"]);
+    git(repo, ["commit", "-qm", "files"]);
+    writeFileSync(join(repo, "foo[bar].txt"), "xx\n");
+    writeFileSync(join(repo, "foob.txt"), "bb\n");
+    await rollback.execute(cli, repo, ["foo[bar].txt"]);
+    expect(readFileSync(join(repo, "foo[bar].txt"), "utf8")).toBe("x\n");
+    expect(readFileSync(join(repo, "foob.txt"), "utf8")).toBe("bb\n");
+  });
 });

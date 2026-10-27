@@ -92,7 +92,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // 一次展开配一个 Router。收起再展开，握手会带来新代号，上一代的回复自动作废。
   const createRouter = (repository: Repository, transport: Transport, source: string): Router =>
     new Router(transport, createHandlers(repository, ui), {
-      log: (line) => channel.debug(line),
+      log: (line) => channel.info(line),
       operation: (command, params, task) => operations.run(source, command, params, task),
       report: (error) => errors.report(error),
     });

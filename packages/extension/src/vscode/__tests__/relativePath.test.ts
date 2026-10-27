@@ -20,6 +20,10 @@ describe("relativeTo", () => {
     it("工作区文件", () => {
       expect(relativeTo("C:\\repo", "C:\\repo\\src\\index.ts")).toBe("src/index.ts");
     });
+
+    it("盘符大小写不同仍能转成相对路径", () => {
+      expect(relativeTo("C:\\Repo", "c:\\repo\\src\\index.ts")).toBe("src/index.ts");
+    });
   });
 
   describe("POSIX 风格路径", () => {
@@ -33,6 +37,10 @@ describe("relativeTo", () => {
   });
 
   describe("不在基准目录下 → undefined", () => {
+    it("POSIX 仍区分大小写", () => {
+      expect(relativeTo("/Repo", "/repo/a.ts")).toBeUndefined();
+    });
+
     it("完全无关的路径", () => {
       expect(relativeTo("/repo/.git", "/elsewhere/HEAD")).toBeUndefined();
     });

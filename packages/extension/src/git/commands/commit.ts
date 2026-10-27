@@ -16,12 +16,14 @@ function commitWith(amend: readonly string[]): GitCommand<CommitArgs, void> {
     lock: LockPolicy.Exclusive,
 
     execute: async (cli, repository, message, paths, untracked) => {
+      const addSpecs = untracked.map(literal);
+      const pathSpecs = paths.map(literal);
       if (untracked.length > 0) {
-        await run(cli, ["add", "--", ...untracked], { cwd: repository });
+        await run(cli, ["add", "--", ...addSpecs], { cwd: repository });
       }
       // 不查消息是不是空：空消息由 git 拒绝，`run()` 会把它包成 GitFailureError。
       try {
-        await run(cli, ["commit", ...amend, "--only", "-F", "-", "--", ...paths], {
+        await run(cli, ["commit", ...amend, "--only", "-F", "-", "--", ...pathSpecs], {
           cwd: repository,
           input: message,
         });
@@ -30,7 +32,7 @@ function commitWith(amend: readonly string[]): GitCommand<CommitArgs, void> {
         // 它们在界面上仍是未跟踪。撤回本身失败也不掩盖
         // 提交的报错——那才是用户要看的。
         if (untracked.length > 0) {
-          await run(cli, ["reset", "-q", "--", ...untracked], { cwd: repository }).catch(
+          await run(cli, ["reset", "-q", "--", ...addSpecs], { cwd: repository }).catch(
             () => undefined,
           );
         }
@@ -96,3 +98,8 @@ export const commit = commitWith([]);
  * （git 文档明说的用法，实测确认）。这与 `commit` 不带路径的危险行为不同。
  */
 export const amendCommit = commitWith(["--amend"]);
+
+/** 路径里的 `*`、`?`、`[]` 不当通配符。 */
+function literal(path: string): string {
+  return `:(literal)${path}`;
+}

@@ -1,3 +1,4 @@
+import { GitErrorCode } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
 import { GitFailureError } from "../../git/failure.js";
 import { UserFacingError } from "../../ipc/userFacingError.js";
@@ -88,6 +89,26 @@ describe("describeError：通知一行、输出面板写全", () => {
     expect(detail).toBe(
       "git log --format=... -1 failed (exit 128):\nfatal: bad revision\nhint: line two",
     );
+  });
+
+  it("锁占用：通知用空行后那句，File exists 只在详情里", () => {
+    const stderr =
+      "fatal: Unable to create '/r/.git/index.lock': File exists.\n\n" +
+      "Another git process seems to be running in this repository, e.g.\n" +
+      "an editor opened by 'git commit'. Please make sure all processes\n" +
+      "are terminated then try again. If it still fails, a git process\n" +
+      "may have crashed in this repository earlier:\n" +
+      "remove the file manually to continue.\n";
+    const error = new GitFailureError(
+      ["commit", "--allow-empty", "-m", "x"],
+      128,
+      stderr,
+      GitErrorCode.RepositoryIsLocked,
+    );
+    const { summary, detail } = describeError(error);
+    expect(summary).toContain("Another git process seems to be running");
+    expect(summary).not.toContain("File exists");
+    expect(detail).toContain("File exists");
   });
 
   it("普通 Error：摘要是 message，详情是堆栈", () => {

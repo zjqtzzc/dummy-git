@@ -43,6 +43,21 @@ describe("commit：--only 只提交勾选的路径", () => {
     expect(git(repo, ["log", "-1", "--format=%s"]).trim()).toBe("only f1");
     expect(git(repo, ["status", "--porcelain"])).toContain("f2");
   });
+
+  it("已跟踪路径里的 [] 不当通配符：旁边的改动不进提交", async () => {
+    const repo = makeTempRepo("literal-only");
+    writeFileSync(join(repo, "foo[bar].txt"), "x\n");
+    writeFileSync(join(repo, "fooa.txt"), "a\n");
+    git(repo, ["add", "-A"]);
+    git(repo, ["commit", "-qm", "files"]);
+    writeFileSync(join(repo, "foo[bar].txt"), "xx\n");
+    writeFileSync(join(repo, "fooa.txt"), "aa\n");
+    await commit.execute(cli, repo, "only bracket", ["foo[bar].txt"], []);
+    expect(git(repo, ["show", "--name-status", "--format=", "HEAD"]).trim()).toBe(
+      "M\tfoo[bar].txt",
+    );
+    expect(git(repo, ["status", "--porcelain"]).trimEnd()).toBe(" M fooa.txt");
+  });
 });
 
 describe("commit：未跟踪文件先 add 再提交", () => {
@@ -72,6 +87,21 @@ describe("commit：未跟踪文件先 add 再提交", () => {
       commit.execute(cli, repo, "msg", ["f1", "gone.txt"], ["gone.txt"]),
     ).rejects.toThrow();
     expect(git(repo, ["rev-list", "--count", "HEAD"]).trim()).toBe("1");
+  });
+
+  it("未跟踪路径里的 [] 不当通配符：旁边的文件仍是未跟踪", async () => {
+    const repo = makeTempRepo("literal-add");
+    writeFileSync(join(repo, "foo[bar].txt"), "x\n");
+    writeFileSync(join(repo, "fooa.txt"), "a\n");
+    writeFileSync(join(repo, "foor.txt"), "r\n");
+    await commit.execute(cli, repo, "only bracket", ["foo[bar].txt"], ["foo[bar].txt"]);
+    expect(git(repo, ["show", "--name-status", "--format=", "HEAD"]).trim()).toBe(
+      "A\tfoo[bar].txt",
+    );
+    expect(git(repo, ["status", "--porcelain"]).trim().split("\n")).toEqual([
+      "?? fooa.txt",
+      "?? foor.txt",
+    ]);
   });
 });
 

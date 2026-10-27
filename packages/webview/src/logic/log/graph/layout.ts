@@ -12,19 +12,18 @@ export interface GraphLayout {
   readonly mainRefs: ReadonlyMap<number, Ref | undefined>;
 }
 
-const MAIN_NAMES = new Set(["main", "master"]);
-
-/** 头的先后：数字小的先编号、车道靠左，主干因此在最左边。 */
-function rankOf(ref: Ref): number {
+/** 头的先后：数字小的先编号、车道靠左。只把当前检出置顶，不按名字猜主干。 */
+function rankOf(ref: Ref, current: string | undefined): number {
   switch (ref.kind) {
-    case RefKind.RemoteBranch:
-      return ref.remote === "origin" && MAIN_NAMES.has(ref.name) ? 0 : 1;
     case RefKind.LocalBranch:
-      return MAIN_NAMES.has(ref.name) ? 2 : 3;
+      return ref.name === current ? 0 : 2;
+    case RefKind.RemoteBranch:
+      return 1;
     case RefKind.Tag:
-      return 4;
+      return 3;
     case RefKind.Head:
-      return 5;
+      // 游离时 HEAD 就是当前检出；附着时让位给当前分支，免得它抢走主链的颜色。
+      return current === undefined ? 0 : 4;
     default:
       return assertNever(ref, "rankOf");
   }
@@ -44,8 +43,8 @@ export function nameOf(ref: Ref): string {
   }
 }
 
-function compareRefs(a: Ref, b: Ref): number {
-  return rankOf(a) - rankOf(b) || nameOf(a).localeCompare(nameOf(b));
+function compareRefs(a: Ref, b: Ref, current: string | undefined): number {
+  return rankOf(a, current) - rankOf(b, current) || nameOf(a).localeCompare(nameOf(b));
 }
 
 /**
@@ -56,18 +55,21 @@ function sortedHeads(
   structure: GraphStructure,
   refs: readonly Ref[],
 ): { heads: number[]; best: Map<number, Ref> } {
+  const current = refs.find((ref) => ref.kind === RefKind.Head)?.branch;
   const best = new Map<number, Ref>();
   for (const ref of refs) {
     const row = structure.rowOf.get(ref.target);
     if (row === undefined) continue;
-    const current = best.get(row);
-    if (current === undefined || compareRefs(ref, current) < 0) best.set(row, ref);
+    const existing = best.get(row);
+    if (existing === undefined || compareRefs(ref, existing, current) < 0) best.set(row, ref);
   }
   const hasChild = new Set(structure.parents.flat());
   const bare = structure.parents.flatMap((_, row) =>
     hasChild.has(row) || best.has(row) ? [] : [row],
   );
-  const withRef = [...best].sort(([, a], [, b]) => compareRefs(a, b)).map(([row]) => row);
+  const withRef = [...best]
+    .sort(([, a], [, b]) => compareRefs(a, b, current))
+    .map(([row]) => row);
   return { heads: [...withRef, ...bare], best };
 }
 

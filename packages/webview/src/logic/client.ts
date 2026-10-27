@@ -169,3 +169,10 @@ export class Client {
     waiting.settle(message);
   }
 }
+
+/** 复制：一条协议，失败走 `report`。 */
+export function copyText(client: Client, text: string): Promise<void> {
+  return client.request("copyText", { text }).catch((cause) => {
+    report(cause);
+  });
+}
