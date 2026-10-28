@@ -1,4 +1,10 @@
-import { type CommitFileChange, MenuContextKey, type Stash } from "@dummy-git/shared";
+import {
+  assertNever,
+  type CommitFileChange,
+  FileStatus,
+  MenuContextKey,
+  type Stash,
+} from "@dummy-git/shared";
 import { commitFileEntry } from "../log/commitDiff.js";
 import {
   exactlyOne,
@@ -29,31 +35,128 @@ export interface StashFile {
   readonly file: CommitFileChange;
 }
 
+enum StashMenuKind {
+  Stash = "stash",
+  Tracked = "tracked",
+  Untracked = "untracked",
+}
+
+/** 一行的右键菜单要用的：stash 那一行，或它下面的一个文件（`hash` 是它属于的那条 stash）。目录是 `null`。 */
+export type StashMenuTarget =
+  | { readonly kind: StashMenuKind.Stash; readonly hash: string }
+  /** `paths`：改名时两头都在，旧路径在 stash 里没有，取回时删掉。 */
+  | {
+      readonly kind: StashMenuKind.Tracked;
+      readonly hash: string;
+      readonly paths: readonly string[];
+    }
+  | { readonly kind: StashMenuKind.Untracked; readonly hash: string; readonly path: string };
+
+type StashFileTarget = Exclude<StashMenuTarget, { readonly kind: StashMenuKind.Stash }>;
+
+function stashHash(target: StashMenuTarget | null): string | undefined {
+  return target?.kind === StashMenuKind.Stash ? target.hash : undefined;
+}
+
+function fileTarget(target: StashMenuTarget | null): StashFileTarget | undefined {
+  if (target === null) return undefined;
+  switch (target.kind) {
+    case StashMenuKind.Stash:
+      return undefined;
+    case StashMenuKind.Tracked:
+    case StashMenuKind.Untracked:
+      return target;
+    default:
+      return assertNever(target, "fileTarget");
+  }
+}
+
+/** 选中的文件 → 协议的两份路径：已跟踪的（改名两头都在）、未跟踪的。 */
+function filePaths(files: readonly StashFileTarget[]): {
+  paths: readonly string[];
+  untracked: readonly string[];
+} {
+  const paths: string[] = [];
+  const untracked: string[] = [];
+  for (const file of files) {
+    switch (file.kind) {
+      case StashMenuKind.Tracked:
+        paths.push(...file.paths);
+        break;
+      case StashMenuKind.Untracked:
+        untracked.push(file.path);
+        break;
+      default:
+        assertNever(file, "filePaths");
+    }
+  }
+  return { paths, untracked };
+}
+
 /**
- * stash 的右键菜单项。选中的是 stash 那一行时是它的 hash，是它下面的文件、目录时是 `null`。
- * 都只能对一条做；多选后能做什么还没定。
+ * stash 的右键菜单项。stash 那一行的几项只能对一条做；多选后能做什么还没定。
+ * Apply Selected Files 展开看、全部严格：目录等于它下面的全部文件，都要属于同一条 stash；
+ * 选中里含 stash 那一行时没有这一项，整条用那一行的 Apply。
  */
-const STASH_MENU: readonly MenuItem<string | null>[] = [
-  MenuContextKey.PopStash,
-  MenuContextKey.ApplyStash,
-  MenuContextKey.RenameStash,
-  MenuContextKey.DropStash,
-].map((key) =>
+const STASH_MENU: readonly MenuItem<StashMenuTarget | null>[] = [
+  ...[
+    MenuContextKey.PopStash,
+    MenuContextKey.ApplyStash,
+    MenuContextKey.RenameStash,
+    MenuContextKey.DropStash,
+  ].map((key) =>
+    menuItem({
+      view: MenuView.Exact,
+      key,
+      pick: stashHash,
+      whole: exactlyOne,
+      value: ([hash]) => ({ hash }),
+    }),
+  ),
   menuItem({
-    view: MenuView.Exact,
-    key,
-    pick: (hash: string | null) => hash ?? undefined,
-    whole: exactlyOne,
-    value: ([hash]) => ({ hash }),
+    view: MenuView.Expanded,
+    key: MenuContextKey.ApplyStashFiles,
+    pick: fileTarget,
+    whole: ([first, ...rest], views) =>
+      views.exact.every((target) => stashHash(target) === undefined) &&
+      rest.every((file) => file.hash === first.hash),
+    value: (files) => ({ hash: files[0].hash, ...filePaths(files) }),
   }),
-);
+];
 
 /** 选中（两种看法）→ 右键菜单上下文：仓库，加上能做的各菜单项的键。 */
 export function stashMenuContext(
-  views: MenuViews<string | null>,
+  views: MenuViews<StashMenuTarget | null>,
   repo: string,
 ): Readonly<Record<string, string | MenuArgs>> {
   return { [MenuContextKey.Repo]: repo, ...menuItemsContext(views, STASH_MENU) };
+}
+
+/** 节点 id → 它的右键菜单要用的：stash 那一行与每个文件。目录不在里面（`null`）。 */
+export function stashMenuTargets(
+  list: readonly StashFiles[],
+): ReadonlyMap<string, StashMenuTarget> {
+  const index = new Map<string, StashMenuTarget>();
+  for (const { stash, tracked, untracked } of list) {
+    const { hash } = stash;
+    index.set(hash, { kind: StashMenuKind.Stash, hash });
+    for (const file of tracked) {
+      // 只有改名带上旧路径；复制的源文件还在，不碰。
+      const paths =
+        file.status === FileStatus.Renamed && file.oldPath !== undefined
+          ? [file.oldPath, file.path]
+          : [file.path];
+      index.set(scopedId(hash, file.path), { kind: StashMenuKind.Tracked, hash, paths });
+    }
+    for (const file of untracked) {
+      index.set(scopedId(hash, file.path), {
+        kind: StashMenuKind.Untracked,
+        hash,
+        path: file.path,
+      });
+    }
+  }
+  return index;
 }
 
 /**
@@ -62,7 +165,7 @@ export function stashMenuContext(
  *
  * 每条 stash 是文件树的一组，组的 id 是 hash：文件与目录的 id 是 `<hash>/<路径>`（`scopedId`），
  * 同一个文件出现在好几条 stash 里也不撞。顶层节点的 id 就是 hash。
- * 顶层节点带右键菜单上下文（Pop、Apply ｜ Rename… ｜ Delete），和 `package.json` 菜单项的 `when` 条件对应。
+ * 右键菜单按选中算（`stashMenuContext`，每一行要用的东西见 `stashMenuTargets`）。
  */
 export function stashTreeNodes(
   list: readonly StashFiles[],

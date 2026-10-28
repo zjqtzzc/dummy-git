@@ -10,6 +10,7 @@ import {
   stashByNodeId,
   stashFilesById,
   stashMenuContext,
+  stashMenuTargets,
   stashTreeNodes,
 } from "../logic/stash/stashTree.js";
 import { Grouping, groupingMenu, restoreGrouping, saveGrouping } from "../logic/tree/grouping.js";
@@ -24,7 +25,8 @@ import { viewState } from "../vscodeApi.js";
  * Commit 面板的 Stash 模式：全部 stash，最新的在最上，
  * 每条下面是它改了的文件。单击文件 diff 跟随、双击打开，左边存时所在的提交，右边 stash 里的版本。
  *
- * 工具栏 Apply、Delete 作用于选中的那条；右键 stash 那一行还有 Pop、Rename（菜单项由扩展注册）。
+ * 工具栏 Apply、Delete 作用于选中的那条；右键 stash 那一行还有 Pop、Rename，
+ * 右键文件是 Apply Selected Files（菜单项由扩展注册）。
  * 一直挂着（切模式只是隐藏），所以只订阅一次 stash 域的变化。
  */
 const props = defineProps<{ client: Client; repo: string | undefined }>();
@@ -50,6 +52,7 @@ const now = ref(Date.now() / 1000);
 const nodes = computed(() => stashTreeNodes(list.value, light.value, now.value, grouping.value.has(Grouping.Directory)));
 const filesById = computed(() => stashFilesById(list.value));
 const owners = computed(() => stashByNodeId(nodes.value));
+const targets = computed(() => stashMenuTargets(list.value));
 
 /**
  * 选中的行与它所属的 stash（Apply / Delete 的对象）。选中 stash 那一行或它下面的文件都算。
@@ -138,12 +141,11 @@ function onCopy(text: string): void {
   void copyText(props.client, text);
 }
 
-/** 右键菜单：stash 那一行换成它的 hash，它下面的文件、目录是 `null`。 */
+/** 右键菜单：stash 那一行与文件换成菜单要用的东西，目录是 `null`。 */
 function menuOf(views: MenuViews<TreeNode>) {
-  const stashes = new Set(list.value.map(({ stash }) => stash.hash));
-  const toHash = (node: TreeNode): string | null => (stashes.has(node.id) ? node.id : null);
+  const toTarget = (node: TreeNode) => targets.value.get(node.id) ?? null;
   return stashMenuContext(
-    { exact: views.exact.map(toHash), expanded: views.expanded.map(toHash) },
+    { exact: views.exact.map(toTarget), expanded: views.expanded.map(toTarget) },
     props.repo ?? "",
   );
 }

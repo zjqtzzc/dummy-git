@@ -6,6 +6,7 @@ import {
   stashByNodeId,
   stashFilesById,
   stashMenuContext,
+  stashMenuTargets,
   stashTreeNodes,
 } from "../stashTree.js";
 
@@ -18,6 +19,11 @@ const stash = (hash: string, extra: Partial<Stash> = {}): Stash => ({
 });
 const modified = (path: string): CommitFileChange => ({ path, status: FileStatus.Modified });
 const added = (path: string): CommitFileChange => ({ path, status: FileStatus.Added });
+const renamed = (oldPath: string, path: string): CommitFileChange => ({
+  path,
+  oldPath,
+  status: FileStatus.Renamed,
+});
 
 /** 树 → 每行「id」，看得清结构与 id。 */
 function ids(nodes: readonly TreeNode[]): string[] {
@@ -76,23 +82,57 @@ describe("stashByNodeId", () => {
 });
 
 describe("stashMenuContext", () => {
-  it("恰好一条 stash：Pop、Apply、Rename、Delete", () => {
-    expect(stashMenuContext({ exact: ["abc"], expanded: ["abc"] }, "/r")).toEqual({
-      [MenuContextKey.Repo]: "/r",
-      [MenuContextKey.PopStash]: { hash: "abc" },
-      [MenuContextKey.ApplyStash]: { hash: "abc" },
-      [MenuContextKey.RenameStash]: { hash: "abc" },
-      [MenuContextKey.DropStash]: { hash: "abc" },
+  const list: StashFiles[] = [
+    {
+      stash: stash("s1", { untracked: "u1" }),
+      tracked: [modified("a"), renamed("old", "new"), modified("src/x")],
+      untracked: [added("n")],
+    },
+    { stash: stash("s2"), tracked: [modified("b")], untracked: [] },
+  ];
+  const targets = stashMenuTargets(list);
+  /** 点中的节点 id 与展开后的叶子 id → 两种看法；目录不在 `targets` 里，是 `null`。 */
+  const views = (exact: string[], expanded: string[] = exact) => {
+    const at = (ids: string[]) => ids.map((id) => targets.get(id) ?? null);
+    return { exact: at(exact), expanded: at(expanded) };
+  };
+  const repo = { [MenuContextKey.Repo]: "/r" };
+
+  it("恰好一条 stash：Pop、Apply、Rename、Delete，没有 Apply Selected Files", () => {
+    expect(stashMenuContext(views(["s1"], ["s1/a", "s1/new", "s1/src/x", "s1/n"]), "/r")).toEqual({
+      ...repo,
+      [MenuContextKey.PopStash]: { hash: "s1" },
+      [MenuContextKey.ApplyStash]: { hash: "s1" },
+      [MenuContextKey.RenameStash]: { hash: "s1" },
+      [MenuContextKey.DropStash]: { hash: "s1" },
     });
   });
 
-  it("多选或点在文件上：没有这些项", () => {
-    expect(stashMenuContext({ exact: ["a", "b"], expanded: ["a", "b"] }, "/r")).toEqual({
-      [MenuContextKey.Repo]: "/r",
+  it("多选两条 stash：没有这些项", () => {
+    expect(stashMenuContext(views(["s1", "s2"], ["s1/a", "s2/b"]), "/r")).toEqual(repo);
+  });
+
+  it("stash 下的文件：只有 Apply Selected Files；已跟踪与未跟踪分开，改名两头都在", () => {
+    expect(stashMenuContext(views(["s1/a", "s1/new", "s1/n"]), "/r")).toEqual({
+      ...repo,
+      [MenuContextKey.ApplyStashFiles]: {
+        hash: "s1",
+        paths: ["a", "old", "new"],
+        untracked: ["n"],
+      },
     });
-    expect(stashMenuContext({ exact: [null], expanded: [null] }, "/r")).toEqual({
-      [MenuContextKey.Repo]: "/r",
+  });
+
+  it("目录等于它下面的全部文件", () => {
+    expect(stashMenuContext(views(["s1/src"], ["s1/src/x"]), "/r")).toEqual({
+      ...repo,
+      [MenuContextKey.ApplyStashFiles]: { hash: "s1", paths: ["src/x"], untracked: [] },
     });
+  });
+
+  it("文件跨了两条 stash、或混着 stash 那一行：没有", () => {
+    expect(stashMenuContext(views(["s1/a", "s2/b"]), "/r")).toEqual(repo);
+    expect(stashMenuContext(views(["s2", "s1/a"], ["s2/b", "s1/a"]), "/r")).toEqual(repo);
   });
 });
 

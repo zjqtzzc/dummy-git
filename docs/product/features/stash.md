@@ -39,7 +39,7 @@ IDEA、VS Code git、GitLens 都是一条 `stash push`，没有「先退暂存�
 
 - 工具栏：**Apply**（`AppIcon.Unstash`，取回、保留这条）、**Delete**（codicon `trash`）、View Options，以及全部展开、全部收起（同 Commit 模式的工具栏，2026-10-20 项目负责人提）。
 - stash 那一行的右键菜单：Pop、Apply ｜ Rename… ｜ Delete。Pop 是取回成功后删掉，最常用，排在最前。
-- 列表能多选（同所有树），但菜单项和工具栏按钮都只认恰好选中一个 stash（同 IDEA 的 `GitSingleStashAction`）；多选后能做什么还没定（`product/backlog.md`）。
+- 列表能多选（同所有树），但 stash 那一行的菜单项和工具栏按钮都只认恰好选中一个 stash（同 IDEA 的 `GitSingleStashAction`）；多选后能做什么还没定（`product/backlog.md`）。文件的右键见下面「按文件取回」。
 - 选中 stash 那一行，或者它下面的任何一个文件，都算选中了这条 stash。
 - **一律按 hash 认 stash。** `git stash drop` / `pop` 只认 `stash@{n}`、不认 hash，而序号会随存、删而变，拿界面上的序号去删可能删错一条。所以 drop / pop / 改名在同一条本地道命令里，先按 hash 查出它现在的序号，再执行。`apply` 直接认 hash。
 - Apply / Pop 不带 `--index`：取回后原来的暂存状态没了，全部变成未暂存。
@@ -52,3 +52,19 @@ IDEA、VS Code git、GitLens 都是一条 `stash push`，没有「先退暂存�
 IDEA、VS Code git 都没有改已有 stash 的名字（IDEA 只在存的时候对话框里写说明）。GitLens 有 Rename Stash…，同样是 drop 再 store。
 
 否决过：先 store 再 drop——同一 hash 会在列表里出现两次，按 hash 去删会删掉新的那条。
+
+## 按文件取回
+
+- stash 下的文件右键 **Apply Selected Files**：只取回选中的文件，stash 保留。展开看、全部严格：目录等于它下面列出的全部文件，都要属于同一条 stash；选中里含 stash 那一行时没有这一项，整条用那一行的 Apply。工具栏 Apply 仍取回整条。
+- 已跟踪的、未跟踪的都能选；改名的两头一起取回（旧路径删掉、新路径出现）。
+- 只有 Apply，没有按文件 Pop（同 IDEA：文件右键只有取回）。按文件 Pop 要重写那条 stash，在 `product/backlog.md`。
+- 走进度出口 `Applying files from stash…`，完成消息 `Applied selected files from <说明>`。
+- 冲突、被本地改动挡住都和整条 Apply 一样：和 HEAD 冲突时进冲突组，stash 留着；本地未暂存改动碰到同一文件时 git 拒绝，报它自己的那句。
+- **做法**：git 没有按文件取回，所以拼一条只含选中文件的临时 stash，交给 `git stash apply`；冲突与挡住的处理就都是 git 的。临时提交不 `stash store`，不进列表。命令行见 `git/commands/stash.ts` 的 `applyStashFiles`。和上面「存」否决的「自己造 stash 提交再 `stash store`」不同：那条要重写 `git stash push`，这里只造一个给 `apply` 用的临时提交。
+
+IDEA 在 stash 的文件右键有 `Cherry-Pick Selected Changes`（`Vcs.ApplySelectedChanges`，和 Log 详情的文件右键共用）：把选中的改动做成补丁，用自己的补丁引擎打上，打不上时弹自己的合并窗口。
+
+否决过：
+- `git restore --source=<stash> -- <路径>`：直接覆盖，本地改动丢掉，存完以后 HEAD 上的改动也被悄悄撤掉。
+- `git diff <存时的提交> <stash> -- <路径> | git apply`：有一块对不上就整份失败，不留冲突标记；加 `--3way` 又要求文件和暂存区一致，有未暂存改动就报 `does not match index`（git 2.43 实测）。
+- 照 IDEA 自己打补丁：打不上时要有自己的合并界面，我们没有（`product/backlog.md`「自建合并界面」）。
