@@ -1,6 +1,6 @@
 # 第 21 阶段细节：按文件取回 stash
 
-状态：实现完，待手动验收（2026-10-28；888 个测试在 git 2.43 与 2.25 上通过，本机另有一个签名测试因环境失败、与本阶段无关）。
+状态：验收中（2026-10-28；888 个测试在 git 2.43 与 2.25 上通过，本机另有一个签名测试因环境失败、与本阶段无关；验收句已在 code-server 里走过，见下）。
 验收句：Stash 模式里选中一条 stash 下的几个文件，右键 Apply Selected Files，只有这些文件的改动回到工作区，stash 保留；和 HEAD 冲突时进冲突组。
 
 结束标志：`pnpm check` 通过，验收句手动走一遍成立，下面「要核对的条目」逐条勾过。
@@ -8,9 +8,9 @@
 ## 零、要核对的条目
 
 需求（`product/roadmap.md` 第 21 阶段）：
-- [ ] stash 下的文件（目录等于下面全部）右键有 Apply Selected Files；选中跨了两条 stash、或含 stash 那一行时没有。测试：`stashTree.test.ts` 的 `stashMenuContext`；待手测菜单。
-- [ ] 只取回选中的：已跟踪的（含改名、删除）与未跟踪的；没选的不动，stash 保留。测试：`stash.test.ts` 的 `applyStashFiles` 前三条、`handlers.test.ts` 的 Apply Selected Files；待手测。
-- [ ] 和 HEAD 冲突、被本地改动挡住时，表现与整条 Apply 相同。测试：`stash.test.ts` 的 `applyStashFiles` 后两条；待手测冲突组。
+- [x] stash 下的文件（目录等于下面全部）右键有 Apply Selected Files；选中跨了两条 stash、或含 stash 那一行时没有。测试：`stashTree.test.ts` 的 `stashMenuContext`。手测（code-server + Playwright，`everyday` 场景）：stash 行菜单是 Pop、Apply、Rename…、Delete；三个文件、目录 `notes/` 右键只有 Apply Selected Files；跨两条 stash、stash 行混着文件时都没有。
+- [x] 只取回选中的：已跟踪的（含改名、删除）与未跟踪的；没选的不动，stash 保留。测试：`stash.test.ts` 的 `applyStashFiles` 前三条、`handlers.test.ts` 的 Apply Selected Files。手测：选 take.txt、moved.txt（改名）、new.txt（未跟踪）后取回，`git status` 只多出这几项，keep.txt、skip.txt 不动，stash 仍是 3 条，状态栏 `Applied selected files from On main: pick`。
+- [x] 和 HEAD 冲突、被本地改动挡住时，表现与整条 Apply 相同。测试：`stash.test.ts` 的 `applyStashFiles` 后两条。手测：f.txt 取回后 `UU f.txt`、Commit 面板冲突组里有它、stash 留着，与整条 Apply 同一条 stash 的结果一样；改过的 take.txt 再取回，通知 git 的 `would be overwritten`，文件不变。
 
 `tech/architecture.md`：没有第一次用到的题目。
 - [x] 第 12 题「组合命令」的清单加上了这一条。
