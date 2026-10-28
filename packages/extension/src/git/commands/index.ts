@@ -124,6 +124,7 @@ export { RewordOutcome, rewordCommit } from "./reword.js";
 export { rollback } from "./rollback.js";
 export {
   applyStash,
+  applyStashFiles,
   dropStash,
   getStashes,
   popStash,

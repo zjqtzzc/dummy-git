@@ -337,6 +337,17 @@ const PARAM_GUARDS = {
     return typeof repo === "string" ? { repo } : undefined;
   },
   applyStash: asCommitTarget,
+  applyStashFiles: (raw: Record<string, unknown>) => {
+    const target = asCommitTarget(raw);
+    const paths = asRelPaths(raw["paths"]);
+    const untracked = asRelPaths(raw["untracked"]);
+    return target !== undefined &&
+      paths !== undefined &&
+      untracked !== undefined &&
+      paths.length + untracked.length > 0
+      ? { ...target, paths, untracked }
+      : undefined;
+  },
   popStash: asCommitTarget,
   dropStash: asCommitTarget,
   renameStash: asCommitTarget,

@@ -1084,6 +1084,27 @@ describe("handlers.applyStash / popStash / dropStash", () => {
     expect(stashes(repo)).toHaveLength(2);
   });
 
+  it("Apply Selected Files：只取回选中的未跟踪文件，完成消息带说明，stash 保留", async () => {
+    const { repo, newer } = scene("stash-apply-files");
+    const done: string[] = [];
+    const repository = new Repository(plainLocation(repo), cli);
+    try {
+      await createHandlers(repository, {
+        ...NO_UI,
+        withProgress: async (_title, task, message) => {
+          const result = await task();
+          done.push(message(result));
+          return result;
+        },
+      }).applyStashFiles({ repo, hash: newer, paths: [], untracked: ["f2"] });
+    } finally {
+      repository.dispose();
+    }
+    expect(git(repo, ["status", "--porcelain"]).trim()).toBe("?? f2");
+    expect(done).toEqual([expect.stringMatching(/^Applied selected files from WIP on main: /)]);
+    expect(stashes(repo)).toHaveLength(2);
+  });
+
   it("Pop 较早的那条：取回它、只删它", async () => {
     const { repo, newer, older } = scene("stash-pop");
     await act(repo, (h) => h.popStash({ repo, hash: older }));

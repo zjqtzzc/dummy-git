@@ -108,6 +108,10 @@
         "title": "Apply"
       },
       {
+        "command": "dummyGit.applyStashFiles",
+        "title": "Apply Selected Files"
+      },
+      {
         "command": "dummyGit.renameStash",
         "title": "Rename…"
       },
@@ -228,6 +232,11 @@
           "command": "dummyGit.applyStash",
           "when": "webviewId == 'dummyGit.commit' && dummyGit.applyStash",
           "group": "1_apply@2"
+        },
+        {
+          "command": "dummyGit.applyStashFiles",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.applyStashFiles",
+          "group": "1_apply@3"
         },
         {
           "command": "dummyGit.renameStash",
@@ -362,6 +371,10 @@
         },
         {
           "command": "dummyGit.applyStash",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.applyStashFiles",
           "when": "false"
         },
         {

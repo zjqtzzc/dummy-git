@@ -92,6 +92,7 @@ export const _baseline = defineHandlers({
   stash: openDiffStub,
   getStashes: async (): Promise<Stash[]> => [],
   applyStash: openDiffStub,
+  applyStashFiles: openDiffStub,
   popStash: openDiffStub,
   dropStash: openDiffStub,
   renameStash: openDiffStub,

@@ -82,6 +82,7 @@ const MENU_COMMANDS: readonly MenuCommand[] = [
   menuCommand(MenuContextKey.DeleteUntracked, "deleteUntracked"),
   menuCommand(MenuContextKey.PopStash, "popStash"),
   menuCommand(MenuContextKey.ApplyStash, "applyStash"),
+  menuCommand(MenuContextKey.ApplyStashFiles, "applyStashFiles"),
   menuCommand(MenuContextKey.RenameStash, "renameStash"),
   menuCommand(MenuContextKey.DropStash, "dropStash"),
 ];

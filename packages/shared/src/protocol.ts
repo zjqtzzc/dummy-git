@@ -397,6 +397,19 @@ export interface Commands {
     params: { repo: string; hash: string };
     result: null;
   };
+  /**
+   * 只取回 `hash` 那条 stash 里的几个文件，stash 保留。`paths` 是已跟踪的（改名的两头都在），
+   * `untracked` 是存在附属提交里的未跟踪文件；两者合起来至少一个。
+   */
+  applyStashFiles: {
+    params: {
+      repo: string;
+      hash: string;
+      paths: readonly string[];
+      untracked: readonly string[];
+    };
+    result: null;
+  };
   /** 取回并删掉（取回成功才删）。 */
   popStash: {
     params: { repo: string; hash: string };

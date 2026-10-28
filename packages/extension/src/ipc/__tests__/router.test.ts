@@ -59,6 +59,7 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     stash: async (): Promise<null> => null,
     getStashes: async () => [],
     applyStash: async (): Promise<null> => null,
+    applyStashFiles: async (): Promise<null> => null,
     popStash: async (): Promise<null> => null,
     dropStash: async (): Promise<null> => null,
     renameStash: async (): Promise<null> => null,

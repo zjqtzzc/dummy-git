@@ -22,6 +22,7 @@ import {
   addRemote,
   amendCommit,
   applyStash,
+  applyStashFiles,
   ContinueOutcome,
   type ContinueResult,
   commit,
@@ -901,6 +902,15 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         "Applying stash…",
         () => repository.run(applyStash, repository.location.root, hash),
         () => `Applied ${message}`,
+      );
+      return null;
+    },
+    applyStashFiles: async ({ hash, paths, untracked }) => {
+      const message = await stashMessage(hash);
+      await ui.withProgress(
+        "Applying files from stash…",
+        () => repository.run(applyStashFiles, repository.location.root, hash, paths, untracked),
+        () => `Applied selected files from ${message}`,
       );
       return null;
     },

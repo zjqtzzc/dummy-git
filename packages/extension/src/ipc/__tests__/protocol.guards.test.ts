@@ -258,6 +258,32 @@ describe("会拼成磁盘路径的命令：带 .. 的段拒收", () => {
   });
 });
 
+describe("applyStashFiles：完整 hash 加两份路径", () => {
+  const hash = "ab".repeat(20);
+
+  it("已跟踪、未跟踪各一份，合起来至少一个", () => {
+    expect(
+      parseParams("applyStashFiles", { repo: "/r", hash, paths: ["a"], untracked: [] }),
+    ).toEqual({ repo: "/r", hash, paths: ["a"], untracked: [] });
+    expect(
+      parseParams("applyStashFiles", { repo: "/r", hash, paths: [], untracked: ["u"] }),
+    ).toEqual({ repo: "/r", hash, paths: [], untracked: ["u"] });
+    expect(
+      parseParams("applyStashFiles", { repo: "/r", hash, paths: [], untracked: [] }),
+    ).toBeUndefined();
+  });
+
+  it("短 hash、缺一份、带 .. 的路径都拒收", () => {
+    expect(
+      parseParams("applyStashFiles", { repo: "/r", hash: "abc1234", paths: ["a"], untracked: [] }),
+    ).toBeUndefined();
+    expect(parseParams("applyStashFiles", { repo: "/r", hash, paths: ["a"] })).toBeUndefined();
+    expect(
+      parseParams("applyStashFiles", { repo: "/r", hash, paths: [], untracked: ["../u"] }),
+    ).toBeUndefined();
+  });
+});
+
 describe("进命令行的 hash：只收完整 hash", () => {
   const hash = "ab".repeat(20);
 
