@@ -361,6 +361,9 @@ function buildSigned() {
   gpg(["--quick-gen-key", "Fixture <fixture@example.com>", "ed25519", "sign", "never"]);
   run(repo, ["config", "user.signingkey", "fixture@example.com"]);
   run(repo, ["config", "commit.gpgsign", "true"]);
+  // 机器的全局配置若是 `gpg.format=ssh`（云端环境就是），不写这行会签成 SSH 签名，
+  // `log --show-signature` 只输出 `No signature`，下游测的「真有 gpg 输出」就落空。
+  run(repo, ["config", "gpg.format", "openpgp"]);
   // 密钥环本身不能进历史，否则 status 里会多出一堆文件
   writeFileSync(join(repo, ".gitignore"), "gnupg/\n");
   write(repo, "a.txt", "one\n");
