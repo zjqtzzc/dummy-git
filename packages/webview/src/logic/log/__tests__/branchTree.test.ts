@@ -1,10 +1,4 @@
-import {
-  assertNever,
-  MenuContextKey,
-  type Ref,
-  RefKind,
-  UpstreamState,
-} from "@dummy-git/shared";
+import { assertNever, MenuContextKey, type Ref, RefKind, UpstreamState } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
 import {
   type BranchNode,

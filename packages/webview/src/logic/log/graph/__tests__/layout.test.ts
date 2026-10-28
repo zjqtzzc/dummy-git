@@ -86,7 +86,12 @@ describe("buildLayout：头的先后", () => {
   });
 
   it("同一提交上有多个 ref：按排第一的那个", () => {
-    const refs = [local("zzz", "x"), local("aaa", "x"), local("feature", "y"), head("y", "feature")];
+    const refs = [
+      local("zzz", "x"),
+      local("aaa", "x"),
+      local("feature", "y"),
+      head("y", "feature"),
+    ];
     expect(layout([["x", "base"], ["y", "base"], ["base"]], refs).indexes).toEqual([2, 1, 1]);
   });
 });

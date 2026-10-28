@@ -67,9 +67,7 @@ function sortedHeads(
   const bare = structure.parents.flatMap((_, row) =>
     hasChild.has(row) || best.has(row) ? [] : [row],
   );
-  const withRef = [...best]
-    .sort(([, a], [, b]) => compareRefs(a, b, current))
-    .map(([row]) => row);
+  const withRef = [...best].sort(([, a], [, b]) => compareRefs(a, b, current)).map(([row]) => row);
   return { heads: [...withRef, ...bare], best };
 }
 
