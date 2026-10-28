@@ -285,7 +285,7 @@
 - 网络命令完全不排队。两个网络命令会撞引用锁，正确性只能靠按钮置灰，而自动 Fetch 这类不经按钮的操作挡不住。
 - 撞 `index.lock` 退避重试（VS Code 自带 git 扩展最多重试 10 次）。我们自己的命令已经排队不会互撞，剩下的只有外部 git，那属于使用场景之外，应当告诉用户。
 
-**组合命令**（现有的）：提交带未跟踪文件（第 14 题）；右键 Stash 的几步、按 hash 删除或取回或改名 stash（先查序号，`product/features/stash.md`）；Update（fetch → 快进，含网络，拆开）；没有远程时先 `remote add` 再推送（含网络，拆开）。推送被拒后 rebase 或 merge → 推送（含网络，拆开）在需求池。
+**组合命令**（现有的）：提交带未跟踪文件（第 14 题）；右键 Stash 的几步、按 hash 删除或取回或改名 stash（先查序号，`product/features/stash.md`）；按文件取回 stash（拼一条临时 stash 再 `stash apply`）；Update（fetch → 快进，含网络，拆开）；没有远程时先 `remote add` 再推送（含网络，拆开）。推送被拒后 rebase 或 merge → 推送（含网络，拆开）在需求池。
 
 ### 13. 仓库列表：每个工作区目录取所属仓库，现阶段用第一个
 

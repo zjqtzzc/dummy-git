@@ -1,8 +1,8 @@
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanupTempRepos, cli, git, makeTempRepo } from "../../../__tests__/support.js";
-import { getStashes, renameStash, stashPaths, unstage } from "../stash.js";
+import { applyStashFiles, getStashes, renameStash, stashPaths, unstage } from "../stash.js";
 
 afterEach(cleanupTempRepos);
 
@@ -118,6 +118,73 @@ describe("stashPaths", () => {
       "foo[bar].txt",
     );
     expect(git(repo, ["diff", "--name-only"]).trim()).toBe("foob.txt");
+  });
+});
+
+describe("applyStashFiles", () => {
+  /**
+   * stash 里：修改 a、b、x[y]、xy，删除 d，改名 r → r2（已暂存），未跟踪 u、v。存完工作区是干净的。
+   * `xy` 和 `x[y]` 并排：路径当通配符时 `x[y]` 会扫到 `xy`。
+   */
+  const scene = () => {
+    const repo = makeTempRepo("apply-stash-files");
+    for (const file of ["a", "b", "d", "r", "x[y]", "xy"])
+      writeFileSync(join(repo, file), `${file}\n`);
+    git(repo, ["add", "-A"]);
+    git(repo, ["commit", "-qm", "files"]);
+    for (const file of ["a", "b", "x[y]", "xy"]) writeFileSync(join(repo, file), "stashed\n");
+    git(repo, ["rm", "-q", "d"]);
+    git(repo, ["mv", "r", "r2"]);
+    writeFileSync(join(repo, "u"), "u\n");
+    writeFileSync(join(repo, "v"), "v\n");
+    git(repo, ["stash", "push", "-q", "-u"]);
+    return { repo, hash: git(repo, ["rev-parse", "stash@{0}"]).trim() };
+  };
+  const status = (repo: string) => git(repo, ["status", "--porcelain"]).trimEnd().split("\n");
+  const read = (repo: string, file: string) => readFileSync(join(repo, file), "utf8");
+
+  it("只取回选中的已跟踪文件，路径里的 [] 不当通配符；stash 保留", async () => {
+    const { repo, hash } = scene();
+    await applyStashFiles.execute(cli, repo, hash, ["a", "x[y]"], []);
+    expect(status(repo)).toEqual([" M a", " M x[y]"]);
+    expect(read(repo, "a")).toBe("stashed\n");
+    expect(git(repo, ["rev-parse", "stash@{0}"]).trim()).toBe(hash);
+    expect(git(repo, ["stash", "list"]).trim().split("\n")).toHaveLength(1);
+  });
+
+  it("未跟踪的只取回选中的", async () => {
+    const { repo, hash } = scene();
+    await applyStashFiles.execute(cli, repo, hash, [], ["u"]);
+    expect(status(repo)).toEqual(["?? u"]);
+    expect(read(repo, "u")).toBe("u\n");
+  });
+
+  it("删除与改名的两头：取回后旧路径没了、新路径在", async () => {
+    const { repo, hash } = scene();
+    await applyStashFiles.execute(cli, repo, hash, ["d", "r", "r2"], []);
+    expect(existsSync(join(repo, "d"))).toBe(false);
+    expect(existsSync(join(repo, "r"))).toBe(false);
+    expect(read(repo, "r2")).toBe("r\n");
+    expect(status(repo)).not.toContain(" M a");
+  });
+
+  it("和 HEAD 冲突：报错，冲突留在暂存区，stash 留着", async () => {
+    const { repo, hash } = scene();
+    writeFileSync(join(repo, "a"), "head\n");
+    git(repo, ["commit", "-qam", "head"]);
+    await expect(applyStashFiles.execute(cli, repo, hash, ["a", "b"], [])).rejects.toThrow();
+    expect(status(repo)).toEqual(["UU a", "M  b"]);
+    expect(git(repo, ["rev-parse", "stash@{0}"]).trim()).toBe(hash);
+  });
+
+  it("被本地改动挡住：报错，本地改动原样留着", async () => {
+    const { repo, hash } = scene();
+    writeFileSync(join(repo, "a"), "local\n");
+    await expect(applyStashFiles.execute(cli, repo, hash, ["a"], [])).rejects.toThrow(
+      /would be overwritten/,
+    );
+    expect(read(repo, "a")).toBe("local\n");
+    expect(status(repo)).toEqual([" M a"]);
   });
 });
 

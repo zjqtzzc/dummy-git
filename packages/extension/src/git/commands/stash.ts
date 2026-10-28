@@ -1,3 +1,6 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { Stash } from "@dummy-git/shared";
 import type { GitCli } from "../cli.js";
 import { run, runRaw } from "../failure.js";
@@ -116,6 +119,61 @@ export const applyStash: GitCommand<[repository: string, hash: string], void> = 
 
   execute: async (cli, repository, hash) => {
     await run(cli, ["stash", "apply", hash], { cwd: repository });
+  },
+};
+
+/**
+ * 只取回这条 stash 里的几个文件，stash 保留。git 没有这个命令，所以拼一条只含它们的临时 stash，
+ * 交给 `git stash apply`：冲突、被本地改动挡住都和整条取回一样（冲突进暂存区；挡住时 git 报错，原样抛出）。
+ *
+ * - 已跟踪的 `paths`：在临时暂存区里读进存时所在的提交（`^1`），这些路径换成 stash 里的样子
+ *   （stash 里没有的就删掉：删除、改名的旧路径），写成树。
+ * - 未跟踪的 `untracked`：另一棵只含它们的树，做成第三个父提交，git 认 stash 的未跟踪部分就靠它。
+ * - 第二个父提交（存时的暂存区）用原来那条的：不带 `--index` 时 git 不读它。
+ *
+ * 临时提交不 `stash store`，不进列表。
+ * 否决 `restore --source=<stash>` 直接覆盖：本地改动丢掉，存完以后 HEAD 上的改动也被悄悄撤掉。
+ * 否决 `diff | apply`：一块对不上就整份失败、不留冲突标记；`--3way` 又要求文件与暂存区一致，
+ * 有未暂存改动就报 `does not match index`（实测 git 2.43）。改工作区，走本地道。
+ */
+export const applyStashFiles: GitCommand<
+  [repository: string, hash: string, paths: readonly string[], untracked: readonly string[]],
+  void
+> = {
+  lock: LockPolicy.Exclusive,
+
+  execute: async (cli, repository, hash, paths, untracked) => {
+    const options = { cwd: repository };
+    const dir = await mkdtemp(join(tmpdir(), "dummy-git-stash-"));
+    const scratch = { cwd: repository, env: { GIT_INDEX_FILE: join(dir, "index") } };
+    /** 在临时暂存区里读进 `start`，`list` 换成 `source` 里的样子，写成树。 */
+    const tree = async (start: string, source: string, list: readonly string[]) => {
+      await run(cli, ["read-tree", start], scratch);
+      if (list.length > 0) {
+        await run(
+          cli,
+          ["restore", `--source=${source}`, "--staged", "--", ...list.map(literal)],
+          scratch,
+        );
+      }
+      return (await run(cli, ["write-tree"], scratch)).stdout.trim();
+    };
+    const commitTree = async (treeHash: string, parents: readonly string[]) => {
+      const flags = parents.flatMap((parent) => ["-p", parent]);
+      return (
+        await run(cli, ["commit-tree", treeHash, ...flags, "-m", "partial"], options)
+      ).stdout.trim();
+    };
+    try {
+      const parents = [`${hash}^1`, `${hash}^2`];
+      if (untracked.length > 0) {
+        parents.push(await commitTree(await tree("--empty", `${hash}^3`, untracked), []));
+      }
+      const partial = await commitTree(await tree(`${hash}^1`, hash, paths), parents);
+      await run(cli, ["stash", "apply", partial], options);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   },
 };
 

@@ -39,6 +39,7 @@
  * | `stashAll` | `stash push -u` | — | — |
  * | `stashPaths` | `write-tree` + `diff --cached --name-status --no-renames -z` + `restore --staged -- :(literal)<没选的与选中的已暂存删除>` + `stash push -u [-m <说明>] -- :(literal)<路径…>` + `restore --source=<树> --staged -- :(literal)<没选的>` | `git restore` | 2.23 |
  * | `applyStash` | `stash apply <hash>` | — | — |
+ * | `applyStashFiles` | 临时暂存区（`GIT_INDEX_FILE`）里 `read-tree <hash>^1` + `restore --source=<hash> --staged -- :(literal)<路径…>` + `write-tree`；有未跟踪的另拼一棵（`read-tree --empty` + `restore --source=<hash>^3 …` + `write-tree` + `commit-tree`）；`commit-tree <树> -p <hash>^1 -p <hash>^2 [-p <未跟踪>]` + `stash apply <临时提交>` | `git restore` | 2.23 |
  * | `popStash` | `stash list …` 找序号 + `stash pop stash@{n}` | — | — |
  * | `dropStash` | `stash list …` 找序号 + `stash drop stash@{n}` | — | — |
  * | `renameStash` | `stash list …` 找序号 + `stash drop stash@{n}` + `stash store -m <说明> <hash>` | — | — |
