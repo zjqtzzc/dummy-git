@@ -33,6 +33,7 @@ export const MenuContextKey = {
   // Stash
   PopStash: "dummyGit.popStash",
   ApplyStash: "dummyGit.applyStash",
+  RenameStash: "dummyGit.renameStash",
   DropStash: "dummyGit.dropStash",
 
   // Commit 面板

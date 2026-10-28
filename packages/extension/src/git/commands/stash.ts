@@ -118,6 +118,23 @@ export const dropStash: GitCommand<[repository: string, hash: string], string> =
   },
 };
 
+/**
+ * 改这条 stash 的说明。git 没有 rename，所以按 hash 找到现在的 `stash@{n}`，
+ * 先 drop 再 `stash store -m <说明> <hash>`（提交本身不动）。同一 hash 不能在列表里出现两次，
+ * 先 store 再按 hash drop 会删掉新的那条。store 总是加到 reflog 头上，改完这条排到最前。
+ * 只改 reflog，不改工作区。
+ */
+export const renameStash: GitCommand<[repository: string, hash: string, message: string], void> = {
+  lock: LockPolicy.Exclusive,
+
+  execute: async (cli, repository, hash, message) => {
+    const ref = await stashRef(cli, repository, hash);
+    const options = { cwd: repository };
+    await run(cli, ["stash", "drop", ref], options);
+    await run(cli, ["stash", "store", "-m", message, hash], options);
+  },
+};
+
 /** 这条 stash 现在的 `stash@{n}`。已经不在（别处删了）时抛出。 */
 async function stashRef(cli: GitCli, repository: string, hash: string): Promise<string> {
   const result = await runRaw(cli, stashListArgs(), { cwd: repository });

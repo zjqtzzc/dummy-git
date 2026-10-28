@@ -1,7 +1,13 @@
-import { type CommitFileChange, FileStatus, type Stash } from "@dummy-git/shared";
+import { type CommitFileChange, FileStatus, MenuContextKey, type Stash } from "@dummy-git/shared";
 import { describe, expect, it } from "vitest";
 import type { TreeNode } from "../../tree/tree.js";
-import { type StashFiles, stashByNodeId, stashFilesById, stashTreeNodes } from "../stashTree.js";
+import {
+  type StashFiles,
+  stashByNodeId,
+  stashFilesById,
+  stashMenuContext,
+  stashTreeNodes,
+} from "../stashTree.js";
 
 const stash = (hash: string, extra: Partial<Stash> = {}): Stash => ({
   hash,
@@ -66,6 +72,27 @@ describe("stashByNodeId", () => {
     expect(owners.get("s1/src")).toBe("s1");
     expect(owners.get("s1/src/a.ts")).toBe("s1");
     expect(owners.get("s2/b")).toBe("s2");
+  });
+});
+
+describe("stashMenuContext", () => {
+  it("恰好一条 stash：Pop、Apply、Rename、Delete", () => {
+    expect(stashMenuContext({ exact: ["abc"], expanded: ["abc"] }, "/r")).toEqual({
+      [MenuContextKey.Repo]: "/r",
+      [MenuContextKey.PopStash]: { hash: "abc" },
+      [MenuContextKey.ApplyStash]: { hash: "abc" },
+      [MenuContextKey.RenameStash]: { hash: "abc" },
+      [MenuContextKey.DropStash]: { hash: "abc" },
+    });
+  });
+
+  it("多选或点在文件上：没有这些项", () => {
+    expect(stashMenuContext({ exact: ["a", "b"], expanded: ["a", "b"] }, "/r")).toEqual({
+      [MenuContextKey.Repo]: "/r",
+    });
+    expect(stashMenuContext({ exact: [null], expanded: [null] }, "/r")).toEqual({
+      [MenuContextKey.Repo]: "/r",
+    });
   });
 });
 

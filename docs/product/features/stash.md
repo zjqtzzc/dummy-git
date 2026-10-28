@@ -1,6 +1,6 @@
 # Stash
 
-> Stash 怎么存、怎么看、怎么取回和删除，以及为什么这样做。改 stash 的行为或相关代码前先读本文；行为变了就改本文。
+> Stash 怎么存、怎么看、怎么取回、改名和删除，以及为什么这样做。改 stash 的行为或相关代码前先读本文；行为变了就改本文。
 > 照 IDEA Commit 工具窗口的 Stash 页。
 
 ## 存
@@ -43,15 +43,20 @@ IDEA、VS Code git、GitLens 都是一条 `stash push`，没有「先退暂存�
 - 打开 diff 的规则和其他文件树一样：双击或回车打开；单击或方向键只在前台已经是 diff 时才跟着换。左边是存 stash 时所在的提交，右边是 stash 里的版本，都只读；未跟踪文件左边为空。
 - 列表在 stash 有变化时重新载入（`stash` 域）。
 
-## 取回与删除
+## 取回、改名与删除
 
 - 工具栏：**Apply**（`AppIcon.Unstash`，取回、保留这条）、**Delete**（codicon `trash`）、View Options，以及全部展开、全部收起（同 Commit 模式的工具栏，2026-10-20 项目负责人提）。
-- stash 那一行的右键菜单：Pop、Apply ｜ Delete。Pop 是取回成功后删掉，最常用，排在最前。
+- stash 那一行的右键菜单：Pop、Apply ｜ Rename… ｜ Delete。Pop 是取回成功后删掉，最常用，排在最前。
 - 列表能多选（同所有树），但菜单项和工具栏按钮都只认恰好选中一个 stash（同 IDEA 的 `GitSingleStashAction`）；多选后能做什么还没定（`product/backlog.md`）。
 - 选中 stash 那一行，或者它下面的任何一个文件，都算选中了这条 stash。
-- **一律按 hash 认 stash。** `git stash drop` / `pop` 只认 `stash@{n}`、不认 hash，而序号会随存、删而变，拿界面上的序号去删可能删错一条。所以 drop / pop 在同一条本地道命令里，先按 hash 查出它现在的序号，再执行。`apply` 直接认 hash。
+- **一律按 hash 认 stash。** `git stash drop` / `pop` 只认 `stash@{n}`、不认 hash，而序号会随存、删而变，拿界面上的序号去删可能删错一条。所以 drop / pop / 改名在同一条本地道命令里，先按 hash 查出它现在的序号，再执行。`apply` 直接认 hash。
 - Apply / Pop 不带 `--index`：取回后原来的暂存状态没了，全部变成未暂存。
+- **Rename…**：git 没有改名，按 hash 找到现在的序号，先 `stash drop` 再 `stash store -m <新说明> <hash>`（提交本身不动，说明写在 reflog 上）。输入框标题 `Rename stash`，预填现在的说明并全选（同改分支名）；空着或没改就当作取消。说明原样写入，不加 `On main:`。`stash store` 总是加到 reflog 头上，改完这条排到最前。只改 reflog，不走进度出口，也不另确认。store 失败时这条已经不在列表里，提交还在，日志里有完整 hash，可以 `stash store` 找回来（和误删一样）。
 - Delete 弹原生模态确认 `Delete the stash "…"? This cannot be undone.`，确认后状态栏用 git 的那句 `Dropped stash@{n} (<完整 hash>)`。真删错了，可以用日志里的完整 hash `git stash store` 找回。删除后**不**弹带 Restore 的通知（`product/never.md`）。
 - 完成消息：Apply / Pop 是自己写的（`Applied …`、`Applied and dropped …`），因为 git 的输出是一整段 status。
-- Apply、Pop 走进度出口；Delete 只改一个引用，立刻就能看到，不走。
+- Apply、Pop 走进度出口；Delete、Rename 只改 reflog，立刻就能看到，不走。
 - 取回时冲突：git 不删 stash（Pop 也一样），冲突文件显示在 Commit 面板的冲突组里（`product/features/conflicts.md`）；解决之后，stash 要自己删。
+
+IDEA、VS Code git 都没有改已有 stash 的名字（IDEA 只在存的时候对话框里写说明）。GitLens 有 Rename Stash…，同样是 drop 再 store。
+
+否决过：先 store 再 drop——同一 hash 会在列表里出现两次，按 hash 去删会删掉新的那条。

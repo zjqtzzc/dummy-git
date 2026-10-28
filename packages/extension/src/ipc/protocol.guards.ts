@@ -335,6 +335,7 @@ const PARAM_GUARDS = {
   applyStash: asCommitTarget,
   popStash: asCommitTarget,
   dropStash: asCommitTarget,
+  renameStash: asCommitTarget,
   matchCommits: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const hashes = asStringArray(raw["hashes"]);

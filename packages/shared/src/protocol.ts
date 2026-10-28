@@ -397,6 +397,11 @@ export interface Commands {
     params: { repo: string; hash: string };
     result: null;
   };
+  /** 改 `hash` 那条 stash 的说明，新说明由扩展弹输入框问。 */
+  renameStash: {
+    params: { repo: string; hash: string };
+    result: null;
+  };
   /**
    * 删一批分支（至少一个）：`local` 是本地分支（不能是当前分支），`remote` 是远程分支。
    * 先删本地、再删远程。本地已合并的直接删，没合并的收在一起问一次；远程的收在一起问一次。

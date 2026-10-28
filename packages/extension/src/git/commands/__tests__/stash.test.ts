@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanupTempRepos, cli, git, makeTempRepo } from "../../../__tests__/support.js";
-import { getStashes, stashPaths, unstage } from "../stash.js";
+import { getStashes, renameStash, stashPaths, unstage } from "../stash.js";
 
 afterEach(cleanupTempRepos);
 
@@ -87,6 +87,33 @@ describe("stashPaths", () => {
       "foo[bar].txt",
     );
     expect(git(repo, ["diff", "--name-only"]).trim()).toBe("foob.txt");
+  });
+});
+
+describe("renameStash", () => {
+  it("改说明：hash 不变，这条排到最前", async () => {
+    const repo = makeTempRepo("rename-stash");
+    writeFileSync(join(repo, "f1"), "older\n");
+    git(repo, ["stash", "push", "-q"]);
+    writeFileSync(join(repo, "f1"), "newer\n");
+    git(repo, ["stash", "push", "-q", "-m", "keep me"]);
+    const older = git(repo, ["rev-parse", "stash@{1}"]).trim();
+    const newer = git(repo, ["rev-parse", "stash@{0}"]).trim();
+
+    await renameStash.execute(cli, repo, older, "renamed");
+
+    const [first, second] = await getStashes.execute(cli, repo);
+    expect(first).toMatchObject({ hash: older, message: "renamed" });
+    expect(second).toMatchObject({ hash: newer, message: "On main: keep me" });
+  });
+
+  it("已经不在：抛错，列表不动", async () => {
+    const repo = makeTempRepo("rename-stash-gone");
+    writeFileSync(join(repo, "f1"), "x\n");
+    git(repo, ["stash", "push", "-q"]);
+    const missing = "0".repeat(40);
+    await expect(renameStash.execute(cli, repo, missing, "x")).rejects.toThrow(/no longer exists/);
+    expect(git(repo, ["stash", "list"]).trim()).not.toBe("");
   });
 });
 

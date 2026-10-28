@@ -108,6 +108,10 @@
         "title": "Apply"
       },
       {
+        "command": "dummyGit.renameStash",
+        "title": "Rename…"
+      },
+      {
         "command": "dummyGit.dropStash",
         "title": "Delete"
       },
@@ -220,6 +224,11 @@
           "command": "dummyGit.applyStash",
           "when": "webviewId == 'dummyGit.commit' && dummyGit.applyStash",
           "group": "1_apply@2"
+        },
+        {
+          "command": "dummyGit.renameStash",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.renameStash",
+          "group": "3_edit@1"
         },
         {
           "command": "dummyGit.dropStash",
@@ -344,6 +353,10 @@
         },
         {
           "command": "dummyGit.applyStash",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.renameStash",
           "when": "false"
         },
         {

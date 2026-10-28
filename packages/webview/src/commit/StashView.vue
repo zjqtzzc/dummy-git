@@ -24,7 +24,7 @@ import { viewState } from "../vscodeApi.js";
  * Commit 面板的 Stash 模式：全部 stash，最新的在最上，
  * 每条下面是它改了的文件。单击文件 diff 跟随、双击打开，左边存时所在的提交，右边 stash 里的版本。
  *
- * 工具栏 Apply、Delete 作用于选中的那条；右键 stash 那一行还有 Pop（菜单项由扩展注册）。
+ * 工具栏 Apply、Delete 作用于选中的那条；右键 stash 那一行还有 Pop、Rename（菜单项由扩展注册）。
  * 一直挂着（切模式只是隐藏），所以只订阅一次 stash 域的变化。
  */
 const props = defineProps<{ client: Client; repo: string | undefined }>();

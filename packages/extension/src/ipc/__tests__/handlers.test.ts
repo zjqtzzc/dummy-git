@@ -1060,6 +1060,52 @@ describe("handlers.applyStash / popStash / dropStash", () => {
   });
 });
 
+describe("handlers.renameStash", () => {
+  afterAll(cleanupTempRepos);
+  /** 改 `hash` 的说明，输入框回答 `answer`；返回输入框收到的预填值。 */
+  const rename = async (repo: string, hash: string, answer: string | undefined) => {
+    const repository = new Repository(plainLocation(repo), cli);
+    let prefilled = "";
+    const ui: HandlerUi = {
+      ...NO_UI,
+      askBranchName: async (_title, value) => {
+        prefilled = value;
+        return answer;
+      },
+    };
+    try {
+      await createHandlers(repository, ui).renameStash({ repo, hash });
+      return prefilled;
+    } finally {
+      repository.dispose();
+    }
+  };
+  const messages = (repo: string) =>
+    git(repo, ["stash", "list", "--format=%gs"]).trim().split("\n").filter(Boolean);
+
+  it("预填当前说明，改了就换", async () => {
+    const repo = makeTempRepo("rename-stash-handler");
+    writeFileSync(join(repo, "f1"), "x\n");
+    git(repo, ["stash", "push", "-q", "-m", "old name"]);
+    const hash = git(repo, ["rev-parse", "stash@{0}"]).trim();
+    const prefilled = await rename(repo, hash, "new name");
+    expect(prefilled).toBe("On main: old name");
+    expect(messages(repo)).toEqual(["new name"]);
+  });
+
+  it("没改、空着、取消：什么都不做", async () => {
+    const repo = makeTempRepo("rename-stash-cancel");
+    writeFileSync(join(repo, "f1"), "x\n");
+    git(repo, ["stash", "push", "-q", "-m", "keep"]);
+    const hash = git(repo, ["rev-parse", "stash@{0}"]).trim();
+    const original = messages(repo);
+    await rename(repo, hash, original[0]);
+    await rename(repo, hash, "");
+    await rename(repo, hash, undefined);
+    expect(messages(repo)).toEqual(original);
+  });
+});
+
 describe("handlers.pick", () => {
   afterAll(cleanupTempRepos);
   const pick = async (answer: number | undefined) => {

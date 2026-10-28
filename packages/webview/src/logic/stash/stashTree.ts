@@ -36,6 +36,7 @@ export interface StashFile {
 const STASH_MENU: readonly MenuItem<string | null>[] = [
   MenuContextKey.PopStash,
   MenuContextKey.ApplyStash,
+  MenuContextKey.RenameStash,
   MenuContextKey.DropStash,
 ].map((key) =>
   menuItem({
@@ -61,7 +62,7 @@ export function stashMenuContext(
  *
  * 每条 stash 是文件树的一组，组的 id 是 hash：文件与目录的 id 是 `<hash>/<路径>`（`scopedId`），
  * 同一个文件出现在好几条 stash 里也不撞。顶层节点的 id 就是 hash。
- * 顶层节点带右键菜单上下文（Pop、Apply ｜ Delete），和 `package.json` 菜单项的 `when` 条件对应。
+ * 顶层节点带右键菜单上下文（Pop、Apply ｜ Rename… ｜ Delete），和 `package.json` 菜单项的 `when` 条件对应。
  */
 export function stashTreeNodes(
   list: readonly StashFiles[],

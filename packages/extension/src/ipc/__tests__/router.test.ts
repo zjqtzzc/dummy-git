@@ -59,6 +59,7 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     applyStash: async (): Promise<null> => null,
     popStash: async (): Promise<null> => null,
     dropStash: async (): Promise<null> => null,
+    renameStash: async (): Promise<null> => null,
     pick: async () => null,
     matchCommits: async () => [],
     pickAuthor: async () => null,
@@ -90,7 +91,7 @@ function request(id: number, generation = GEN): unknown {
     generation,
     id,
     command: "getCommitFiles",
-    params: { repo: "/r", hash: "abc" },
+    params: { repo: "/r", hash: "a".repeat(40) },
   };
 }
 

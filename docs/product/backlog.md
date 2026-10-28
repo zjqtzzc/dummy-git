@@ -58,7 +58,6 @@
 - Stash 从勾选改为和 Rollback 一样看选中（2026-10-27 项目负责人定）。工具栏与右键同一份规则：选中目录或组等于它下面列出的全部；什么都没选时工具栏 Stash 存全部。勾选只剩提交。Stash 仍可含未跟踪（带 `-u`），和 Rollback 只管 `Changes` 不同；选中里混着冲突文件就置灰。不另开确认页。做的时候把 `product/features/stash.md`「Stash Selected」里那两处一起改。
 - 单文件 Stash：只把这一个文件的改动存起来。
 - 只存已暂存，或只存未暂存的那一部分。
-- Stash 重命名。
 - Apply / Pop 时可选还原暂存状态（`stash apply --index`，同 IDEA 的 Reinstate index）：现在取回后全部变成未暂存。
 
 ## 冲突（`product/features/conflicts.md`）

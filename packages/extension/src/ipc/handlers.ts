@@ -68,6 +68,7 @@ import {
   rebaseOnto,
   removeConflictPaths,
   renameBranch,
+  renameStash,
   replayCommits,
   resetTo,
   rewordCommit,
@@ -930,6 +931,14 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       }
       // 只删一个引用，立刻看得见，不走进度出口。
       ui.notify(await repository.run(dropStash, repository.location.root, hash));
+      return null;
+    },
+    renameStash: async ({ hash }) => {
+      const message = await stashMessage(hash);
+      const name = await ui.askBranchName("Rename stash", message, async () => undefined);
+      if (name === undefined || name === "" || name === message) return null;
+      // 只改 reflog，立刻看得见，不走进度出口；git 也不说话，没有完成消息。
+      await repository.run(renameStash, repository.location.root, hash, name);
       return null;
     },
     markResolved: async ({ paths }) => {

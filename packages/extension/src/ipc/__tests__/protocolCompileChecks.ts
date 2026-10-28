@@ -92,6 +92,7 @@ export const _baseline = defineHandlers({
   applyStash: openDiffStub,
   popStash: openDiffStub,
   dropStash: openDiffStub,
+  renameStash: openDiffStub,
   pick: async (): Promise<number | null> => null,
   matchCommits: async (): Promise<string[]> => [],
   pickAuthor: async (): Promise<PickedAuthor | null> => null,
