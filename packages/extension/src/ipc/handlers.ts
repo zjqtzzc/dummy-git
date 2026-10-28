@@ -149,8 +149,6 @@ export interface HandlerUi {
     message: string,
     actions: readonly string[],
   ) => Promise<number | undefined>;
-  /** Rollback 前的确认：`true` 是确认。只列选中的已跟踪文件（不含补上的改名另一头）。 */
-  readonly confirmRollback: (paths: readonly string[]) => Promise<boolean>;
   /**
    * 进度出口（`vscode/progress.ts`）：`title` 是正在做什么，`done` 由结果说做完了什么。
    * 用户点了、要等、界面上不一定马上看得出结果的操作才用它。
@@ -598,6 +596,10 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       ui.openDialog(DialogKind.Reword, hash, "Edit Commit Message");
       return null;
     },
+    openRollbackDialog: async ({ paths }) => {
+      ui.openDialog(DialogKind.Rollback, JSON.stringify(paths), "Rollback Changes");
+      return null;
+    },
     reword: async ({ hash, message }) => {
       const { root, gitDir } = repository.location;
       const current = await readOperation(gitDir);
@@ -994,7 +996,9 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
     rollback: async ({ paths }) => {
       // 未跟踪文件不归 Rollback 管。一个已跟踪的都没有就什么都不做。
       const { tracked, withRenamePartners } = await inspect(paths);
-      if (tracked.length === 0 || !(await ui.confirmRollback(tracked))) return null;
+      if (tracked.length === 0) return null;
+      // 点了就关，撤在后台跑。
+      ui.closeDialog(DialogKind.Rollback);
       await repository.run(rollback, repository.location.root, withRenamePartners(tracked));
       return null;
     },

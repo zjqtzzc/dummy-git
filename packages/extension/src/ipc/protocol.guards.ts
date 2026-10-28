@@ -76,6 +76,8 @@ function asDialogKind(value: unknown): DialogKind | undefined {
       return DialogKind.Push;
     case DialogKind.Reword:
       return DialogKind.Reword;
+    case DialogKind.Rollback:
+      return DialogKind.Rollback;
     default:
       return undefined;
   }
@@ -363,6 +365,7 @@ const PARAM_GUARDS = {
   openMergeEditor: asFileTarget,
   openPushDialog: asBranchTarget,
   openRewordDialog: asCommitTarget,
+  openRollbackDialog: asPathsTarget,
   reword: (raw: Record<string, unknown>) => {
     const target = asCommitTarget(raw);
     const message = raw["message"];

@@ -33,7 +33,7 @@
 - **改名的两头一起交给 git**：界面上改名只有一行，平常是新路径；新路径又从磁盘上删掉时（`RD`），画成旧路径上的删除。由扩展按当前 `git status` 补上另一头：只交新路径会剩下一个 `D`，只交旧路径会剩下一个 `AD`，Stash 还会先存下一条再报 `pathspec did not match`。IDEA 的画法相同（`GitChangesCollector` 的 `RD` → 旧路径删除）：它的提交先把不在这次提交里的暂存项退出去、提交后再放回，`AD` 不放回，所以结果干净；它的 Rollback 只对旧路径 `checkout HEAD`，会留下 `AD`。
 - 说明原样提交，只去掉首尾的空行，经 stdin 传入（`-F -`）：`-m` 传不了控制字符，消息里有引号、换行时也容易出岔子。
 - 说明框里 Ctrl+Enter（Mac 上 Cmd+Enter）等于点 Commit；按钮置灰时无效，勾着 Amend 时就是 Amend。快捷键只有这一个，在 webview 里监听，不在 `package.json` 注册。
-- 进行中：Commit 和 Rollback 按钮置灰，Commit 按钮的文字变成 `Committing…`；说明框和复选框照常可以操作。成功不弹通知，Log 里自己会出现新提交。失败走错误出口，说明和勾选原样保留，改一改就能重试。
+- 进行中：Commit 按钮置灰，文字变成 `Committing…`；说明框和复选框照常可以操作。成功不弹通知，Log 里自己会出现新提交。失败走错误出口，说明和勾选原样保留，改一改就能重试。
 - 提交成功才清空说明框，失败不清。说明框的内容在面板隐藏、重新加载窗口后都还在：每次输入停手后存进 `viewState`（webview 没有可靠的关闭事件，不能等关闭时再存）。
 
 ## Amend
@@ -50,7 +50,7 @@
 - 只管已跟踪的改动（`Changes` 组）：恢复成 HEAD 的样子，暂存区和工作区一起；新增的文件连磁盘上的一起删。未跟踪文件用右键菜单的 Delete。
 - **作用于选中的文件，不看勾选**（同 IDEA 的 `RollbackAction`，2026-10-20）：工具栏的 Rollback 和右键的 Rollback 是同一份规则（`logic/commit/workingChanges.ts` 的 `rollbackArgs`）。选中目录或 `Changes` 组标题等于选中它下面列出的全部；选中里混着未跟踪文件、冲突文件就撤不了（全部严格），工具栏按钮置灰、右键没有这一项。**什么都没选时**工具栏的 Rollback 撤 `Changes` 组的全部（同 IDEA：`changes.isEmpty()` 时取全部），`Changes` 组为空时置灰。勾选从此只管提交和 Stash：同一个复选框不再同时挑「要提交的」和「要撤的」。
 - 一条 `git restore --source=HEAD --staged --worktree -- <路径>`，就能覆盖修改、删除、新增、改名几种情况（实测）；改名的两头一起交（同提交），新路径会被删掉、旧路径被恢复。
-- 确认用 VS Code 原生模态框：写明文件数、列出前 5 个文件名（更多时以 `…` 结尾），按钮 `Rollback`，另有取消。改动删了就找不回来，所以要拦一下。
+- 点 Rollback 打开编辑器标签页（`product/features/dialogs.md`），不再弹原生确认。中间一棵只含 Changes 的文件树（不含未跟踪、不含冲突），打开时勾上刚才要撤的那些，可以改勾。底栏左侧灰字 `N files`，右侧 Cancel / Rollback；一个都没勾时 Rollback 置灰。点 Rollback 关标签，后台撤勾上的路径。双击开 diff 同 Commit 面板。
 
 ## 打开 diff
 

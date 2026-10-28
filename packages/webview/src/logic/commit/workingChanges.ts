@@ -527,6 +527,37 @@ export function workingGroups(
   ];
 }
 
+/** Rollback 对话框：只列已跟踪的改动。 */
+export function rollbackGroups(files: readonly WorkingFile[]): FileGroup[] {
+  const tracked = files.filter((file) => file.status !== WorkingStatus.Untracked);
+  return [{ id: CHANGES_GROUP, label: "Changes", entries: tracked.map(toEntry) }];
+}
+
+/**
+ * 打开 Rollback 对话框时预勾哪些：只要还在 Changes 里的。
+ * `requested` 是 Commit 面板刚才要撤的那些路径。
+ */
+export function precheckedPaths(
+  requested: readonly string[],
+  files: readonly WorkingFile[],
+): ReadonlySet<string> {
+  const tracked = new Set(
+    files.filter((file) => file.status !== WorkingStatus.Untracked).map((file) => file.path),
+  );
+  return new Set(requested.filter((path) => tracked.has(path)));
+}
+
+/** 对话框 `data-subject` 里的预勾路径。坏掉就当成一份都没有。 */
+export function parseDialogPaths(subject: string): readonly string[] {
+  try {
+    const raw: unknown = JSON.parse(subject);
+    if (!Array.isArray(raw) || raw.some((item) => typeof item !== "string")) return [];
+    return raw;
+  } catch {
+    return [];
+  }
+}
+
 /**
  * 双击打开的 diff：左边 HEAD 版本，右边工作区里的真实文件
  * （能直接编辑）。新增、未跟踪的左边空；删除的右边空；改名的左边用 HEAD 里的旧路径。

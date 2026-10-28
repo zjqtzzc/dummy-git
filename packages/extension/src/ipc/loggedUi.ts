@@ -21,11 +21,6 @@ export function loggedUi(ui: HandlerUi, log: Log): HandlerUi {
       note(`确认${quote(message)} → ${sure ? action : "取消"}`);
       return sure;
     },
-    confirmRollback: async (paths) => {
-      const sure = await ui.confirmRollback(paths);
-      note(`确认 Rollback ${paths.length} 个文件 → ${sure ? "Rollback" : "取消"}`);
-      return sure;
-    },
     choose: async (message, actions, detail) => {
       const index = await ui.choose(message, actions, detail);
       note(`选择${quote(message)} → ${answer(actions, index, "取消")}`);

@@ -230,6 +230,12 @@ describe("会拼成磁盘路径的命令：带 .. 的段拒收", () => {
       paths: ["a.ts"],
     });
     expect(parseParams("rollback", { repo: "/r", paths: ["../x"] })).toBeUndefined();
+    expect(parseParams("openRollbackDialog", { repo: "/r", paths: ["a.ts"] })).toEqual({
+      repo: "/r",
+      paths: ["a.ts"],
+    });
+    expect(parseParams("openRollbackDialog", { repo: "/r", paths: [] })).toBeUndefined();
+    expect(parseParams("openRollbackDialog", { repo: "/r", paths: ["../x"] })).toBeUndefined();
     expect(parseParams("stash", { repo: "/r", paths: [] })).toEqual({ repo: "/r", paths: [] });
     expect(parseParams("stash", { repo: "/r", paths: ["../x"] })).toBeUndefined();
     expect(parseParams("amend", { repo: "/r", message: "m", paths: [] })).toEqual({

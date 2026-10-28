@@ -9,7 +9,7 @@ import { loggedUi } from "./ipc/loggedUi.js";
 import { Operations, tagged } from "./ipc/operation.js";
 import { Router, type Transport } from "./ipc/router.js";
 import { copyText } from "./vscode/clipboard.js";
-import { choose, confirm, confirmRollback, notifyChoice } from "./vscode/confirm.js";
+import { choose, confirm, notifyChoice } from "./vscode/confirm.js";
 import { DialogPanels } from "./vscode/dialogPanel.js";
 import { openDiff } from "./vscode/diff.js";
 import { ErrorGate } from "./vscode/errorGate.js";
@@ -72,7 +72,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       askBranchName,
       choose,
       confirm,
-      confirmRollback,
       copyText,
       logWebviewError: (message, stack) =>
         channel.error(tagged(withAttached(`webview 异常：${message}`, stack))),

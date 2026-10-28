@@ -40,6 +40,7 @@ function handlersWith(overrides: Partial<HandlerMap> = {}): HandlerMap {
     update: async (): Promise<null> => null,
     openPushDialog: async (): Promise<null> => null,
     openRewordDialog: async (): Promise<null> => null,
+    openRollbackDialog: async (): Promise<null> => null,
     reword: async (): Promise<null> => null,
     closeDialog: async (): Promise<null> => null,
     getPushTarget: async () => ({ remotes: ["origin"], remote: "origin", remoteBranch: "main" }),

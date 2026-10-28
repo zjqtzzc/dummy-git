@@ -179,11 +179,9 @@ async function onAmendToggle(): Promise<void> {
 
 /** 正在提交：按钮置灰、文字变 `Committing…`，防重复点击。 */
 const committing = ref(false);
-/** 正在 Rollback。提交与 Rollback 进行中，两个按钮都置灰。 */
-const rollingBack = ref(false);
-/** 正在存 stash。同上，和提交、Rollback 互相置灰。 */
+/** 正在存 stash。提交与 Stash 进行中，两个按钮都置灰。 */
 const stashing = ref(false);
-const busy = computed(() => committing.value || rollingBack.value || stashing.value);
+const busy = computed(() => committing.value || stashing.value);
 /**
  * 说明为空（只有空白也算）不能提交；普通提交还要至少勾一个文件，
  * Amend 不勾文件也行（只改说明）。
@@ -232,17 +230,14 @@ const rollbackTarget = computed(() =>
 );
 const canRollback = computed(() => !busy.value && rollbackTarget.value !== undefined);
 
-/** 确认框由扩展弹。失败由错误关口报。 */
+/** 打开 Rollback 标签页。失败由错误关口报。 */
 async function rollbackSelected(): Promise<void> {
   const target = rollbackTarget.value;
   if (repo.value === undefined || !canRollback.value || target === undefined) return;
-  rollingBack.value = true;
   try {
-    await props.client.request("rollback", { repo: repo.value, paths: target.paths });
+    await props.client.request("openRollbackDialog", { repo: repo.value, paths: target.paths });
   } catch (cause) {
     report(cause);
-  } finally {
-    rollingBack.value = false;
   }
 }
 

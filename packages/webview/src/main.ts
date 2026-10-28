@@ -15,6 +15,7 @@ import LogApp from "./log/LogApp.vue";
 import { Client, report, sendReportsTo } from "./logic/client.js";
 import PushApp from "./push/PushApp.vue";
 import RewordApp from "./reword/RewordApp.vue";
+import RollbackApp from "./rollback/RollbackApp.vue";
 import { transport } from "./vscodeApi.js";
 
 /**
@@ -38,6 +39,7 @@ const APPS: Readonly<Record<string, Component>> = {
   "dummyGit.log": LogApp,
   "dummyGit.commit": CommitApp,
   "dummyGit.push": PushApp,
+  "dummyGit.rollback": RollbackApp,
   "dummyGit.reword": RewordApp,
 };
 const root = document.getElementById("root");

@@ -76,7 +76,7 @@ const MENU_COMMANDS: readonly MenuCommand[] = [
   // Keep 就是标记已解决：留下工作区里的那份（一边删了的冲突，文件里本来没有冲突标记）。
   menuCommand(MenuContextKey.KeepFile, "markResolved"),
   menuCommand(MenuContextKey.RemoveConflictFile, "removeConflictFile"),
-  menuCommand(MenuContextKey.RollbackFile, "rollback"),
+  menuCommand(MenuContextKey.RollbackFile, "openRollbackDialog"),
   menuCommand(MenuContextKey.AddUntracked, "addUntracked"),
   menuCommand(MenuContextKey.DeleteUntracked, "deleteUntracked"),
   menuCommand(MenuContextKey.PopStash, "popStash"),

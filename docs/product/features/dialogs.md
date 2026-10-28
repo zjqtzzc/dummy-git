@@ -1,7 +1,7 @@
 # 对话框
 
 > 要放列表、选项、输入框的「对话框」怎么做：开在哪、长什么样、开着时怎么表现，以及为什么这样做。改 `vscode/dialogPanel.ts`、`ui/DialogShell.vue` 或新加一种对话框前先读本文；行为变了就改本文。
-> 现有两种：推送对话框（`product/features/sync.md`）、改提交说明（`product/features/history.md`）。
+> 现有三种：推送对话框（`product/features/sync.md`）、改提交说明（`product/features/history.md`）、Rollback（`product/features/commit.md`）。
 
 ## 开成 webview 标签页
 
@@ -16,16 +16,16 @@
 ## 排版
 
 - 内容一列，最大宽度 600～720px，水平居中，从顶上开始排。窄于约 480px 时，「标签 + 控件」改成上下排。只有一种会变长的东西（比如提交列表），给最大高度、内部滚动；不做多栏。
-- 三段固定（`ui/DialogShell.vue`）：标题（含一行说明）／中间内容（超出时自己滚动）／贴底的按钮栏（按钮靠右，主按钮在最右）。
+- 三段固定（`ui/DialogShell.vue`）：标题（含一行说明）／中间内容（超出时自己滚动）／贴底的按钮栏（按钮靠右，主按钮在最右；左侧可放一行状态，Rollback 用来写勾了几个文件）。
 - 风格贴近 IDE 本身（项目负责人定）：控件用 vscode-elements，颜色、字号、间距都用 VS Code 的主题变量，不自己定配色；深色、浅色、高对比主题不另外做。
-- 共用组件等用到的地方多了再抽（`process/workflow.md` §4）：外壳 `DialogShell` 例外，每个对话框都用。**第三种对话框出现时，必须把对话框的共用部分抽出来**（`product/backlog.md`）：协议里的 `openPushDialog` / `openRewordDialog` 合成一条通用的打开命令；页面里的「标签 + 控件」一行与窄屏上下排、输入框读值、多行说明框，抽成 `ui/` 组件。
+- 共用组件等用到的地方多了再抽（`process/workflow.md` §4）：外壳 `DialogShell` 例外，每个对话框都用。推送、改说明、Rollback 三处都用了这种标签页，先不抽打开命令和「标签 + 控件」那一行（`product/backlog.md`「技术债」）。
 
 ## 开着时怎么表现
 
 - **每种只开一个标签页**：开着时再打开同一种，就切过去，按新的对象重新填。实现上是重写这个标签页的 HTML，页面整个重新加载，等于关了重开，上一次的输入不保留。
-- 对话框针对的东西（推送对话框是分支名，改说明是完整 hash）经 HTML 的 `data-subject` 带给页面。和面板用同一份 webview 打包，按视图 id 挂不同的根组件。
+- 对话框针对的东西（推送对话框是分支名，改说明是完整 hash，Rollback 是预勾路径的 JSON）经 HTML 的 `data-subject` 带给页面。和面板用同一份 webview 打包，按视图 id 挂不同的根组件。
 - 切到别的标签再回来，页面保留（`retainContextWhenHidden`），不然输入到一半的东西会丢。
 - **内容在打开时取一次，不跟着仓库刷新**：对话框只开一会儿；对象中途没了（比如分支被删了），执行时 git 会报错。
 - **点主按钮就关掉标签页**，操作在后台跑，结果走进度出口和错误出口（同 IDEA 的推送对话框）。否决「成功才关、失败留着显示错误」：对话框里再显示一遍错误，就成了两个东西回答同一个问题。主按钮之后还要原生确认的（Force Push），确认取消时对话框留着。
 - **不绑 Esc**：会和下拉框收起、VS Code 以及键位插件的 Esc 绑定冲突；关标签页已经有 `Ctrl+W`。
-- 每个标签页有自己的 Router，和面板一样走同一套协议与 handler；日志里的来源是视图 id（`dummyGit.push`、`dummyGit.reword`）。
+- 每个标签页有自己的 Router，和面板一样走同一套协议与 handler；日志里的来源是视图 id（`dummyGit.push`、`dummyGit.reword`、`dummyGit.rollback`）。

@@ -13,7 +13,10 @@ import {
   conflictFiles,
   conflictHeading,
   opensMergeEditor,
+  parseDialogPaths,
+  precheckedPaths,
   rollbackArgs,
+  rollbackGroups,
   WorkingRowKind,
   WorkingStatus,
   workingDiffSides,
@@ -286,6 +289,29 @@ describe("rollbackArgs：工具栏与右键的 Rollback 撤哪些", () => {
     const none = { exact: [], expanded: [] };
     expect(rollbackArgs([], files, none)).toEqual({ paths: ["src/a.ts", "src/b.ts"] });
     expect(rollbackArgs([], untracked, none)).toBeUndefined();
+  });
+});
+
+describe("rollbackGroups / precheckedPaths", () => {
+  const tracked = [
+    { path: "src/a.ts", status: WorkingStatus.Modified },
+    { path: "src/b.ts", status: WorkingStatus.Deleted },
+  ];
+  const files = [...tracked, { path: "new.txt", status: WorkingStatus.Untracked }];
+
+  it("只列已跟踪的改动", () => {
+    const [group] = rollbackGroups(files);
+    expect(group?.entries.map((entry) => entry.path)).toEqual(["src/a.ts", "src/b.ts"]);
+  });
+
+  it("预勾只要还在 Changes 里的；未跟踪和已经没了的丢掉", () => {
+    expect([...precheckedPaths(["src/a.ts", "new.txt", "gone.ts"], files)]).toEqual(["src/a.ts"]);
+  });
+
+  it("subject 不是路径列表就当成没有预勾", () => {
+    expect(parseDialogPaths('["src/a.ts"]')).toEqual(["src/a.ts"]);
+    expect(parseDialogPaths("not-json")).toEqual([]);
+    expect(parseDialogPaths("[1]")).toEqual([]);
   });
 });
 

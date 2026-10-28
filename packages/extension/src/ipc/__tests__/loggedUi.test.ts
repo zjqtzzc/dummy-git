@@ -12,7 +12,6 @@ function recorder(): { log: Log; lines: string[] } {
 /** 用户的回答：确认点「是」、选第二项、输入框取消。 */
 const ANSWERING: HandlerUi = {
   confirm: async () => true,
-  confirmRollback: async () => false,
   choose: async () => 1,
   pick: async () => undefined,
   notifyChoice: async () => undefined,
@@ -38,14 +37,12 @@ describe("loggedUi：问答与完成消息进日志，带操作编号", () => {
     const ui = loggedUi(ANSWERING, log);
     await new Operations(log).run("m", "dropStash", {}, async () => {
       await ui.confirm('Delete the stash "WIP"?\nThis cannot be undone.', "Delete");
-      await ui.confirmRollback(["a", "b"]);
       await ui.choose("Update how?", ["Merge", "Rebase"]);
       await ui.askBranchName("New Branch", "", async () => undefined);
       return null;
     });
     expect(lines.slice(1, -1)).toEqual([
       '#1 确认「Delete the stash "WIP"? …（共 2 行）」 → Delete',
-      "#1 确认 Rollback 2 个文件 → 取消",
       "#1 选择「Update how?」 → Rebase",
       "#1 输入「New Branch」 → 取消",
     ]);

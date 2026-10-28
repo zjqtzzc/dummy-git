@@ -320,7 +320,7 @@ function groupDescription(node: {
   return node.detail === "" ? undefined : node.detail;
 }
 
-function fileCount(count: number): string {
+export function fileCount(count: number): string {
   return count === 1 ? "1 file" : `${count} files`;
 }
 

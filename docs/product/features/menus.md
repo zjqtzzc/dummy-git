@@ -9,7 +9,7 @@
 
 - **直接执行**：`ui/ToolButton.vue`，22px 见方，悬停背景、焦点框、置灰、`title` 提示全在这一处。工具栏上的图标按钮一律用它（`tech/architecture.md` 第 3 题）。
 - **有选单**：`ui/MenuButton.vue`，里面包着 `ToolButton`，多做三件事：右下角画小三角（直角朝右下，边长 4px，和图标同色，置灰时一起变淡）；点了打开浮层选单，再点一次关上；收起（见下）。它不认识任何具体选单，选单项由用的地方交进来。
-- 确认框、输入框不算选单：Rollback、Delete 弹确认框，New Branch 弹输入框，点了就是这个动作，只是执行中问一句，没有三角。
+- 确认框、输入框不算选单：Delete 弹确认框，New Branch 弹输入框，点了就是这个动作，只是执行中问一句，没有三角。Rollback 开的是标签页对话框。
 - IDEA 的规则（反推）：点了弹一组选项的工具栏按钮默认画三角，不想要的显式设 `ActionUtil.HIDE_DROPDOWN_ICON`；只有一个子项、点了直接执行时同时关掉三角（`platform/vcs-impl/src/com/intellij/openapi/vcs/changes/ignore/actions/IgnoreFileActionGroup.kt:84-86`，`plugins/git4idea/backend/src/remote/hosting/action/HostedGitRepositoryReferenceActionGroup.kt:29-31`）；图标本身就是齿轮、「⋯」的也关掉（`plugins/git4idea/shared/src/com/intellij/vcs/git/branch/popup/GitBranchesPopupHeaderActions.kt:23-24`）。
 
 ## 选单用数据描述

@@ -49,7 +49,6 @@
 
 - 按行提交：一个文件里只提交勾了的那几处改动。
 - 提交说明的历史下拉。
-- Rollback 确认改成推送那种对话框（编辑器 webview 标签页，`product/features/dialogs.md`）（2026-10-27 项目负责人定）。中间是 Commit 面板那样的文件树，只列出可 Rollback 的（`Changes` 里已跟踪的改动，不含未跟踪、不含冲突）。树上是勾选：打开时自动勾上 Commit 面板里当前选中的那些（什么都没选则全勾，与现在工具栏「没选就撤全部」一致）；可以在页里改勾选再确认。点 Rollback 关标签页，操作在后台跑。这是第三种对话框，做的时候必须先抽共用部分（见「技术债与触发条件」）。
 - 文件右键 Add to .gitignore、Reveal in Explorer / Open in System Folder。
 - 树里按空格切换勾选。
 
@@ -97,7 +96,7 @@
 
 ## 技术债与触发条件
 
-- 对话框的共用部分抽出来（项目负责人定：**第三种对话框出现时一定要做**）：协议里每种一条的 `openPushDialog` / `openRewordDialog` 合成一条通用的打开命令；页面里各自写的「标签 + 控件」一行与窄屏上下排、输入框读值（`wrappedElement`）、多行说明框（Commit 面板也有一份），抽成 `ui/` 组件。
+- 对话框的共用部分抽出来：协议里每种一条的 `openPushDialog` / `openRewordDialog` / `openRollbackDialog` 合成一条通用的打开命令；页面里各自写的「标签 + 控件」一行与窄屏上下排、输入框读值（`wrappedElement`）、多行说明框（Commit 面板也有一份），抽成 `ui/` 组件。现在有推送、改说明、Rollback 三处用了这种标签页，**先不抽**（2026-10-27 项目负责人定：第三种出现仍不抽）。
 - 继承来的 `GIT_ASKPASS`：在 VS Code 的终端里跑 `pnpm check`，`cli.test.ts` 的「没给脚本：直接失败」会去问 VS Code 自己的 askpass（十几秒后成功返回，测试失败，还可能弹一次输入框）；扩展不传脚本时，也会继承宿主环境里的 `GIT_ASKPASS`。要定：测试与 `GitCli` 是否清掉继承来的 `GIT_ASKPASS` 等变量（`tech/traps.md` 有临时绕开的办法）。
 
 ## 发布

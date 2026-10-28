@@ -9,22 +9,6 @@ function listed(names: readonly string[]): string {
 }
 
 /**
- * Rollback 前的确认：VS Code 原生模态框，
- * 写明文件数、列出前 5 个文件名，按钮 `Rollback`，另有自带的取消。改动删了找不回来，所以要拦一下。
- * 只写文件名、不写目录：意思到了就行，长路径在对话框里反而难读。
- */
-export async function confirmRollback(paths: readonly string[]): Promise<boolean> {
-  const count = paths.length === 1 ? "1 file" : `${paths.length} files`;
-  const detail = listed(paths.map((path) => path.slice(path.lastIndexOf("/") + 1)));
-  const pick = await vscode.window.showWarningMessage(
-    `Rollback ${count}? This cannot be undone.`,
-    { modal: true, detail },
-    "Rollback",
-  );
-  return pick === "Rollback";
-}
-
-/**
  * 删除这类找不回或影响别人的操作前的确认：原生模态框，`action` 是确认按钮，另有自带的取消。
  * 给了 `names` 就在说明里列出来（前 5 个），比如一次删好几个分支时。
  */

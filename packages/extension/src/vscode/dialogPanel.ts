@@ -7,6 +7,7 @@ import { html } from "./webviewView.js";
 const VIEW_TYPES: Readonly<Record<DialogKind, string>> = {
   [DialogKind.Push]: "dummyGit.push",
   [DialogKind.Reword]: "dummyGit.reword",
+  [DialogKind.Rollback]: "dummyGit.rollback",
 };
 
 /**

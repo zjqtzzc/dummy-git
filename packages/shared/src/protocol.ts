@@ -160,8 +160,8 @@ export interface Commands {
     result: null;
   };
   /**
-   * 选中的已跟踪文件恢复成 HEAD 的样子。先由扩展弹确认；取消了也回 `null`。
-   * 选中里的未跟踪文件不动。`paths` 不能为空。
+   * 已跟踪文件恢复成 HEAD 的样子。对话框点了 Rollback 之后发这条；未跟踪文件不动。
+   * `paths` 不能为空。
    */
   rollback: {
     params: { repo: string; paths: readonly string[] };
@@ -217,6 +217,11 @@ export interface Commands {
   /** 为 `hash`（完整 hash）打开改说明的对话框（提交右键 `Edit Commit Message…`）。已经开着就换成这条。 */
   openRewordDialog: {
     params: { repo: string; hash: string };
+    result: null;
+  };
+  /** 打开 Rollback 对话框，`paths` 是打开时预勾的已跟踪文件。已经开着就换成这份。 */
+  openRollbackDialog: {
+    params: { repo: string; paths: readonly string[] };
     result: null;
   };
   /** 关掉一个对话框的标签（对话框里的 Cancel）。没开着什么都不做。 */

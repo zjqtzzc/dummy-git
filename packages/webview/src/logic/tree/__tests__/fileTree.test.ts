@@ -5,6 +5,7 @@ import {
   type FileEntry,
   type FileNode,
   FileNodeKind,
+  fileCount,
   filesById,
   keepChecked,
   toTreeNodes,
@@ -254,5 +255,13 @@ describe("filesById / checkedIds：节点 id 与路径互换", () => {
       "changes/same.txt",
       "unversioned/same.txt",
     ]);
+  });
+});
+
+describe("fileCount", () => {
+  it("1 个写单数，其余写复数", () => {
+    expect(fileCount(0)).toBe("0 files");
+    expect(fileCount(1)).toBe("1 file");
+    expect(fileCount(2)).toBe("2 files");
   });
 });

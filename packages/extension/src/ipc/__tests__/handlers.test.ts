@@ -30,7 +30,6 @@ import { UserFacingError } from "../userFacingError.js";
 
 /** 不涉及界面的测试用它：真调到就说明测错了东西。 */
 const NO_UI: HandlerUi = {
-  confirmRollback: () => Promise.reject(new Error("测试里不该弹确认")),
   withProgress: (_title, task) => task(),
   askBranchName: () => Promise.reject(new Error("测试里不该弹输入框")),
   confirm: () => Promise.reject(new Error("测试里不该弹确认")),
@@ -148,21 +147,18 @@ describe("handlers.commit", () => {
 describe("handlers.rollback", () => {
   afterAll(cleanupTempRepos);
 
-  it("未跟踪文件不动；确认后已跟踪的恢复（改名带上旧路径）", async () => {
+  it("未跟踪文件不动；已跟踪的恢复（改名带上旧路径）", async () => {
     const path = makeTempRepo("rollback-handler");
     git(path, ["mv", "f1", "renamed"]);
     writeFileSync(join(path, "untracked.txt"), "keep\n");
-    const asked: (readonly string[])[] = [];
+    const closed: DialogKind[] = [];
     const repository = new Repository(plainLocation(path), cli);
     await createHandlers(repository, {
       ...NO_UI,
-      confirmRollback: async (paths) => {
-        asked.push(paths);
-        return true;
-      },
+      closeDialog: (dialog) => void closed.push(dialog),
     }).rollback({ repo: path, paths: ["renamed", "untracked.txt"] });
     repository.dispose();
-    expect(asked).toEqual([["renamed"]]);
+    expect(closed).toEqual([DialogKind.Rollback]);
     expect(git(path, ["status", "--porcelain"]).trim()).toBe("?? untracked.txt");
   });
 
@@ -171,24 +167,41 @@ describe("handlers.rollback", () => {
     git(path, ["mv", "f1", "renamed"]);
     rmSync(join(path, "renamed"));
     const repository = new Repository(plainLocation(path), cli);
-    await createHandlers(repository, { ...NO_UI, confirmRollback: async () => true }).rollback({
-      repo: path,
-      paths: ["f1"],
-    });
+    await createHandlers(repository, NO_UI).rollback({ repo: path, paths: ["f1"] });
     repository.dispose();
     expect(git(path, ["status", "--porcelain"]).trim()).toBe("");
   });
 
-  it("取消确认：什么都不做", async () => {
-    const path = makeTempRepo("rollback-cancel");
-    writeFileSync(join(path, "f1"), "changed\n");
+  it("一个已跟踪的都没有：不关标签、不撤", async () => {
+    const path = makeTempRepo("rollback-untracked-only");
+    writeFileSync(join(path, "untracked.txt"), "keep\n");
+    const closed: DialogKind[] = [];
     const repository = new Repository(plainLocation(path), cli);
-    await createHandlers(repository, { ...NO_UI, confirmRollback: async () => false }).rollback({
-      repo: path,
-      paths: ["f1"],
-    });
+    await createHandlers(repository, {
+      ...NO_UI,
+      closeDialog: (dialog) => void closed.push(dialog),
+    }).rollback({ repo: path, paths: ["untracked.txt"] });
     repository.dispose();
-    expect(git(path, ["status", "--porcelain"]).trim()).toBe("M f1");
+    expect(closed).toEqual([]);
+    expect(git(path, ["status", "--porcelain"]).trim()).toBe("?? untracked.txt");
+  });
+});
+
+describe("handlers.openRollbackDialog", () => {
+  afterAll(cleanupTempRepos);
+
+  it("打开标签页，subject 是预勾路径", async () => {
+    const path = makeTempRepo("open-rollback");
+    const opened: { dialog: DialogKind; subject: string; title: string }[] = [];
+    const repository = new Repository(plainLocation(path), cli);
+    await createHandlers(repository, {
+      ...NO_UI,
+      openDialog: (dialog, subject, title) => void opened.push({ dialog, subject, title }),
+    }).openRollbackDialog({ repo: path, paths: ["a.ts", "b.ts"] });
+    repository.dispose();
+    expect(opened).toEqual([
+      { dialog: DialogKind.Rollback, subject: '["a.ts","b.ts"]', title: "Rollback Changes" },
+    ]);
   });
 });
 
