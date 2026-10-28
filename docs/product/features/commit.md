@@ -50,7 +50,7 @@
 - 只管已跟踪的改动（`Changes` 组）：恢复成 HEAD 的样子，暂存区和工作区一起；新增的文件连磁盘上的一起删。未跟踪文件用右键菜单的 Delete。
 - **作用于选中的文件，不看勾选**（同 IDEA 的 `RollbackAction`，2026-10-20）：工具栏的 Rollback 和右键的 Rollback 是同一份规则（`logic/commit/workingChanges.ts` 的 `rollbackArgs`）。选中目录或 `Changes` 组标题等于选中它下面列出的全部；选中里混着未跟踪文件、冲突文件就撤不了（全部严格），工具栏按钮置灰、右键没有这一项。**什么都没选时**工具栏的 Rollback 撤 `Changes` 组的全部（同 IDEA：`changes.isEmpty()` 时取全部），`Changes` 组为空时置灰。勾选只管提交：同一个复选框不再同时挑「要提交的」和「要撤的」。工具栏 Stash 永远存全部，见 `product/features/stash.md`。
 - 一条 `git restore --source=HEAD --staged --worktree -- <路径>`，就能覆盖修改、删除、新增、改名几种情况（实测）；改名的两头一起交（同提交），新路径会被删掉、旧路径被恢复。
-- 点 Rollback 打开编辑器标签页（`product/features/dialogs.md`），不再弹原生确认。中间一棵只含 Changes 的文件树（不含未跟踪、不含冲突），打开时勾上刚才要撤的那些，可以改勾。底栏左侧灰字 `N files`，右侧 Cancel / Rollback；一个都没勾时 Rollback 置灰。点 Rollback 关标签，后台撤勾上的路径。双击开 diff 同 Commit 面板。
+- 点 Rollback 打开编辑器标签页（`product/features/dialogs.md`），不再弹原生确认。中间一棵只含 Changes 的文件树（不含未跟踪、不含冲突），打开时勾上刚才要撤的那些，可以改勾。底栏左侧灰字 `N files`，右侧 Cancel / Rollback；一个都没勾时 Rollback 置灰。点 Rollback 关标签，后台撤勾上的路径，不再确认。双击开 diff 同 Commit 面板。照 IDEA 的 `RollbackChangesDialog`；它的底栏还分新增、修改、删除各几个，我们只写总数；它的「Delete locally added files」在需求池（`git restore` 本来就删掉新增文件）。否决继续用原生模态框：只能列几个文件名，看不清要撤哪些。
 
 ## 打开 diff
 

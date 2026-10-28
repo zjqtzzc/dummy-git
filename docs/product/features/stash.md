@@ -9,9 +9,9 @@ Commit 面板工具栏上，Rollback 旁边的 **Stash** 按钮（`AppIcon.Stash
 
 右键 **Stash**：打开编辑器标签页（`product/features/dialogs.md`），不再直接存。谁能点仍由现在的规则定：选中的文件（目录、组等于下面列出的全部），可含未跟踪；混着冲突文件就没有这一项（全部严格）。勾选只管提交。
 
-标签里一棵含 Changes 与 Unversioned 的文件树（不含冲突），打开时勾上刚才要存的那些，可以改勾。名字输入框预填 git 那种 `WIP on main: 1a2b3c4 fix login`（没改就不传 `-m`，git 自己生成；改过才 `-m`，列表变成 `On main: 你写的`）。底栏左侧灰字 `N files`，右侧 Cancel / Stash；一个都没勾时 Stash 置灰。点 Stash 关标签，后台按勾上的路径存。双击开 diff 同 Commit 面板。
+标签里一棵含 Changes 与 Unversioned 的文件树（不含冲突），打开时勾上刚才要存的那些，可以改勾。名字输入框预填 git 那种 `WIP on main: 1a2b3c4 fix login`（detached 时是 `WIP on (no branch): …`；没改（含清空）就不传 `-m`，git 自己生成；改过才 `-m`，列表变成 `On main: 你写的`）。底栏左侧灰字 `N files`，右侧 Cancel / Stash；一个都没勾时 Stash 置灰。点 Stash 关标签，后台按勾上的路径存。双击开 diff 同 Commit 面板。
 
-- 永远带 `-u`：选中的未跟踪文件一起存，取回时还原；没选的（不管跟不跟踪）原样留下。不分情况，逻辑最简单。
+- 永远带 `-u`：选中的未跟踪文件一起存，取回时还原；没选的（不管跟不跟踪）原样留下。不分情况，逻辑最简单。否决 IDEA 菜单 `Git.Stash` 对话框里的 Keep Index / Include Untracked：文件右键本来就没有这两项。
 - 走本地道与进度出口；完成消息用 git 自己的那句（`Saved working directory and index state …`）。
 
 **右键只存一部分**：`git stash push -- <路径>` 只按路径清理工作区，存进去的却是**整个暂存区**。没选的已暂存改动（新增、改名、删除）会一起进 stash，同时还留在工作区，Apply 时再来一遍（git 2.25、2.43 实测）。所以在同一条本地道命令里：记下整个暂存区；把没选的已暂存路径、以及选中的已暂存删除（改名的旧路径、`git rm` 过的）退回成未暂存；只存选中的；之后从记下的暂存区还原没选的那些（部分暂存的文件也还原成暂存的那一版）。stash 失败则整份还原。收尾还原失败不盖住 stash 的结果。命令行见 `git/commands/stash.ts` 的 `stashPaths`。
