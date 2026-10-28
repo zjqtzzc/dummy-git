@@ -45,9 +45,10 @@ IDEA、VS Code git、GitLens 都是一条 `stash push`，没有「先退暂存�
 - Apply / Pop 不带 `--index`：取回后原来的暂存状态没了，全部变成未暂存。
 - **Rename…**：git 没有改名，按 hash 找到现在的序号，先 `stash drop` 再 `stash store -m <新说明> <hash>`（提交本身不动，说明写在 reflog 上）。输入框标题 `Rename stash`，预填现在的说明并全选（同改分支名）；空着或没改就当作取消。说明原样写入，不加 `On main:`。`stash store` 总是加到 reflog 头上，改完这条排到最前。只改 reflog，不走进度出口，也不另确认。store 失败时这条已经不在列表里，提交还在，日志里有完整 hash，可以 `stash store` 找回来（和误删一样）。
 - Delete 弹原生模态确认 `Delete the stash "…"? This cannot be undone.`，确认后状态栏用 git 的那句 `Dropped stash@{n} (<完整 hash>)`。真删错了，可以用日志里的完整 hash `git stash store` 找回。删除后**不**弹带 Restore 的通知（`product/never.md`）。
-- 完成消息：Apply / Pop 是自己写的（`Applied …`、`Applied and dropped …`），因为 git 的输出是一整段 status。
-- Apply、Pop 走进度出口；Delete、Rename 只改 reflog，立刻就能看到，不走。
+- 完成消息：Apply / Pop / Apply Selected Files 是自己写的（`Applied …`、`Applied and dropped …`、`Applied selected files from …`），因为 git 的输出是一整段 status。
+- Apply、Pop、Apply Selected Files 走进度出口；Delete、Rename 只改 reflog，立刻就能看到，不走。
 - 取回时冲突：git 不删 stash（Pop 也一样），冲突文件显示在 Commit 面板的冲突组里（`product/features/conflicts.md`）；解决之后，stash 要自己删。
+- 被本地改动挡住（`Your local changes … would be overwritten`）：git 拒绝取回，通知里是它自己的那句。这时 stash 里未跟踪的那部分已经写进工作区，git 不收回（git 2.43 实测）。
 
 IDEA、VS Code git 都没有改已有 stash 的名字（IDEA 只在存的时候对话框里写说明）。GitLens 有 Rename Stash…，同样是 drop 再 store。
 
@@ -57,14 +58,10 @@ IDEA、VS Code git 都没有改已有 stash 的名字（IDEA 只在存的时候�
 
 - stash 下的文件右键 **Apply Selected Files**：只取回选中的文件，stash 保留。展开看、全部严格：目录等于它下面列出的全部文件，都要属于同一条 stash；选中里含 stash 那一行时没有这一项，整条用那一行的 Apply。工具栏 Apply 仍取回整条。
 - 已跟踪的、未跟踪的都能选；改名的两头一起取回（旧路径删掉、新路径出现）。
-- 只有 Apply，没有按文件 Pop（同 IDEA：文件右键只有取回）。按文件 Pop 要重写那条 stash，在 `product/backlog.md`。
-- 走进度出口 `Applying files from stash…`，完成消息 `Applied selected files from <说明>`。
-- 冲突、被本地改动挡住都和整条 Apply 一样：和 HEAD 冲突时进冲突组，stash 留着；本地未暂存改动碰到同一文件时 git 拒绝，报它自己的那句。
+- 只有 Apply，没有按文件 Pop（同 IDEA：文件右键只有取回）；按文件 Pop 见 `product/backlog.md`「Stash」。
+- 冲突、被本地改动挡住都和整条 Apply 一样（见上）。
 - **做法**：git 没有按文件取回，所以拼一条只含选中文件的临时 stash，交给 `git stash apply`；冲突与挡住的处理就都是 git 的。临时提交不 `stash store`，不进列表。命令行见 `git/commands/stash.ts` 的 `applyStashFiles`。和上面「存」否决的「自己造 stash 提交再 `stash store`」不同：那条要重写 `git stash push`，这里只造一个给 `apply` 用的临时提交。
 
-IDEA 在 stash 的文件右键有 `Cherry-Pick Selected Changes`（`Vcs.ApplySelectedChanges`，和 Log 详情的文件右键共用）：把选中的改动做成补丁，用自己的补丁引擎打上，打不上时弹自己的合并窗口。
+IDEA 在 stash 的文件右键有 `Cherry-Pick Selected Changes`（`Vcs.ApplySelectedChanges`，和 Log 详情的文件右键共用）：把选中的改动做成补丁，用自己的补丁引擎打上，打不上时弹自己的合并窗口。我们 stash 那一行已经叫 Apply，沿用这个词，不照 IDEA 叫 Cherry-Pick。
 
-否决过：
-- `git restore --source=<stash> -- <路径>`：直接覆盖，本地改动丢掉，存完以后 HEAD 上的改动也被悄悄撤掉。
-- `git diff <存时的提交> <stash> -- <路径> | git apply`：有一块对不上就整份失败，不留冲突标记；加 `--3way` 又要求文件和暂存区一致，有未暂存改动就报 `does not match index`（git 2.43 实测）。
-- 照 IDEA 自己打补丁：打不上时要有自己的合并界面，我们没有（`product/backlog.md`「自建合并界面」）。
+否决过照 IDEA 自己打补丁：打不上时要有自己的合并界面，我们没有（`product/backlog.md`「自建合并界面」）。技术上否决的两种做法（`restore --source` 直接覆盖、`diff | apply`）见 `git/commands/stash.ts` 的 `applyStashFiles`。

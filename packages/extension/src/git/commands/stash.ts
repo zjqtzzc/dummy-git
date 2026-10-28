@@ -131,10 +131,10 @@ export const applyStash: GitCommand<[repository: string, hash: string], void> = 
  * - 未跟踪的 `untracked`：另一棵只含它们的树，做成第三个父提交，git 认 stash 的未跟踪部分就靠它。
  * - 第二个父提交（存时的暂存区）用原来那条的：不带 `--index` 时 git 不读它。
  *
- * 临时提交不 `stash store`，不进列表。
+ * 临时提交不 `stash store`，不进列表，没有引用，由 gc 回收。改工作区，走本地道。
  * 否决 `restore --source=<stash>` 直接覆盖：本地改动丢掉，存完以后 HEAD 上的改动也被悄悄撤掉。
  * 否决 `diff | apply`：一块对不上就整份失败、不留冲突标记；`--3way` 又要求文件与暂存区一致，
- * 有未暂存改动就报 `does not match index`（实测 git 2.43）。改工作区，走本地道。
+ * 有未暂存改动就报 `does not match index`（实测 git 2.43）。
  */
 export const applyStashFiles: GitCommand<
   [repository: string, hash: string, paths: readonly string[], untracked: readonly string[]],

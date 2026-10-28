@@ -6,7 +6,7 @@
  * 分支树：当前分支 main；本地 topic、feat/login/a、feat/login/b（目录）。
  *   topic 上一条提交改了 f.txt，和 main 的 three 冲突：对它 Cherry-Pick、Merge、Rebase 都能当场造出冲突。
  * Stash：最新的一条 pick 在 pick/ 下修改 keep.txt、take.txt，move.txt 改名成 moved.txt，未跟踪 new.txt、skip.txt，
- *   右键其中几个文件 Apply Selected Files；中间一条带目录 notes/，取回干净；
+ *   已跟踪、改名、未跟踪各有，keep.txt、skip.txt 留作不选的对照；中间一条带目录 notes/，取回干净；
  *   最早的一条改 f.txt，之后 three 又改了 f.txt，Pop 就冲突（没有停下的操作、只有冲突组）。
  * Commit 面板：
  *   Changes：src/a.txt 修改；src/b.txt 部分暂存；added.txt 新增（已暂存）；gone.txt 删了；

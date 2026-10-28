@@ -94,7 +94,7 @@ function filePaths(files: readonly StashFileTarget[]): {
 }
 
 /**
- * stash 的右键菜单项。stash 那一行的几项只能对一条做；多选后能做什么还没定。
+ * stash 的右键菜单项。stash 那一行的几项只能对一条做。
  * Apply Selected Files 展开看、全部严格：目录等于它下面的全部文件，都要属于同一条 stash；
  * 选中里含 stash 那一行时没有这一项，整条用那一行的 Apply。
  */
