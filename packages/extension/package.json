@@ -2,7 +2,7 @@
   "name": "dummy-git",
   "displayName": "Dummy Git",
   "description": "不用记命令的 Git：JetBrains 式图形化操作，点两下就完事。",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "zhouzice",
   "license": "MIT",
   "preview": true,
