@@ -56,6 +56,8 @@
 
 - 只存已暂存，或只存未暂存的那一部分。
 - Apply / Pop 时可选还原暂存状态（`stash apply --index`，同 IDEA 的 Reinstate index）：现在取回后全部变成未暂存。
+- 按文件 Pop：取回选中的文件后，把它们从那条 stash 里剔掉。要重写那条 stash（造新提交、换掉 reflog 里的那一条）。
+- 取回被本地改动挡住时，未跟踪的那部分已经写进工作区，git 不收回（2.43 实测，整条与按文件取回都会）。是否在挡住时删掉这些刚写出的文件。
 
 ## 冲突（`product/features/conflicts.md`）
 
