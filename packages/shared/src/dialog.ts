@@ -7,4 +7,5 @@ export enum DialogKind {
   Push = "push",
   Reword = "reword",
   Rollback = "rollback",
+  Stash = "stash",
 }

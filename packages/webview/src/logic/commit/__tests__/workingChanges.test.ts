@@ -12,11 +12,14 @@ import type { FileRow } from "../../tree/fileTree.js";
 import {
   conflictFiles,
   conflictHeading,
+  defaultStashMessage,
   opensMergeEditor,
   parseDialogPaths,
   precheckedPaths,
+  precheckedStashPaths,
   rollbackArgs,
   rollbackGroups,
+  stashGroups,
   WorkingRowKind,
   WorkingStatus,
   workingDiffSides,
@@ -152,11 +155,13 @@ describe("workingMenuContext：Commit 面板的右键菜单项", () => {
       [MenuContextKey.Repo]: "/repo",
       [MenuContextKey.OpenFile]: { path: "a.ts" },
       [MenuContextKey.RollbackFile]: { paths: ["a.ts"] },
+      [MenuContextKey.StashFiles]: { paths: ["a.ts"] },
     });
     expect(menuOf(untrackedRow("new.txt"))).toEqual({
       [MenuContextKey.Repo]: "/repo",
       [MenuContextKey.OpenFile]: { path: "new.txt" },
       [MenuContextKey.AddUntracked]: { paths: ["new.txt"] },
+      [MenuContextKey.StashFiles]: { paths: ["new.txt"] },
       [MenuContextKey.DeleteUntracked]: { paths: ["new.txt"] },
     });
   });
@@ -197,6 +202,7 @@ describe("workingMenuContext：Commit 面板的右键菜单项", () => {
     expect(workingMenuContext("/repo", conflicts, more, group)).toEqual({
       [MenuContextKey.Repo]: "/repo",
       [MenuContextKey.AddUntracked]: { paths: ["new.txt", "other.txt"] },
+      [MenuContextKey.StashFiles]: { paths: ["new.txt", "other.txt"] },
       [MenuContextKey.DeleteUntracked]: { paths: ["new.txt", "other.txt"] },
     });
   });
@@ -220,9 +226,13 @@ describe("workingMenuContext：Commit 面板的右键菜单项", () => {
     });
   });
 
-  it("空的目录、混着选：只有仓库，没有菜单项", () => {
+  it("空的目录没有菜单项；已跟踪和未跟踪可以一起 Stash；夹着冲突就没有", () => {
     expect(menuOf(null)).toEqual({ [MenuContextKey.Repo]: "/repo" });
     expect(menuOf(untrackedRow("new.txt"), changeRow("a.ts"))).toEqual({
+      [MenuContextKey.Repo]: "/repo",
+      [MenuContextKey.StashFiles]: { paths: ["new.txt", "a.ts"] },
+    });
+    expect(menuOf(changeRow("a.ts"), conflictRow("c.ts"))).toEqual({
       [MenuContextKey.Repo]: "/repo",
     });
   });
@@ -252,11 +262,13 @@ describe("workingRow：树上的一行连组一起认", () => {
     expect(menu(changeRow("kept.txt"))).toEqual({
       [MenuContextKey.Repo]: "/repo",
       [MenuContextKey.RollbackFile]: { paths: ["kept.txt"] },
+      [MenuContextKey.StashFiles]: { paths: ["kept.txt"] },
     });
     expect(menu(untrackedRow("kept.txt"))).toEqual({
       [MenuContextKey.Repo]: "/repo",
       [MenuContextKey.OpenFile]: { path: "kept.txt" },
       [MenuContextKey.AddUntracked]: { paths: ["kept.txt"] },
+      [MenuContextKey.StashFiles]: { paths: ["kept.txt"] },
       [MenuContextKey.DeleteUntracked]: { paths: ["kept.txt"] },
     });
   });
@@ -312,6 +324,35 @@ describe("rollbackGroups / precheckedPaths", () => {
     expect(parseDialogPaths('["src/a.ts"]')).toEqual(["src/a.ts"]);
     expect(parseDialogPaths("not-json")).toEqual([]);
     expect(parseDialogPaths("[1]")).toEqual([]);
+  });
+});
+
+describe("stashGroups / precheckedStashPaths / defaultStashMessage", () => {
+  const tracked = [
+    { path: "src/a.ts", status: WorkingStatus.Modified },
+    { path: "src/b.ts", status: WorkingStatus.Deleted },
+  ];
+  const files = [...tracked, { path: "new.txt", status: WorkingStatus.Untracked }];
+
+  it("列已跟踪的和未跟踪的", () => {
+    expect(stashGroups(files).map((group) => group.entries.map((entry) => entry.path))).toEqual([
+      ["src/a.ts", "src/b.ts"],
+      ["new.txt"],
+    ]);
+  });
+
+  it("预勾还在树上的；已经没了的丢掉", () => {
+    expect([...precheckedStashPaths(["src/a.ts", "new.txt", "gone.ts"], files)]).toEqual([
+      "src/a.ts",
+      "new.txt",
+    ]);
+  });
+
+  it("不传 -m 时那种 WIP 说明", () => {
+    const hash = "abcdef1".padEnd(40, "0");
+    expect(defaultStashMessage("main", hash, "init")).toBe("WIP on main: abcdef1 init");
+    expect(defaultStashMessage(undefined, hash, "init")).toBe("WIP on (no branch): abcdef1 init");
+    expect(defaultStashMessage("main", undefined, undefined)).toBe("WIP on main");
   });
 });
 

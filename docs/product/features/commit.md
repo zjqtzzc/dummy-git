@@ -48,7 +48,7 @@
 ## Rollback
 
 - 只管已跟踪的改动（`Changes` 组）：恢复成 HEAD 的样子，暂存区和工作区一起；新增的文件连磁盘上的一起删。未跟踪文件用右键菜单的 Delete。
-- **作用于选中的文件，不看勾选**（同 IDEA 的 `RollbackAction`，2026-10-20）：工具栏的 Rollback 和右键的 Rollback 是同一份规则（`logic/commit/workingChanges.ts` 的 `rollbackArgs`）。选中目录或 `Changes` 组标题等于选中它下面列出的全部；选中里混着未跟踪文件、冲突文件就撤不了（全部严格），工具栏按钮置灰、右键没有这一项。**什么都没选时**工具栏的 Rollback 撤 `Changes` 组的全部（同 IDEA：`changes.isEmpty()` 时取全部），`Changes` 组为空时置灰。勾选从此只管提交和 Stash：同一个复选框不再同时挑「要提交的」和「要撤的」。
+- **作用于选中的文件，不看勾选**（同 IDEA 的 `RollbackAction`，2026-10-20）：工具栏的 Rollback 和右键的 Rollback 是同一份规则（`logic/commit/workingChanges.ts` 的 `rollbackArgs`）。选中目录或 `Changes` 组标题等于选中它下面列出的全部；选中里混着未跟踪文件、冲突文件就撤不了（全部严格），工具栏按钮置灰、右键没有这一项。**什么都没选时**工具栏的 Rollback 撤 `Changes` 组的全部（同 IDEA：`changes.isEmpty()` 时取全部），`Changes` 组为空时置灰。勾选只管提交：同一个复选框不再同时挑「要提交的」和「要撤的」。工具栏 Stash 永远存全部，见 `product/features/stash.md`。
 - 一条 `git restore --source=HEAD --staged --worktree -- <路径>`，就能覆盖修改、删除、新增、改名几种情况（实测）；改名的两头一起交（同提交），新路径会被删掉、旧路径被恢复。
 - 点 Rollback 打开编辑器标签页（`product/features/dialogs.md`），不再弹原生确认。中间一棵只含 Changes 的文件树（不含未跟踪、不含冲突），打开时勾上刚才要撤的那些，可以改勾。底栏左侧灰字 `N files`，右侧 Cancel / Rollback；一个都没勾时 Rollback 置灰。点 Rollback 关标签，后台撤勾上的路径。双击开 diff 同 Commit 面板。
 
@@ -60,8 +60,8 @@
 
 | 文件 | 菜单项 |
 |---|---|
-| `Changes` 里的文件 | Open File（删除的没有）、Rollback |
-| 未跟踪文件 | Open File、Add to Git（`git add`，不确认）、Delete（原生模态确认 `Delete <文件名>? This cannot be undone.`，直接删磁盘上的文件） |
+| `Changes` 里的文件 | Open File（删除的没有）、Stash（标签页，`product/features/stash.md`）、Rollback |
+| 未跟踪文件 | Open File、Add to Git（`git add`，不确认）、Stash、Delete（原生模态确认 `Delete <文件名>? This cannot be undone.`，直接删磁盘上的文件） |
 | 冲突文件 | 见 `product/features/conflicts.md` |
 
 - **Open File**：在编辑器里打开工作区里的文件（`vscode.open`，图片等也能开），不是 diff；双击仍是 diff。只对点中的一个文件，磁盘上有它才出现。路径就是那一行的路径，不用再判断暂存区：改名打开新路径；删除的（含改名后又删掉新路径、画在旧路径上的那行）磁盘上没有，不出现；冲突里只有两边都删了的（`DD`）git 不在工作区留文件（`AU` `UA` `DU` `UD` 都留着一边，git 2.43 实测）。`git rm --cached` 后文件还在磁盘上的，界面是同一路径的删除 + 未跟踪两行，在未跟踪那行打开。IDEA 变更列表的 Jump to Source 同样只导航到存在的文件。

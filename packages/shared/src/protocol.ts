@@ -224,6 +224,11 @@ export interface Commands {
     params: { repo: string; paths: readonly string[] };
     result: null;
   };
+  /** 打开 Stash 对话框，`paths` 是打开时预勾的文件。已经开着就换成这份。 */
+  openStashDialog: {
+    params: { repo: string; paths: readonly string[] };
+    result: null;
+  };
   /** 关掉一个对话框的标签（对话框里的 Cancel）。没开着什么都不做。 */
   closeDialog: {
     params: { dialog: DialogKind };
@@ -334,11 +339,11 @@ export interface Commands {
     result: null;
   };
   /**
-   * 存 stash，未跟踪文件一起存，说明用 git 自动生成的。`paths` 是勾选的文件；
-   * **空 = 全部改动**（什么都没勾时点 Stash）。
+   * 存 stash，未跟踪文件一起存。`paths` 是对话框勾上的文件；
+   * **空 = 全部改动**（工具栏 Stash All）。`message` 是对话框里改过的说明；缺席则 git 自己生成。
    */
   stash: {
-    params: { repo: string; paths: readonly string[] };
+    params: { repo: string; paths: readonly string[]; message?: string };
     result: null;
   };
   /** Log 的过滤：在 `hashes`（页面上的骨架）里，哪些满足 `condition`。返回命中的 hash，顺序不保证。 */

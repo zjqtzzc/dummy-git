@@ -8,7 +8,6 @@ import {
   type DiffOpenMode,
   type DiffSide,
   DiffSideKind,
-  FileStatus,
   IndexStage,
   OperationKind,
   type Ref,
@@ -76,7 +75,6 @@ import {
   stashAll,
   stashPaths,
   switchBranch,
-  unstage,
 } from "../git/commands/index.js";
 import { mergeEditorTitles, readHeadBranch, readOperation } from "../git/operationState.js";
 import type { MergeSides } from "../vscode/mergeEditor.js";
@@ -336,7 +334,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
   }
 
   /**
-   * 按当前的 `git status` 看交来的路径（提交、Stash 是勾选的，Rollback 是选中的）：哪些是未跟踪文件（提交前要先 `add`；Rollback 不管），
+   * 按当前的 `git status` 看交来的路径（提交是勾选的，Rollback 是对话框勾上的，右键 Stash 是选中的）：哪些是未跟踪文件（提交前要先 `add`；Rollback 不管），
    * 哪些是已跟踪的；`withRenamePartners` 给改名的补上另一头——界面上改名只有一行，
    * 平常是新路径；新路径又从磁盘上删掉时，界面画成旧路径上的删除。两头要一起交给 git，
    * 只交新路径会剩下一个 D，只交旧路径会剩下一个 AD。
@@ -347,15 +345,11 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
     const untracked = new Set<string>();
     const renamedFrom = new Map<string, string>();
     const renamedTo = new Map<string, string>();
-    const deleted = new Set<string>();
     for (const change of changes) {
       if (change.kind === ChangeKind.Untracked) untracked.add(change.path);
       if (change.kind === ChangeKind.Tracked && change.oldPath !== undefined) {
         renamedFrom.set(change.path, change.oldPath);
         renamedTo.set(change.oldPath, change.path);
-      }
-      if (change.kind === ChangeKind.Tracked && change.index === FileStatus.Deleted) {
-        deleted.add(change.path);
       }
     }
     return {
@@ -365,13 +359,6 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         list.flatMap((path) => {
           const partner = renamedFrom.get(path) ?? renamedTo.get(path);
           return partner === undefined ? [path] : [path, partner];
-        }),
-      /** 这些路径里已暂存的删除：改名的旧路径（给的是哪一头都算）、暂存区里删掉的文件。 */
-      stagedDeletions: (list: readonly string[]): string[] =>
-        list.flatMap((path) => {
-          const old = renamedFrom.get(path);
-          if (old !== undefined) return [old];
-          return renamedTo.has(path) || deleted.has(path) ? [path] : [];
         }),
     };
   };
@@ -598,6 +585,10 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
     },
     openRollbackDialog: async ({ paths }) => {
       ui.openDialog(DialogKind.Rollback, JSON.stringify(paths), "Rollback Changes");
+      return null;
+    },
+    openStashDialog: async ({ paths }) => {
+      ui.openDialog(DialogKind.Stash, JSON.stringify(paths), "Stash Changes");
       return null;
     },
     reword: async ({ hash, message }) => {
@@ -883,7 +874,7 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
       if (deleted > 1) ui.notify(`Deleted ${deleted} branches`);
       return null;
     },
-    stash: async ({ paths }) => {
+    stash: async ({ paths, message }) => {
       const root = repository.location.root;
       if (paths.length === 0) {
         await ui.withProgress(
@@ -893,16 +884,12 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
         );
         return null;
       }
-      const { withRenamePartners, stagedDeletions } = await inspect(paths);
-      const deletions = stagedDeletions(paths);
+      const { withRenamePartners } = await inspect(paths);
+      // 点了就关，存在后台跑。
+      ui.closeDialog(DialogKind.Stash);
       await ui.withProgress(
         "Stashing selected changes…",
-        async () => {
-          // 已暂存的删除先退回成未暂存的，`stash push -- <路径>` 才不会存了一半（见 `stashPaths`）。
-          // 代价：Apply 回来后改名显示成新增 + 删除两行（不带 --index 的 Apply 本来就不还原暂存状态）。
-          if (deletions.length > 0) await repository.run(unstage, root, deletions);
-          return repository.run(stashPaths, root, withRenamePartners(paths));
-        },
+        () => repository.run(stashPaths, root, withRenamePartners(paths), message),
         (said) => said,
       );
       return null;

@@ -205,6 +205,24 @@ describe("handlers.openRollbackDialog", () => {
   });
 });
 
+describe("handlers.openStashDialog", () => {
+  afterAll(cleanupTempRepos);
+
+  it("打开标签页，subject 是预勾路径", async () => {
+    const path = makeTempRepo("open-stash");
+    const opened: { dialog: DialogKind; subject: string; title: string }[] = [];
+    const repository = new Repository(plainLocation(path), cli);
+    await createHandlers(repository, {
+      ...NO_UI,
+      openDialog: (dialog, subject, title) => void opened.push({ dialog, subject, title }),
+    }).openStashDialog({ repo: path, paths: ["a.ts", "new.txt"] });
+    repository.dispose();
+    expect(opened).toEqual([
+      { dialog: DialogKind.Stash, subject: '["a.ts","new.txt"]', title: "Stash Changes" },
+    ]);
+  });
+});
+
 describe("handlers.update", () => {
   afterAll(cleanupTempRepos);
   const update = async (path: string, branch: string) => {
@@ -993,7 +1011,7 @@ describe("handlers.stash", () => {
     return repo;
   };
 
-  it("存勾选的：改名、暂存的删除、未跟踪都存走，没勾的留下", async () => {
+  it("存选中的：改名、暂存的删除、未跟踪都存走，没选的留下", async () => {
     const repo = scene("stash-selected");
     await stash(repo, ["a2", "b", "u"]);
     expect(stashes(repo)).toHaveLength(1);
@@ -1010,11 +1028,25 @@ describe("handlers.stash", () => {
     expect(status(repo).sort()).toEqual(["D  b", " M keep", "?? u"].sort());
   });
 
-  it("什么都没勾：存全部改动，含未跟踪", async () => {
+  it("空路径：存全部改动，含未跟踪", async () => {
     const repo = scene("stash-all");
     await stash(repo, []);
     expect(stashes(repo)).toHaveLength(1);
     expect(status(repo)).toEqual([""]);
+  });
+
+  it("改过说明：关标签，列表是 On main: 说明", async () => {
+    const repo = scene("stash-message");
+    const closed: DialogKind[] = [];
+    const repository = new Repository(plainLocation(repo), cli);
+    await createHandlers(repository, {
+      ...NO_UI,
+      closeDialog: (dialog) => void closed.push(dialog),
+    }).stash({ repo, paths: ["keep"], message: "wip login" });
+    repository.dispose();
+    expect(closed).toEqual([DialogKind.Stash]);
+    expect(stashes(repo)[0]).toMatch(/On main: wip login$/);
+    expect(status(repo).sort()).toEqual(["D  b", "R  a -> a2", "?? u"].sort());
   });
 });
 

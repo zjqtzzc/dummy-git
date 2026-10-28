@@ -236,8 +236,19 @@ describe("会拼成磁盘路径的命令：带 .. 的段拒收", () => {
     });
     expect(parseParams("openRollbackDialog", { repo: "/r", paths: [] })).toBeUndefined();
     expect(parseParams("openRollbackDialog", { repo: "/r", paths: ["../x"] })).toBeUndefined();
+    expect(parseParams("openStashDialog", { repo: "/r", paths: ["a.ts"] })).toEqual({
+      repo: "/r",
+      paths: ["a.ts"],
+    });
+    expect(parseParams("openStashDialog", { repo: "/r", paths: [] })).toBeUndefined();
     expect(parseParams("stash", { repo: "/r", paths: [] })).toEqual({ repo: "/r", paths: [] });
+    expect(parseParams("stash", { repo: "/r", paths: ["a.ts"], message: "wip" })).toEqual({
+      repo: "/r",
+      paths: ["a.ts"],
+      message: "wip",
+    });
     expect(parseParams("stash", { repo: "/r", paths: ["../x"] })).toBeUndefined();
+    expect(parseParams("stash", { repo: "/r", paths: [], message: 1 })).toBeUndefined();
     expect(parseParams("amend", { repo: "/r", message: "m", paths: [] })).toEqual({
       repo: "/r",
       message: "m",
@@ -250,14 +261,18 @@ describe("会拼成磁盘路径的命令：带 .. 的段拒收", () => {
 describe("进命令行的 hash：只收完整 hash", () => {
   const hash = "ab".repeat(20);
 
-  it.each(["getCommitFiles", "resetTo", "applyStash", "popStash", "dropStash"] as const)(
-    "%s",
-    (command) => {
-      expect(parseParams(command, { repo: "/r", hash })).toEqual({ repo: "/r", hash });
-      expect(parseParams(command, { repo: "/r", hash: "--all" })).toBeUndefined();
-      expect(parseParams(command, { repo: "/r", hash: hash.slice(0, 7) })).toBeUndefined();
-    },
-  );
+  it.each([
+    "getCommitFiles",
+    "resetTo",
+    "applyStash",
+    "popStash",
+    "dropStash",
+    "renameStash",
+  ] as const)("%s", (command) => {
+    expect(parseParams(command, { repo: "/r", hash })).toEqual({ repo: "/r", hash });
+    expect(parseParams(command, { repo: "/r", hash: "--all" })).toBeUndefined();
+    expect(parseParams(command, { repo: "/r", hash: hash.slice(0, 7) })).toBeUndefined();
+  });
 
   it("getCommitDetails 的列表：有一个不是完整 hash 就整条拒收", () => {
     expect(parseParams("getCommitDetails", { repo: "/r", hashes: [hash] })).toEqual({

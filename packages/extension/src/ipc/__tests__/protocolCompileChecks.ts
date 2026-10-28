@@ -74,6 +74,7 @@ export const _baseline = defineHandlers({
   openPushDialog: openDiffStub,
   openRewordDialog: openDiffStub,
   openRollbackDialog: openDiffStub,
+  openStashDialog: openDiffStub,
   reword: openDiffStub,
   closeDialog: openDiffStub,
   getPushTarget: async () => ({ remotes: [], remote: "", remoteBranch: "" }),

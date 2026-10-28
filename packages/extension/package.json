@@ -172,6 +172,10 @@
         "title": "Rollback"
       },
       {
+        "command": "dummyGit.stashFiles",
+        "title": "Stash"
+      },
+      {
         "command": "dummyGit.addUntracked",
         "title": "Add to Git"
       },
@@ -306,6 +310,11 @@
           "group": "4_delete@1"
         },
         {
+          "command": "dummyGit.stashFiles",
+          "when": "webviewId == 'dummyGit.commit' && dummyGit.stashFiles",
+          "group": "3_edit@2"
+        },
+        {
           "command": "dummyGit.addUntracked",
           "when": "webviewId == 'dummyGit.commit' && dummyGit.addUntracked",
           "group": "3_edit@1"
@@ -417,6 +426,10 @@
         },
         {
           "command": "dummyGit.rollbackFile",
+          "when": "false"
+        },
+        {
+          "command": "dummyGit.stashFiles",
           "when": "false"
         },
         {

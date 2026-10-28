@@ -5,26 +5,18 @@
 
 ## 存
 
-Commit 面板工具栏上，Rollback 旁边的 **Stash** 按钮（`AppIcon.Stash`：箭头落进托盘）。有改动就能点，不问名字，说明用 git 自动生成的（`WIP on main: 1a2b3c4 fix login`）。
+Commit 面板工具栏上，Rollback 旁边的 **Stash** 按钮（`AppIcon.Stash`：箭头落进托盘）。有改动就能点，不问名字，说明用 git 自动生成的（`WIP on main: 1a2b3c4 fix login`）。**工具栏永远存全部**（提示 `Stash All`，`git stash push -u`），不看勾选、不看选中（同 IDEA 的 `Git.Stash.Silently`）。选中经常只是在看 diff，Stash 又没有确认框。
 
-| 勾选 | 按钮提示 | 做法 |
-|---|---|---|
-| 勾了文件 | `Stash Selected` | 只存勾了的，见下面 |
-| 没勾 | `Stash All` | `git stash push -u`，存全部改动 |
+右键 **Stash**：打开编辑器标签页（`product/features/dialogs.md`），不再直接存。谁能点仍由现在的规则定：选中的文件（目录、组等于下面列出的全部），可含未跟踪；混着冲突文件就没有这一项（全部严格）。勾选只管提交。
 
-- 永远带 `-u`：勾了的未跟踪文件一起存，取回时还原；没勾的（不管跟不跟踪）原样留下。不分情况，逻辑最简单。
+标签里一棵含 Changes 与 Unversioned 的文件树（不含冲突），打开时勾上刚才要存的那些，可以改勾。名字输入框预填 git 那种 `WIP on main: 1a2b3c4 fix login`（没改就不传 `-m`，git 自己生成；改过才 `-m`，列表变成 `On main: 你写的`）。底栏左侧灰字 `N files`，右侧 Cancel / Stash；一个都没勾时 Stash 置灰。点 Stash 关标签，后台按勾上的路径存。双击开 diff 同 Commit 面板。
+
+- 永远带 `-u`：选中的未跟踪文件一起存，取回时还原；没选的（不管跟不跟踪）原样留下。不分情况，逻辑最简单。
 - 走本地道与进度出口；完成消息用 git 自己的那句（`Saved working directory and index state …`）。
 
-**Stash Selected**：`git stash push -- <路径>` 只按路径清理工作区，存进去的却是**整个暂存区**。没勾的已暂存改动（新增、改名、删除）会一起进 stash，同时还留在工作区，Apply 时再来一遍（git 2.25、2.43 实测）。所以在同一条本地道命令里分几步：记下整个暂存区；把没勾、但已暂存的路径（改名拆成新旧两个路径）退回成未暂存；只存勾的；之后（stash 失败也一样）从记下的暂存区原样还原它们，部分暂存的文件也还原成暂存的那一版。命令行见 `git/commands/stash.ts` 的 `stashPaths`。
+**右键只存一部分**：`git stash push -- <路径>` 只按路径清理工作区，存进去的却是**整个暂存区**。没选的已暂存改动（新增、改名、删除）会一起进 stash，同时还留在工作区，Apply 时再来一遍（git 2.25、2.43 实测）。所以在同一条本地道命令里：记下整个暂存区；把没选的已暂存路径、以及选中的已暂存删除（改名的旧路径、`git rm` 过的）退回成未暂存；只存选中的；之后从记下的暂存区还原没选的那些（部分暂存的文件也还原成暂存的那一版）。stash 失败则整份还原。收尾还原失败不盖住 stash 的结果。命令行见 `git/commands/stash.ts` 的 `stashPaths`。
 
-另外两条：
-- 改名的两头一起交（同提交）。
-- 勾了的路径里有**已暂存的删除**（改名的旧路径、`git rm` 过的）时，git 先把 stash 存下，再在清理工作区时报 `pathspec did not match` 退出：stash 建了，改动还留在工作区。不带 `-u` 时则直接拒绝。所以调用方先 `unstage` 把它们退回成未暂存的删除。代价：Apply 回来后，改名显示成新增 + 删除两行。
-
-这两处现在是洞，改成选中时一起改（`product/backlog.md` Stash）：
-- 收尾还原暂存区失败会盖住 stash 的结果：成功当失败（stash 其实在），失败只看到 restore 的错。`commit.ts` 是撤回失败先吞掉、再抛原来的。
-- `unstage` 和 `stashPaths` 是两次 `repository.run`，中间能插进 checkout、commit。该并进同一条命令。
-- 现有测试只覆盖 stash 失败、restore 成功。
+另外：改名的两头一起交（同提交）。选中已暂存删除时先退暂存，代价是 Apply 回来后改名显示成新增 + 删除两行。
 
 IDEA、VS Code git、GitLens 都是一条 `stash push`，没有「先退暂存再还原」。这条绕法是我们为上面那个 git 坑加的。
 

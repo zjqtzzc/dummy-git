@@ -43,6 +43,7 @@ export const MenuContextKey = {
   KeepFile: "dummyGit.keepFile",
   RemoveConflictFile: "dummyGit.removeConflictFile",
   RollbackFile: "dummyGit.rollbackFile",
+  StashFiles: "dummyGit.stashFiles",
   AddUntracked: "dummyGit.addUntracked",
   DeleteUntracked: "dummyGit.deleteUntracked",
 } as const;

@@ -43,13 +43,13 @@
 | `webview/src/logic/log/graph/`、`refLabels.ts`、`graphOptions.ts`、`log/GraphCell.vue` | `product/features/graph.md` |
 | `webview/src/log/BranchTree.vue`、`logic/log/branchTree.ts`、`git/commands/branch.ts` | `product/features/branches.md` |
 | `webview/src/commit/CommitApp.vue`、`logic/commit/`、`git/commands/commit.ts`、`rollback.ts`、`status.ts` | `product/features/commit.md` |
-| `webview/src/commit/StashView.vue`、`logic/stash/`、`git/commands/stash.ts` | `product/features/stash.md` |
+| `webview/src/commit/StashView.vue`、`webview/src/stash/`、`logic/stash/`、`git/commands/stash.ts` | `product/features/stash.md` |
 | `webview/src/tree/`、`logic/tree/`、`ui/CheckBox.vue`、`vscode/diff.ts` | `product/features/trees.md` |
 | `ui/ToolButton.vue`、`ui/MenuButton.vue`、`ui/PopupMenu.vue`、`ui/PopupList.vue`、`logic/popupMenu.ts`、`logic/popupPlacement.ts` | `product/features/menus.md` |
 | `git/commands/remote.ts`、`update.ts`、`push.ts`、`core/autoFetch.ts`、`webview/src/push/`、`logic/push/` | `product/features/sync.md` |
 | `git/commands/integrate.ts`、`resolve.ts`、`operation.ts`、`vscode/mergeEditor.ts` | `product/features/conflicts.md` |
 | `git/commands/reset.ts`、`reword.ts` | `product/features/history.md` |
-| `vscode/dialogPanel.ts`、`ui/DialogShell.vue`、`webview/src/rollback/` | `product/features/dialogs.md`；Rollback 见 `product/features/commit.md` |
+| `vscode/dialogPanel.ts`、`ui/DialogShell.vue`、`webview/src/rollback/`、`webview/src/stash/` | `product/features/dialogs.md`；Rollback 见 `product/features/commit.md`，右键 Stash 见 `product/features/stash.md` |
 | `ipc/operation.ts`、`ipc/loggedUi.ts`、`ipc/brief.ts`、`git/cli.ts` 的日志 | `product/features/logging.md` |
 | `core/repository.ts`、`core/debounce.ts`、`vscode/watcher.ts`（刷新） | `tech/architecture.md` 第 11 题 |
 | `core/operation.ts`、`git/commands/lock.ts`（排队与锁） | `tech/architecture.md` 第 12 题、`tech/locking.md` |

@@ -78,6 +78,8 @@ function asDialogKind(value: unknown): DialogKind | undefined {
       return DialogKind.Reword;
     case DialogKind.Rollback:
       return DialogKind.Rollback;
+    case DialogKind.Stash:
+      return DialogKind.Stash;
     default:
       return undefined;
   }
@@ -366,6 +368,7 @@ const PARAM_GUARDS = {
   openPushDialog: asBranchTarget,
   openRewordDialog: asCommitTarget,
   openRollbackDialog: asPathsTarget,
+  openStashDialog: asPathsTarget,
   reword: (raw: Record<string, unknown>) => {
     const target = asCommitTarget(raw);
     const message = raw["message"];
@@ -503,7 +506,10 @@ const PARAM_GUARDS = {
   stash: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];
     const paths = asRelPaths(raw["paths"]);
-    return typeof repo === "string" && paths !== undefined ? { repo, paths } : undefined;
+    if (typeof repo !== "string" || paths === undefined) return undefined;
+    const message = raw["message"];
+    if (message === undefined) return { repo, paths };
+    return typeof message === "string" ? { repo, paths, message } : undefined;
   },
   amend: (raw: Record<string, unknown>) => {
     const repo = raw["repo"];

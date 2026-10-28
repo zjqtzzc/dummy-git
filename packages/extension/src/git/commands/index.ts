@@ -37,12 +37,11 @@
  * | `isValidBranchName` | `check-ref-format --branch <名字>` | — | — |
  * | `getStashes` | `stash list -z --format=…` | — | — |
  * | `stashAll` | `stash push -u` | — | — |
- * | `stashPaths` | `write-tree` + `diff --cached --name-only --no-renames -z` + `restore --staged -- :(literal)<没勾的>` + `stash push -u -- :(literal)<路径…>` + `restore --source=<树> --staged -- :(literal)<没勾的>` | `git restore` | 2.23 |
+ * | `stashPaths` | `write-tree` + `diff --cached --name-status --no-renames -z` + `restore --staged -- :(literal)<没选的与选中的已暂存删除>` + `stash push -u [-m <说明>] -- :(literal)<路径…>` + `restore --source=<树> --staged -- :(literal)<没选的>` | `git restore` | 2.23 |
  * | `applyStash` | `stash apply <hash>` | — | — |
  * | `popStash` | `stash list …` 找序号 + `stash pop stash@{n}` | — | — |
  * | `dropStash` | `stash list …` 找序号 + `stash drop stash@{n}` | — | — |
  * | `renameStash` | `stash list …` 找序号 + `stash drop stash@{n}` + `stash store -m <说明> <hash>` | — | — |
- * | `unstage` | `restore --staged -- :(literal)<路径…>` | `git restore` | 2.23 |
  * | `addPaths` | `add -- :(literal)<路径>…` | — | — |
  * | `removeConflictPaths` | `rm -q -- :(literal)<路径>…` | — | — |
  * | `continueInProgress` | `merge` / `rebase` / `cherry-pick` / `revert --continue`，环境 `GIT_EDITOR=true` | — | — |
@@ -130,7 +129,6 @@ export {
   renameStash,
   stashAll,
   stashPaths,
-  unstage,
 } from "./stash.js";
 export { getStatus } from "./status.js";
 export {

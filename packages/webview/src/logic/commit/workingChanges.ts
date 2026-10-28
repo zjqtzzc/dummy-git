@@ -166,6 +166,27 @@ const ROLLBACK = menuItem({
   value: (paths) => ({ paths }),
 });
 
+/** 右键 Stash：已跟踪或未跟踪都行，混着冲突就没有（全部严格）。工具栏永远存全部，不用这份。 */
+function stashablePath(target: FileMenuTarget | null): string | undefined {
+  if (target === null) return undefined;
+  switch (target.kind) {
+    case FileMenuKind.Conflict:
+      return undefined;
+    case FileMenuKind.Change:
+    case FileMenuKind.Untracked:
+      return target.path;
+    default:
+      return assertNever(target, "stashablePath");
+  }
+}
+
+const STASH = menuItem({
+  view: MenuView.Expanded,
+  key: MenuContextKey.StashFiles,
+  pick: stashablePath,
+  value: (paths) => ({ paths }),
+});
+
 /**
  * Commit 面板文件的右键菜单项，顺序无关（菜单里的顺序由 `package.json` 的 `group` 定）。
  * 除了 Open File 与 Open in Merge Editor（只对点中的一个文件），都是展开看、全部严格：
@@ -205,6 +226,7 @@ const FILE_MENU: readonly MenuItem<FileMenuTarget | null>[] = [
     value: (paths) => ({ paths }),
   }),
   ROLLBACK,
+  STASH,
   menuItem({
     view: MenuView.Expanded,
     key: MenuContextKey.AddUntracked,
@@ -272,7 +294,7 @@ export function workingMenuContext(
 /**
  * 工具栏 Rollback 撤哪些：和右键的 Rollback 同一份规则（`ROLLBACK`）；
  * 什么都没选时撤 `Changes` 组的全部。
- * 撤不了（选中的不全是已跟踪的改动，或没选且没有已跟踪的改动）时缺席，按钮置灰。不看勾选：勾选只管提交与 Stash。
+ * 撤不了（选中的不全是已跟踪的改动，或没选且没有已跟踪的改动）时缺席，按钮置灰。不看勾选：勾选只管提交。
  */
 export function rollbackArgs(
   conflicts: readonly ConflictFile[],
@@ -533,6 +555,16 @@ export function rollbackGroups(files: readonly WorkingFile[]): FileGroup[] {
   return [{ id: CHANGES_GROUP, label: "Changes", entries: tracked.map(toEntry) }];
 }
 
+/** Stash 对话框：已跟踪的改动和未跟踪文件，不含冲突。 */
+export function stashGroups(files: readonly WorkingFile[]): FileGroup[] {
+  const tracked = files.filter((file) => file.status !== WorkingStatus.Untracked);
+  const untracked = files.filter((file) => file.status === WorkingStatus.Untracked);
+  return [
+    { id: CHANGES_GROUP, label: "Changes", entries: tracked.map(toEntry) },
+    { id: UNVERSIONED_GROUP, label: "Unversioned Files", entries: untracked.map(toEntry) },
+  ];
+}
+
 /**
  * 打开 Rollback 对话框时预勾哪些：只要还在 Changes 里的。
  * `requested` 是 Commit 面板刚才要撤的那些路径。
@@ -545,6 +577,32 @@ export function precheckedPaths(
     files.filter((file) => file.status !== WorkingStatus.Untracked).map((file) => file.path),
   );
   return new Set(requested.filter((path) => tracked.has(path)));
+}
+
+/**
+ * 打开 Stash 对话框时预勾哪些：还在 Changes 或 Unversioned 里的。
+ * `requested` 是 Commit 面板刚才要存的那些路径。
+ */
+export function precheckedStashPaths(
+  requested: readonly string[],
+  files: readonly WorkingFile[],
+): ReadonlySet<string> {
+  const present = new Set(files.map((file) => file.path));
+  return new Set(requested.filter((path) => present.has(path)));
+}
+
+/**
+ * git 不传 `-m` 时那种说明：`WIP on main: 1a2b3c4 fix login`。
+ * detached 是 `WIP on (no branch): …`；还没有任何提交就没有 hash 与说明。
+ */
+export function defaultStashMessage(
+  branch: string | undefined,
+  hash: string | undefined,
+  subject: string | undefined,
+): string {
+  const where = branch ?? "(no branch)";
+  if (hash === undefined || subject === undefined) return `WIP on ${where}`;
+  return `WIP on ${where}: ${hash.slice(0, 7)} ${subject}`;
 }
 
 /** 对话框 `data-subject` 里的预勾路径。坏掉就当成一份都没有。 */

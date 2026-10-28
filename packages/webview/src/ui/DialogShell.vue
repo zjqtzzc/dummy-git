@@ -4,7 +4,7 @@
  *
  * 一列，最宽 680px，水平居中，从顶上排。内容超出时只有中间滚动，标题与按钮栏不动。
  * 各对话框只往插槽里填：默认插槽是内容，`buttons` 是按钮，主按钮放最后（排在最右）；
- * `status` 可选，画在底栏左侧（Rollback 写勾了几个文件）。
+ * `status` 可选，画在底栏左侧（Rollback / Stash 写勾了几个文件）。
  */
 defineProps<{ title: string; description: string }>();
 const slots = defineSlots<{ default?(): unknown; buttons?(): unknown; status?(): unknown }>();

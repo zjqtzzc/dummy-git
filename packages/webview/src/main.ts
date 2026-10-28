@@ -16,6 +16,7 @@ import { Client, report, sendReportsTo } from "./logic/client.js";
 import PushApp from "./push/PushApp.vue";
 import RewordApp from "./reword/RewordApp.vue";
 import RollbackApp from "./rollback/RollbackApp.vue";
+import StashApp from "./stash/StashApp.vue";
 import { transport } from "./vscodeApi.js";
 
 /**
@@ -41,6 +42,7 @@ const APPS: Readonly<Record<string, Component>> = {
   "dummyGit.push": PushApp,
   "dummyGit.rollback": RollbackApp,
   "dummyGit.reword": RewordApp,
+  "dummyGit.stash": StashApp,
 };
 const root = document.getElementById("root");
 const app = APPS[root?.dataset["view"] ?? ""];

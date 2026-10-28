@@ -77,6 +77,7 @@ const MENU_COMMANDS: readonly MenuCommand[] = [
   menuCommand(MenuContextKey.KeepFile, "markResolved"),
   menuCommand(MenuContextKey.RemoveConflictFile, "removeConflictFile"),
   menuCommand(MenuContextKey.RollbackFile, "openRollbackDialog"),
+  menuCommand(MenuContextKey.StashFiles, "openStashDialog"),
   menuCommand(MenuContextKey.AddUntracked, "addUntracked"),
   menuCommand(MenuContextKey.DeleteUntracked, "deleteUntracked"),
   menuCommand(MenuContextKey.PopStash, "popStash"),

@@ -241,15 +241,15 @@ async function rollbackSelected(): Promise<void> {
   }
 }
 
-/** 有改动就能存：勾了文件存勾选的，什么都没勾存全部。 */
+/** 工具栏永远存全部，不看勾选、不看选中。 */
 const canStash = computed(() => !busy.value && files.value.length > 0);
 
-/** 存 stash：路径为空时扩展存全部改动。完成消息由扩展显示在状态栏，失败由错误关口报。 */
-async function stashChecked(): Promise<void> {
+/** 完成消息由扩展显示在状态栏，失败由错误关口报。 */
+async function stashAll(): Promise<void> {
   if (repo.value === undefined || !canStash.value) return;
   stashing.value = true;
   try {
-    await props.client.request("stash", { repo: repo.value, paths: [...checked.value] });
+    await props.client.request("stash", { repo: repo.value, paths: [] });
   } catch (cause) {
     report(cause);
   } finally {
@@ -433,9 +433,9 @@ onMounted(async () => {
       />
       <ToolButton
         :icon="appIcon(AppIcon.Stash)"
-        :title="checked.size > 0 ? 'Stash Selected' : 'Stash All'"
+        title="Stash All"
         :disabled="!canStash"
-        @click="stashChecked"
+        @click="stashAll"
       />
       <MenuButton
         :icon="appIcon(AppIcon.ViewOptions)"

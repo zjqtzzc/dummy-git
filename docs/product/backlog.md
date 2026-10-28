@@ -54,8 +54,6 @@
 
 ## Stash（`product/features/stash.md`）
 
-- Stash 从勾选改为和 Rollback 一样看选中（2026-10-27 项目负责人定）。工具栏与右键同一份规则：选中目录或组等于它下面列出的全部；什么都没选时工具栏 Stash 存全部。勾选只剩提交。Stash 仍可含未跟踪（带 `-u`），和 Rollback 只管 `Changes` 不同；选中里混着冲突文件就置灰。不另开确认页。做的时候把 `product/features/stash.md`「Stash Selected」里那两处一起改。
-- 单文件 Stash：只把这一个文件的改动存起来。
 - 只存已暂存，或只存未暂存的那一部分。
 - Apply / Pop 时可选还原暂存状态（`stash apply --index`，同 IDEA 的 Reinstate index）：现在取回后全部变成未暂存。
 
@@ -96,7 +94,7 @@
 
 ## 技术债与触发条件
 
-- 对话框的共用部分抽出来：协议里每种一条的 `openPushDialog` / `openRewordDialog` / `openRollbackDialog` 合成一条通用的打开命令；页面里各自写的「标签 + 控件」一行与窄屏上下排、输入框读值（`wrappedElement`）、多行说明框（Commit 面板也有一份），抽成 `ui/` 组件。现在有推送、改说明、Rollback 三处用了这种标签页，**先不抽**（2026-10-27 项目负责人定：第三种出现仍不抽）。
+- 对话框的共用部分抽出来：协议里每种一条的 `openPushDialog` / `openRewordDialog` / `openRollbackDialog` / `openStashDialog` 合成一条通用的打开命令；页面里各自写的「标签 + 控件」一行与窄屏上下排、输入框读值（`wrappedElement`）、多行说明框（Commit 面板也有一份），抽成 `ui/` 组件。现在有推送、改说明、Rollback、右键 Stash 四处用了这种标签页，**先不抽**（2026-10-27 项目负责人定：第四种出现仍不抽）。
 - 继承来的 `GIT_ASKPASS`：在 VS Code 的终端里跑 `pnpm check`，`cli.test.ts` 的「没给脚本：直接失败」会去问 VS Code 自己的 askpass（十几秒后成功返回，测试失败，还可能弹一次输入框）；扩展不传脚本时，也会继承宿主环境里的 `GIT_ASKPASS`。要定：测试与 `GitCli` 是否清掉继承来的 `GIT_ASKPASS` 等变量（`tech/traps.md` 有临时绕开的办法）。
 
 ## 发布

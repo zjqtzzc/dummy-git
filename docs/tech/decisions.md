@@ -159,4 +159,4 @@ codicon 的照抄版（Clear、History 等）不用搬，codicon 字体本来就
 
 ## 标签页对话框先不抽共用部分（2026-10-27）
 
-推送、改说明、Rollback 三处都用编辑器标签页对话框（`product/features/dialogs.md`）。第三种出现时本该抽打开命令和「标签 + 控件」那一行，先不抽。触发条件见 `product/backlog.md`「技术债」。
+推送、改说明、Rollback、右键 Stash 四处都用编辑器标签页对话框（`product/features/dialogs.md`）。第三种出现时本该抽打开命令和「标签 + 控件」那一行，第四种出现仍不抽。触发条件见 `product/backlog.md`「技术债」。

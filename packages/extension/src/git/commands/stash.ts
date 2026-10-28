@@ -30,45 +30,70 @@ export const stashAll: GitCommand<[repository: string], string> = {
 };
 
 /**
- * 只存这些路径：`git stash push -u -- <路径…>`。勾了的未跟踪文件一起存；没勾的原样留下。
+ * 只存这些路径：`git stash push -u [-m <说明>] -- <路径…>`。选中的未跟踪文件一起存；没选的原样留下。
+ * `message` 缺席或空串就不传 `-m`，说明用 git 自动生成的。
  *
  * 坑一：`stash push -- <路径>` 只按路径清理工作区，存进去的却是**整个暂存区**——
- * 没勾的已暂存改动（新增、改名、删除）会一起进 stash，同时还留在工作区，Apply 时再来一遍
- * （实测 git 2.25、2.43）。所以先记下暂存区（`write-tree`），把没勾的已暂存路径退回成未暂存，
+ * 没选的已暂存改动（新增、改名、删除）会一起进 stash，同时还留在工作区，Apply 时再来一遍
+ * （实测 git 2.25、2.43）。所以先记下暂存区（`write-tree`），把没选的已暂存路径退回成未暂存，
  * stash 完再从记下的那棵树原样还原暂存区（部分暂存的文件也还原成暂存的那一版）。
- * stash 失败也还原。四步在同一条本地道命令里，中间插不进我们自己的别的写操作。
+ * stash 失败也还原。几步在同一条本地道命令里，中间插不进我们自己的别的写操作。
  *
  * 坑二：路径里有**已暂存的删除**（改名的旧路径、`git rm` 过的文件）时，git 先存下 stash、
  * 再在清理工作区时报 `pathspec did not match` 退出——stash 建了，改动还留在工作区（实测 git 2.43）。
- * 所以调用方要先用 `unstage` 把它们退回成未暂存的删除。
+ * 所以 stash 之前把它们退回成未暂存的删除。代价：Apply 回来后改名显示成新增 + 删除两行。
+ *
+ * 收尾还原暂存区失败不盖住 stash 的结果：成功就当成功，失败仍抛原来的错。
  */
-export const stashPaths: GitCommand<[repository: string, paths: readonly string[]], string> = {
+export const stashPaths: GitCommand<
+  [repository: string, paths: readonly string[], message?: string],
+  string
+> = {
   lock: LockPolicy.Exclusive,
 
-  execute: async (cli, repository, paths) => {
+  execute: async (cli, repository, paths, message) => {
     const options = { cwd: repository };
     const index = (await run(cli, ["write-tree"], options)).stdout.trim();
-    // 不写 HEAD：还没有提交的仓库也能跑（对空树比），stash 自己再报「没有初始提交」。
     const staged = await run(
       cli,
-      ["diff", "--cached", "--name-only", "--no-renames", "-z"],
+      ["diff", "--cached", "--name-status", "--no-renames", "-z"],
       options,
     );
     const selected = new Set(paths);
-    const others = staged.stdout.split("\0").filter((path) => path !== "" && !selected.has(path));
-    const otherSpecs = others.map(literal);
-    if (others.length > 0) await run(cli, ["restore", "--staged", "--", ...otherSpecs], options);
-    try {
-      const { stdout } = await run(
+    const others: string[] = [];
+    const selectedDeletions: string[] = [];
+    const tokens = staged.stdout.split("\0");
+    for (let i = 0; i + 1 < tokens.length; i += 2) {
+      const status = tokens[i];
+      const path = tokens[i + 1];
+      if (status === undefined || path === undefined || path === "") continue;
+      if (!selected.has(path)) others.push(path);
+      else if (status === "D") selectedDeletions.push(path);
+    }
+    const unstageNow = [...others, ...selectedDeletions];
+    const restoreIndex = async (list: readonly string[]) => {
+      if (list.length === 0) return;
+      await run(
         cli,
-        ["stash", "push", "-u", "--", ...paths.map(literal)],
+        ["restore", `--source=${index}`, "--staged", "--", ...list.map(literal)],
         options,
       );
-      return firstLine(stdout);
-    } finally {
-      if (others.length > 0) {
-        await run(cli, ["restore", `--source=${index}`, "--staged", "--", ...otherSpecs], options);
+    };
+    try {
+      if (unstageNow.length > 0) {
+        await run(cli, ["restore", "--staged", "--", ...unstageNow.map(literal)], options);
       }
+      const named = message !== undefined && message !== "" ? ["-m", message] : [];
+      const { stdout } = await run(
+        cli,
+        ["stash", "push", "-u", ...named, "--", ...paths.map(literal)],
+        options,
+      );
+      await restoreIndex(others).catch(() => undefined);
+      return firstLine(stdout);
+    } catch (error) {
+      await restoreIndex(unstageNow).catch(() => undefined);
+      throw error;
     }
   },
 };

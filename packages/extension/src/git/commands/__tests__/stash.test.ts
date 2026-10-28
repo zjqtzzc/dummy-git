@@ -32,8 +32,8 @@ describe("getStashes", () => {
 
 describe("stashPaths", () => {
   /**
-   * 没勾的：暂存的新增 n、暂存的改名 r → r2、暂存的删除 d、部分暂存的 p、未暂存的修改 f1；
-   * 勾了的：未暂存的修改 s、未跟踪的 u。
+   * 没选的：暂存的新增 n、暂存的改名 r → r2、暂存的删除 d、部分暂存的 p、未暂存的修改 f1；
+   * 选中的：未暂存的修改 s、未跟踪的 u。
    */
   const scene = () => {
     const repo = makeTempRepo("stash-paths");
@@ -54,7 +54,7 @@ describe("stashPaths", () => {
   };
   const status = (repo: string) => git(repo, ["status", "--porcelain"]).trimEnd().split("\n");
 
-  it("没勾的已暂存改动不进 stash，暂存区原样留着", async () => {
+  it("没选的已暂存改动不进 stash，暂存区原样留着", async () => {
     const repo = scene();
     const before = status(repo);
     await stashPaths.execute(cli, repo, ["s", "u"]);
@@ -66,11 +66,42 @@ describe("stashPaths", () => {
     expect(git(repo, ["show", ":p"])).toBe("staged\n");
   });
 
-  it("stash 失败也还原暂存区", async () => {
-    // 勾了已暂存的删除又没先退回（见坑二）：git 报 pathspec did not match。
+  it("选中已暂存的删除能存走，不报 pathspec", async () => {
     const repo = scene();
+    await stashPaths.execute(cli, repo, ["d"]);
+    expect(git(repo, ["diff", "--name-only", "stash@{0}^1", "stash@{0}"]).trim()).toBe("d");
+    expect(status(repo)).not.toContain("D  d");
+  });
+
+  it("带说明：列表是 On main: 说明，不带则 git 自己生成 WIP", async () => {
+    const named = makeTempRepo("stash-paths-message");
+    writeFileSync(join(named, "s"), "changed\n");
+    await stashPaths.execute(cli, named, ["s"], "wip login");
+    expect(git(named, ["stash", "list"]).trim()).toMatch(/On main: wip login$/);
+
+    const wip = makeTempRepo("stash-paths-wip");
+    writeFileSync(join(wip, "s"), "changed\n");
+    await stashPaths.execute(cli, wip, ["s"]);
+    expect(git(wip, ["stash", "list"]).trim()).toMatch(/^stash@\{0\}: WIP on main: /);
+  });
+
+  it("stash 失败也还原暂存区", async () => {
+    const repo = makeTempRepo("stash-fail-restore");
+    git(repo, ["checkout", "-qb", "other"]);
+    writeFileSync(join(repo, "f1"), "theirs\n");
+    git(repo, ["commit", "-am", "theirs"]);
+    git(repo, ["checkout", "-q", "main"]);
+    writeFileSync(join(repo, "f1"), "ours\n");
+    git(repo, ["commit", "-am", "ours"]);
+    try {
+      git(repo, ["merge", "--no-commit", "other"]);
+    } catch {
+      // 留下未合并的 f1，stash 会拒绝
+    }
+    writeFileSync(join(repo, "keep"), "keep\n");
+    git(repo, ["add", "keep"]);
     const before = status(repo);
-    await expect(stashPaths.execute(cli, repo, ["d"])).rejects.toThrow(/pathspec/);
+    await expect(stashPaths.execute(cli, repo, ["f1"])).rejects.toThrow();
     expect(status(repo)).toEqual(before);
   });
 
