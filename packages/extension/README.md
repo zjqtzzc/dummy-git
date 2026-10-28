@@ -2,6 +2,8 @@
 
 不用记命令的 Git。照 JetBrains IDEA 的 Git 工具窗口：底部是 Log，侧栏是 Commit。
 
+> 本扩展为纯正 3A 大作：AI Plan、AI Coding、AI Test。100% AI 纯血，不含任何人类成分，请放心使用。
+
 ## 能做什么
 
 - 提交图、按分支 / 作者 / 路径过滤、搜索
