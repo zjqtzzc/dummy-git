@@ -22,15 +22,19 @@ import Tree from "./Tree.vue";
  * 给了 `checked`（勾选的路径）才有复选框；勾选状态由使用方持有，这里只转发 `check`。
  * 给了 `menu` 才有右键菜单：选中换成文件（`FileRow`，哪一组的哪个）交给它，目录与组是 `null`。
  */
-const props = defineProps<{
-  groups: readonly FileGroup[];
-  checked?: ReadonlySet<string> | undefined;
-  /** 按目录分组（默认）；为假时文件平铺在组下面（View Options 的 `Group By` → `Directory`）。 */
-  byDirectory?: boolean;
-  menu?:
-    | ((views: MenuViews<FileRow | null>) => Readonly<Record<string, string | MenuArgs>>)
-    | undefined;
-}>();
+const props = withDefaults(
+  defineProps<{
+    groups: readonly FileGroup[];
+    checked?: ReadonlySet<string> | undefined;
+    /** 按目录分组（默认）；为假时文件平铺在组下面（View Options 的 `Group By` → `Directory`）。 */
+    byDirectory?: boolean;
+    menu?:
+      | ((views: MenuViews<FileRow | null>) => Readonly<Record<string, string | MenuArgs>>)
+      | undefined;
+  }>(),
+  // 默认值要写在这里，不能在用时写 `byDirectory !== false`：Vue 把没传的布尔 prop 当成 `false`。
+  { byDirectory: true },
+);
 const emit = defineEmits<{
   open: [row: FileRow, mode: DiffOpenMode];
   /** 想把这些路径改成勾（`true`）或不勾。 */
@@ -48,7 +52,7 @@ const slots = defineSlots<{
 }>();
 
 const light = useLightTheme();
-const fileNodes = computed(() => buildFileTree(props.groups, props.byDirectory !== false));
+const fileNodes = computed(() => buildFileTree(props.groups, props.byDirectory));
 const nodes = computed(() => toTreeNodes(fileNodes.value, light.value));
 /** 节点 id → 文件。节点 id 带着组（`scopedId`），对外一律用路径。 */
 const byId = computed(() => filesById(fileNodes.value));

@@ -54,6 +54,7 @@
 | 快捷键 | 与用户装的 IntelliJ 键位插件冲突 |
 | 进度条 | 见上面第 2 节 |
 | 虚拟列表的行 | `v-for` 的 key 重复时，生产构建不报错，旧行留在页面上删不掉。key 用的节点 id 必须在整棵树里唯一 |
+| 可选的布尔 prop | Vue 把没传的 `foo?: boolean` 当成 `false`，不是 `undefined`。在用时写 `foo !== false` 当「默认为真」不成立：`FileTree` 的 `byDirectory` 因此让没传它的 Log 右栏、Rollback 与 Stash 标签全成了平铺（2026-10-28 发现，第 18 阶段起）。默认为真的写进 `withDefaults` |
 
 ## 4. 做事的教训
 
