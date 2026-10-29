@@ -93,6 +93,7 @@
 - Log 详情预取失败后，可见范围不变就不再要，行停在占位。滚一下会再取。失败立刻重试要防死循环。
 - `#冲突` Mark as Resolved 读文件失败：删了的不查、直接 `git add`（接受删除，见 `product/features/conflicts.md`）。权限等非 ENOENT 也当成空文件，会不问就 add。
 - 喂 git 的 stdin 写入失败（非 EPIPE）会变成扩展宿主未捕获异常，真正原因在退出码。EPIPE 已接住。
+- 工作区里嵌套着另一个仓库（目录自带 `.git`）：`git status -uall` 不展开它，只报一条带斜杠的 `? <目录>/`（git 2.25、2.43 实测）。我们把它当文件路径：树里切出一个空名字的文件；Delete 的确认框写成 `Delete ?`，确认后 `rm` 报 `EISDIR`；Add 会把整个仓库作为 gitlink 加进暂存区。要定的是在 parser 里丢掉它，还是单独一种形态显示、不给 Add / Delete。
 
 ## 技术债与触发条件
 
