@@ -8,6 +8,7 @@ import { createHandlers, type HandlerUi } from "./ipc/handlers.js";
 import { loggedUi } from "./ipc/loggedUi.js";
 import { Operations, tagged } from "./ipc/operation.js";
 import { Router, type Transport } from "./ipc/router.js";
+import { Activity } from "./vscode/activity.js";
 import { copyText } from "./vscode/clipboard.js";
 import { choose, confirm, notifyChoice } from "./vscode/confirm.js";
 import { DialogPanels } from "./vscode/dialogPanel.js";
@@ -65,6 +66,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const source = new Promise<ViewSource>((resolve) => {
     settle = resolve;
   });
+  // 正在做的操作：进度出口登记，状态栏转圈。状态栏要等仓库找到才有，先建好接住。
+  const activity = new Activity();
   // handler 用到的界面动作。对话框的标签页要等仓库找到才有（`dialogs` 在下面），
   // 而 handler 只在有仓库之后才会被调到。
   // 套一层记录：问答与完成消息进日志（`ipc/loggedUi.ts`）。
@@ -82,7 +85,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       openFile,
       openMergeEditor,
       pick,
-      withProgress,
+      withProgress: (title, task, done) => withProgress(activity, title, task, done),
       openDialog: (dialog, subject, title) => dialogs?.open(dialog, subject, title),
       closeDialog: (dialog) => dialogs?.close(dialog),
     },
@@ -155,8 +158,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // diff 里历史版本的内容。重新加载窗口后恢复的 diff 标签也靠它（`onFileSystem:dummygit` 激活）。
   context.subscriptions.push(registerRevisionFileSystem(repository, errors));
 
-  // 状态栏：分支名 + 同步状态，点击开关 Log 面板。
-  context.subscriptions.push(new StatusBar(repository, () => logVisible));
+  // 状态栏：分支名 + 同步状态，有操作在跑时转圈，点击开关 Log 面板。
+  context.subscriptions.push(new StatusBar(repository, activity, () => logVisible));
 
   settle({ kind: ViewSourceKind.Repository, repository });
 }

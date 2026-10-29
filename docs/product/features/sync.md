@@ -5,7 +5,7 @@
 
 ## 共同的
 
-- **按钮不转圈、不置灰**（选中的不适用时除外）：网络命令在同一条道里依次执行、和本地写命令互不等待（`tech/architecture.md` 第 12 题），连点只是排队，不会撞引用锁。进度在状态栏：进行中转圈加文字，结束后显示几秒完成消息（`Fetched all remotes`、`Pushed feat → origin/feat`、`feat is up to date`）；失败走错误出口。
+- **按钮不转圈、不置灰**（选中的不适用时除外）：网络命令在同一条道里依次执行、和本地写命令互不等待（`tech/architecture.md` 第 12 题），连点只是排队，不会撞引用锁。进度在状态栏：进行中状态栏的分支项转圈（`product/features/branches.md`「状态栏」），结束后显示几秒完成消息（`Fetched all remotes`、`Pushed feat → origin/feat`、`feat is up to date`）；失败走错误出口。
 - **要账号密码或 SSH 口令时直接报错，不等**（为什么、怎么做见 `tech/architecture.md` 第 16 题）。实测 HTTPS 认证 1.5 秒失败，SSH 主机指纹确认 0.9 秒失败。弹框让人输入在第 6 阶段做（`product/roadmap.md`）。
 - 提示文字先用 git 原文。只有 git 第一行说不清楚的才自己写一句，比如推送被拒：第一行是 `To github.com:…`，原因在后面几行。
 

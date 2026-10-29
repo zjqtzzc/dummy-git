@@ -144,13 +144,6 @@ export function registerWebviewView(
             assertNever(resolved, "resolveWebviewView");
         }
 
-        onVisibility(view.visible);
-        const reportVisibility = view.onDidChangeVisibility(() => onVisibility(view.visible));
-        view.onDidDispose(() => {
-          reportVisibility.dispose();
-          onVisibility(false);
-        });
-
         const { repository } = resolved;
         view.webview.options = {
           enableScripts: true,
@@ -179,10 +172,13 @@ export function registerWebviewView(
           if (domains.length > 0) router.broadcast(repository.location.root, domains);
         };
         const unsubscribe = repository.onDidChange((domains) => broadcast(hidden.changed(domains)));
-        const visibility = view.onDidChangeVisibility(() =>
-          broadcast(hidden.setVisible(view.visible)),
-        );
+        onVisibility(view.visible);
+        const visibility = view.onDidChangeVisibility(() => {
+          onVisibility(view.visible);
+          broadcast(hidden.setVisible(view.visible));
+        });
         view.onDidDispose(() => {
+          onVisibility(false);
           alive = false;
           receiving.dispose();
           visibility.dispose();
