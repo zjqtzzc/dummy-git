@@ -42,6 +42,7 @@
 | `webview/src/log/`、`webview/src/logic/log/`（提交列表、过滤、高亮、详情、复制、提交右键菜单） | `product/features/log.md` |
 | `webview/src/logic/log/graph/`、`refLabels.ts`、`graphOptions.ts`、`log/GraphCell.vue` | `product/features/graph.md` |
 | `webview/src/log/BranchTree.vue`、`logic/log/branchTree.ts`、`git/commands/branch.ts` | `product/features/branches.md` |
+| `vscode/statusBar.ts`、`vscode/branchStatus.ts`（状态栏） | `product/features/branches.md`「状态栏」 |
 | `webview/src/commit/CommitApp.vue`、`logic/commit/`、`git/commands/commit.ts`、`rollback.ts`、`status.ts` | `product/features/commit.md` |
 | `webview/src/commit/StashView.vue`、`webview/src/stash/`、`logic/stash/`、`git/commands/stash.ts` | `product/features/stash.md` |
 | `webview/src/tree/`、`logic/tree/`、`ui/CheckBox.vue`、`vscode/diff.ts` | `product/features/trees.md` |

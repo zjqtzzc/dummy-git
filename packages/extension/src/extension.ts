@@ -29,6 +29,7 @@ import { openFile } from "./vscode/openFile.js";
 import { pick } from "./vscode/pick.js";
 import { notify, withProgress } from "./vscode/progress.js";
 import { registerRevisionFileSystem } from "./vscode/revisionFileSystem.js";
+import { StatusBar } from "./vscode/statusBar.js";
 import { watchRepository } from "./vscode/watcher.js";
 import { registerWebviewView, type ViewSource, ViewSourceKind } from "./vscode/webviewView.js";
 
@@ -95,9 +96,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       operation: (command, params, task) => operations.run(source, command, params, task),
       report: (error) => errors.report(error),
     });
-  for (const viewType of ["dummyGit.log", "dummyGit.commit"]) {
-    context.subscriptions.push(registerWebviewView(context, viewType, source, createRouter));
-  }
+  // 状态栏的开关按 Log 视图此刻是否可见决定开还是关。
+  let logVisible = false;
+  context.subscriptions.push(
+    registerWebviewView(context, "dummyGit.log", source, createRouter, (visible) => {
+      logVisible = visible;
+    }),
+    registerWebviewView(context, "dummyGit.commit", source, createRouter),
+  );
 
   // 与 VSCode 真正相关的只有「取出所有工作区目录」这一句，其余都在可在纯 node 下测的 open.ts 里。
   const directories = (vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath);
@@ -148,6 +154,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // diff 里历史版本的内容。重新加载窗口后恢复的 diff 标签也靠它（`onFileSystem:dummygit` 激活）。
   context.subscriptions.push(registerRevisionFileSystem(repository, errors));
+
+  // 状态栏：分支名 + 同步状态，点击开关 Log 面板。
+  context.subscriptions.push(new StatusBar(repository, () => logVisible));
 
   settle({ kind: ViewSourceKind.Repository, repository });
 }

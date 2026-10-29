@@ -125,6 +125,8 @@ export function registerWebviewView(
    * 回调的 `source` 是视图 id，日志里记作来源。
    */
   createRouter: (repository: Repository, transport: Transport, source: string) => Router,
+  /** 视图显示 / 收起 / 销毁时报告是否可见。展开之前视为不可见。 */
+  onVisibility: (visible: boolean) => void = () => {},
 ): vscode.Disposable {
   return vscode.window.registerWebviewViewProvider(
     viewType,
@@ -141,6 +143,13 @@ export function registerWebviewView(
           default:
             assertNever(resolved, "resolveWebviewView");
         }
+
+        onVisibility(view.visible);
+        const reportVisibility = view.onDidChangeVisibility(() => onVisibility(view.visible));
+        view.onDidDispose(() => {
+          reportVisibility.dispose();
+          onVisibility(false);
+        });
 
         const { repository } = resolved;
         view.webview.options = {
