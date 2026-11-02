@@ -89,9 +89,7 @@ describe("慢：超过 1 秒标 (slow)、记 warn", () => {
       .mockReturnValueOnce(100)
       .mockReturnValueOnce(1600)
       .mockReturnValueOnce(1700);
-    await new Operations(log).run("m", "newBranch", {}, () =>
-      waitingForUser(async () => null),
-    );
+    await new Operations(log).run("m", "newBranch", {}, () => waitingForUser(async () => null));
     expect(lines[1]).toBe("info #1 ✓ 1700ms（等用户 1500ms）");
   });
 

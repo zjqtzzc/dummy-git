@@ -122,12 +122,18 @@ export const deleteRemoteBranches: GitCommand<
   },
 };
 
-/** 名字能不能当分支名：`git check-ref-format --branch`，只看退出码。读命令，不排队。 */
+/**
+ * 名字能不能当分支名：`git check-ref-format --branch`，只看退出码。读命令，不排队。
+ * 输入框每敲一个键跑一次，不进日志。
+ */
 export const isValidBranchName: GitCommand<[repository: string, name: string], boolean> = {
   lock: LockPolicy.None,
 
   execute: async (cli, repository, name) => {
-    const result = await cli.exec(["check-ref-format", "--branch", name], { cwd: repository });
+    const result = await cli.exec(["check-ref-format", "--branch", name], {
+      cwd: repository,
+      unlogged: true,
+    });
     return result.exitCode === 0;
   },
 };

@@ -33,6 +33,11 @@ export interface ExecOptions {
    * 结果写在 stdout 里、又只有几行的命令才开（`push --porcelain` 每个引用一行）。
    */
   readonly logStdout?: boolean;
+  /**
+   * 整条命令不进日志。只给跟着用户敲键跑的校验用：每个键一条，只读、很快，
+   * 出事以后用不上，用户最后的答案由问答那行记。
+   */
+  readonly unlogged?: boolean;
 }
 
 /**
@@ -100,9 +105,10 @@ export class GitCli {
    */
   private makeLogOnce(
     args: readonly string[],
+    options: ExecOptions,
   ): (outcome: string, stderr?: string, stdout?: string) => void {
     const startedAt = Date.now();
-    let logged = false;
+    let logged = options.unlogged === true;
     return (outcome, stderr = "", stdout = ""): void => {
       if (logged) return;
       logged = true;
@@ -170,7 +176,7 @@ export class GitCli {
   /** 跑完一条命令，交回原始字节。非零退出码不抛；只有进程起不来或被信号杀死才 reject。 */
   execRaw(args: readonly string[], options: ExecOptions): Promise<RawExecResult> {
     return new Promise<RawExecResult>((resolve, reject) => {
-      const logOnce = this.makeLogOnce(args);
+      const logOnce = this.makeLogOnce(args, options);
       // 已经取消了就别起进程：批量取消时队列里排着的命令都拿到已 abort 的 signal，
       // 少了这一步就是几十次白起白杀。
       if (options.signal?.aborted === true) {

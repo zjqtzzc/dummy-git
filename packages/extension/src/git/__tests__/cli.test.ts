@@ -150,6 +150,16 @@ describe("日志", () => {
     await logged.exec(["rev-parse", "HEAD"], { cwd: fixtures.base, logStdout: true });
     expect(records.map((r) => r.stdout)).toEqual(["", head]);
   });
+
+  it("unlogged 的命令不记", async () => {
+    const records: GitCommandRecord[] = [];
+    const logged = new GitCli("git", { command: (r) => records.push(r) });
+    await logged.exec(["check-ref-format", "--branch", "x"], {
+      cwd: fixtures.base,
+      unlogged: true,
+    });
+    expect(records).toEqual([]);
+  });
 });
 
 describe("locale", () => {
