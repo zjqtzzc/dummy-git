@@ -1,10 +1,10 @@
 import { briefString } from "./brief.js";
 import type { HandlerUi } from "./handlers.js";
-import { type Log, tagged } from "./operation.js";
+import { type Log, tagged, waitingForUser } from "./operation.js";
 
 /**
  * 给 `HandlerUi` 套一层：问了用户什么、用户怎么答的、状态栏说了什么，都记进日志。
- * 套在出口上，handler 不用改；记的行带所在操作的编号。
+ * 套在出口上，handler 不用改；记的行带所在操作的编号。等回答的时间记到操作上（`waitingForUser`）。
  *
  * 打开文件、diff、合并编辑器、对话框不记：操作开头那行已经写了命令，它们只是那条命令的直接结果。
  */
@@ -17,28 +17,28 @@ export function loggedUi(ui: HandlerUi, log: Log): HandlerUi {
   return {
     ...ui,
     confirm: async (message, action, names) => {
-      const sure = await ui.confirm(message, action, names);
+      const sure = await waitingForUser(() => ui.confirm(message, action, names));
       note(`确认${quote(message)} → ${sure ? action : "取消"}`);
       return sure;
     },
     choose: async (message, actions, detail) => {
-      const index = await ui.choose(message, actions, detail);
+      const index = await waitingForUser(() => ui.choose(message, actions, detail));
       note(`选择${quote(message)} → ${answer(actions, index, "取消")}`);
       return index;
     },
     pick: async (title, items) => {
-      const index = await ui.pick(title, items);
+      const index = await waitingForUser(() => ui.pick(title, items));
       const labels = items.map((item) => item.label);
       note(`选择${quote(title)} → ${answer(labels, index, "取消")}`);
       return index;
     },
     notifyChoice: async (message, actions) => {
-      const index = await ui.notifyChoice(message, actions);
+      const index = await waitingForUser(() => ui.notifyChoice(message, actions));
       note(`通知${quote(message)} → ${answer(actions, index, "关掉")}`);
       return index;
     },
     askBranchName: async (title, value, validate) => {
-      const name = await ui.askBranchName(title, value, validate);
+      const name = await waitingForUser(() => ui.askBranchName(title, value, validate));
       note(`输入${quote(title)} → ${name === undefined ? "取消" : JSON.stringify(name)}`);
       return name;
     },

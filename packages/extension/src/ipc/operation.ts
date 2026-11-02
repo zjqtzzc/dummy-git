@@ -12,13 +12,35 @@ export interface Log {
   readonly debug: (line: string) => void;
 }
 
-/** 正在跑的操作的编号。跨 `await` 自动带着走，入口设一次，里面谁要谁取。 */
-const current = new AsyncLocalStorage<number>();
+/**
+ * 正在跑的操作：编号，以及到目前为止等用户回答花了多久。
+ * 跨 `await` 自动带着走，入口设一次，里面谁要谁取。
+ */
+interface Current {
+  readonly id: number;
+  waitedMs: number;
+}
+
+const current = new AsyncLocalStorage<Current>();
 
 /** 在操作里写的行带上它的编号；不在任何操作里（启动、文件监听）的原样。 */
 export function tagged(line: string): string {
-  const id = current.getStore();
-  return id === undefined ? line : `#${id} ${line}`;
+  const store = current.getStore();
+  return store === undefined ? line : `#${store.id} ${line}`;
+}
+
+/**
+ * 等用户回答（确认框、输入框、选择）：花的时间记到所在操作上。
+ * 操作的用时扣掉它再判断慢不慢——人打字、犹豫的几秒不是我们慢。
+ */
+export async function waitingForUser<T>(ask: () => Promise<T>): Promise<T> {
+  const started = Date.now();
+  try {
+    return await ask();
+  } finally {
+    const store = current.getStore();
+    if (store !== undefined) store.waitedMs += Date.now() - started;
+  }
 }
 
 /**
@@ -58,15 +80,16 @@ export class Operations {
     task: () => Promise<T>,
   ): Promise<T> {
     const id = this.next++;
+    const store: Current = { id, waitedMs: 0 };
     const started = Date.now();
     this.log.info(`#${id} ${source} → ${command} ${briefParams(params)}`);
     this.running.add(id);
     try {
-      const value = await current.run(id, task);
-      const ms = Date.now() - started;
+      const value = await current.run(store, task);
+      const took = timing(Date.now() - started, store.waitedMs);
       const result = briefResult(value);
-      const line = `#${id} ✓ ${ms}ms${slowMark(ms)}${result === "" ? "" : ` → ${result}`}`;
-      if (ms > SLOW_MS) this.log.warn(line);
+      const line = `#${id} ✓ ${took.text}${result === "" ? "" : ` → ${result}`}`;
+      if (took.slow) this.log.warn(line);
       else this.log.info(line);
       return value;
     } catch (error) {
@@ -74,8 +97,8 @@ export class Operations {
       // 详情由错误关口写，这里只记一行。
       const expected = error instanceof GitFailureError || error instanceof UserFacingError;
       const message = briefString(error instanceof Error ? error.message : String(error));
-      const ms = Date.now() - started;
-      const line = `#${id} ✗ ${ms}ms${slowMark(ms)} ${message}`;
+      const took = timing(Date.now() - started, store.waitedMs);
+      const line = `#${id} ✗ ${took.text} ${message}`;
       if (expected) this.log.warn(line);
       else this.log.error(line);
       throw error;
@@ -95,6 +118,9 @@ function briefParams(params: unknown): string {
   return brief(Object.fromEntries(Object.entries(params).filter(([key]) => key !== "repo")));
 }
 
-function slowMark(ms: number): string {
-  return ms > SLOW_MS ? " (slow)" : "";
+/** 用时写成 `2772ms（等用户 2740ms）`，没等过用户就只写总数；慢不慢按扣掉等用户之后的算。 */
+function timing(ms: number, waitedMs: number): { readonly text: string; readonly slow: boolean } {
+  const slow = ms - waitedMs > SLOW_MS;
+  const waited = waitedMs > 0 ? `（等用户 ${waitedMs}ms）` : "";
+  return { text: `${ms}ms${waited}${slow ? " (slow)" : ""}`, slow };
 }

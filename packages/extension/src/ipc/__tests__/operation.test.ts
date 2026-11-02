@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GitFailureError } from "../../git/failure.js";
 import { brief, briefGitCommand, briefResult, briefString } from "../brief.js";
-import { type Log, Operations, tagged } from "../operation.js";
+import { type Log, Operations, tagged, waitingForUser } from "../operation.js";
 
 /** 记下每一行与它的级别。 */
 function recorder(): { log: Log; lines: string[] } {
@@ -79,6 +79,20 @@ describe("慢：超过 1 秒标 (slow)、记 warn", () => {
     vi.spyOn(Date, "now").mockReturnValueOnce(0).mockReturnValueOnce(1500);
     await new Operations(log).run("m", "push", {}, async () => null);
     expect(lines[1]).toBe("warn #1 ✓ 1500ms (slow)");
+  });
+
+  it("等用户回答的时间写出来，但不算慢", async () => {
+    const { log, lines } = recorder();
+    // 操作开始 0，问用户 100 → 1600，操作结束 1700：我们自己只用了 200ms。
+    vi.spyOn(Date, "now")
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(100)
+      .mockReturnValueOnce(1600)
+      .mockReturnValueOnce(1700);
+    await new Operations(log).run("m", "newBranch", {}, () =>
+      waitingForUser(async () => null),
+    );
+    expect(lines[1]).toBe("info #1 ✓ 1700ms（等用户 1500ms）");
   });
 
   it("git 命令", () => {
