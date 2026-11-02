@@ -768,14 +768,27 @@ describe("handlers.newBranch", () => {
     }
   };
 
-  it("从远程分支建：切过去，不跟踪起点", async () => {
+  it("从远程分支建：不切过去，不跟踪起点", async () => {
     const { remote, repo } = makeTrackingRepos();
     git(remote, ["commit", "-q", "--allow-empty", "-m", "remote"]);
     git(repo, ["fetch", "-q", "origin"]);
     await newBranch(repo, "refs/remotes/origin/main", "origin/main", "fix");
-    expect(git(repo, ["branch", "--show-current"]).trim()).toBe("fix");
+    expect(git(repo, ["branch", "--show-current"]).trim()).toBe("main");
     expect(git(repo, ["rev-parse", "fix"])).toBe(git(remote, ["rev-parse", "main"]));
     expect(() => git(repo, ["rev-parse", "--abbrev-ref", "fix@{u}"])).toThrow();
+  });
+
+  it("工作区的改动和起点冲突也照样建，改动原样留着", async () => {
+    const repo = makeTempRepo("new-branch-dirty");
+    git(repo, ["switch", "-q", "-c", "develop"]);
+    writeFileSync(join(repo, "f1"), "develop\n");
+    git(repo, ["commit", "-qam", "develop"]);
+    git(repo, ["switch", "-q", "main"]);
+    writeFileSync(join(repo, "f1"), "dirty\n");
+    await newBranch(repo, "refs/heads/develop", "develop", "fix");
+    expect(git(repo, ["rev-parse", "fix"])).toBe(git(repo, ["rev-parse", "develop"]));
+    expect(git(repo, ["branch", "--show-current"]).trim()).toBe("main");
+    expect(readFileSync(join(repo, "f1"), "utf8")).toBe("dirty\n");
   });
 
   it("取消或空着确定：什么都不做", async () => {

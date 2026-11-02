@@ -29,7 +29,7 @@
  * | `fastForward` | `rev-parse --verify -q refs/heads/<B>`、`symbolic-ref -q HEAD`，是当前分支则 `merge --ff-only <目标>`，否则 `fetch . <目标>:refs/heads/<B>` | — | — |
  * | `switchBranch` | `switch <分支>` | `git switch` | 2.23 |
  * | `createTrackingBranch` | `switch -c <分支> --track <远程分支>` | `git switch` | 2.23 |
- * | `createBranch` | `switch -c <分支> --no-track <起点>` | `git switch` | 2.23 |
+ * | `createBranch` | `branch --no-track <分支> <起点>` | — | — |
  * | `renameBranch` | `branch -m <旧名> <新名>` | — | — |
  * | `deleteBranch` | `branch -d <分支>` | — | — |
  * | `forceDeleteBranch` | `branch -D <分支>` | — | — |

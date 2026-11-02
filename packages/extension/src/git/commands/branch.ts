@@ -37,23 +37,20 @@ export const createTrackingBranch: GitCommand<
 };
 
 /**
- * 从起点建一个新分支并切过去：`git switch -c <B> --no-track <起点>`。返回 git 自己说的那句。
+ * 从起点建一个新分支，不切过去：`git branch --no-track <B> <起点>`。只加一个引用，不碰工作区，
+ * 所以工作区有什么改动都挡不住它。git 不说话，没有返回值。
  *
  * `--no-track`：从远程分支建时 git 默认跟踪起点，新分支一 Push 就推到别人的分支上；
- * 不跟踪，第一次推送按推送规则推到同名并设上游。工作区改动挡住时连分支都不建。
+ * 不跟踪，第一次推送按推送规则推到同名并设上游。
  * 起点是完整引用名或提交 hash，不让 git 在同名的本地分支与远程分支之间猜。
  */
-export const createBranch: GitCommand<[repository: string, branch: string, start: string], string> =
-  {
-    lock: LockPolicy.Exclusive,
+export const createBranch: GitCommand<[repository: string, branch: string, start: string], void> = {
+  lock: LockPolicy.Exclusive,
 
-    execute: async (cli, repository, branch, start) => {
-      const { stderr } = await run(cli, ["switch", "-c", branch, "--no-track", start], {
-        cwd: repository,
-      });
-      return firstLine(stderr);
-    },
-  };
+  execute: async (cli, repository, branch, start) => {
+    await run(cli, ["branch", "--no-track", branch, start], { cwd: repository });
+  },
+};
 
 /**
  * 改分支名：`git branch -m <旧名> <新名>`。当前分支也行。上游照 git 默认随改名带过去

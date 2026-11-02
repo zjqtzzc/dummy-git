@@ -788,11 +788,8 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
     newBranch: async ({ start, startName }) => {
       const name = await askBranchName(`New branch from ${startName}`, "");
       if (name === undefined) return null;
-      await ui.withProgress(
-        `Creating ${name}…`,
-        () => repository.run(createBranch, repository.location.root, name, start),
-        (said) => said,
-      );
+      // 只建不切，同改名：只加一个引用，分支树里立刻看得见，不走进度出口；git 不说话，没有完成消息。
+      await repository.run(createBranch, repository.location.root, name, start);
       return null;
     },
     renameBranch: async ({ branch }) => {
