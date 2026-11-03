@@ -340,7 +340,7 @@ export interface Commands {
   };
   /**
    * 存 stash，未跟踪文件一起存。`paths` 是对话框勾上的文件；
-   * **空 = 全部改动**（工具栏 Stash All）。`message` 是对话框里改过的说明；缺席则 git 自己生成。
+   * **空 = 全部改动**。`message` 是对话框里改过的说明；缺席则 git 自己生成。
    */
   stash: {
     params: { repo: string; paths: readonly string[]; message?: string };

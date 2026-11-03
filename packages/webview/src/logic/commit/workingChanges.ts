@@ -166,7 +166,7 @@ const ROLLBACK = menuItem({
   value: (paths) => ({ paths }),
 });
 
-/** 右键 Stash：已跟踪或未跟踪都行，混着冲突就没有（全部严格）。工具栏永远存全部，不用这份。 */
+/** 右键 Stash：已跟踪或未跟踪都行，混着冲突就没有（全部严格）。工具栏用同一份（`stashArgs`）。 */
 function stashablePath(target: FileMenuTarget | null): string | undefined {
   if (target === null) return undefined;
   switch (target.kind) {
@@ -304,6 +304,20 @@ export function rollbackArgs(
   if (views.exact.length > 0) return ROLLBACK.evaluate(targetViews(conflicts, files, views));
   const tracked = files.filter((file) => file.status !== WorkingStatus.Untracked);
   return tracked.length === 0 ? undefined : { paths: tracked.map((file) => file.path) };
+}
+
+/**
+ * 工具栏 Stash 预勾哪些：和右键的 Stash 同一份规则（`STASH`）；
+ * 什么都没选时预勾对话框里能列出的全部（已跟踪和未跟踪，不含冲突）。
+ * 存不了（选中里混着冲突，或没有可存的文件）时缺席，按钮置灰。不看勾选：勾选只管提交。
+ */
+export function stashArgs(
+  conflicts: readonly ConflictFile[],
+  files: readonly WorkingFile[],
+  views: MenuViews<FileRow | null>,
+): { readonly paths: readonly string[] } | undefined {
+  if (views.exact.length > 0) return STASH.evaluate(targetViews(conflicts, files, views));
+  return files.length === 0 ? undefined : { paths: files.map((file) => file.path) };
 }
 
 function conflictEntry(file: ConflictFile): FileEntry {

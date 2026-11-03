@@ -12,6 +12,7 @@ import {
   conflictHeading,
   opensMergeEditor,
   rollbackArgs,
+  stashArgs,
   type WorkingFile,
   WorkingRowKind,
   workingDiffSides,
@@ -179,9 +180,7 @@ async function onAmendToggle(): Promise<void> {
 
 /** 正在提交：按钮置灰、文字变 `Committing…`，防重复点击。 */
 const committing = ref(false);
-/** 正在存 stash。提交与 Stash 进行中，两个按钮都置灰。 */
-const stashing = ref(false);
-const busy = computed(() => committing.value || stashing.value);
+const busy = computed(() => committing.value);
 /**
  * 说明为空（只有空白也算）不能提交；普通提交还要至少勾一个文件，
  * Amend 不勾文件也行（只改说明）。
@@ -241,19 +240,20 @@ async function rollbackSelected(): Promise<void> {
   }
 }
 
-/** 工具栏永远存全部，不看勾选、不看选中。 */
-const canStash = computed(() => !busy.value && files.value.length > 0);
+/**
+ * 工具栏 Stash 预勾哪些：和右键的 Stash 同一份规则；什么都没选时预勾全部可存的文件（`stashArgs`）。
+ */
+const stashTarget = computed(() => stashArgs(conflicts.value, files.value, fileSelection.value));
+const canStash = computed(() => !busy.value && stashTarget.value !== undefined);
 
-/** 完成消息由扩展显示在状态栏，失败由错误关口报。 */
-async function stashAll(): Promise<void> {
-  if (repo.value === undefined || !canStash.value) return;
-  stashing.value = true;
+/** 打开 Stash 标签页。失败由错误关口报。 */
+async function stashSelected(): Promise<void> {
+  const target = stashTarget.value;
+  if (repo.value === undefined || !canStash.value || target === undefined) return;
   try {
-    await props.client.request("stash", { repo: repo.value, paths: [] });
+    await props.client.request("openStashDialog", { repo: repo.value, paths: target.paths });
   } catch (cause) {
     report(cause);
-  } finally {
-    stashing.value = false;
   }
 }
 
@@ -433,9 +433,9 @@ onMounted(async () => {
       />
       <ToolButton
         :icon="appIcon(AppIcon.Stash)"
-        title="Stash All"
+        title="Stash"
         :disabled="!canStash"
-        @click="stashAll"
+        @click="stashSelected"
       />
       <MenuButton
         :icon="appIcon(AppIcon.ViewOptions)"

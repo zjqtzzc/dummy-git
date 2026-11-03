@@ -19,6 +19,7 @@ import {
   precheckedStashPaths,
   rollbackArgs,
   rollbackGroups,
+  stashArgs,
   stashGroups,
   WorkingRowKind,
   WorkingStatus,
@@ -301,6 +302,36 @@ describe("rollbackArgs：工具栏与右键的 Rollback 撤哪些", () => {
     const none = { exact: [], expanded: [] };
     expect(rollbackArgs([], files, none)).toEqual({ paths: ["src/a.ts", "src/b.ts"] });
     expect(rollbackArgs([], untracked, none)).toBeUndefined();
+  });
+});
+
+describe("stashArgs：工具栏与右键的 Stash 预勾哪些", () => {
+  const tracked = [
+    { path: "src/a.ts", status: WorkingStatus.Modified },
+    { path: "src/b.ts", status: WorkingStatus.Deleted },
+  ];
+  const untracked = [{ path: "new.txt", status: WorkingStatus.Untracked }];
+  const files = [...tracked, ...untracked];
+  const conflict = [{ path: "c.ts", conflict: ConflictKind.BothModified }];
+
+  it("选中目录：预勾它下面列出的全部", () => {
+    const folder = { exact: [null], expanded: [changeRow("src/a.ts"), changeRow("src/b.ts")] };
+    expect(stashArgs([], files, folder)).toEqual({ paths: ["src/a.ts", "src/b.ts"] });
+  });
+
+  it("已跟踪和未跟踪可以一起预勾；夹着冲突就存不了", () => {
+    const both = [changeRow("src/a.ts"), untrackedRow("new.txt")];
+    expect(stashArgs([], files, { exact: both, expanded: both })).toEqual({
+      paths: ["src/a.ts", "new.txt"],
+    });
+    const mixed = [changeRow("src/a.ts"), conflictRow("c.ts")];
+    expect(stashArgs(conflict, files, { exact: mixed, expanded: mixed })).toBeUndefined();
+  });
+
+  it("什么都没选：预勾全部可存的文件；一个都没有时存不了", () => {
+    const none = { exact: [], expanded: [] };
+    expect(stashArgs([], files, none)).toEqual({ paths: ["src/a.ts", "src/b.ts", "new.txt"] });
+    expect(stashArgs(conflict, [], none)).toBeUndefined();
   });
 });
 

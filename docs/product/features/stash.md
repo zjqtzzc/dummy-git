@@ -5,9 +5,7 @@
 
 ## 存
 
-Commit 面板工具栏上，Rollback 旁边的 **Stash** 按钮（`AppIcon.Stash`：箭头落进托盘）。有改动就能点，不问名字，说明用 git 自动生成的（`WIP on main: 1a2b3c4 fix login`）。**工具栏永远存全部**（提示 `Stash All`，`git stash push -u`），不看勾选、不看选中（同 IDEA 的 `Git.Stash.Silently`）。选中经常只是在看 diff，Stash 又没有确认框。
-
-右键 **Stash**：打开编辑器标签页（`product/features/dialogs.md`），不再直接存。谁能点仍由现在的规则定：选中的文件（目录、组等于下面列出的全部），可含未跟踪；混着冲突文件就没有这一项（全部严格）。勾选只管提交。
+Commit 面板工具栏上，Rollback 旁边的 **Stash** 按钮（`AppIcon.Stash`：箭头落进托盘）和右键 **Stash** 打开同一个编辑器标签页（`product/features/dialogs.md`）。谁能点、预勾哪些，和右键是同一份规则（`logic/commit/workingChanges.ts` 的 `stashArgs`）：选中的文件（目录、组等于下面列出的全部），可含未跟踪；混着冲突文件就没有这一项，工具栏按钮置灰（全部严格）。**什么都没选时**工具栏预勾对话框里能列出的全部（Changes 与 Unversioned，不含冲突）；一个可存的文件都没有时置灰。勾选只管提交。说明预填见下一段。
 
 标签里一棵含 Changes 与 Unversioned 的文件树（不含冲突），打开时勾上刚才要存的那些，可以改勾。名字输入框预填 git 那种 `WIP on main: 1a2b3c4 fix login`（detached 时是 `WIP on (no branch): …`；没改（含清空）就不传 `-m`，git 自己生成；改过才 `-m`，列表变成 `On main: 你写的`）。底栏左侧灰字 `N files`，右侧 Cancel / Stash；一个都没勾时 Stash 置灰。点 Stash 关标签，后台按勾上的路径存。双击开 diff 同 Commit 面板。
 
