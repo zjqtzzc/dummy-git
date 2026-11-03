@@ -1,7 +1,7 @@
 import { type Ref, RefKind, UpstreamState } from "@dummy-git/shared";
 
 /**
- * 状态栏上的当前分支：`$(git-branch) main ↓2↑1`，detached 时 `$(git-commit) a1b2c3d`。
+ * 状态栏上的当前分支：`$(repo) main ↓2↑1`，detached 时 `$(git-commit) a1b2c3d`。
  * 已同步、没有上游、上游已删（Gone 视同无上游）都只写分支名。
  * 有操作在跑（`busy`）时图标换成转圈，文字不变。
  *
@@ -17,7 +17,7 @@ export function branchStatus(refs: readonly Ref[], busy: boolean): string | unde
 
   const current = refs.find((ref) => ref.kind === RefKind.LocalBranch && ref.name === branch);
   const state = current?.kind === RefKind.LocalBranch ? current.upstream?.state : undefined;
-  const text = `${icon("$(git-branch)")} ${branch}`;
+  const text = `${icon("$(repo)")} ${branch}`;
   if (state?.kind !== UpstreamState.Tracking) return text;
 
   const { ahead, behind } = state;

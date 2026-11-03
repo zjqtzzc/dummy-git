@@ -9,14 +9,14 @@ const TOGGLE_LOG = "dummyGit.toggleLogPanel";
 const TOGGLE_HINT = "Show / hide the Dummy Git log";
 
 /**
- * 状态栏右侧：当前分支及同步状态（`branchStatus.ts`），点一下开 Log 面板，再点一下关。
+ * 状态栏左侧：当前分支及同步状态（`branchStatus.ts`），点一下开 Log 面板，再点一下关。
  * 有操作在跑（`activity`）时图标转圈，悬停列出在做什么。
  *
  * 开还是关看 Log 视图此刻是否可见（`logVisible`），不自己记「上次点了什么」：
  * 用户手动关掉面板、切到别的面板标签时，自己记的那份就错了。
  */
 export class StatusBar implements vscode.Disposable {
-  private readonly item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+  private readonly item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1);
   private readonly disposables: vscode.Disposable[] = [this.item];
   /** 上一次取到的 HEAD 与引用。操作开始、结束只换图标，不必重跑 git。 */
   private refs: readonly Ref[] = [];
