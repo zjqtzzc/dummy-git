@@ -450,10 +450,9 @@ defineExpose({
 }
 .row.selected {
   background: var(--vscode-list-activeSelectionBackground);
-  color: var(--vscode-list-activeSelectionForeground);
 }
 /*
- * 高亮让给选中：选中的行只用选中色。
+ * 背景高亮让给选中：选中只改变背景，文字保留原有颜色与字重。
  * 浅色背景是半透明的一层，画在背景色（悬停色）之上：悬停时悬停色从下面透上来，还看得出这一行带着浅色。
  */
 .row.tinted:not(.selected) {
@@ -463,8 +462,8 @@ defineExpose({
 .cell.bold {
   font-weight: bold;
 }
-.row.dimmed:not(.selected),
-.row.dimmed:not(.selected) .dim {
+.row.dimmed,
+.row.dimmed .dim {
   color: var(--vscode-disabledForeground);
 }
 .cell {
