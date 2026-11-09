@@ -27,6 +27,7 @@ import {
   type ContinueResult,
   commit,
   continueInProgress,
+  createAndSwitchBranch,
   createBranch,
   createTrackingBranch,
   DeleteBranchKind,
@@ -788,8 +789,21 @@ export function createHandlers(repository: Repository, ui: HandlerUi): HandlerMa
     newBranch: async ({ start, startName }) => {
       const name = await askBranchName(`New branch from ${startName}`, "");
       if (name === undefined) return null;
-      // 只建不切，同改名：只加一个引用，分支树里立刻看得见，不走进度出口；git 不说话，没有完成消息。
-      await repository.run(createBranch, repository.location.root, name, start);
+      const root = repository.location.root;
+      const head = await repository.run(getHead, root);
+      const fromCurrent =
+        head.kind === RefKind.Head &&
+        (head.branch === undefined ? start === head.target : start === `refs/heads/${head.branch}`);
+      if (fromCurrent) {
+        await ui.withProgress(
+          `Checking out ${name}…`,
+          () => repository.run(createAndSwitchBranch, root, name, start),
+          (said) => said,
+        );
+      } else {
+        // 从其他分支新建只加引用，不碰工作区，也不走进度出口。
+        await repository.run(createBranch, root, name, start);
+      }
       return null;
     },
     renameBranch: async ({ branch }) => {

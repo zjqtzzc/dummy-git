@@ -791,6 +791,34 @@ describe("handlers.newBranch", () => {
     expect(readFileSync(join(repo, "f1"), "utf8")).toBe("dirty\n");
   });
 
+  it("从当前分支（含 HEAD 行）新建：切过去，不继承上游", async () => {
+    const { repo } = makeTrackingRepos();
+    writeFileSync(join(repo, "untracked"), "dirty\n");
+    const before = git(repo, ["rev-parse", "HEAD"]);
+    await newBranch(repo, "refs/heads/main", "main", "fix");
+    expect(git(repo, ["branch", "--show-current"]).trim()).toBe("fix");
+    expect(git(repo, ["rev-parse", "HEAD"])).toBe(before);
+    expect(readFileSync(join(repo, "untracked"), "utf8")).toBe("dirty\n");
+    expect(() => git(repo, ["rev-parse", "--abbrev-ref", "fix@{u}"])).toThrow();
+  });
+
+  it("从 detached HEAD 新建：切到新分支", async () => {
+    const repo = makeTempRepo("new-branch-detached");
+    git(repo, ["switch", "-q", "--detach"]);
+    const hash = git(repo, ["rev-parse", "HEAD"]).trim();
+    await newBranch(repo, hash, hash.slice(0, 7), "fix");
+    expect(git(repo, ["branch", "--show-current"]).trim()).toBe("fix");
+    expect(git(repo, ["rev-parse", "fix"]).trim()).toBe(hash);
+  });
+
+  it("其他分支与 HEAD 指向相同提交，也只建不切", async () => {
+    const repo = makeTempRepo("new-branch-same-tip");
+    git(repo, ["branch", "other"]);
+    await newBranch(repo, "refs/heads/other", "other", "fix");
+    expect(git(repo, ["branch", "--show-current"]).trim()).toBe("main");
+    expect(git(repo, ["rev-parse", "fix"])).toBe(git(repo, ["rev-parse", "other"]));
+  });
+
   it("取消或空着确定：什么都不做", async () => {
     const repo = makeTempRepo("new-branch-cancel");
     await newBranch(repo, "refs/heads/main", "main", undefined);

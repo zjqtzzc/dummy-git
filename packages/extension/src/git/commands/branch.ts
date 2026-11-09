@@ -135,6 +135,21 @@ export const isValidBranchName: GitCommand<[repository: string, name: string], b
   },
 };
 
+/** 建新分支并切过去，不跟踪起点；切换失败时不会留下新分支。 */
+export const createAndSwitchBranch: GitCommand<
+  [repository: string, branch: string, start: string],
+  string
+> = {
+  lock: LockPolicy.Exclusive,
+
+  execute: async (cli, repository, branch, start) => {
+    const { stderr } = await run(cli, ["switch", "-c", branch, "--no-track", start], {
+      cwd: repository,
+    });
+    return firstLine(stderr);
+  },
+};
+
 function firstLine(text: string): string {
   return text.split("\n")[0]?.trim() ?? "";
 }
